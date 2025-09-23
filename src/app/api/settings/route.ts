@@ -1,0 +1,125 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { createServerSupabaseClient } from '@/lib/supabase'
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createServerSupabaseClient()
+    
+    // Get all settings for this tenant
+    const { data: settings, error } = await supabase
+      .from('tenant_settings')
+      .select('setting_key, setting_value')
+      .eq('tenant_id', session.user.tenantId)
+
+    if (error) {
+      console.error('Error fetching settings:', error)
+      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
+    }
+
+    // Convert array to nested object
+    const settingsObject = settings?.reduce((acc, setting) => {
+      const keys = setting.setting_key.split('.')
+      let current = acc
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {}
+        }
+        current = current[keys[i]]
+      }
+      
+      current[keys[keys.length - 1]] = setting.setting_value
+      return acc
+    }, {} as Record<string, any>) || {}
+
+    const response = NextResponse.json({ settings: settingsObject })
+    
+    // Add caching headers for better performance
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+    
+    return response
+  } catch (error) {
+    console.error('Error in GET /api/settings:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { settings } = body
+
+    if (!settings || typeof settings !== 'object') {
+      return NextResponse.json({ error: 'Invalid settings data' }, { status: 400 })
+    }
+
+    const supabase = createServerSupabaseClient()
+    
+    // Convert nested settings object to flat array of key-value pairs
+    const settingsArray: Array<{tenant_id: string, setting_key: string, setting_value: any}> = []
+    
+    const flattenSettings = (obj: any, prefix = '') => {
+      for (const [key, value] of Object.entries(obj)) {
+        const fullKey = prefix ? `${prefix}.${key}` : key
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          flattenSettings(value, fullKey)
+        } else {
+          settingsArray.push({
+            tenant_id: session.user.tenantId,
+            setting_key: fullKey,
+            setting_value: value
+          })
+        }
+      }
+    }
+    
+    flattenSettings(settings)
+
+    // Use upsert to handle existing settings
+    const { error } = await supabase
+      .from('tenant_settings')
+      .upsert(settingsArray, {
+        onConflict: 'tenant_id,setting_key'
+      })
+
+    if (error) {
+      console.error('Error saving settings:', error)
+      // If it's a duplicate key error, try to update existing records instead
+      if (error.code === '23505') {
+        console.log('Settings array to upsert:', settingsArray)
+        // Try individual upserts to handle race conditions
+        for (const setting of settingsArray) {
+          const { error: individualError } = await supabase
+            .from('tenant_settings')
+            .upsert(setting, {
+              onConflict: 'tenant_id,setting_key'
+            })
+          if (individualError) {
+            console.error('Individual setting error:', individualError)
+          }
+        }
+      } else {
+        return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error in POST /api/settings:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
