@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Force new deployment
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
   // Turbopack configuration (moved from experimental)
   turbopack: {
     rules: {
