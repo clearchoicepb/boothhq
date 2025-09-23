@@ -2,6 +2,8 @@
 
 A full-stack CRM application built with Next.js, TypeScript, and Supabase.
 
+<!-- Trigger deployment: 2025-01-21 -->
+
 ## Features
 
 - **Accounts Management**: Create, read, update, and delete company accounts
