@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
+import { PhotoUpload } from '@/components/ui/photo-upload'
 import { contactsApi, accountsApi } from '@/lib/db'
 import type { Contact, ContactInsert, ContactUpdate, Account } from '@/lib/supabase-client'
 
@@ -13,10 +14,12 @@ interface ContactFormProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (contact: Contact) => void
+  preSelectedAccountId?: string | null
 }
 
-export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormProps) {
+export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAccountId }: ContactFormProps) {
   const [formData, setFormData] = useState<ContactInsert>({
+    tenant_id: '',
     first_name: '',
     last_name: '',
     email: '',
@@ -24,12 +27,13 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
     job_title: '',
     department: '',
     account_id: null,
-    address: '',
+    address_line_1: '',
+    address_line_2: '',
     city: '',
     state: '',
-    country: '',
-    postal_code: '',
-    status: 'active'
+    zip_code: '',
+    status: 'active',
+    avatar_url: null
   })
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(false)
@@ -37,6 +41,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
   useEffect(() => {
     if (contact) {
       setFormData({
+        tenant_id: contact.tenant_id,
         first_name: contact.first_name,
         last_name: contact.last_name,
         email: contact.email || '',
@@ -44,31 +49,34 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
         job_title: contact.job_title || '',
         department: contact.department || '',
         account_id: contact.account_id,
-        address: contact.address || '',
+        address_line_1: contact.address_line_1 || '',
+        address_line_2: contact.address_line_2 || '',
         city: contact.city || '',
         state: contact.state || '',
-        country: contact.country || '',
-        postal_code: contact.postal_code || '',
-        status: contact.status
+        zip_code: contact.zip_code || '',
+        status: contact.status,
+        avatar_url: contact.avatar_url
       })
     } else {
       setFormData({
+        tenant_id: '',
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
         job_title: '',
         department: '',
-        account_id: null,
-        address: '',
+        account_id: preSelectedAccountId || null,
+        address_line_1: '',
+        address_line_2: '',
         city: '',
         state: '',
-        country: '',
-        postal_code: '',
-        status: 'active'
+        zip_code: '',
+        status: 'active',
+        avatar_url: null
       })
     }
-  }, [contact])
+  }, [contact, preSelectedAccountId])
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -117,6 +125,17 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
       className="sm:max-w-2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Photo Upload Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium text-gray-900">Profile Photo</h3>
+          <PhotoUpload
+            currentPhotoUrl={formData.avatar_url}
+            onPhotoChange={(photoUrl) => setFormData(prev => ({ ...prev, avatar_url: photoUrl }))}
+            entityType="contact"
+            entityName={`${formData.first_name} ${formData.last_name}`.trim() || 'Contact'}
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -190,6 +209,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
               value={formData.account_id || ''}
               onChange={(e) => handleChange('account_id', e.target.value || null)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Select an account"
             >
               <option value="">Select an account</option>
               {accounts.map((account) => (
@@ -208,6 +228,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
               value={formData.status}
               onChange={(e) => handleChange('status', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Select status"
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
@@ -217,56 +238,61 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit }: ContactFormP
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
               Address
             </label>
-            <Textarea
-              value={formData.address || ''}
-              onChange={(e) => handleChange('address', e.target.value || null)}
-              rows={2}
-            />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Address Line 1
+                </label>
+                <Input
+                  value={formData.address_line_1 || ''}
+                  onChange={(e) => handleChange('address_line_1', e.target.value || null)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Address Line 2
+                </label>
+                <Input
+                  value={formData.address_line_2 || ''}
+                  onChange={(e) => handleChange('address_line_2', e.target.value || null)}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    City
+                  </label>
+                  <Input
+                    value={formData.city || ''}
+                    onChange={(e) => handleChange('city', e.target.value || null)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    State
+                  </label>
+                  <Input
+                    value={formData.state || ''}
+                    onChange={(e) => handleChange('state', e.target.value || null)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Zip Code
+                  </label>
+                  <Input
+                    value={formData.zip_code || ''}
+                    onChange={(e) => handleChange('zip_code', e.target.value || null)}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City
-              </label>
-              <Input
-                value={formData.city || ''}
-                onChange={(e) => handleChange('city', e.target.value || null)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                State
-              </label>
-              <Input
-                value={formData.state || ''}
-                onChange={(e) => handleChange('state', e.target.value || null)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Country
-              </label>
-              <Input
-                value={formData.country || ''}
-                onChange={(e) => handleChange('country', e.target.value || null)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Postal Code
-              </label>
-              <Input
-                value={formData.postal_code || ''}
-                onChange={(e) => handleChange('postal_code', e.target.value || null)}
-              />
-            </div>
           </div>
         </div>
 

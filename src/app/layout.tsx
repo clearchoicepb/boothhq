@@ -1,13 +1,16 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Navigation } from '@/components/navigation'
+import { SessionProvider } from '@/components/session-provider'
+import { TenantProvider } from '@/lib/tenant-context'
+import { SettingsProvider } from '@/lib/settings-context'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CRM App - Supabase',
-  description: 'Full-stack CRM application built with Next.js and Supabase',
+  title: 'Photo Booth CRM',
+  description: 'Comprehensive photo booth rental management platform',
 }
 
 export default function RootLayout({
@@ -18,12 +21,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
-          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            {children}
-          </main>
-        </div>
+        <ErrorBoundary>
+          <SessionProvider>
+            <TenantProvider>
+              <SettingsProvider>
+                <div className="min-h-screen bg-gray-50">
+                  {children}
+                </div>
+              </SettingsProvider>
+            </TenantProvider>
+          </SessionProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

@@ -1,3 +1,7 @@
+export interface AuditValues {
+  [key: string]: string | number | boolean | object | null
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -113,11 +117,78 @@ export interface Database {
           updated_at?: string
         }
       }
+      leads: {
+        Row: {
+          id: string
+          tenant_id: string
+          lead_type: string
+          first_name: string
+          last_name: string
+          email: string | null
+          phone: string | null
+          company: string | null
+          company_url: string | null
+          source: string | null
+          status: string
+          notes: string | null
+          photo_url: string | null
+          is_converted: boolean
+          converted_at: string | null
+          converted_account_id: string | null
+          converted_contact_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          lead_type: string
+          first_name: string
+          last_name: string
+          email?: string | null
+          phone?: string | null
+          company?: string | null
+          company_url?: string | null
+          source?: string | null
+          status?: string
+          notes?: string | null
+          photo_url?: string | null
+          is_converted?: boolean
+          converted_at?: string | null
+          converted_account_id?: string | null
+          converted_contact_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          lead_type?: string
+          first_name?: string
+          last_name?: string
+          email?: string | null
+          phone?: string | null
+          company?: string | null
+          company_url?: string | null
+          source?: string | null
+          status?: string
+          notes?: string | null
+          photo_url?: string | null
+          is_converted?: boolean
+          converted_at?: string | null
+          converted_account_id?: string | null
+          converted_contact_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       opportunities: {
         Row: {
           id: string
+          tenant_id: string
           account_id: string | null
           contact_id: string | null
+          lead_id: string | null
           name: string
           description: string | null
           amount: number | null
@@ -125,13 +196,29 @@ export interface Database {
           probability: number | null
           expected_close_date: string | null
           actual_close_date: string | null
+          event_type: string | null
+          date_type: string | null
+          event_date: string | null
+          initial_date: string | null
+          final_date: string | null
+          mailing_address_line1: string | null
+          mailing_address_line2: string | null
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_postal_code: string | null
+          mailing_country: string | null
+          is_converted: boolean
+          converted_at: string | null
+          converted_event_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
+          tenant_id: string
           account_id?: string | null
           contact_id?: string | null
+          lead_id?: string | null
           name: string
           description?: string | null
           amount?: number | null
@@ -139,13 +226,29 @@ export interface Database {
           probability?: number | null
           expected_close_date?: string | null
           actual_close_date?: string | null
+          event_type?: string | null
+          date_type?: string | null
+          event_date?: string | null
+          initial_date?: string | null
+          final_date?: string | null
+          mailing_address_line1?: string | null
+          mailing_address_line2?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_postal_code?: string | null
+          mailing_country?: string | null
+          is_converted?: boolean
+          converted_at?: string | null
+          converted_event_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
+          tenant_id?: string
           account_id?: string | null
           contact_id?: string | null
+          lead_id?: string | null
           name?: string
           description?: string | null
           amount?: number | null
@@ -153,6 +256,20 @@ export interface Database {
           probability?: number | null
           expected_close_date?: string | null
           actual_close_date?: string | null
+          event_type?: string | null
+          date_type?: string | null
+          event_date?: string | null
+          initial_date?: string | null
+          final_date?: string | null
+          mailing_address_line1?: string | null
+          mailing_address_line2?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_postal_code?: string | null
+          mailing_country?: string | null
+          is_converted?: boolean
+          converted_at?: string | null
+          converted_event_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -160,6 +277,7 @@ export interface Database {
       events: {
         Row: {
           id: string
+          tenant_id: string
           account_id: string | null
           contact_id: string | null
           opportunity_id: string | null
@@ -170,11 +288,20 @@ export interface Database {
           end_date: string | null
           location: string | null
           status: string
+          date_type: string | null
+          mailing_address_line1: string | null
+          mailing_address_line2: string | null
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_postal_code: string | null
+          mailing_country: string | null
+          converted_from_opportunity_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
+          tenant_id: string
           account_id?: string | null
           contact_id?: string | null
           opportunity_id?: string | null
@@ -185,11 +312,20 @@ export interface Database {
           end_date?: string | null
           location?: string | null
           status?: string
+          date_type?: string | null
+          mailing_address_line1?: string | null
+          mailing_address_line2?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_postal_code?: string | null
+          mailing_country?: string | null
+          converted_from_opportunity_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
+          tenant_id?: string
           account_id?: string | null
           contact_id?: string | null
           opportunity_id?: string | null
@@ -200,6 +336,14 @@ export interface Database {
           end_date?: string | null
           location?: string | null
           status?: string
+          date_type?: string | null
+          mailing_address_line1?: string | null
+          mailing_address_line2?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_postal_code?: string | null
+          mailing_country?: string | null
+          converted_from_opportunity_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -321,8 +465,8 @@ export interface Database {
           table_name: string
           record_id: string
           action: string
-          old_values: any | null
-          new_values: any | null
+          old_values: AuditValues | null
+          new_values: AuditValues | null
           user_id: string | null
           ip_address: string | null
           user_agent: string | null
@@ -333,8 +477,8 @@ export interface Database {
           table_name: string
           record_id: string
           action: string
-          old_values?: any | null
-          new_values?: any | null
+          old_values?: AuditValues | null
+          new_values?: AuditValues | null
           user_id?: string | null
           ip_address?: string | null
           user_agent?: string | null
@@ -345,12 +489,112 @@ export interface Database {
           table_name?: string
           record_id?: string
           action?: string
-          old_values?: any | null
-          new_values?: any | null
+          old_values?: AuditValues | null
+          new_values?: AuditValues | null
           user_id?: string | null
           ip_address?: string | null
           user_agent?: string | null
           created_at?: string
+        }
+      }
+      locations: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          state: string | null
+          postal_code: string | null
+          country: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contact_email: string | null
+          is_one_time: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          state?: string | null
+          postal_code?: string | null
+          country?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_email?: string | null
+          is_one_time?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          state?: string | null
+          postal_code?: string | null
+          country?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_email?: string | null
+          is_one_time?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      event_dates: {
+        Row: {
+          id: string
+          tenant_id: string
+          opportunity_id: string | null
+          event_id: string | null
+          location_id: string | null
+          event_date: string
+          start_time: string | null
+          end_time: string | null
+          notes: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          opportunity_id?: string | null
+          event_id?: string | null
+          location_id?: string | null
+          event_date: string
+          start_time?: string | null
+          end_time?: string | null
+          notes?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          opportunity_id?: string | null
+          event_id?: string | null
+          location_id?: string | null
+          event_date?: string
+          start_time?: string | null
+          end_time?: string | null
+          notes?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
       }
     }

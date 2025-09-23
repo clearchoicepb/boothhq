@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { opportunitiesApi, accountsApi, contactsApi } from '@/lib/db'
 import type { Opportunity, OpportunityInsert, OpportunityUpdate, Account, Contact } from '@/lib/supabase-client'
+import { useSettings } from '@/lib/settings-context'
 
 interface OpportunityFormProps {
   opportunity?: Opportunity
@@ -17,6 +18,7 @@ interface OpportunityFormProps {
 }
 
 export function OpportunityForm({ opportunity, isOpen, onClose, onSubmit }: OpportunityFormProps) {
+  const { settings } = useSettings()
   const [formData, setFormData] = useState<OpportunityInsert>({
     name: '',
     description: '',
@@ -113,14 +115,18 @@ export function OpportunityForm({ opportunity, isOpen, onClose, onSubmit }: Oppo
     handleChange(field, dateValue)
   }
 
-  const stages = [
-    { value: 'prospecting', label: 'Prospecting' },
-    { value: 'qualification', label: 'Qualification' },
-    { value: 'proposal', label: 'Proposal' },
-    { value: 'negotiation', label: 'Negotiation' },
-    { value: 'closed_won', label: 'Closed Won' },
-    { value: 'closed_lost', label: 'Closed Lost' }
-  ]
+  // Get stages from settings or use defaults
+  const stages = (settings.opportunities?.stages || [
+    { id: 'prospecting', name: 'Prospecting', enabled: true },
+    { id: 'qualification', name: 'Qualification', enabled: true },
+    { id: 'proposal', name: 'Proposal', enabled: true },
+    { id: 'negotiation', name: 'Negotiation', enabled: true },
+    { id: 'closed_won', name: 'Closed Won', enabled: true },
+    { id: 'closed_lost', name: 'Closed Lost', enabled: true }
+  ]).filter(stage => stage.enabled !== false).map(stage => ({
+    value: stage.id || stage,
+    label: stage.name || stage
+  }))
 
   return (
     <Modal
@@ -243,7 +249,7 @@ export function OpportunityForm({ opportunity, isOpen, onClose, onSubmit }: Oppo
             </Select>
           </div>
 
-          {formData.stage === 'closed_won' || formData.stage === 'closed_lost' ? (
+          {['closed_won', 'closed_lost'].includes(formData.stage) ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Actual Close Date

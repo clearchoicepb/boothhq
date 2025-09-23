@@ -317,7 +317,7 @@ export default function ContactsPage() {
 
       {/* Contact Form Modal */}
       <ContactForm
-        contact={editingContact}
+        contact={editingContact || undefined}
         isOpen={isFormOpen}
         onClose={handleFormClose}
         onSubmit={handleFormSubmit}

@@ -48,6 +48,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
               <button
                 onClick={onClose}
                 className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-label="Close modal"
               >
                 <X className="h-6 w-6" />
               </button>

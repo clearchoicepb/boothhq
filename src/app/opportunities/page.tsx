@@ -368,7 +368,7 @@ export default function OpportunitiesPage() {
 
       {/* Opportunity Form Modal */}
       <OpportunityForm
-        opportunity={editingOpportunity}
+        opportunity={editingOpportunity || undefined}
         isOpen={isFormOpen}
         onClose={handleFormClose}
         onSubmit={handleFormSubmit}
