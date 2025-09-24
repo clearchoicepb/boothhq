@@ -194,8 +194,17 @@ export default function RolesSettingsPage() {
     e.preventDefault()
     
     try {
+      // Sanitize the form data to ensure no circular references
+      const sanitizedFormData = {
+        name: String(formData.name || ''),
+        description: String(formData.description || ''),
+        job_category: String(formData.job_category || ''),
+        permissions: JSON.parse(JSON.stringify(formData.permissions)), // Deep clone to remove any references
+        is_active: Boolean(formData.is_active)
+      }
+
       const roleData = {
-        ...formData,
+        ...sanitizedFormData,
         id: editingRole?.id || `role_${Date.now()}`,
         created_at: editingRole?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -256,10 +265,13 @@ export default function RolesSettingsPage() {
       const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager'].includes(role.id))
       console.log('Deleting role, saving updated roles:', customRoles)
       
-      await updateSettings({
+      // Sanitize the settings to ensure no circular references
+      const sanitizedSettings = JSON.parse(JSON.stringify({
         ...settings,
         roles: customRoles
-      })
+      }))
+      
+      await updateSettings(sanitizedSettings)
     } catch (error) {
       console.error('Error deleting role:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete role'
@@ -343,7 +355,7 @@ export default function RolesSettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Filter by Job Category
                 </label>
-                <Select value={categoryFilter} onChange={(value) => setCategoryFilter(value)}>
+                <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                   <option value="all">All Categories</option>
                   {jobCategories.map(category => (
                     <option key={category} value={category}>
@@ -469,7 +481,7 @@ export default function RolesSettingsPage() {
                         </label>
                         <Select
                           value={formData.job_category}
-                          onChange={(value) => setFormData({...formData, job_category: value})}
+                          onChange={(e) => setFormData({...formData, job_category: e.target.value})}
                         >
                           <option value="">Select Category</option>
                           {jobCategories.map(category => (
