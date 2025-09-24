@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
-import { Plus, Edit, Trash2, Shield, Users, Settings, Eye, EyeOff } from 'lucide-react'
+import { Plus, Edit, Trash2, Shield, Users, Settings, Eye, EyeOff, ArrowLeft, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import Link from 'next/link'
 
 interface Role {
   id: string
@@ -348,11 +349,50 @@ export default function RolesSettingsPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Role Management</h1>
-            <p className="mt-2 text-gray-600">
-              Create and manage job-category based roles with granular permissions
-            </p>
+          {/* Navigation Header */}
+          <div className="mb-6">
+            <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+              <Link 
+                href={`/${tenantSubdomain}/dashboard`}
+                className="flex items-center hover:text-[#347dc4] transition-colors duration-150"
+              >
+                <Home className="h-4 w-4 mr-1" />
+                Dashboard
+              </Link>
+              <span>/</span>
+              <Link 
+                href={`/${tenantSubdomain}/settings`}
+                className="hover:text-[#347dc4] transition-colors duration-150"
+              >
+                Settings
+              </Link>
+              <span>/</span>
+              <span className="text-gray-900 font-medium">Roles</span>
+            </nav>
+            
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Role Management</h1>
+                <p className="mt-2 text-gray-600">
+                  Create and manage job-category based roles with granular permissions
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <Link href={`/${tenantSubdomain}/settings`}>
+                  <Button variant="outline" className="flex items-center w-full sm:w-auto">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Settings
+                  </Button>
+                </Link>
+                <Link href={`/${tenantSubdomain}/dashboard`}>
+                  <Button variant="outline" className="flex items-center w-full sm:w-auto">
+                    <Home className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Search and Filters */}
