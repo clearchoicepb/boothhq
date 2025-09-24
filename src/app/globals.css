@@ -43,6 +43,25 @@ body {
   
   .main-content-responsive {
     margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Constrain content width on smaller screens */
+  .dashboard-container {
+    max-width: 100% !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Make cards stack properly on mobile */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Reduce card padding on mobile */
+  .dashboard-card {
+    padding: 0.75rem !important;
   }
 }
 
@@ -99,5 +118,35 @@ body {
 @media (min-width: 1024px) {
   .responsive-padding {
     padding: 1.5rem;
+  }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 640px) {
+  /* Make text smaller on very small screens */
+  .dashboard-container h1 {
+    font-size: 1.125rem !important; /* text-lg */
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1rem !important; /* text-base */
+  }
+  
+  /* Reduce margins on mobile */
+  .dashboard-container .mb-6 {
+    margin-bottom: 1rem !important;
+  }
+  
+  .dashboard-container .mb-8 {
+    margin-bottom: 1.5rem !important;
+  }
+  
+  /* Make navigation more compact */
+  .mobile-nav {
+    padding: 0.5rem !important;
+  }
+  
+  .mobile-nav .space-x-2 {
+    gap: 0.25rem !important;
   }
 }

@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="w-full max-w-none">
+      <div className="dashboard-container w-full max-w-none">
         {/* Header */}
         <div className="mb-6 lg:mb-8">
           <div className="flex justify-between items-center">
@@ -129,7 +129,7 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="dashboard-grid mb-6 lg:mb-8">
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <TrendingUp className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <Users className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
@@ -159,7 +159,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <Building2 className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
@@ -174,7 +174,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
@@ -189,7 +189,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <Camera className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="dashboard-card bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
