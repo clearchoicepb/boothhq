@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { PhotoUpload } from '@/components/ui/photo-upload'
-import { contactsApi, accountsApi } from '@/lib/db'
+// Remove the db import - we'll use API routes instead
 import type { Contact, ContactInsert, ContactUpdate, Account } from '@/lib/supabase-client'
 
 interface ContactFormProps {
@@ -81,8 +81,11 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const data = await accountsApi.getAll()
-        setAccounts(data)
+        const response = await fetch('/api/accounts')
+        if (response.ok) {
+          const data = await response.json()
+          setAccounts(data || [])
+        }
       } catch (error) {
         console.error('Error fetching accounts:', error)
       }
@@ -97,9 +100,35 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
     try {
       let result: Contact
       if (contact) {
-        result = await contactsApi.update(contact.id, formData as ContactUpdate)
+        // Update existing contact
+        const response = await fetch(`/api/contacts/${contact.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to update contact')
+        }
+        
+        result = await response.json()
       } else {
-        result = await contactsApi.create(formData)
+        // Create new contact
+        const response = await fetch('/api/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to create contact')
+        }
+        
+        result = await response.json()
       }
       onSubmit(result)
       onClose()

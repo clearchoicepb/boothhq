@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
+import { ContactForm } from '@/components/contact-form'
 import type { Contact } from '@/lib/supabase-client' // cspell:ignore supabase
 
 interface ContactWithAccount extends Contact {
@@ -117,36 +118,10 @@ export default function ContactsPage() {
 
   const handleFormSubmit = async (contactData: Contact) => {
     try {
-      if (editingContact) {
-        // Update existing contact
-        const response = await fetch(`/api/contacts/${editingContact.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(contactData),
-        })
-        
-        if (response.ok) {
-          fetchContacts()
-          setIsFormOpen(false)
-          setEditingContact(null)
-        }
-      } else {
-        // Create new contact
-        const response = await fetch('/api/contacts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(contactData),
-        })
-        
-        if (response.ok) {
-          fetchContacts()
-          setIsFormOpen(false)
-        }
-      }
+      // Refresh the contacts list after successful save
+      await fetchContacts()
+      setIsFormOpen(false)
+      setEditingContact(null)
     } catch (error) {
       console.error('Error saving contact:', error)
     }
@@ -402,6 +377,17 @@ export default function ContactsPage() {
               </div>
             </div>
           )}
+
+          {/* Contact Form Modal */}
+          <ContactForm
+            contact={editingContact}
+            isOpen={isFormOpen}
+            onClose={() => {
+              setIsFormOpen(false)
+              setEditingContact(null)
+            }}
+            onSubmit={handleFormSubmit}
+          />
       </div>
     </AppLayout>
     </AccessGuard>
