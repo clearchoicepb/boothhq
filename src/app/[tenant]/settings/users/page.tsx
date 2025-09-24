@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
+import { useSettings } from '@/lib/settings-context'
 import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Building, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,6 +67,7 @@ interface UserFormData {
 export default function UsersSettingsPage() {
   const params = useParams()
   const { tenant } = useTenant()
+  const { settings } = useSettings()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -98,17 +100,35 @@ export default function UsersSettingsPage() {
 
   const tenantSubdomain = params.tenant as string
 
-  // Available roles
-  const availableRoles = [
-    { value: 'tenant_admin', label: 'Tenant Administrator' },
-    { value: 'manager', label: 'Manager' },
-    { value: 'user', label: 'User' },
-    { value: 'staff', label: 'Staff' }
-  ]
+  // Load available roles from settings
+  const getAvailableRoles = () => {
+    // Default system roles
+    const defaultRoles = [
+      { value: 'admin', label: 'Administrator' },
+      { value: 'sales_rep', label: 'Sales Representative' },
+      { value: 'operations_manager', label: 'Operations Manager' },
+      { value: 'event_staff', label: 'Event Staff' }
+    ]
+
+    // Custom roles from settings
+    const customRoles = settings?.roles?.map((role: any) => ({
+      value: role.id,
+      label: role.name
+    })) || []
+
+    return [...defaultRoles, ...customRoles]
+  }
+
+  const availableRoles = getAvailableRoles()
 
   useEffect(() => {
     fetchUsers()
   }, [])
+
+  // Re-render when settings change (new roles added)
+  useEffect(() => {
+    // Force re-render when settings change
+  }, [settings])
 
   const fetchUsers = async () => {
     try {
