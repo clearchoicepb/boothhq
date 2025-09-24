@@ -1,0 +1,643 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { AppLayout } from '@/components/layout/app-layout';
+import { useSettings } from '@/lib/settings-context';
+import { 
+  ArrowLeft,
+  Mail,
+  Settings,
+  ToggleLeft,
+  ToggleRight,
+  Server,
+  Send,
+  Users
+} from 'lucide-react';
+
+interface EmailServiceSettings {
+  // SMTP Settings
+  smtpSettings: {
+    enabled: boolean;
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    encryption: 'none' | 'ssl' | 'tls';
+    fromName: string;
+    fromEmail: string;
+    replyToEmail: string;
+  };
+  
+  // Gmail Integration
+  gmailIntegration: {
+    enabled: boolean;
+    clientId: string;
+    clientSecret: string;
+    refreshToken: string;
+    fromEmail: string;
+  };
+  
+  // Email Templates
+  emailTemplates: {
+    invoiceEmail: {
+      subject: string;
+      body: string;
+    };
+    eventReminderEmail: {
+      subject: string;
+      body: string;
+    };
+    paymentConfirmationEmail: {
+      subject: string;
+      body: string;
+    };
+    welcomeEmail: {
+      subject: string;
+      body: string;
+    };
+  };
+  
+  // Email Marketing
+  emailMarketing: {
+    enabled: boolean;
+    provider: 'mailchimp' | 'constant-contact' | 'sendgrid' | 'none';
+    apiKey: string;
+    listId: string;
+    allowUnsubscribe: boolean;
+    unsubscribeFooter: string;
+  };
+  
+  // Email Preferences
+  emailPreferences: {
+    sendFromName: string;
+    includeLogo: boolean;
+    includeFooter: boolean;
+    footerText: string;
+    trackOpens: boolean;
+    trackClicks: boolean;
+    requireConfirmation: boolean;
+  };
+}
+
+export default function EmailServicesSettingsPage() {
+  const { tenant: tenantSubdomain } = useParams();
+  const { settings: globalSettings, updateSettings, loading: settingsLoading } = useSettings();
+  
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<EmailServiceSettings>({
+    // SMTP Settings
+    smtpSettings: {
+      enabled: false,
+      host: '',
+      port: 587,
+      username: '',
+      password: '',
+      encryption: 'tls',
+      fromName: '',
+      fromEmail: '',
+      replyToEmail: ''
+    },
+    
+    // Gmail Integration
+    gmailIntegration: {
+      enabled: false,
+      clientId: '',
+      clientSecret: '',
+      refreshToken: '',
+      fromEmail: ''
+    },
+    
+    // Email Templates
+    emailTemplates: {
+      invoiceEmail: {
+        subject: 'Invoice #{invoiceNumber} from {companyName}',
+        body: 'Dear {customerName},\n\nPlease find your invoice attached.\n\nAmount: ${amount}\nDue Date: {dueDate}\n\nThank you for your business!\n\n{companyName}'
+      },
+      eventReminderEmail: {
+        subject: 'Event Reminder: {eventName}',
+        body: 'Hello {customerName},\n\nThis is a reminder about your upcoming event:\n\nEvent: {eventName}\nDate: {eventDate}\nTime: {eventTime}\nLocation: {eventLocation}\n\nWe look forward to seeing you!\n\n{companyName}'
+      },
+      paymentConfirmationEmail: {
+        subject: 'Payment Received - Invoice #{invoiceNumber}',
+        body: 'Dear {customerName},\n\nWe have received your payment of ${amount} for Invoice #{invoiceNumber}.\n\nThank you for your prompt payment!\n\n{companyName}'
+      },
+      welcomeEmail: {
+        subject: 'Welcome to {companyName}!',
+        body: 'Dear {customerName},\n\nWelcome to our CRM system! We\'re excited to work with you.\n\nIf you have any questions, please don\'t hesitate to contact us.\n\nBest regards,\n{companyName}'
+      }
+    },
+    
+    // Email Marketing
+    emailMarketing: {
+      enabled: false,
+      provider: 'none',
+      apiKey: '',
+      listId: '',
+      allowUnsubscribe: true,
+      unsubscribeFooter: 'If you no longer wish to receive these emails, you can unsubscribe here.'
+    },
+    
+    // Email Preferences
+    emailPreferences: {
+      sendFromName: '',
+      includeLogo: true,
+      includeFooter: true,
+      footerText: 'This email was sent by {companyName}.',
+      trackOpens: true,
+      trackClicks: true,
+      requireConfirmation: false
+    }
+  });
+
+  const handleToggle = (path: string) => {
+    setSettings(prev => {
+      const keys = path.split('.');
+      const newSettings = { ...prev };
+      let current = newSettings as Record<string, unknown>;
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        current = current[keys[i]] as Record<string, unknown>;
+      }
+      
+      current[keys[keys.length - 1]] = !(current[keys[keys.length - 1]] as boolean);
+      return newSettings;
+    });
+  };
+
+  const handleSelect = (path: string, value: string | number | boolean) => {
+    setSettings(prev => {
+      const keys = path.split('.');
+      const newSettings = { ...prev };
+      let current = newSettings as Record<string, unknown>;
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        current = current[keys[i]] as Record<string, unknown>;
+      }
+      
+      current[keys[keys.length - 1]] = value;
+      return newSettings;
+    });
+  };
+
+  // Load settings from global context
+  useEffect(() => {
+    if (globalSettings.emailServices) {
+      setSettings(globalSettings.emailServices);
+    }
+  }, [globalSettings, settingsLoading]);
+
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    try {
+      await updateSettings({
+        ...globalSettings,
+        emailServices: settings
+      });
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Show loading state if settings are still loading
+  if (settingsLoading) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#347dc4] mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading settings...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link 
+                  href={`/${tenantSubdomain}/settings`}
+                  className="flex items-center text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                >
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Back to Settings
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
+                    <Mail className="h-6 w-6 mr-3 text-[#347dc4]" />
+                    Email Services Settings
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Set up Gmail, SMTP, and email marketing integrations
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <div className="space-y-8">
+            
+            {/* SMTP Settings */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Server className="h-5 w-5 mr-2 text-[#347dc4]" />
+                  SMTP Settings
+                </h2>
+                <button
+                  onClick={() => handleToggle('smtpSettings.enabled')}
+                  className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                >
+                  {settings.smtpSettings.enabled ? (
+                    <ToggleRight className="h-6 w-6" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+              
+              {settings.smtpSettings.enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">SMTP Host</label>
+                      <input
+                        type="text"
+                        value={settings.smtpSettings.host}
+                        onChange={(e) => handleSelect('smtpSettings.host', e.target.value)}
+                        placeholder="smtp.gmail.com"
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Port</label>
+                      <input
+                        type="number"
+                        value={settings.smtpSettings.port}
+                        onChange={(e) => handleSelect('smtpSettings.port', parseInt(e.target.value) || 587)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Username</label>
+                      <input
+                        type="text"
+                        value={settings.smtpSettings.username}
+                        onChange={(e) => handleSelect('smtpSettings.username', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Password</label>
+                      <input
+                        type="password"
+                        value={settings.smtpSettings.password}
+                        onChange={(e) => handleSelect('smtpSettings.password', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Encryption</label>
+                      <select
+                        value={settings.smtpSettings.encryption}
+                        onChange={(e) => handleSelect('smtpSettings.encryption', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      >
+                        <option value="none">None</option>
+                        <option value="ssl">SSL</option>
+                        <option value="tls">TLS</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">From Name</label>
+                      <input
+                        type="text"
+                        value={settings.smtpSettings.fromName}
+                        onChange={(e) => handleSelect('smtpSettings.fromName', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">From Email</label>
+                      <input
+                        type="email"
+                        value={settings.smtpSettings.fromEmail}
+                        onChange={(e) => handleSelect('smtpSettings.fromEmail', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Reply-To Email</label>
+                      <input
+                        type="email"
+                        value={settings.smtpSettings.replyToEmail}
+                        onChange={(e) => handleSelect('smtpSettings.replyToEmail', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Gmail Integration */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Mail className="h-5 w-5 mr-2 text-[#347dc4]" />
+                  Gmail Integration
+                </h2>
+                <button
+                  onClick={() => handleToggle('gmailIntegration.enabled')}
+                  className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                >
+                  {settings.gmailIntegration.enabled ? (
+                    <ToggleRight className="h-6 w-6" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+              
+              {settings.gmailIntegration.enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Client ID</label>
+                      <input
+                        type="text"
+                        value={settings.gmailIntegration.clientId}
+                        onChange={(e) => handleSelect('gmailIntegration.clientId', e.target.value)}
+                        placeholder="Google OAuth Client ID"
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Client Secret</label>
+                      <input
+                        type="password"
+                        value={settings.gmailIntegration.clientSecret}
+                        onChange={(e) => handleSelect('gmailIntegration.clientSecret', e.target.value)}
+                        placeholder="Google OAuth Client Secret"
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Refresh Token</label>
+                      <input
+                        type="password"
+                        value={settings.gmailIntegration.refreshToken}
+                        onChange={(e) => handleSelect('gmailIntegration.refreshToken', e.target.value)}
+                        placeholder="OAuth Refresh Token"
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">From Email</label>
+                      <input
+                        type="email"
+                        value={settings.gmailIntegration.fromEmail}
+                        onChange={(e) => handleSelect('gmailIntegration.fromEmail', e.target.value)}
+                        placeholder="your-email@gmail.com"
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Email Marketing */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-[#347dc4]" />
+                  Email Marketing
+                </h2>
+                <button
+                  onClick={() => handleToggle('emailMarketing.enabled')}
+                  className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                >
+                  {settings.emailMarketing.enabled ? (
+                    <ToggleRight className="h-6 w-6" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+              
+              {settings.emailMarketing.enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Provider</label>
+                      <select
+                        value={settings.emailMarketing.provider}
+                        onChange={(e) => handleSelect('emailMarketing.provider', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      >
+                        <option value="none">None</option>
+                        <option value="mailchimp">Mailchimp</option>
+                        <option value="constant-contact">Constant Contact</option>
+                        <option value="sendgrid">SendGrid</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">API Key</label>
+                      <input
+                        type="password"
+                        value={settings.emailMarketing.apiKey}
+                        onChange={(e) => handleSelect('emailMarketing.apiKey', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">List ID</label>
+                      <input
+                        type="text"
+                        value={settings.emailMarketing.listId}
+                        onChange={(e) => handleSelect('emailMarketing.listId', e.target.value)}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Allow Unsubscribe</label>
+                        <p className="text-xs text-gray-500">Include unsubscribe link in emails</p>
+                      </div>
+                      <button
+                        onClick={() => handleToggle('emailMarketing.allowUnsubscribe')}
+                        className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                      >
+                        {settings.emailMarketing.allowUnsubscribe ? (
+                          <ToggleRight className="h-6 w-6" />
+                        ) : (
+                          <ToggleLeft className="h-6 w-6" />
+                        )}
+                      </button>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Unsubscribe Footer</label>
+                      <textarea
+                        value={settings.emailMarketing.unsubscribeFooter}
+                        onChange={(e) => handleSelect('emailMarketing.unsubscribeFooter', e.target.value)}
+                        rows={3}
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Email Preferences */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Send className="h-5 w-5 mr-2 text-[#347dc4]" />
+                Email Preferences
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-900">Send From Name</label>
+                    <input
+                      type="text"
+                      value={settings.emailPreferences.sendFromName}
+                      onChange={(e) => handleSelect('emailPreferences.sendFromName', e.target.value)}
+                      className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Include Logo</label>
+                      <p className="text-xs text-gray-500">Include company logo in emails</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('emailPreferences.includeLogo')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.emailPreferences.includeLogo ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Include Footer</label>
+                      <p className="text-xs text-gray-500">Include footer text in emails</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('emailPreferences.includeFooter')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.emailPreferences.includeFooter ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-900">Footer Text</label>
+                    <textarea
+                      value={settings.emailPreferences.footerText}
+                      onChange={(e) => handleSelect('emailPreferences.footerText', e.target.value)}
+                      rows={3}
+                      className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Track Opens</label>
+                      <p className="text-xs text-gray-500">Track when emails are opened</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('emailPreferences.trackOpens')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.emailPreferences.trackOpens ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Track Clicks</label>
+                      <p className="text-xs text-gray-500">Track when links are clicked</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('emailPreferences.trackClicks')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.emailPreferences.trackClicks ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <button 
+                onClick={handleSaveSettings}
+                disabled={saving}
+                className="px-6 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2c6ba8] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
