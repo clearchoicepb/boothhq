@@ -214,6 +214,8 @@ export default function RolesSettingsPage() {
       
       // Save to settings
       const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager'].includes(role.id))
+      console.log('Saving roles to settings:', customRoles)
+      
       await updateSettings({
         ...settings,
         roles: customRoles
@@ -222,7 +224,8 @@ export default function RolesSettingsPage() {
       handleFormClose()
     } catch (error) {
       console.error('Error saving role:', error)
-      alert('Failed to save role')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save role'
+      alert(`Failed to save role: ${errorMessage}`)
     }
   }
 
@@ -251,13 +254,16 @@ export default function RolesSettingsPage() {
       setRoles(updatedRoles)
       
       const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager'].includes(role.id))
+      console.log('Deleting role, saving updated roles:', customRoles)
+      
       await updateSettings({
         ...settings,
         roles: customRoles
       })
     } catch (error) {
       console.error('Error deleting role:', error)
-      alert('Failed to delete role')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete role'
+      alert(`Failed to delete role: ${errorMessage}`)
     }
   }
 

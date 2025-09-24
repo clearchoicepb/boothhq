@@ -76,8 +76,10 @@ export async function POST(request: NextRequest) {
       for (const [key, value] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key
         if (value && typeof value === 'object' && !Array.isArray(value)) {
+          // Recursively flatten nested objects
           flattenSettings(value, fullKey)
         } else {
+          // Handle arrays and primitive values
           settingsArray.push({
             tenant_id: session.user.tenantId,
             setting_key: fullKey,
@@ -98,10 +100,11 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error saving settings:', error)
-      // If it's a duplicate key error, try to update existing records instead
+      console.log('Settings array to upsert:', JSON.stringify(settingsArray, null, 2))
+      
+      // If it's a duplicate key error, try individual upserts
       if (error.code === '23505') {
-        console.log('Settings array to upsert:', settingsArray)
-        // Try individual upserts to handle race conditions
+        console.log('Duplicate key error, trying individual upserts...')
         for (const setting of settingsArray) {
           const { error: individualError } = await supabase
             .from('tenant_settings')
@@ -110,10 +113,17 @@ export async function POST(request: NextRequest) {
             })
           if (individualError) {
             console.error('Individual setting error:', individualError)
+            return NextResponse.json({ 
+              error: 'Failed to save settings', 
+              details: individualError.message 
+            }, { status: 500 })
           }
         }
       } else {
-        return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 })
+        return NextResponse.json({ 
+          error: 'Failed to save settings', 
+          details: error.message 
+        }, { status: 500 })
       }
     }
 
