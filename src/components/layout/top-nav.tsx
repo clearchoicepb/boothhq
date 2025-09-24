@@ -53,9 +53,10 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
       {/* Navigation Menu */}
-      <nav className="px-6 py-3">
+      <nav className="px-3 sm:px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-8">
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center space-x-8">
             {navigation.filter(item => !item.permission || item.permission).map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -76,8 +77,30 @@ export function TopNav() {
             })}
           </div>
           
+          {/* Mobile Navigation - Horizontal Scroll */}
+          <div className="lg:hidden flex items-center space-x-2 overflow-x-auto scrollbar-hide">
+            {navigation.filter(item => !item.permission || item.permission).map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center space-x-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors duration-150 whitespace-nowrap ${
+                    isActive
+                      ? 'bg-[#347dc4] text-white'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-[#347dc4]'
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  <span className="hidden sm:inline">{item.name}</span>
+                </Link>
+              )
+            })}
+          </div>
+          
           {/* Global Search */}
-          <div className="flex-1 max-w-md mx-8">
+          <div className="hidden md:flex flex-1 max-w-md mx-4 lg:mx-8">
             <GlobalSearch tenantSubdomain={tenantSubdomain} />
           </div>
           

@@ -107,12 +107,12 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="w-full max-w-none">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-lg lg:text-xl font-semibold text-gray-900">
                 {session?.user?.name || session?.user?.email}
               </h1>
               <p className="text-sm text-gray-600">
@@ -123,15 +123,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Comprehensive Statistics Dashboard */}
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-8">
           <DashboardStats />
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <TrendingUp className="h-5 w-5 text-[#347dc4]" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <TrendingUp className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Manage your sales pipeline</p>
             <div className="space-y-1">
@@ -144,9 +144,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <Users className="h-5 w-5 text-[#347dc4]" />
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <Users className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Manage customer contacts</p>
             <div className="space-y-1">
@@ -159,9 +159,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <Building2 className="h-5 w-5 text-[#347dc4]" />
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <Building2 className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Manage customer accounts</p>
             <div className="space-y-1">
@@ -174,9 +174,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <DollarSign className="h-5 w-5 text-[#347dc4]" />
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Track sales opportunities</p>
             <div className="space-y-1">
@@ -189,9 +189,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <Calendar className="h-5 w-5 text-[#347dc4]" />
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Manage your events</p>
             <div className="space-y-1">
@@ -204,9 +204,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <Camera className="h-5 w-5 text-[#347dc4]" />
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <Camera className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Manage equipment inventory</p>
             <div className="space-y-1">
@@ -219,9 +219,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center mb-4">
-              <DollarSign className="h-5 w-5 text-[#347dc4]" />
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+            <div className="flex items-center mb-3 lg:mb-4">
+              <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />
             </div>
             <p className="text-xs text-gray-600 mb-3">Create and manage customer invoices</p>
             <div className="space-y-1">
@@ -236,11 +236,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Calendar Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-medium text-gray-900">Today's Events</h2>
+        <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4 lg:mb-6">
+            <h2 className="text-base lg:text-lg font-medium text-gray-900">Today's Events</h2>
             <Link href={`/${tenantSubdomain}/calendar`} className="flex items-center text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150">
-              <CalendarDays className="h-6 w-6 text-[#347dc4]" />
+              <CalendarDays className="h-5 w-5 lg:h-6 lg:w-6 text-[#347dc4]" />
             </Link>
           </div>
           <CalendarComponent events={todayEvents} />
