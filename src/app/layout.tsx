@@ -11,6 +11,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Photo Booth CRM',
   description: 'Comprehensive photo booth rental management platform',
+  viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({
