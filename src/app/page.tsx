@@ -63,106 +63,12 @@ export default function HomePage() {
     )
   }
 
+  // Show loading state while redirecting
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <Camera className="mx-auto h-24 w-24 text-blue-600" />
-          <h1 className="mt-4 text-4xl font-bold text-gray-900">
-            Photo Booth CRM
-          </h1>
-          <p className="mt-2 text-xl text-gray-600">
-            Comprehensive rental management platform
-          </p>
-          
-          <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Building2 className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        CRM Management
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        Leads, Contacts, Accounts
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Calendar className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Event Management
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        Bookings & Scheduling
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Camera className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Inventory Tracking
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        Equipment Management
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <DollarSign className="h-6 w-6 text-yellow-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Financial Tracking
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        Invoicing & Reports
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12">
-            <p className="text-gray-600">
-              Redirecting you to the appropriate dashboard...
-            </p>
-          </div>
-        </div>
+      <div className="text-center">
+        <Camera className="mx-auto h-12 w-12 text-[#347dc4] animate-spin" />
+        <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
       </div>
     </div>
   )
