@@ -128,7 +128,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+        <div className="dashboard-grid mb-6 lg:mb-8">
           <div className="bg-white p-4 lg:p-6 rounded-lg shadow">
             <div className="flex items-center mb-3 lg:mb-4">
               <TrendingUp className="h-4 w-4 lg:h-5 lg:w-5 text-[#347dc4]" />

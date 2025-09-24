@@ -16,13 +16,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Sidebar />
         
         {/* Main Content Area - Responsive margin */}
-        <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+        <div className="main-content-responsive flex-1 flex flex-col min-h-screen">
           {/* Top Navigation - Sticky positioning */}
           <TopNav />
           
           {/* Page Content - Scrollable area with responsive padding */}
           <main className="flex-1 overflow-auto">
-            <div className="p-3 sm:p-4 lg:p-6">
+            <div className="responsive-padding">
               {children}
             </div>
           </main>

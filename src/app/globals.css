@@ -34,3 +34,70 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Responsive sidebar - hide on screens smaller than 1024px */
+@media (max-width: 1023px) {
+  .sidebar-responsive {
+    display: none !important;
+  }
+  
+  .main-content-responsive {
+    margin-left: 0 !important;
+  }
+}
+
+/* Show sidebar on large screens */
+@media (min-width: 1024px) {
+  .sidebar-responsive {
+    display: block !important;
+  }
+  
+  .main-content-responsive {
+    margin-left: 16rem !important; /* 256px = w-64 */
+  }
+}
+
+/* Responsive dashboard grid */
+.dashboard-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+/* Responsive padding */
+.responsive-padding {
+  padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-padding {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-padding {
+    padding: 1.5rem;
+  }
+}
