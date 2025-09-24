@@ -73,6 +73,34 @@ body {
   
   .main-content-responsive {
     margin-left: 16rem !important; /* 256px = w-64 */
+    width: calc(100% - 16rem) !important;
+    max-width: calc(100% - 16rem) !important;
+  }
+  
+  /* Ensure dashboard content fits properly on desktop */
+  .dashboard-container {
+    max-width: 100% !important;
+    padding: 1.5rem !important;
+  }
+}
+
+/* Extra large desktop screens */
+@media (min-width: 1280px) {
+  .dashboard-container {
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* Ultra-wide screens */
+@media (min-width: 1536px) {
+  .dashboard-container {
+    max-width: 1400px !important;
   }
 }
 
