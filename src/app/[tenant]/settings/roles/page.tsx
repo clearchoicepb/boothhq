@@ -349,6 +349,7 @@ export default function RolesSettingsPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   aria-label="Search roles"
+                  className="text-gray-900"
                 />
               </div>
               <div className="min-w-[200px]">
@@ -440,8 +441,8 @@ export default function RolesSettingsPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {Object.entries(role.permissions).map(([module, perms]) => (
                       <div key={module} className="flex items-center">
-                        <span className="font-medium capitalize">{module}:</span>
-                        <span className="ml-1">
+                        <span className="font-medium capitalize text-gray-900">{module}:</span>
+                        <span className="ml-1 text-[#347dc4] font-medium">
                           {Object.values(perms).filter(Boolean).length} enabled
                         </span>
                       </div>
@@ -473,6 +474,7 @@ export default function RolesSettingsPage() {
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                           required
                           aria-label="Role name"
+                          className="text-gray-900"
                         />
                       </div>
                       <div>
@@ -498,7 +500,7 @@ export default function RolesSettingsPage() {
                         Description *
                       </label>
                       <textarea
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                         rows={3}
                         value={formData.description}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
