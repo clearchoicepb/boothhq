@@ -23,7 +23,9 @@ import {
   Video,
   FileText,
   Cloud,
-  Package
+  Package,
+  Box,
+  PenTool
 } from 'lucide-react';
 
 interface IntegrationSettings {
@@ -125,6 +127,22 @@ interface IntegrationSettings {
       clientSecret: string;
       refreshToken: string;
       folderId: string;
+    };
+    ups: {
+      enabled: boolean;
+      accessKey: string;
+      username: string;
+      password: string;
+      accountNumber: string;
+      testMode: boolean;
+    };
+    adobeSign: {
+      enabled: boolean;
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+      baseUrl: string;
+      sandboxMode: boolean;
     };
   };
   
@@ -255,6 +273,22 @@ export default function IntegrationsSettingsPage() {
         clientSecret: '',
         refreshToken: '',
         folderId: ''
+      },
+      ups: {
+        enabled: false,
+        accessKey: '',
+        username: '',
+        password: '',
+        accountNumber: '',
+        testMode: true
+      },
+      adobeSign: {
+        enabled: false,
+        clientId: '',
+        clientSecret: '',
+        refreshToken: '',
+        baseUrl: 'https://api.na1.adobesign.com',
+        sandboxMode: true
       }
     },
     
@@ -1103,6 +1137,161 @@ export default function IntegrationsSettingsPage() {
                           placeholder="Google Drive Folder ID"
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
                         />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* UPS */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Box className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      UPS
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.ups.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.ups.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.ups.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Access Key</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.ups.accessKey}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.ups.accessKey', e.target.value)}
+                          placeholder="UPS API Access Key"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Username</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.ups.username}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.ups.username', e.target.value)}
+                          placeholder="UPS API Username"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Password</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.ups.password}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.ups.password', e.target.value)}
+                          placeholder="UPS API Password"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Account Number</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.ups.accountNumber}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.ups.accountNumber', e.target.value)}
+                          placeholder="Your UPS Account Number"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Test Mode</label>
+                          <p className="text-xs text-gray-500">Use UPS test environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.ups.testMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.ups.testMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Adobe Sign */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <PenTool className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Adobe Sign
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.adobeSign.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.adobeSign.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.adobeSign.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.adobeSign.clientId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.adobeSign.clientId', e.target.value)}
+                          placeholder="Adobe Sign Integration Key"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.adobeSign.clientSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.adobeSign.clientSecret', e.target.value)}
+                          placeholder="Adobe Sign Client Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Base URL</label>
+                        <select
+                          value={settings.thirdPartyIntegrations.adobeSign.baseUrl}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.adobeSign.baseUrl', e.target.value)}
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        >
+                          <option value="https://api.na1.adobesign.com">North America 1 (na1)</option>
+                          <option value="https://api.na2.adobesign.com">North America 2 (na2)</option>
+                          <option value="https://api.eu1.adobesign.com">Europe 1 (eu1)</option>
+                          <option value="https://api.eu2.adobesign.com">Europe 2 (eu2)</option>
+                          <option value="https://api.ap1.adobesign.com">Asia Pacific 1 (ap1)</option>
+                          <option value="https://api.ap2.adobesign.com">Asia Pacific 2 (ap2)</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Sandbox Mode</label>
+                          <p className="text-xs text-gray-500">Use Adobe Sign demo environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.adobeSign.sandboxMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.adobeSign.sandboxMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   )}
