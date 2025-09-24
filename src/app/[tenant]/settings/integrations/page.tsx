@@ -13,7 +13,17 @@ import {
   ToggleRight,
   Key,
   Zap,
-  Shield
+  Shield,
+  CreditCard,
+  Truck,
+  FileSpreadsheet,
+  Calculator,
+  Mail,
+  MessageSquare,
+  Video,
+  FileText,
+  Cloud,
+  Package
 } from 'lucide-react';
 
 interface IntegrationSettings {
@@ -46,6 +56,75 @@ interface IntegrationSettings {
     hubspot: {
       enabled: boolean;
       apiKey: string;
+    };
+    stripe: {
+      enabled: boolean;
+      publishableKey: string;
+      secretKey: string;
+      webhookSecret: string;
+      testMode: boolean;
+    };
+    fedex: {
+      enabled: boolean;
+      apiKey: string;
+      apiSecret: string;
+      accountNumber: string;
+      meterNumber: string;
+      testMode: boolean;
+    };
+    googleSheets: {
+      enabled: boolean;
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+      spreadsheetId: string;
+    };
+    quickbooks: {
+      enabled: boolean;
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+      companyId: string;
+      sandboxMode: boolean;
+    };
+    mailchimp: {
+      enabled: boolean;
+      apiKey: string;
+      serverPrefix: string;
+      listId: string;
+    };
+    twilio: {
+      enabled: boolean;
+      accountSid: string;
+      authToken: string;
+      phoneNumber: string;
+      testMode: boolean;
+    };
+    zoom: {
+      enabled: boolean;
+      apiKey: string;
+      apiSecret: string;
+      webhookSecret: string;
+    };
+    docusign: {
+      enabled: boolean;
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+      accountId: string;
+      sandboxMode: boolean;
+    };
+    dropbox: {
+      enabled: boolean;
+      accessToken: string;
+      folderPath: string;
+    };
+    googleDrive: {
+      enabled: boolean;
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+      folderId: string;
     };
   };
   
@@ -107,6 +186,75 @@ export default function IntegrationsSettingsPage() {
       hubspot: {
         enabled: false,
         apiKey: ''
+      },
+      stripe: {
+        enabled: false,
+        publishableKey: '',
+        secretKey: '',
+        webhookSecret: '',
+        testMode: true
+      },
+      fedex: {
+        enabled: false,
+        apiKey: '',
+        apiSecret: '',
+        accountNumber: '',
+        meterNumber: '',
+        testMode: true
+      },
+      googleSheets: {
+        enabled: false,
+        clientId: '',
+        clientSecret: '',
+        refreshToken: '',
+        spreadsheetId: ''
+      },
+      quickbooks: {
+        enabled: false,
+        clientId: '',
+        clientSecret: '',
+        refreshToken: '',
+        companyId: '',
+        sandboxMode: true
+      },
+      mailchimp: {
+        enabled: false,
+        apiKey: '',
+        serverPrefix: '',
+        listId: ''
+      },
+      twilio: {
+        enabled: false,
+        accountSid: '',
+        authToken: '',
+        phoneNumber: '',
+        testMode: true
+      },
+      zoom: {
+        enabled: false,
+        apiKey: '',
+        apiSecret: '',
+        webhookSecret: ''
+      },
+      docusign: {
+        enabled: false,
+        clientId: '',
+        clientSecret: '',
+        refreshToken: '',
+        accountId: '',
+        sandboxMode: true
+      },
+      dropbox: {
+        enabled: false,
+        accessToken: '',
+        folderPath: '/CRM Files'
+      },
+      googleDrive: {
+        enabled: false,
+        clientId: '',
+        clientSecret: '',
+        refreshToken: '',
+        folderId: ''
       }
     },
     
@@ -342,6 +490,625 @@ export default function IntegrationsSettingsPage() {
               </h2>
               
               <div className="space-y-6">
+                {/* Stripe */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <CreditCard className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Stripe
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.stripe.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.stripe.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.stripe.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Publishable Key</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.stripe.publishableKey}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.stripe.publishableKey', e.target.value)}
+                          placeholder="pk_test_..."
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Secret Key</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.stripe.secretKey}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.stripe.secretKey', e.target.value)}
+                          placeholder="sk_test_..."
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Webhook Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.stripe.webhookSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.stripe.webhookSecret', e.target.value)}
+                          placeholder="whsec_..."
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Test Mode</label>
+                          <p className="text-xs text-gray-500">Use Stripe test environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.stripe.testMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.stripe.testMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* FedEx */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Truck className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      FedEx
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.fedex.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.fedex.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.fedex.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">API Key</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.fedex.apiKey}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.fedex.apiKey', e.target.value)}
+                          placeholder="FedEx API Key"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">API Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.fedex.apiSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.fedex.apiSecret', e.target.value)}
+                          placeholder="FedEx API Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Account Number</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.fedex.accountNumber}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.fedex.accountNumber', e.target.value)}
+                          placeholder="Your FedEx Account Number"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Meter Number</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.fedex.meterNumber}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.fedex.meterNumber', e.target.value)}
+                          placeholder="Your FedEx Meter Number"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Test Mode</label>
+                          <p className="text-xs text-gray-500">Use FedEx test environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.fedex.testMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.fedex.testMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Google Sheets */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <FileSpreadsheet className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Google Sheets
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.googleSheets.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.googleSheets.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.googleSheets.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.googleSheets.clientId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleSheets.clientId', e.target.value)}
+                          placeholder="Google OAuth Client ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.googleSheets.clientSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleSheets.clientSecret', e.target.value)}
+                          placeholder="Google OAuth Client Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Refresh Token</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.googleSheets.refreshToken}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleSheets.refreshToken', e.target.value)}
+                          placeholder="OAuth Refresh Token"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Spreadsheet ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.googleSheets.spreadsheetId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleSheets.spreadsheetId', e.target.value)}
+                          placeholder="Google Sheets Spreadsheet ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* QuickBooks */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Calculator className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      QuickBooks
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.quickbooks.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.quickbooks.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.quickbooks.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.quickbooks.clientId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.quickbooks.clientId', e.target.value)}
+                          placeholder="QuickBooks OAuth Client ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.quickbooks.clientSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.quickbooks.clientSecret', e.target.value)}
+                          placeholder="QuickBooks OAuth Client Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Company ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.quickbooks.companyId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.quickbooks.companyId', e.target.value)}
+                          placeholder="QuickBooks Company ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Sandbox Mode</label>
+                          <p className="text-xs text-gray-500">Use QuickBooks sandbox environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.quickbooks.sandboxMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.quickbooks.sandboxMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mailchimp */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Mail className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Mailchimp
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.mailchimp.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.mailchimp.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.mailchimp.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">API Key</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.mailchimp.apiKey}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.mailchimp.apiKey', e.target.value)}
+                          placeholder="Mailchimp API Key"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Server Prefix</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.mailchimp.serverPrefix}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.mailchimp.serverPrefix', e.target.value)}
+                          placeholder="us1, us2, etc."
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">List ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.mailchimp.listId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.mailchimp.listId', e.target.value)}
+                          placeholder="Mailchimp List ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Twilio */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <MessageSquare className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Twilio (SMS)
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.twilio.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.twilio.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.twilio.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Account SID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.twilio.accountSid}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.twilio.accountSid', e.target.value)}
+                          placeholder="Twilio Account SID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Auth Token</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.twilio.authToken}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.twilio.authToken', e.target.value)}
+                          placeholder="Twilio Auth Token"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Phone Number</label>
+                        <input
+                          type="tel"
+                          value={settings.thirdPartyIntegrations.twilio.phoneNumber}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.twilio.phoneNumber', e.target.value)}
+                          placeholder="+1234567890"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Test Mode</label>
+                          <p className="text-xs text-gray-500">Use Twilio test environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.twilio.testMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.twilio.testMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Zoom */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Video className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Zoom
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.zoom.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.zoom.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.zoom.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">API Key</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.zoom.apiKey}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.zoom.apiKey', e.target.value)}
+                          placeholder="Zoom API Key"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">API Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.zoom.apiSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.zoom.apiSecret', e.target.value)}
+                          placeholder="Zoom API Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Webhook Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.zoom.webhookSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.zoom.webhookSecret', e.target.value)}
+                          placeholder="Zoom Webhook Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* DocuSign */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <FileText className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      DocuSign
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.docusign.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.docusign.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.docusign.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.docusign.clientId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.docusign.clientId', e.target.value)}
+                          placeholder="DocuSign Integration Key"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Account ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.docusign.accountId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.docusign.accountId', e.target.value)}
+                          placeholder="DocuSign Account ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900">Sandbox Mode</label>
+                          <p className="text-xs text-gray-500">Use DocuSign demo environment</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle('thirdPartyIntegrations.docusign.sandboxMode')}
+                          className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                        >
+                          {settings.thirdPartyIntegrations.docusign.sandboxMode ? (
+                            <ToggleRight className="h-6 w-6" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dropbox */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Cloud className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Dropbox
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.dropbox.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.dropbox.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.dropbox.enabled && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-900">Access Token</label>
+                      <input
+                        type="password"
+                        value={settings.thirdPartyIntegrations.dropbox.accessToken}
+                        onChange={(e) => handleSelect('thirdPartyIntegrations.dropbox.accessToken', e.target.value)}
+                        placeholder="Dropbox Access Token"
+                        className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      />
+                      <div className="mt-4">
+                        <label className="text-sm font-medium text-gray-900">Folder Path</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.dropbox.folderPath}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.dropbox.folderPath', e.target.value)}
+                          placeholder="/CRM Files"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Google Drive */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium text-gray-900 flex items-center">
+                      <Package className="h-5 w-5 mr-2 text-[#347dc4]" />
+                      Google Drive
+                    </h3>
+                    <button
+                      onClick={() => handleToggle('thirdPartyIntegrations.googleDrive.enabled')}
+                      className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
+                    >
+                      {settings.thirdPartyIntegrations.googleDrive.enabled ? (
+                        <ToggleRight className="h-6 w-6" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6" />
+                      )}
+                    </button>
+                  </div>
+                  {settings.thirdPartyIntegrations.googleDrive.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.googleDrive.clientId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleDrive.clientId', e.target.value)}
+                          placeholder="Google OAuth Client ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Client Secret</label>
+                        <input
+                          type="password"
+                          value={settings.thirdPartyIntegrations.googleDrive.clientSecret}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleDrive.clientSecret', e.target.value)}
+                          placeholder="Google OAuth Client Secret"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Folder ID</label>
+                        <input
+                          type="text"
+                          value={settings.thirdPartyIntegrations.googleDrive.folderId}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.googleDrive.folderId', e.target.value)}
+                          placeholder="Google Drive Folder ID"
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Original integrations - keeping them for backward compatibility */}
                 {/* Google Calendar */}
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center justify-between mb-4">
