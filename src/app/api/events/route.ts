@@ -8,13 +8,21 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
+      console.error('No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!session.user.tenantId) {
+      console.error('No tenantId in session:', session.user)
+      return NextResponse.json({ error: 'No tenant ID found' }, { status: 400 })
     }
     
     const supabase = createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status') || 'all'
     const typeFilter = searchParams.get('type') || 'all'
+
+    console.log('Fetching events for tenant:', session.user.tenantId, 'with filters:', { statusFilter, typeFilter })
 
     let query = supabase
       .from('events')
@@ -38,8 +46,14 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching events:', error)
-      return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 })
+      return NextResponse.json({ 
+        error: 'Failed to fetch events', 
+        details: error.message,
+        code: error.code 
+      }, { status: 500 })
     }
+
+    console.log('Successfully fetched events:', data?.length || 0)
 
     // Transform the data to include account_name and contact_name
     const transformedData = data?.map(event => ({
@@ -56,8 +70,11 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in events API:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
