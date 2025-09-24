@@ -182,6 +182,25 @@ export default function RolesSettingsPage() {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
+      },
+      {
+        id: 'event_staff',
+        name: 'Event Staff',
+        description: 'Field operations and event execution support',
+        job_category: 'Field Operations',
+        permissions: {
+          leads: { view: false, create: false, edit: false, delete: false },
+          contacts: { view: false, create: false, edit: false, delete: false },
+          accounts: { view: false, create: false, edit: false, delete: false },
+          opportunities: { view: false, create: false, edit: false, delete: false },
+          events: { view: true, create: false, edit: false, delete: false },
+          invoices: { view: false, create: false, edit: false, delete: false },
+          users: { view: false, create: false, edit: false, delete: false },
+          settings: { view: false, edit: false }
+        },
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
     ]
 
@@ -222,7 +241,7 @@ export default function RolesSettingsPage() {
       setRoles(updatedRoles)
       
       // Save to settings
-      const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager'].includes(role.id))
+      const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager', 'event_staff'].includes(role.id))
       console.log('Saving roles to settings:', customRoles)
       
       await updateSettings({
@@ -251,7 +270,7 @@ export default function RolesSettingsPage() {
   }
 
   const handleDelete = async (roleId: string) => {
-    if (['admin', 'sales_rep', 'operations_manager'].includes(roleId)) {
+    if (['admin', 'sales_rep', 'operations_manager', 'event_staff'].includes(roleId)) {
       alert('Cannot delete default system roles')
       return
     }
@@ -262,7 +281,7 @@ export default function RolesSettingsPage() {
       const updatedRoles = roles.filter(role => role.id !== roleId)
       setRoles(updatedRoles)
       
-      const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager'].includes(role.id))
+      const customRoles = updatedRoles.filter(role => !['admin', 'sales_rep', 'operations_manager', 'event_staff'].includes(role.id))
       console.log('Deleting role, saving updated roles:', customRoles)
       
       // Sanitize the settings to ensure no circular references
@@ -400,7 +419,7 @@ export default function RolesSettingsPage() {
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    {!['admin', 'sales_rep', 'operations_manager'].includes(role.id) && (
+                    {!['admin', 'sales_rep', 'operations_manager', 'event_staff'].includes(role.id) && (
                       <Button
                         variant="outline"
                         size="sm"
