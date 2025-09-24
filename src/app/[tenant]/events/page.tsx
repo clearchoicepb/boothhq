@@ -101,8 +101,8 @@ export default function EventsPage() {
   }
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.venue_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (event.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (event.venue_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (event.account_name && event.account_name.toLowerCase().includes(searchTerm.toLowerCase()))
     return matchesSearch
   })
@@ -110,6 +110,15 @@ export default function EventsPage() {
   return (
     <AppLayout>
       <div className="min-h-screen bg-white">
+        {/* Error handling for empty or malformed data */}
+        {events.length === 0 && !localLoading && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
+              <p className="text-gray-600">Get started by creating your first event.</p>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-6 py-6">
@@ -243,23 +252,23 @@ export default function EventsPage() {
                     <tr key={event.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.name}>
-                            {event.name}
+                          <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.name || 'Untitled Event'}>
+                            {event.name || 'Untitled Event'}
                           </div>
-                          <div className="text-sm text-gray-500 capitalize">{event.event_type}</div>
+                          <div className="text-sm text-gray-500 capitalize">{event.event_type || 'Other'}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>{new Date(event.event_date).toLocaleDateString()}</div>
+                        <div>{event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date'}</div>
                         <div className="text-gray-500">
-                          {event.start_time} - {event.end_time}
+                          {event.start_time || '--'} - {event.end_time || '--'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.venue_name}>
-                        {event.venue_name}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.venue_name || 'No venue'}>
+                        {event.venue_name || 'No venue'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.account_name || ''}>
-                        {event.account_name || 'N/A'}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.account_name || 'No account'}>
+                        {event.account_name || 'No account'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -268,7 +277,7 @@ export default function EventsPage() {
                           event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {event.status}
+                          {event.status || 'Unknown'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
