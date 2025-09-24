@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
-import { LogOut, User, ChevronDown, LayoutDashboard, Users, Building2, Target, Calendar, FileText, Camera, TrendingUp, Settings } from 'lucide-react'
+import { LogOut, User, ChevronDown, LayoutDashboard, Users, Building2, Target, Calendar, FileText, Camera, TrendingUp, Settings, Menu } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { usePermissions } from '@/lib/permissions'
@@ -17,7 +17,9 @@ export function TopNav() {
   const tenantSubdomain = params.tenant as string
   const { permissions } = usePermissions()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
 
   const navigation = [
     { name: 'Dashboard', href: `/${tenantSubdomain}/dashboard`, icon: LayoutDashboard },
@@ -36,11 +38,14 @@ export function TopNav() {
     router.push('/auth/signin')
   }
 
-  // Close user menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false)
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false)
       }
     }
 
@@ -77,26 +82,46 @@ export function TopNav() {
             })}
           </div>
           
-          {/* Mobile Navigation - Horizontal Scroll */}
-          <div className="lg:hidden flex items-center space-x-2 overflow-x-auto scrollbar-hide">
-            {navigation.filter(item => !item.permission || item.permission).map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center space-x-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors duration-150 whitespace-nowrap ${
-                    isActive
-                      ? 'bg-[#347dc4] text-white'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-[#347dc4]'
-                  }`}
-                >
-                  <Icon className="h-3 w-3" />
-                  <span className="hidden sm:inline">{item.name}</span>
-                </Link>
-              )
-            })}
+          {/* Mobile Navigation - Dropdown Menu */}
+          <div className="lg:hidden relative" ref={mobileMenuRef}>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-[#347dc4] transition-colors duration-150"
+            >
+              <Menu className="h-5 w-5" />
+              <span>Menu</span>
+              <ChevronDown className="h-4 w-4" />
+            </button>
+
+            {isMobileMenuOpen && (
+              <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                {/* Mobile Search */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <GlobalSearch tenantSubdomain={tenantSubdomain} />
+                </div>
+                
+                {/* Navigation Items */}
+                {navigation.filter(item => !item.permission || item.permission).map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium transition-colors duration-150 ${
+                        isActive
+                          ? 'bg-[#347dc4] text-white'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-[#347dc4]'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.name}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
           
           {/* Global Search */}
