@@ -233,7 +233,7 @@ export function OpportunityFormEnhanced({
   if (isOpen !== undefined && !isOpen) return null
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="space-y-8 p-4">
         {/* Customer Information */}
         {customer && (
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -367,7 +367,7 @@ export function OpportunityFormEnhanced({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Date *
@@ -511,11 +511,11 @@ export function OpportunityFormEnhanced({
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : submitButtonText}
           </Button>
         </div>
-      </form>
+      </div>
   )
 
   // Return modal or direct form content based on props

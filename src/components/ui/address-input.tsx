@@ -3,12 +3,15 @@
 import { forwardRef, useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Input } from './input'
+import { loadGoogleMaps, isGoogleMapsLoaded } from '@/lib/google-maps-loader'
 
 export interface AddressInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   value?: string
   onChange?: (address: string, details?: any) => void
   onPlaceSelect?: (place: any) => void
+  onAddressChange?: (address: string, details?: any) => void
+  initialAddress?: string
 }
 
 declare global {
@@ -18,8 +21,8 @@ declare global {
 }
 
 const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
-  ({ className, value = '', onChange, onPlaceSelect, ...props }, ref) => {
-    const [inputValue, setInputValue] = useState(value)
+  ({ className, value = '', onChange, onPlaceSelect, onAddressChange, initialAddress, ...props }, ref) => {
+    const [inputValue, setInputValue] = useState(value || initialAddress || '')
     const [suggestions, setSuggestions] = useState<any[]>([])
     const [showSuggestions, setShowSuggestions] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
@@ -31,15 +34,18 @@ const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
 
     useEffect(() => {
       // Load Google Maps API
-      if (typeof window !== 'undefined' && !window.google) {
-        const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`
-        script.async = true
-        script.defer = true
-        script.onload = initializeAutocomplete
-        document.head.appendChild(script)
-      } else if (window.google) {
-        initializeAutocomplete()
+      if (typeof window !== 'undefined') {
+        if (isGoogleMapsLoaded()) {
+          initializeAutocomplete()
+        } else {
+          loadGoogleMaps()
+            .then(() => {
+              initializeAutocomplete()
+            })
+            .catch((error) => {
+              console.error('Failed to load Google Maps:', error)
+            })
+        }
       }
     }, [])
 
@@ -57,6 +63,9 @@ const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
             if (onChange) {
               onChange(place.formatted_address, place)
             }
+            if (onAddressChange) {
+              onAddressChange(place.formatted_address, place)
+            }
             if (onPlaceSelect) {
               onPlaceSelect(place)
             }
@@ -71,6 +80,9 @@ const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
       if (onChange) {
         onChange(newValue)
       }
+      if (onAddressChange) {
+        onAddressChange(newValue)
+      }
     }
 
     const handleSuggestionClick = (suggestion: any) => {
@@ -78,6 +90,9 @@ const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
       setShowSuggestions(false)
       if (onChange) {
         onChange(suggestion.formatted_address, suggestion)
+      }
+      if (onAddressChange) {
+        onAddressChange(suggestion.formatted_address, suggestion)
       }
       if (onPlaceSelect) {
         onPlaceSelect(suggestion)

@@ -87,7 +87,28 @@ export function Sidebar() {
       icon: Camera,
       color: 'text-[#347dc4]',
       permission: permissions.events.create // Using events permission for inventory
-    }
+    },
+    {
+      label: 'Demo Forms',
+      href: `/${tenantSubdomain}/demo-forms`,
+      icon: Plus,
+      color: 'text-green-600',
+      permission: true // Always show demo
+    },
+        {
+          label: 'Demo API',
+          href: `/${tenantSubdomain}/demo-api`,
+          icon: Plus,
+          color: 'text-blue-600',
+          permission: true // Always show demo
+        },
+        {
+          label: 'Demo Repository',
+          href: `/${tenantSubdomain}/demo-repository`,
+          icon: Plus,
+          color: 'text-purple-600',
+          permission: true // Always show demo
+        }
   ]
 
   return (

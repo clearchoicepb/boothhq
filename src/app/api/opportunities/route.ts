@@ -72,11 +72,61 @@ export async function POST(request: NextRequest) {
     // Extract event_dates from the request body
     const { event_dates, ...opportunityData } = body
 
+    // Clean up empty date fields that would cause database errors
+    const cleanedOpportunityData = { ...opportunityData }
+    
+    // Convert empty string dates to null
+    if (cleanedOpportunityData.expected_close_date === '') {
+      cleanedOpportunityData.expected_close_date = null
+    }
+    if (cleanedOpportunityData.actual_close_date === '') {
+      cleanedOpportunityData.actual_close_date = null
+    }
+    if (cleanedOpportunityData.event_date === '') {
+      cleanedOpportunityData.event_date = null
+    }
+    if (cleanedOpportunityData.initial_date === '') {
+      cleanedOpportunityData.initial_date = null
+    }
+    if (cleanedOpportunityData.final_date === '') {
+      cleanedOpportunityData.final_date = null
+    }
+
+    // Fix date_type values to match database constraints
+    if (cleanedOpportunityData.date_type === 'single_day') {
+      cleanedOpportunityData.date_type = 'single'
+      // For single day, set event_date from first event_dates entry if available
+      if (event_dates && event_dates.length > 0 && event_dates[0].event_date) {
+        cleanedOpportunityData.event_date = event_dates[0].event_date
+      }
+      // Clear other date fields
+      cleanedOpportunityData.initial_date = null
+      cleanedOpportunityData.final_date = null
+    } else if (cleanedOpportunityData.date_type === 'same_location_sequential' || 
+               cleanedOpportunityData.date_type === 'same_location_non_sequential' || 
+               cleanedOpportunityData.date_type === 'multiple_locations') {
+      cleanedOpportunityData.date_type = 'multiple'
+      // For multiple days, set initial_date and final_date from event_dates
+      if (event_dates && event_dates.length > 0) {
+        const sortedDates = event_dates
+          .filter(d => d.event_date)
+          .map(d => d.event_date)
+          .sort()
+        if (sortedDates.length > 0) {
+          cleanedOpportunityData.initial_date = sortedDates[0]
+          cleanedOpportunityData.final_date = sortedDates[sortedDates.length - 1]
+        }
+      }
+      // Clear event_date for multiple day events
+      cleanedOpportunityData.event_date = null
+    }
+
     // Create the opportunity first
+    console.log('Creating opportunity with cleaned data:', cleanedOpportunityData)
     const { data: opportunity, error: oppError } = await supabase
       .from('opportunities')
       .insert({
-        ...opportunityData,
+        ...cleanedOpportunityData,
         tenant_id: session.user.tenantId
       })
       .select()

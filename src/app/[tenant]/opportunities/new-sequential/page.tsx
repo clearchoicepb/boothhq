@@ -140,7 +140,7 @@ export default function NewOpportunitySequentialPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <button
             onClick={handleBack}
@@ -187,8 +187,8 @@ export default function NewOpportunitySequentialPage() {
 
         {/* Step Content */}
         {step === 'lead-creation' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Lead</h2>
+          <div className="bg-white rounded-lg shadow p-6 lg:p-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Create New Lead</h2>
             <LeadFormSequential
               onSave={handleLeadCreated}
               onCancel={() => router.push(`/${tenantSubdomain}/opportunities`)}
@@ -197,8 +197,8 @@ export default function NewOpportunitySequentialPage() {
         )}
 
         {step === 'opportunity-creation' && createdLead && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create Opportunity</h2>
+          <div className="bg-white rounded-lg shadow p-6 lg:p-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Create Opportunity</h2>
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <h3 className="font-medium text-green-800">Lead Created Successfully!</h3>
               <p className="text-sm text-green-600">

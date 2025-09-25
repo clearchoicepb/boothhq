@@ -12,7 +12,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
-import { ContactForm } from '@/components/contact-form'
+import { ContactForm } from '@/components/forms'
 import type { Contact } from '@/lib/supabase-client' // cspell:ignore supabase
 
 interface ContactWithAccount extends Contact {
