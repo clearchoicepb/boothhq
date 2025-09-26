@@ -67,10 +67,6 @@ export async function PUT(
     const { event_dates, ...opportunityData } = body
     const supabase = createServerSupabaseClient()
 
-    console.log('Updating opportunity with data:', opportunityData)
-    console.log('Event dates:', event_dates)
-    console.log('Opportunity ID:', (await params).id)
-    console.log('Tenant ID:', session.user.tenantId)
 
     // Filter out fields that might not exist in the database schema
     const allowedFields = [
@@ -92,8 +88,6 @@ export async function PUT(
         return obj
       }, {} as any)
 
-    console.log('Filtered data:', filteredData)
-
     // Update the opportunity
     const updateData = {
       ...filteredData,
@@ -105,41 +99,16 @@ export async function PUT(
       updateData.updated_by = session.user.id
     }
 
-    console.log('Final update data:', updateData)
-
-    const opportunityId = (await params).id
-    console.log('About to update opportunity with ID:', opportunityId)
-    console.log('Update data:', updateData)
-    
-    // First check if the opportunity exists
-    const { data: existingOpportunity, error: checkError } = await supabase
-      .from('opportunities')
-      .select('id, stage, name')
-      .eq('id', opportunityId)
-      .eq('tenant_id', session.user.tenantId)
-      .single()
-    
-    if (checkError) {
-      console.error('Error checking if opportunity exists:', checkError)
-      return NextResponse.json({ error: 'Opportunity not found', details: checkError.message }, { status: 404 })
-    }
-    
-    console.log('Found existing opportunity:', existingOpportunity)
-    
     const { data, error } = await supabase
       .from('opportunities')
       .update(updateData)
-      .eq('id', opportunityId)
+      .eq('id', (await params).id)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
 
     if (error) {
       console.error('Error updating opportunity:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      console.error('Update data that failed:', updateData)
-      console.error('Opportunity ID:', (await params).id)
-      console.error('Tenant ID:', session.user.tenantId)
       return NextResponse.json({ error: 'Failed to update opportunity', details: error.message }, { status: 500 })
     }
 
