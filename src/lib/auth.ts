@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -50,12 +51,10 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // Verify password (you'll need to implement proper password hashing)
-          // For now, we'll do a simple check - in production, use bcrypt
-          if (user.password_hash !== credentials.password) {
-            console.error('Password mismatch')
-            console.error('Expected:', user.password_hash)
-            console.error('Received:', credentials.password)
+          // Verify password using secure bcrypt comparison
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password_hash)
+          if (!isPasswordValid) {
+            console.error('Password mismatch - authentication failed')
             return null
           }
 
