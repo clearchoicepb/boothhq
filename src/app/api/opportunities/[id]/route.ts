@@ -69,6 +69,8 @@ export async function PUT(
 
     console.log('Updating opportunity with data:', opportunityData)
     console.log('Event dates:', event_dates)
+    console.log('Opportunity ID:', (await params).id)
+    console.log('Tenant ID:', session.user.tenantId)
 
     // Filter out fields that might not exist in the database schema
     const allowedFields = [
@@ -116,6 +118,9 @@ export async function PUT(
     if (error) {
       console.error('Error updating opportunity:', error)
       console.error('Error details:', JSON.stringify(error, null, 2))
+      console.error('Update data that failed:', updateData)
+      console.error('Opportunity ID:', (await params).id)
+      console.error('Tenant ID:', session.user.tenantId)
       return NextResponse.json({ error: 'Failed to update opportunity', details: error.message }, { status: 500 })
     }
 

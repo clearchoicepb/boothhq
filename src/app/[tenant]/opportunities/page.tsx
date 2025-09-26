@@ -344,6 +344,8 @@ function OpportunitiesPageContent() {
       return
     }
 
+    console.log(`Attempting to move opportunity "${draggedOpportunity.name}" from "${draggedOpportunity.stage}" to "${newStage}"`)
+
     try {
       // Update the opportunity stage via API
       const response = await fetch(`/api/opportunities/${draggedOpportunity.id}`, {
@@ -356,7 +358,13 @@ function OpportunitiesPageContent() {
         }),
       })
 
+      console.log('API Response status:', response.status)
+      console.log('API Response ok:', response.ok)
+
       if (response.ok) {
+        const updatedOpportunity = await response.json()
+        console.log('Updated opportunity from API:', updatedOpportunity)
+        
         // Update local state optimistically
         setOpportunities(prev => 
           prev.map(opp => 
@@ -375,13 +383,33 @@ function OpportunitiesPageContent() {
           setTimeout(() => setShowAnimation(null), 2000)
         }
         
-        console.log(`Opportunity "${draggedOpportunity.name}" moved to ${newStage.replace('_', ' ')}`)
+        console.log(`✅ Opportunity "${draggedOpportunity.name}" successfully moved to ${newStage.replace('_', ' ')}`)
       } else {
-        console.error('Failed to update opportunity stage')
-        // You could add error toast notification here
+        const errorData = await response.json()
+        console.error('❌ Failed to update opportunity stage:', errorData)
+        console.error('Response status:', response.status)
+        console.error('Response statusText:', response.statusText)
+        
+        // Revert the optimistic update
+        setOpportunities(prev => 
+          prev.map(opp => 
+            opp.id === draggedOpportunity.id 
+              ? { ...opp, stage: draggedOpportunity.stage }
+              : opp
+          )
+        )
       }
     } catch (error) {
-      console.error('Error updating opportunity stage:', error)
+      console.error('❌ Error updating opportunity stage:', error)
+      
+      // Revert the optimistic update
+      setOpportunities(prev => 
+        prev.map(opp => 
+          opp.id === draggedOpportunity.id 
+            ? { ...opp, stage: draggedOpportunity.stage }
+            : opp
+        )
+      )
     }
 
     setDraggedOpportunity(null)
