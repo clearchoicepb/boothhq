@@ -176,6 +176,12 @@ export class GenericApiHandler {
       const transformedData = this.config.transformRequest ? 
         this.config.transformRequest(body) : body
 
+      // Debug logging for opportunities
+      if (this.entity === 'opportunities') {
+        console.log(`[${this.entity}] PUT request - Original body:`, JSON.stringify(body, null, 2))
+        console.log(`[${this.entity}] PUT request - Transformed body:`, JSON.stringify(transformedData, null, 2))
+      }
+
       const supabase = createServerSupabaseClient()
 
       const { data, error } = await supabase
