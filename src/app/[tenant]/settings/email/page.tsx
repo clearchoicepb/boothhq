@@ -275,6 +275,8 @@ export default function EmailServicesSettingsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-900">SMTP Host</label>
                       <input
+                        id="smtp-host"
+                        name="smtp-host"
                         type="text"
                         value={settings.smtpSettings.host}
                         onChange={(e) => handleSelect('smtpSettings.host', e.target.value)}
@@ -288,6 +290,8 @@ export default function EmailServicesSettingsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-900">Port</label>
                       <input
+                        id="smtp-port"
+                        name="smtp-port"
                         type="number"
                         value={settings.smtpSettings.port}
                         onChange={(e) => handleSelect('smtpSettings.port', parseInt(e.target.value) || 587)}
@@ -300,6 +304,8 @@ export default function EmailServicesSettingsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-900">Username</label>
                       <input
+                        id="smtp-username"
+                        name="smtp-username"
                         type="text"
                         value={settings.smtpSettings.username}
                         onChange={(e) => handleSelect('smtpSettings.username', e.target.value)}
