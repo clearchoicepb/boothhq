@@ -285,6 +285,8 @@ export default function PaymentGatewaysSettingsPage() {
                         value={settings.stripe.currency}
                         onChange={(e) => handleSelect('stripe.currency', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select Stripe currency"
+                        title="Select Stripe currency"
                       >
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
@@ -366,6 +368,8 @@ export default function PaymentGatewaysSettingsPage() {
                         value={settings.paypal.currency}
                         onChange={(e) => handleSelect('paypal.currency', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select PayPal currency"
+                        title="Select PayPal currency"
                       >
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
@@ -447,6 +451,8 @@ export default function PaymentGatewaysSettingsPage() {
                         value={settings.square.environment}
                         onChange={(e) => handleSelect('square.environment', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select Square environment"
+                        title="Select Square environment"
                       >
                         <option value="sandbox">Sandbox</option>
                         <option value="production">Production</option>
@@ -459,6 +465,8 @@ export default function PaymentGatewaysSettingsPage() {
                         value={settings.square.currency}
                         onChange={(e) => handleSelect('square.currency', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select Square currency"
+                        title="Select Square currency"
                       >
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
@@ -486,6 +494,8 @@ export default function PaymentGatewaysSettingsPage() {
                       value={settings.paymentSettings.defaultCurrency}
                       onChange={(e) => handleSelect('paymentSettings.defaultCurrency', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select default currency"
+                      title="Select default currency"
                     >
                       <option value="USD">USD</option>
                       <option value="EUR">EUR</option>
@@ -537,6 +547,9 @@ export default function PaymentGatewaysSettingsPage() {
                       value={settings.paymentSettings.paymentTerms}
                       onChange={(e) => handleSelect('paymentSettings.paymentTerms', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Payment terms"
+                      title="Enter payment terms"
+                      placeholder="Due upon receipt"
                     />
                   </div>
                   
@@ -550,6 +563,9 @@ export default function PaymentGatewaysSettingsPage() {
                       value={settings.paymentSettings.lateFeePercentage}
                       onChange={(e) => handleSelect('paymentSettings.lateFeePercentage', parseFloat(e.target.value) || 1.5)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Late fee percentage"
+                      title="Enter late fee percentage"
+                      placeholder="1.5"
                     />
                   </div>
                   
@@ -562,6 +578,9 @@ export default function PaymentGatewaysSettingsPage() {
                       value={settings.paymentSettings.lateFeeGracePeriod}
                       onChange={(e) => handleSelect('paymentSettings.lateFeeGracePeriod', parseInt(e.target.value) || 5)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Late fee grace period in days"
+                      title="Enter late fee grace period in days"
+                      placeholder="5"
                     />
                   </div>
                 </div>

@@ -212,6 +212,8 @@ export default function AppearanceSettingsPage() {
                       value={settings.theme}
                       onChange={(e) => handleSelect('theme', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select theme"
+                      title="Select theme"
                     >
                       <option value="light">Light</option>
                       <option value="dark">Dark</option>
@@ -228,12 +230,17 @@ export default function AppearanceSettingsPage() {
                         value={settings.primaryColor}
                         onChange={(e) => handleSelect('primaryColor', e.target.value)}
                         className="w-10 h-10 border border-gray-300 rounded cursor-pointer"
+                        aria-label="Primary color picker"
+                        title="Select primary color"
                       />
                       <input
                         type="text"
                         value={settings.primaryColor}
                         onChange={(e) => handleSelect('primaryColor', e.target.value)}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                        placeholder="Enter hex color code"
+                        aria-label="Primary color hex code"
+                        title="Enter primary color hex code"
                       />
                     </div>
                   </div>
@@ -249,12 +256,17 @@ export default function AppearanceSettingsPage() {
                         value={settings.secondaryColor}
                         onChange={(e) => handleSelect('secondaryColor', e.target.value)}
                         className="w-10 h-10 border border-gray-300 rounded cursor-pointer"
+                        aria-label="Secondary color picker"
+                        title="Select secondary color"
                       />
                       <input
                         type="text"
                         value={settings.secondaryColor}
                         onChange={(e) => handleSelect('secondaryColor', e.target.value)}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                        placeholder="Enter hex color code"
+                        aria-label="Secondary color hex code"
+                        title="Enter secondary color hex code"
                       />
                     </div>
                   </div>
@@ -268,12 +280,17 @@ export default function AppearanceSettingsPage() {
                         value={settings.accentColor}
                         onChange={(e) => handleSelect('accentColor', e.target.value)}
                         className="w-10 h-10 border border-gray-300 rounded cursor-pointer"
+                        aria-label="Accent color picker"
+                        title="Select accent color"
                       />
                       <input
                         type="text"
                         value={settings.accentColor}
                         onChange={(e) => handleSelect('accentColor', e.target.value)}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                        placeholder="Enter hex color code"
+                        aria-label="Accent color hex code"
+                        title="Enter accent color hex code"
                       />
                     </div>
                   </div>
@@ -297,6 +314,8 @@ export default function AppearanceSettingsPage() {
                       value={settings.sidebarPosition}
                       onChange={(e) => handleSelect('sidebarPosition', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select sidebar position"
+                      title="Select sidebar position"
                     >
                       <option value="left">Left</option>
                       <option value="right">Right</option>
@@ -310,6 +329,8 @@ export default function AppearanceSettingsPage() {
                       value={settings.density}
                       onChange={(e) => handleSelect('density', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select density"
+                      title="Select density"
                     >
                       <option value="comfortable">Comfortable</option>
                       <option value="compact">Compact</option>
@@ -448,6 +469,8 @@ export default function AppearanceSettingsPage() {
                       value={settings.defaultDashboardView}
                       onChange={(e) => handleSelect('defaultDashboardView', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select default dashboard view"
+                      title="Select default dashboard view"
                     >
                       <option value="overview">Overview</option>
                       <option value="analytics">Analytics</option>
@@ -462,6 +485,8 @@ export default function AppearanceSettingsPage() {
                       value={settings.itemsPerPage}
                       onChange={(e) => handleSelect('itemsPerPage', parseInt(e.target.value))}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select items per page"
+                      title="Select items per page"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -538,6 +563,8 @@ export default function AppearanceSettingsPage() {
                     value={settings.fontFamily}
                     onChange={(e) => handleSelect('fontFamily', e.target.value)}
                     className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                    aria-label="Select font family"
+                    title="Select font family"
                   >
                     <option value="system">System Default</option>
                     <option value="inter">Inter</option>
@@ -553,6 +580,8 @@ export default function AppearanceSettingsPage() {
                     value={settings.fontSize}
                     onChange={(e) => handleSelect('fontSize', e.target.value)}
                     className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                    aria-label="Select font size"
+                    title="Select font size"
                   >
                     <option value="small">Small</option>
                     <option value="medium">Medium</option>
@@ -567,6 +596,8 @@ export default function AppearanceSettingsPage() {
                     value={settings.fontWeight}
                     onChange={(e) => handleSelect('fontWeight', e.target.value)}
                     className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                    aria-label="Select font weight"
+                    title="Select font weight"
                   >
                     <option value="normal">Normal</option>
                     <option value="medium">Medium</option>

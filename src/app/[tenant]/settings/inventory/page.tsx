@@ -320,6 +320,8 @@ export default function InventorySettingsPage() {
                     value={settings.defaultView}
                     onChange={(e) => handleSelect('defaultView', e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    aria-label="Select default view"
+                    title="Select default view"
                   >
                     <option value="table">Table View</option>
                     <option value="cards">Card View</option>
@@ -404,6 +406,9 @@ export default function InventorySettingsPage() {
                           value={category.name}
                           onChange={(e) => updateCategory(category.id, 'name', e.target.value)}
                           className="text-sm font-medium text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Category name"
+                          title="Enter category name"
+                          placeholder="Enter category name"
                         />
                       </div>
                       <div>
@@ -413,6 +418,9 @@ export default function InventorySettingsPage() {
                           value={category.description}
                           onChange={(e) => updateCategory(category.id, 'description', e.target.value)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Category description"
+                          title="Enter category description"
+                          placeholder="Enter category description"
                         />
                       </div>
                       <div>
@@ -423,6 +431,9 @@ export default function InventorySettingsPage() {
                           value={category.maintenanceInterval}
                           onChange={(e) => updateCategory(category.id, 'maintenanceInterval', parseInt(e.target.value) || 90)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Maintenance interval in days"
+                          title="Enter maintenance interval in days"
+                          placeholder="90"
                         />
                       </div>
                       <div className="flex items-center justify-between">
@@ -442,6 +453,8 @@ export default function InventorySettingsPage() {
                         <button 
                           onClick={() => removeCategory(category.id)}
                           className="text-gray-400 hover:text-red-500 transition-colors duration-150"
+                          aria-label="Remove category"
+                          title="Remove category"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -496,6 +509,9 @@ export default function InventorySettingsPage() {
                       value={settings.defaultMaintenanceInterval}
                       onChange={(e) => handleSelect('defaultMaintenanceInterval', parseInt(e.target.value) || 90)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Default maintenance interval in days"
+                      title="Enter default maintenance interval in days"
+                      placeholder="90"
                     />
                   </div>
                   
@@ -509,6 +525,9 @@ export default function InventorySettingsPage() {
                       value={settings.maintenanceReminderDays}
                       onChange={(e) => handleSelect('maintenanceReminderDays', parseInt(e.target.value) || 7)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Maintenance reminder days"
+                      title="Enter maintenance reminder days"
+                      placeholder="7"
                     />
                   </div>
                 </div>

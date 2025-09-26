@@ -157,6 +157,8 @@ export default function LeadsSettingsPage() {
                     value={settings.defaultView}
                     onChange={(e) => handleSelect('defaultView', e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    aria-label="Select default view"
+                    title="Select default view"
                   >
                     <option value="table">Table View</option>
                     <option value="cards">Card View</option>
@@ -313,6 +315,9 @@ export default function LeadsSettingsPage() {
                     value={settings.followUpDays}
                     onChange={(e) => handleSelect('followUpDays', parseInt(e.target.value) || 3)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-20"
+                    aria-label="Follow-up days"
+                    title="Enter follow-up days"
+                    placeholder="3"
                   />
                 </div>
               </div>

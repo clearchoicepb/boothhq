@@ -8,13 +8,11 @@ import { useSettings } from '@/lib/settings-context';
 import { 
   ArrowLeft,
   BarChart3,
-  Settings,
   ToggleLeft,
   ToggleRight,
   TrendingUp,
   PieChart,
-  Calendar,
-  Users
+  Calendar
 } from 'lucide-react';
 
 interface AnalyticsSettings {
@@ -243,6 +241,8 @@ export default function AnalyticsReportsSettingsPage() {
                       value={settings.dashboardSettings.defaultView}
                       onChange={(e) => handleSelect('dashboardSettings.defaultView', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select default view"
+                      title="Select default view"
                     >
                       <option value="overview">Overview</option>
                       <option value="detailed">Detailed</option>
@@ -257,6 +257,8 @@ export default function AnalyticsReportsSettingsPage() {
                       value={settings.dashboardSettings.refreshInterval}
                       onChange={(e) => handleSelect('dashboardSettings.refreshInterval', parseInt(e.target.value))}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select refresh interval"
+                      title="Select refresh interval"
                     >
                       <option value={5}>5 minutes</option>
                       <option value={15}>15 minutes</option>
@@ -371,6 +373,8 @@ export default function AnalyticsReportsSettingsPage() {
                       value={settings.reportingSettings.reportFrequency}
                       onChange={(e) => handleSelect('reportingSettings.reportFrequency', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select report frequency"
+                      title="Select report frequency"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -404,7 +408,13 @@ export default function AnalyticsReportsSettingsPage() {
                       value={settings.reportingSettings.reportRecipients.join(', ')}
                       onChange={(e) => {
                         const emails = e.target.value.split(',').map(email => email.trim()).filter(email => email);
-                        handleSelect('reportingSettings.reportRecipients', emails);
+                        setSettings(prev => ({
+                          ...prev,
+                          reportingSettings: {
+                            ...prev.reportingSettings,
+                            reportRecipients: emails
+                          }
+                        }));
                       }}
                       placeholder="admin@company.com, manager@company.com"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
@@ -454,6 +464,8 @@ export default function AnalyticsReportsSettingsPage() {
                       value={settings.reportingSettings.reportFormat}
                       onChange={(e) => handleSelect('reportingSettings.reportFormat', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select report format"
+                      title="Select report format"
                     >
                       <option value="pdf">PDF</option>
                       <option value="excel">Excel</option>
@@ -725,6 +737,9 @@ export default function AnalyticsReportsSettingsPage() {
                       value={settings.dataRetention.retentionPeriodMonths}
                       onChange={(e) => handleSelect('dataRetention.retentionPeriodMonths', parseInt(e.target.value) || 24)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Retention period in months"
+                      title="Enter retention period in months"
+                      placeholder="Enter number of months"
                     />
                   </div>
                 </div>

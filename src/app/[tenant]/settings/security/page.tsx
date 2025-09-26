@@ -268,6 +268,9 @@ export default function SecuritySettingsPage() {
                       value={settings.passwordSettings.minimumPasswordLength}
                       onChange={(e) => handleSelect('passwordSettings.minimumPasswordLength', parseInt(e.target.value) || 8)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Minimum password length"
+                      title="Enter minimum password length"
+                      placeholder="8"
                     />
                   </div>
                   
@@ -334,6 +337,9 @@ export default function SecuritySettingsPage() {
                       value={settings.passwordSettings.passwordExpiryDays}
                       onChange={(e) => handleSelect('passwordSettings.passwordExpiryDays', parseInt(e.target.value) || 0)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Password expiry days"
+                      title="Enter password expiry days"
+                      placeholder="90"
                     />
                   </div>
                   
@@ -376,6 +382,9 @@ export default function SecuritySettingsPage() {
                       value={settings.sessionSettings.sessionTimeoutMinutes}
                       onChange={(e) => handleSelect('sessionSettings.sessionTimeoutMinutes', parseInt(e.target.value) || 480)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Session timeout in minutes"
+                      title="Enter session timeout in minutes"
+                      placeholder="480"
                     />
                   </div>
                   
@@ -389,6 +398,9 @@ export default function SecuritySettingsPage() {
                       value={settings.sessionSettings.rememberMeDays}
                       onChange={(e) => handleSelect('sessionSettings.rememberMeDays', parseInt(e.target.value) || 30)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Remember me days"
+                      title="Enter remember me days"
+                      placeholder="30"
                     />
                   </div>
                 </div>
@@ -404,6 +416,9 @@ export default function SecuritySettingsPage() {
                       value={settings.sessionSettings.maxConcurrentSessions}
                       onChange={(e) => handleSelect('sessionSettings.maxConcurrentSessions', parseInt(e.target.value) || 3)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Maximum concurrent sessions"
+                      title="Enter maximum concurrent sessions"
+                      placeholder="3"
                     />
                   </div>
                   
@@ -545,6 +560,9 @@ export default function SecuritySettingsPage() {
                       value={settings.accessControl.loginAttemptLimit}
                       onChange={(e) => handleSelect('accessControl.loginAttemptLimit', parseInt(e.target.value) || 5)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Login attempt limit"
+                      title="Enter login attempt limit"
+                      placeholder="5"
                     />
                   </div>
                 </div>
@@ -560,6 +578,9 @@ export default function SecuritySettingsPage() {
                       value={settings.accessControl.lockoutDurationMinutes}
                       onChange={(e) => handleSelect('accessControl.lockoutDurationMinutes', parseInt(e.target.value) || 15)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Lockout duration in minutes"
+                      title="Enter lockout duration in minutes"
+                      placeholder="15"
                     />
                   </div>
                   
@@ -635,6 +656,9 @@ export default function SecuritySettingsPage() {
                       value={settings.dataSecurity.dataRetentionDays}
                       onChange={(e) => handleSelect('dataSecurity.dataRetentionDays', parseInt(e.target.value) || 2555)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Data retention days"
+                      title="Enter data retention days"
+                      placeholder="2555"
                     />
                   </div>
                   

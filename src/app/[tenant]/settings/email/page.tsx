@@ -280,6 +280,8 @@ export default function EmailServicesSettingsPage() {
                         onChange={(e) => handleSelect('smtpSettings.host', e.target.value)}
                         placeholder="smtp.gmail.com"
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="SMTP Host"
+                        title="Enter the SMTP server hostname"
                       />
                     </div>
                     
@@ -290,6 +292,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.port}
                         onChange={(e) => handleSelect('smtpSettings.port', parseInt(e.target.value) || 587)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="SMTP Port"
+                        title="Enter the SMTP server port number"
                       />
                     </div>
                     
@@ -300,6 +304,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.username}
                         onChange={(e) => handleSelect('smtpSettings.username', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="SMTP Username"
+                        title="Enter the SMTP username"
                       />
                     </div>
                     
@@ -310,6 +316,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.password}
                         onChange={(e) => handleSelect('smtpSettings.password', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="SMTP Password"
+                        title="Enter the SMTP password"
                       />
                     </div>
                   </div>
@@ -321,6 +329,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.encryption}
                         onChange={(e) => handleSelect('smtpSettings.encryption', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select encryption type"
+                        title="Select encryption type"
                       >
                         <option value="none">None</option>
                         <option value="ssl">SSL</option>
@@ -335,6 +345,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.fromName}
                         onChange={(e) => handleSelect('smtpSettings.fromName', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="From Name"
+                        title="Enter the sender name for emails"
                       />
                     </div>
                     
@@ -345,6 +357,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.fromEmail}
                         onChange={(e) => handleSelect('smtpSettings.fromEmail', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="From Email"
+                        title="Enter the sender email address"
                       />
                     </div>
                     
@@ -355,6 +369,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.smtpSettings.replyToEmail}
                         onChange={(e) => handleSelect('smtpSettings.replyToEmail', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Reply-To Email"
+                        title="Enter the reply-to email address"
                       />
                     </div>
                   </div>
@@ -392,6 +408,8 @@ export default function EmailServicesSettingsPage() {
                         onChange={(e) => handleSelect('gmailIntegration.clientId', e.target.value)}
                         placeholder="Google OAuth Client ID"
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Gmail Client ID"
+                        title="Enter the Google OAuth Client ID"
                       />
                     </div>
                     
@@ -403,6 +421,8 @@ export default function EmailServicesSettingsPage() {
                         onChange={(e) => handleSelect('gmailIntegration.clientSecret', e.target.value)}
                         placeholder="Google OAuth Client Secret"
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Gmail Client Secret"
+                        title="Enter the Google OAuth Client Secret"
                       />
                     </div>
                   </div>
@@ -416,6 +436,8 @@ export default function EmailServicesSettingsPage() {
                         onChange={(e) => handleSelect('gmailIntegration.refreshToken', e.target.value)}
                         placeholder="OAuth Refresh Token"
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Gmail Refresh Token"
+                        title="Enter the OAuth Refresh Token"
                       />
                     </div>
                     
@@ -427,6 +449,8 @@ export default function EmailServicesSettingsPage() {
                         onChange={(e) => handleSelect('gmailIntegration.fromEmail', e.target.value)}
                         placeholder="your-email@gmail.com"
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Gmail From Email"
+                        title="Enter the Gmail address to send from"
                       />
                     </div>
                   </div>
@@ -462,6 +486,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.emailMarketing.provider}
                         onChange={(e) => handleSelect('emailMarketing.provider', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select email marketing provider"
+                        title="Select email marketing provider"
                       >
                         <option value="none">None</option>
                         <option value="mailchimp">Mailchimp</option>
@@ -477,6 +503,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.emailMarketing.apiKey}
                         onChange={(e) => handleSelect('emailMarketing.apiKey', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Email Marketing API Key"
+                        title="Enter the email marketing provider API key"
                       />
                     </div>
                     
@@ -487,6 +515,8 @@ export default function EmailServicesSettingsPage() {
                         value={settings.emailMarketing.listId}
                         onChange={(e) => handleSelect('emailMarketing.listId', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Email Marketing List ID"
+                        title="Enter the email marketing list ID"
                       />
                     </div>
                   </div>
@@ -516,6 +546,8 @@ export default function EmailServicesSettingsPage() {
                         onChange={(e) => handleSelect('emailMarketing.unsubscribeFooter', e.target.value)}
                         rows={3}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Unsubscribe Footer Text"
+                        title="Enter the unsubscribe footer text"
                       />
                     </div>
                   </div>
@@ -539,6 +571,8 @@ export default function EmailServicesSettingsPage() {
                       value={settings.emailPreferences.sendFromName}
                       onChange={(e) => handleSelect('emailPreferences.sendFromName', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Send From Name"
+                      title="Enter the name to send emails from"
                     />
                   </div>
                   
@@ -585,6 +619,8 @@ export default function EmailServicesSettingsPage() {
                       onChange={(e) => handleSelect('emailPreferences.footerText', e.target.value)}
                       rows={3}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Footer Text"
+                      title="Enter the footer text for emails"
                     />
                   </div>
                   

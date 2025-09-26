@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Trash2, Edit, Tag, Mail, Download, Upload, CheckCircle, XCircle } from 'lucide-react'
+import { Trash2, Edit, Tag, Download, XCircle } from 'lucide-react'
 
 interface BulkOperationsProps {
   selectedItems: string[]
-  onBulkAction: (action: string, itemIds: string[], data?: any) => Promise<void>
+  onBulkAction: (action: string, itemIds: string[], data?: Record<string, string>) => Promise<void>
   entityType: 'leads' | 'opportunities' | 'events' | 'contacts' | 'accounts'
   className?: string
 }
@@ -82,13 +82,14 @@ export function BulkOperations({
               <label htmlFor="bulk-action-select" className="block text-sm font-medium text-gray-700 mb-1">
                 Bulk Action
               </label>
-              <select
+              <Select
                 id="bulk-action-select"
                 value={selectedAction}
                 onChange={(e) => setSelectedAction(e.target.value)}
-                className="min-w-[200px] h-10 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="min-w-[200px] h-10"
                 title="Select bulk action"
                 aria-label="Select bulk action"
+                data-testid="bulk-action-select"
               >
               <option value="">Choose action...</option>
               {actions.map(action => (
@@ -96,7 +97,7 @@ export function BulkOperations({
                   {action.label}
                 </option>
               ))}
-              </select>
+              </Select>
             </div>
             <Button
               onClick={handleBulkAction}
@@ -130,7 +131,7 @@ interface BulkActionModalProps {
   onClose: () => void
   action: string
   itemCount: number
-  onConfirm: (data: any) => Promise<void>
+  onConfirm: (data: Record<string, string>) => Promise<void>
   entityType: string
 }
 
@@ -142,7 +143,7 @@ export function BulkActionModal({
   onConfirm, 
   entityType 
 }: BulkActionModalProps) {
-  const [formData, setFormData] = useState<any>({})
+  const [formData, setFormData] = useState<Record<string, string>>({})
   const [isProcessing, setIsProcessing] = useState(false)
 
   if (!isOpen) return null
@@ -172,9 +173,8 @@ export function BulkActionModal({
         if (entityType === 'leads') {
           return (
             <Select
-              value={formData.status || ''}
-              onValueChange={(value) => setFormData({ ...formData, status: value })}
-              placeholder="Select status..."
+              value={formData.status ?? ''}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               aria-label="Select lead status"
               title="Select lead status"
             >
@@ -187,9 +187,8 @@ export function BulkActionModal({
         } else if (entityType === 'events') {
           return (
             <Select
-              value={formData.status || ''}
-              onValueChange={(value) => setFormData({ ...formData, status: value })}
-              placeholder="Select status..."
+              value={formData.status ?? ''}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               aria-label="Select event status"
               title="Select event status"
             >
@@ -204,9 +203,8 @@ export function BulkActionModal({
       case 'update_stage':
         return (
           <Select
-            value={formData.stage || ''}
-            onValueChange={(value) => setFormData({ ...formData, stage: value })}
-            placeholder="Select stage..."
+            value={formData.stage ?? ''}
+            onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
             aria-label="Select opportunity stage"
             title="Select opportunity stage"
           >
@@ -221,9 +219,8 @@ export function BulkActionModal({
       case 'assign_source':
         return (
           <Select
-            value={formData.source || ''}
-            onValueChange={(value) => setFormData({ ...formData, source: value })}
-            placeholder="Select source..."
+            value={formData.source ?? ''}
+            onChange={(e) => setFormData({ ...formData, source: e.target.value })}
             aria-label="Select lead source"
             title="Select lead source"
           >

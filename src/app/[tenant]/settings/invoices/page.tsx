@@ -352,6 +352,8 @@ export default function InvoicesSettingsPage() {
                     value={settings.defaultView}
                     onChange={(e) => handleSelect('defaultView', e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    aria-label="Select default view"
+                    title="Select default view"
                   >
                     <option value="table">Table View</option>
                     <option value="cards">Card View</option>
@@ -436,6 +438,9 @@ export default function InvoicesSettingsPage() {
                           value={template.name}
                           onChange={(e) => updateTemplate(template.id, 'name', e.target.value)}
                           className="text-sm font-medium text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Template name"
+                          title="Enter template name"
+                          placeholder="Enter template name"
                         />
                       </div>
                       <div>
@@ -445,6 +450,9 @@ export default function InvoicesSettingsPage() {
                           value={template.description}
                           onChange={(e) => updateTemplate(template.id, 'description', e.target.value)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Template description"
+                          title="Enter template description"
+                          placeholder="Enter template description"
                         />
                       </div>
                       <div>
@@ -454,6 +462,9 @@ export default function InvoicesSettingsPage() {
                           value={template.headerText}
                           onChange={(e) => updateTemplate(template.id, 'headerText', e.target.value)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Header text"
+                          title="Enter header text"
+                          placeholder="Enter header text"
                         />
                       </div>
                       <div>
@@ -463,6 +474,9 @@ export default function InvoicesSettingsPage() {
                           value={template.footerText}
                           onChange={(e) => updateTemplate(template.id, 'footerText', e.target.value)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Footer text"
+                          title="Enter footer text"
+                          placeholder="Enter footer text"
                         />
                       </div>
                       <div className="flex items-center justify-between">
@@ -497,6 +511,8 @@ export default function InvoicesSettingsPage() {
                         <button 
                           onClick={() => removeTemplate(template.id)}
                           className="text-gray-400 hover:text-red-500 transition-colors duration-150"
+                          aria-label="Remove template"
+                          title="Remove template"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -523,6 +539,8 @@ export default function InvoicesSettingsPage() {
                       value={settings.defaultPaymentTerms}
                       onChange={(e) => handleSelect('defaultPaymentTerms', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select default payment terms"
+                      title="Select default payment terms"
                     >
                       <option value="net15">Net 15</option>
                       <option value="net30">Net 30</option>
@@ -543,6 +561,9 @@ export default function InvoicesSettingsPage() {
                       value={settings.lateFeePercentage}
                       onChange={(e) => handleSelect('lateFeePercentage', parseFloat(e.target.value) || 0)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Late fee percentage"
+                      title="Enter late fee percentage"
+                      placeholder="1.5"
                     />
                   </div>
                 </div>
@@ -558,6 +579,9 @@ export default function InvoicesSettingsPage() {
                       value={settings.lateFeeGracePeriod}
                       onChange={(e) => handleSelect('lateFeeGracePeriod', parseInt(e.target.value) || 0)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Late fee grace period in days"
+                      title="Enter late fee grace period in days"
+                      placeholder="5"
                     />
                   </div>
                   

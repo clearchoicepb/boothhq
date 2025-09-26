@@ -153,6 +153,8 @@ export default function EventsSettingsPage() {
                     value={settings.defaultView}
                     onChange={(e) => handleSelect('defaultView', e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    aria-label="Select default view"
+                    title="Select default view"
                   >
                     <option value="calendar">Calendar View</option>
                     <option value="table">Table View</option>
@@ -214,6 +216,9 @@ export default function EventsSettingsPage() {
                       value={settings.defaultSetupTime}
                       onChange={(e) => handleSelect('defaultSetupTime', parseInt(e.target.value) || 0)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Default setup time in minutes"
+                      title="Enter default setup time in minutes"
+                      placeholder="45"
                     />
                   </div>
                   
@@ -226,6 +231,9 @@ export default function EventsSettingsPage() {
                       value={settings.defaultBreakdownTime}
                       onChange={(e) => handleSelect('defaultBreakdownTime', parseInt(e.target.value) || 0)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Default breakdown time in minutes"
+                      title="Enter default breakdown time in minutes"
+                      placeholder="30"
                     />
                   </div>
                 </div>
@@ -239,6 +247,8 @@ export default function EventsSettingsPage() {
                       value={settings.workingHoursStart}
                       onChange={(e) => handleSelect('workingHoursStart', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Working hours start time"
+                      title="Select working hours start time"
                     />
                   </div>
                   
@@ -250,6 +260,8 @@ export default function EventsSettingsPage() {
                       value={settings.workingHoursEnd}
                       onChange={(e) => handleSelect('workingHoursEnd', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Working hours end time"
+                      title="Select working hours end time"
                     />
                   </div>
                 </div>

@@ -219,6 +219,8 @@ export default function OpportunitiesSettingsPage() {
                     value={settings.defaultView}
                     onChange={(e) => handleSelect('defaultView', e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    aria-label="Select default view"
+                    title="Select default view"
                   >
                     <option value="table">Table View</option>
                     <option value="pipeline">Pipeline View</option>
@@ -302,6 +304,9 @@ export default function OpportunitiesSettingsPage() {
                           value={stage.name}
                           onChange={(e) => updateStage(stage.id, 'name', e.target.value)}
                           className="text-sm font-medium text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Stage name"
+                          title="Enter stage name"
+                          placeholder="Enter stage name"
                         />
                       </div>
                       <div>
@@ -313,6 +318,9 @@ export default function OpportunitiesSettingsPage() {
                           value={stage.probability}
                           onChange={(e) => updateStage(stage.id, 'probability', parseInt(e.target.value) || 0)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Probability percentage"
+                          title="Enter probability percentage"
+                          placeholder="0-100"
                         />
                       </div>
                       <div>
@@ -321,6 +329,8 @@ export default function OpportunitiesSettingsPage() {
                           value={stage.color}
                           onChange={(e) => updateStage(stage.id, 'color', e.target.value)}
                           className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
+                          aria-label="Select stage color"
+                          title="Select stage color"
                         >
                           <option value="blue">Blue</option>
                           <option value="yellow">Yellow</option>
@@ -348,6 +358,8 @@ export default function OpportunitiesSettingsPage() {
                         <button 
                           onClick={() => removeStage(stage.id)}
                           className="text-gray-400 hover:text-red-500 transition-colors duration-150"
+                          aria-label="Remove stage"
+                          title="Remove stage"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -492,6 +504,8 @@ export default function OpportunitiesSettingsPage() {
                     value={settings.defaultProbabilityFilter}
                     onChange={(e) => handleSelect('defaultProbabilityFilter', e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    aria-label="Select default probability filter"
+                    title="Select default probability filter"
                   >
                     <option value="all">All Opportunities</option>
                     <option value="high">High Probability (75%+)</option>
@@ -512,6 +526,9 @@ export default function OpportunitiesSettingsPage() {
                     value={settings.defaultCloseDateOffset}
                     onChange={(e) => handleSelect('defaultCloseDateOffset', parseInt(e.target.value) || 30)}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-20"
+                    aria-label="Default close date offset in days"
+                    title="Enter default close date offset in days"
+                    placeholder="30"
                   />
                 </div>
               </div>

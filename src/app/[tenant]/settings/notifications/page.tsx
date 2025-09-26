@@ -535,6 +535,8 @@ export default function NotificationsSettingsPage() {
                       }}
                       placeholder="7, 3, 1"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Event reminder days"
+                      title="Enter event reminder days (comma-separated)"
                     />
                   </div>
                   
@@ -550,6 +552,8 @@ export default function NotificationsSettingsPage() {
                       }}
                       placeholder="7, 3, 1"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Payment reminder days"
+                      title="Enter payment reminder days (comma-separated)"
                     />
                   </div>
                 </div>
@@ -567,6 +571,8 @@ export default function NotificationsSettingsPage() {
                       }}
                       placeholder="14, 7, 1"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Maintenance reminder days"
+                      title="Enter maintenance reminder days (comma-separated)"
                     />
                   </div>
                   
@@ -582,6 +588,8 @@ export default function NotificationsSettingsPage() {
                       }}
                       placeholder="3, 7, 14"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Follow-up reminder days"
+                      title="Enter follow-up reminder days (comma-separated)"
                     />
                   </div>
                 </div>
@@ -620,6 +628,8 @@ export default function NotificationsSettingsPage() {
                           value={settings.notificationPreferences.quietStartTime}
                           onChange={(e) => handleSelect('notificationPreferences.quietStartTime', e.target.value)}
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Quiet start time"
+                          title="Select quiet start time"
                         />
                       </div>
                       
@@ -630,6 +640,8 @@ export default function NotificationsSettingsPage() {
                           value={settings.notificationPreferences.quietEndTime}
                           onChange={(e) => handleSelect('notificationPreferences.quietEndTime', e.target.value)}
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Quiet end time"
+                          title="Select quiet end time"
                         />
                       </div>
                     </>
@@ -678,6 +690,8 @@ export default function NotificationsSettingsPage() {
                         value={settings.notificationPreferences.digestFrequency}
                         onChange={(e) => handleSelect('notificationPreferences.digestFrequency', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Select digest frequency"
+                        title="Select digest frequency"
                       >
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>

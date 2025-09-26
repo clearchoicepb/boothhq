@@ -230,6 +230,8 @@ export default function DataManagementSettingsPage() {
                       value={settings.backupSettings.backupFrequency}
                       onChange={(e) => handleSelect('backupSettings.backupFrequency', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select backup frequency"
+                      title="Select backup frequency"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -247,6 +249,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.backupSettings.backupRetentionDays}
                       onChange={(e) => handleSelect('backupSettings.backupRetentionDays', parseInt(e.target.value) || 30)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Backup retention days"
+                      title="Enter backup retention days"
+                      placeholder="30"
                     />
                   </div>
                 </div>
@@ -276,6 +281,8 @@ export default function DataManagementSettingsPage() {
                       value={settings.backupSettings.backupLocation}
                       onChange={(e) => handleSelect('backupSettings.backupLocation', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select backup location"
+                      title="Select backup location"
                     >
                       <option value="cloud">Cloud Storage</option>
                       <option value="local">Local Storage</option>
@@ -339,6 +346,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.importExportSettings.maxFileSizeMB}
                       onChange={(e) => handleSelect('importExportSettings.maxFileSizeMB', parseInt(e.target.value) || 100)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Maximum file size in MB"
+                      title="Enter maximum file size in MB"
+                      placeholder="100"
                     />
                   </div>
                 </div>
@@ -390,6 +400,8 @@ export default function DataManagementSettingsPage() {
                       }}
                       placeholder="csv, xlsx, json"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Supported file formats"
+                      title="Enter supported file formats (comma-separated)"
                     />
                   </div>
                 </div>
@@ -432,6 +444,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.dataRetention.deleteInactiveUsersAfterDays}
                       onChange={(e) => handleSelect('dataRetention.deleteInactiveUsersAfterDays', parseInt(e.target.value) || 365)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Delete inactive users after days"
+                      title="Enter days to delete inactive users"
+                      placeholder="365"
                     />
                   </div>
                   
@@ -445,6 +460,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.dataRetention.deleteOldEventsAfterDays}
                       onChange={(e) => handleSelect('dataRetention.deleteOldEventsAfterDays', parseInt(e.target.value) || 1095)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Delete old events after days"
+                      title="Enter days to delete old events"
+                      placeholder="1095"
                     />
                   </div>
                 </div>
@@ -460,6 +478,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.dataRetention.deleteOldContactsAfterDays}
                       onChange={(e) => handleSelect('dataRetention.deleteOldContactsAfterDays', parseInt(e.target.value) || 2555)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Delete old contacts after days"
+                      title="Enter days to delete old contacts"
+                      placeholder="2555"
                     />
                   </div>
                   
@@ -473,6 +494,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.dataRetention.deleteAuditLogsAfterDays}
                       onChange={(e) => handleSelect('dataRetention.deleteAuditLogsAfterDays', parseInt(e.target.value) || 1095)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Delete audit logs after days"
+                      title="Enter days to delete audit logs"
+                      placeholder="1095"
                     />
                   </div>
                 </div>
@@ -515,6 +539,9 @@ export default function DataManagementSettingsPage() {
                       value={settings.archiveSettings.archiveAfterDays}
                       onChange={(e) => handleSelect('archiveSettings.archiveAfterDays', parseInt(e.target.value) || 365)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Archive after days"
+                      title="Enter days to archive data"
+                      placeholder="365"
                     />
                   </div>
                 </div>
@@ -527,6 +554,8 @@ export default function DataManagementSettingsPage() {
                       value={settings.archiveSettings.archiveLocation}
                       onChange={(e) => handleSelect('archiveSettings.archiveLocation', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select archive location"
+                      title="Select archive location"
                     >
                       <option value="cloud-storage">Cloud Storage</option>
                       <option value="local-storage">Local Storage</option>

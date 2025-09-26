@@ -447,6 +447,8 @@ export default function IntegrationsSettingsPage() {
                       value={settings.apiSettings.apiVersion}
                       onChange={(e) => handleSelect('apiSettings.apiVersion', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Select API version"
+                      title="Select API version"
                     >
                       <option value="v1">v1</option>
                       <option value="v2">v2</option>
@@ -463,6 +465,8 @@ export default function IntegrationsSettingsPage() {
                       value={settings.apiSettings.rateLimitPerHour}
                       onChange={(e) => handleSelect('apiSettings.rateLimitPerHour', parseInt(e.target.value) || 1000)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Rate Limit Per Hour"
+                      title="Enter the maximum API requests per hour"
                     />
                   </div>
                 </div>
@@ -510,6 +514,8 @@ export default function IntegrationsSettingsPage() {
                       value={settings.apiSettings.webhookSecret}
                       onChange={(e) => handleSelect('apiSettings.webhookSecret', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Webhook Secret"
+                      title="Enter the webhook secret key for verification"
                     />
                   </div>
                 </div>
@@ -1268,6 +1274,8 @@ export default function IntegrationsSettingsPage() {
                           value={settings.thirdPartyIntegrations.adobeSign.baseUrl}
                           onChange={(e) => handleSelect('thirdPartyIntegrations.adobeSign.baseUrl', e.target.value)}
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Adobe Sign Base URL"
+                          title="Select the Adobe Sign API base URL"
                         >
                           <option value="https://api.na1.adobesign.com">North America 1 (na1)</option>
                           <option value="https://api.na2.adobesign.com">North America 2 (na2)</option>
@@ -1322,6 +1330,8 @@ export default function IntegrationsSettingsPage() {
                           value={settings.thirdPartyIntegrations.googleCalendar.clientId}
                           onChange={(e) => handleSelect('thirdPartyIntegrations.googleCalendar.clientId', e.target.value)}
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Google Calendar Client ID"
+                          title="Enter the Google OAuth Client ID"
                         />
                       </div>
                       <div>
@@ -1331,6 +1341,8 @@ export default function IntegrationsSettingsPage() {
                           value={settings.thirdPartyIntegrations.googleCalendar.clientSecret}
                           onChange={(e) => handleSelect('thirdPartyIntegrations.googleCalendar.clientSecret', e.target.value)}
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Google Calendar Client Secret"
+                          title="Enter the Google OAuth Client Secret"
                         />
                       </div>
                     </div>
@@ -1361,6 +1373,8 @@ export default function IntegrationsSettingsPage() {
                           value={settings.thirdPartyIntegrations.slack.webhookUrl}
                           onChange={(e) => handleSelect('thirdPartyIntegrations.slack.webhookUrl', e.target.value)}
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Slack Webhook URL"
+                          title="Enter the Slack webhook URL"
                         />
                       </div>
                       <div>
@@ -1371,6 +1385,8 @@ export default function IntegrationsSettingsPage() {
                           onChange={(e) => handleSelect('thirdPartyIntegrations.slack.channel', e.target.value)}
                           placeholder="#general"
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                          aria-label="Slack Channel"
+                          title="Enter the Slack channel name"
                         />
                       </div>
                     </div>
@@ -1400,6 +1416,8 @@ export default function IntegrationsSettingsPage() {
                         value={settings.thirdPartyIntegrations.zapier.apiKey}
                         onChange={(e) => handleSelect('thirdPartyIntegrations.zapier.apiKey', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="Zapier API Key"
+                        title="Enter the Zapier API key"
                       />
                     </div>
                   )}
@@ -1428,6 +1446,8 @@ export default function IntegrationsSettingsPage() {
                         value={settings.thirdPartyIntegrations.hubspot.apiKey}
                         onChange={(e) => handleSelect('thirdPartyIntegrations.hubspot.apiKey', e.target.value)}
                         className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        aria-label="HubSpot API Key"
+                        title="Enter the HubSpot API key"
                       />
                     </div>
                   )}
@@ -1539,6 +1559,8 @@ export default function IntegrationsSettingsPage() {
                       value={settings.webhookSettings.webhookUrl}
                       onChange={(e) => handleSelect('webhookSettings.webhookUrl', e.target.value)}
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                      aria-label="Webhook URL"
+                      title="Enter the webhook endpoint URL"
                     />
                   </div>
                 </div>
