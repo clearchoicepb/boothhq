@@ -107,10 +107,29 @@ export async function PUT(
 
     console.log('Final update data:', updateData)
 
+    const opportunityId = (await params).id
+    console.log('About to update opportunity with ID:', opportunityId)
+    console.log('Update data:', updateData)
+    
+    // First check if the opportunity exists
+    const { data: existingOpportunity, error: checkError } = await supabase
+      .from('opportunities')
+      .select('id, stage, name')
+      .eq('id', opportunityId)
+      .eq('tenant_id', session.user.tenantId)
+      .single()
+    
+    if (checkError) {
+      console.error('Error checking if opportunity exists:', checkError)
+      return NextResponse.json({ error: 'Opportunity not found', details: checkError.message }, { status: 404 })
+    }
+    
+    console.log('Found existing opportunity:', existingOpportunity)
+    
     const { data, error } = await supabase
       .from('opportunities')
       .update(updateData)
-      .eq('id', (await params).id)
+      .eq('id', opportunityId)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
