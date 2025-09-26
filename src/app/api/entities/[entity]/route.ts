@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
-import { getEntityConfig } from '@/lib/api-entities'
+import { getEntityConfig, validateEntityData } from '@/lib/api-entities'
 
 export async function GET(
   request: NextRequest,
@@ -114,10 +114,23 @@ export async function POST(
     const config = getEntityConfig(entity)
     const supabase = createServerSupabaseClient()
 
+    // Transform request data if transformRequest function exists
+    const transformedBody = config.transformRequest ? config.transformRequest(body) : body
+
+    // Validate the transformed data
+    const validation = validateEntityData(entity, transformedBody)
+    if (!validation.isValid) {
+      console.error(`Validation failed for ${entity}:`, validation.errors)
+      return NextResponse.json({ 
+        error: `Validation failed for ${entity}`,
+        details: validation.errors 
+      }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from(config.table)
       .insert({
-        ...body,
+        ...transformedBody,
         tenant_id: session.user.tenantId
       })
       .select()

@@ -138,8 +138,7 @@ export default function DemoApiPage() {
             description: `This is a test opportunity created by the polymorphic API demo`,
             stage: 'prospecting',
             amount: 5000,
-            probability: 25,
-            status: 'active'
+            probability: 25
           }
         case 'leads':
           return {
@@ -163,8 +162,7 @@ export default function DemoApiPage() {
         default:
           return {
             name: `Test ${entity} ${timestamp}`,
-            description: `This is a test ${entity} created by the polymorphic API demo`,
-            status: 'active'
+            description: `This is a test ${entity} created by the polymorphic API demo`
           }
       }
     }

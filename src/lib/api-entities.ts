@@ -266,6 +266,11 @@ export const entityConfigs: Record<string, EntityConfig> = {
       // Transform request data to match database constraints
       const transformed = { ...data }
       
+      // Remove status field if present (opportunities use stage instead)
+      if (transformed.status) {
+        delete transformed.status
+      }
+      
       // Convert empty date strings to null
       if (transformed.expected_close_date === '') transformed.expected_close_date = null
       if (transformed.actual_close_date === '') transformed.actual_close_date = null
