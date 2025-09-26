@@ -166,6 +166,7 @@ export class GenericApiHandler {
       // Validate data
       const validation = validateEntityData(this.entity, body)
       if (!validation.isValid) {
+        console.error(`[${this.entity}] Validation failed:`, validation.errors)
         return NextResponse.json({ 
           error: 'Validation failed',
           details: validation.errors 
