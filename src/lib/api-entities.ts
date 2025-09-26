@@ -434,14 +434,16 @@ export function getAllEntityTypes(): string[] {
   return Object.keys(entityConfigs)
 }
 
-export function validateEntityData(entity: string, data: any): { isValid: boolean; errors: Record<string, string> } {
+export function validateEntityData(entity: string, data: any, isUpdate: boolean = false): { isValid: boolean; errors: Record<string, string> } {
   const config = getEntityConfig(entity)
   const errors: Record<string, string> = {}
 
-  // Check required fields
-  for (const field of config.requiredFields) {
-    if (!data[field] || (typeof data[field] === 'string' && !data[field].trim())) {
-      errors[field] = `${field} is required`
+  // Check required fields only for new records, not updates
+  if (!isUpdate) {
+    for (const field of config.requiredFields) {
+      if (!data[field] || (typeof data[field] === 'string' && !data[field].trim())) {
+        errors[field] = `${field} is required`
+      }
     }
   }
 

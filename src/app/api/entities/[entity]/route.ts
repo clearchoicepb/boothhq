@@ -117,8 +117,8 @@ export async function POST(
     // Transform request data if transformRequest function exists
     const transformedBody = config.transformRequest ? config.transformRequest(body) : body
 
-    // Validate the transformed data
-    const validation = validateEntityData(entity, transformedBody)
+    // Validate the transformed data (isUpdate = false for POST requests)
+    const validation = validateEntityData(entity, transformedBody, false)
     if (!validation.isValid) {
       console.error(`Validation failed for ${entity}:`, validation.errors)
       return NextResponse.json({ 

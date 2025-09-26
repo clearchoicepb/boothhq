@@ -163,8 +163,8 @@ export class GenericApiHandler {
         return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
       }
 
-      // Validate data
-      const validation = validateEntityData(this.entity, body)
+      // Validate data (isUpdate = true for PUT requests)
+      const validation = validateEntityData(this.entity, body, true)
       if (!validation.isValid) {
         console.error(`[${this.entity}] Validation failed:`, validation.errors)
         return NextResponse.json({ 
