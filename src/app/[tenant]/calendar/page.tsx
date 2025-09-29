@@ -24,6 +24,32 @@ interface CalendarEvent {
   stage?: string
 }
 
+interface EventData {
+  id: string
+  title: string
+  start_date: string
+  start_time?: string
+  end_time?: string
+  location?: string
+  status: string
+  account_name?: string
+  contact_name?: string
+  event_type?: string
+}
+
+interface OpportunityData {
+  id: string
+  name: string
+  event_date?: string
+  expected_close_date?: string
+  initial_date?: string
+  stage?: string
+  status: string
+  account_name?: string
+  contact_name?: string
+  amount?: number
+}
+
 export default function CalendarPage() {
   const { data: session, status } = useSession()
   const { tenant, loading } = useTenant()
@@ -32,7 +58,7 @@ export default function CalendarPage() {
   const tenantSubdomain = params.tenant as string
 
   const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [opportunities, setOpportunities] = useState<any[]>([])
+  const [opportunities, setOpportunities] = useState<OpportunityData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -55,7 +81,7 @@ export default function CalendarPage() {
 
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json()
-        const calendarEvents: CalendarEvent[] = eventsData.map((event: any) => ({
+        const calendarEvents: CalendarEvent[] = eventsData.map((event: EventData) => ({
           id: event.id,
           title: event.title,
           date: event.start_date,
@@ -73,17 +99,8 @@ export default function CalendarPage() {
 
       if (opportunitiesResponse.ok) {
         const opportunitiesData = await opportunitiesResponse.json()
-        const calendarOpportunities: CalendarEvent[] = opportunitiesData.map((opp: any) => ({
-          id: opp.id,
-          title: opp.name,
-          date: opp.event_date || opp.expected_close_date || opp.initial_date,
-          type: 'opportunity' as const,
-          status: opp.stage,
-          account_name: opp.account_name,
-          contact_name: opp.contact_name,
-          stage: opp.stage
-        }))
-        setOpportunities(calendarOpportunities)
+        // Store raw opportunity data - will be converted to CalendarEvent format in render
+        setOpportunities(opportunitiesData)
       }
     } catch (error) {
       console.error('Error fetching calendar data:', error)
@@ -134,7 +151,19 @@ export default function CalendarPage() {
     )
   }
 
-  const allCalendarEvents = [...events, ...opportunities]
+  const allCalendarEvents = [
+    ...events, 
+    ...opportunities.map((opp: OpportunityData): CalendarEvent => ({
+      id: opp.id,
+      title: opp.name,
+      date: opp.event_date || opp.expected_close_date || opp.initial_date || '',
+      type: 'opportunity' as const,
+      status: opp.stage || opp.status,
+      account_name: opp.account_name,
+      contact_name: opp.contact_name,
+      stage: opp.stage
+    }))
+  ]
 
   return (
     <AccessGuard module="events">
@@ -212,6 +241,7 @@ export default function CalendarPage() {
     </AccessGuard>
   )
 }
+
 
 
 

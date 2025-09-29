@@ -128,11 +128,11 @@ export default function LocationsPage() {
     location.contact_name?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const canManageLocations = hasPermission('locations', 'write')
+  const canManageLocations = hasPermission('events', 'create') // Using events permission for locations
 
   if (!canManageLocations) {
     return (
-      <AccessGuard>
+      <AccessGuard module="events">
         <AppLayout>
           <div className="text-center py-12">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
@@ -144,7 +144,7 @@ export default function LocationsPage() {
   }
 
   return (
-    <AccessGuard>
+    <AccessGuard module="events">
       <AppLayout>
         <div className="space-y-6">
           {/* Header */}
@@ -294,6 +294,7 @@ export default function LocationsPage() {
     </AccessGuard>
   )
 }
+
 
 
 
