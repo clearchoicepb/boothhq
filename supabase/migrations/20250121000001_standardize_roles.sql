@@ -1,7 +1,11 @@
 -- Standardize role system across the application
 -- This migration adds constraints and migrates existing data
 
--- First, add the constraint to ensure only valid roles are allowed
+-- First, drop any existing role constraints
+ALTER TABLE users DROP CONSTRAINT IF EXISTS role_check;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+
+-- Then add the new constraint to ensure only valid roles are allowed
 ALTER TABLE users 
 ADD CONSTRAINT role_check 
 CHECK (role IN ('admin', 'manager', 'sales_rep', 'operations_manager', 'event_staff', 'user'));
