@@ -130,9 +130,15 @@ export default function UsersSettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    console.log('🔄 Form submission started')
+    console.log('📝 Form data:', formData)
+    console.log('👤 Editing user:', editingUser?.id)
+    
     try {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users'
       const method = editingUser ? 'PUT' : 'POST'
+      
+      console.log('🌐 API call:', method, url)
       
       // Safely handle payroll_info to avoid circular references
       let safePayrollInfo = {}
@@ -175,6 +181,8 @@ export default function UsersSettingsPage() {
         delete (payload as any).password_hash
       }
 
+      console.log('📦 Payload:', payload)
+      
       const response = await fetch(url, {
         method,
         headers: {
@@ -183,11 +191,15 @@ export default function UsersSettingsPage() {
         body: JSON.stringify(payload),
       })
 
+      console.log('📡 Response status:', response.status)
+      
       if (response.ok) {
+        console.log('✅ User saved successfully')
         await fetchUsers()
         handleFormClose()
       } else {
         const error = await response.json()
+        console.error('❌ Save failed:', error)
         alert(`Error: ${error.message || 'Failed to save user'}`)
       }
     } catch (error) {
@@ -337,7 +349,7 @@ export default function UsersSettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Filter by Role
                 </label>
-                <Select value={roleFilter} onChange={(value) => setRoleFilter(value)}>
+                <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
                   <option value="all">All Roles</option>
                   {availableRoles.map(role => (
                     <option key={role.value} value={role.value}>
@@ -477,12 +489,22 @@ export default function UsersSettingsPage() {
 
           {/* User Form Modal */}
           {showForm && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[9999]">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
                 <div className="mt-3">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    {editingUser ? 'Edit User' : 'Add New User'}
-                  </h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {editingUser ? 'Edit User' : 'Add New User'}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleFormClose}
+                      className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                      aria-label="Close"
+                    >
+                      ×
+                    </button>
+                  </div>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -544,7 +566,7 @@ export default function UsersSettingsPage() {
                       </label>
                       <Select
                         value={formData.role}
-                        onChange={(value) => setFormData({...formData, role: value})}
+                        onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
                       >
                         {availableRoles.map(role => (
                           <option key={role.value} value={role.value}>
