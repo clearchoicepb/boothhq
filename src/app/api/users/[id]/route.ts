@@ -49,17 +49,25 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('PUT /api/users/[id] - Full session:', JSON.stringify(session, null, 2))
     console.log('PUT /api/users/[id] - Session user role:', session.user.role)
+    console.log('PUT /api/users/[id] - Session user role type:', typeof session.user.role)
     console.log('PUT /api/users/[id] - User ID being edited:', params.id)
     console.log('PUT /api/users/[id] - Session user ID:', session.user.id)
 
     // Check if user has admin role or is editing themselves
+    console.log('PUT /api/users/[id] - Testing canManageUsers with role:', session.user.role)
+    console.log('PUT /api/users/[id] - canManageUsers result:', canManageUsers(session.user.role as UserRole))
+    console.log('PUT /api/users/[id] - isAdmin result:', isAdmin(session.user.role as UserRole))
+    
     if (!canManageUsers(session.user.role as UserRole) && session.user.id !== params.id) {
       console.log('PUT /api/users/[id] - Permission denied - not admin and not self')
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     const body = await request.json()
+    console.log('PUT /api/users/[id] - Request body:', JSON.stringify(body, null, 2))
+    
     const {
       email,
       password_hash,
