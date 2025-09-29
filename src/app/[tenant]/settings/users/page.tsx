@@ -685,7 +685,7 @@ export default function UsersSettingsPage() {
                         </label>
                         <Select
                           value={formData.employee_type}
-                          onChange={(value) => setFormData({...formData, employee_type: value as 'W2' | '1099' | 'International'})}
+                          onChange={(e) => setFormData({...formData, employee_type: e.target.value as 'W2' | '1099' | 'International'})}
                         >
                           <option value="W2">W2 Employee</option>
                           <option value="1099">1099 Contractor</option>
