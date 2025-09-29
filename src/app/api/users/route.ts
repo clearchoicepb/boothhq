@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { ROLES, isAdmin, type UserRole } from '@/lib/roles'
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin role
-    if (session.user.role !== 'admin') {
+    if (!isAdmin(session.user.role as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

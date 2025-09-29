@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
+import { ROLES, ROLES_WITH_LABELS, type UserRole } from '@/lib/roles'
 import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Building, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +45,7 @@ interface UserFormData {
   password: string
   first_name: string
   last_name: string
-  role: string
+  role: UserRole
   phone: string
   is_active: boolean
   // Additional staffing fields
@@ -77,7 +78,7 @@ export default function UsersSettingsPage() {
     password: '',
     first_name: '',
     last_name: '',
-    role: 'user',
+    role: ROLES.USER,
     phone: '',
     is_active: true,
     address_line_1: '',
@@ -100,26 +101,8 @@ export default function UsersSettingsPage() {
 
   const tenantSubdomain = params.tenant as string
 
-  // Load available roles from settings
-  const getAvailableRoles = () => {
-    // Default system roles
-    const defaultRoles = [
-      { value: 'admin', label: 'Administrator' },
-      { value: 'sales_rep', label: 'Sales Representative' },
-      { value: 'operations_manager', label: 'Operations Manager' },
-      { value: 'event_staff', label: 'Event Staff' }
-    ]
-
-    // Custom roles from settings
-    const customRoles = settings?.roles?.map((role: any) => ({
-      value: role.id,
-      label: role.name
-    })) || []
-
-    return [...defaultRoles, ...customRoles]
-  }
-
-  const availableRoles = getAvailableRoles()
+  // Use centralized role system
+  const availableRoles = ROLES_WITH_LABELS
 
   useEffect(() => {
     fetchUsers()
@@ -282,7 +265,7 @@ export default function UsersSettingsPage() {
       password: '',
       first_name: '',
       last_name: '',
-      role: 'user',
+      role: ROLES.USER,
       phone: '',
       is_active: true,
       address_line_1: '',
