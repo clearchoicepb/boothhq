@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!email || !password_hash || !first_name || !last_name || !tenant_id) {
+    if (!email || !first_name || !last_name || !tenant_id) {
       return NextResponse.json({ 
-        error: 'Missing required fields: email, password, first_name, last_name' 
+        error: 'Missing required fields: email, first_name, last_name' 
       }, { status: 400 })
     }
 
@@ -93,34 +93,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
     }
 
-    // Create new user
+    // Create new user (only with fields that actually exist in the database)
     const { data: user, error } = await supabase
       .from('users')
       .insert({
         email,
-        password_hash, // In production, hash this password
         first_name,
         last_name,
         role: role || 'user',
-        phone,
-        is_active: is_active !== false,
-        address_line_1,
-        address_line_2,
-        city,
-        state,
-        zip_code,
-        job_title,
-        department,
-        employee_type,
-        pay_rate,
-        payroll_info,
-        hire_date,
-        emergency_contact_name,
-        emergency_contact_phone,
-        emergency_contact_relationship,
         tenant_id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'active'
       })
       .select()
       .single()

@@ -94,32 +94,16 @@ export async function PUT(
 
     const supabase = createServerSupabaseClient()
 
-    // Prepare update data
+    // Prepare update data (only with fields that actually exist in the database)
     const updateData: any = {
       first_name,
       last_name,
-      phone,
-      address_line_1,
-      address_line_2,
-      city,
-      state,
-      zip_code,
-      job_title,
-      department,
-      employee_type,
-      pay_rate,
-      payroll_info,
-      hire_date,
-      emergency_contact_name,
-      emergency_contact_phone,
-      emergency_contact_relationship,
       updated_at: new Date().toISOString()
     }
 
-    // Only admins can change role and active status
+    // Only admins can change role
     if (isAdmin(session.user.role as UserRole)) {
       updateData.role = role
-      updateData.is_active = is_active
     }
 
     // Only update email if it's not already taken
@@ -138,10 +122,8 @@ export async function PUT(
       updateData.email = email
     }
 
-    // Only update password if provided
-    if (password_hash && password_hash.trim()) {
-      updateData.password_hash = password_hash // In production, hash this password
-    }
+    // Note: Password field doesn't exist in current schema
+    // TODO: Add password field when migrations are applied
 
     const { data: user, error } = await supabase
       .from('users')
