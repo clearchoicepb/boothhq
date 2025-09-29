@@ -137,3 +137,4 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_lead_id ON opportunities(lead_id);
 }
 
 applySafeMigration()
+

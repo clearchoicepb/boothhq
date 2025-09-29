@@ -138,3 +138,4 @@ async function checkSupabaseConfig() {
 }
 
 checkSupabaseConfig()
+

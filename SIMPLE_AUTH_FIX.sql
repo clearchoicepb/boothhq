@@ -49,3 +49,4 @@ ON CONFLICT (tenant_id, setting_key) DO NOTHING;
 
 -- Verify setup
 SELECT 'Demo tenant and user created successfully!' as result;
+

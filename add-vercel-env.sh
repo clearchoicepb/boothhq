@@ -27,3 +27,4 @@ vercel env add COMPANY_PHONE production
 echo "✅ Environment variables added!"
 echo "🚀 Now redeploy your application:"
 echo "   vercel --prod"
+

@@ -98,3 +98,4 @@ FOR SELECT USING (id = (auth.jwt() ->> 'tenant_id')::uuid);
 }
 
 checkRLSPolicies()
+

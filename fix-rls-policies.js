@@ -125,3 +125,4 @@ ALTER TABLE leads DISABLE ROW LEVEL SECURITY;
 }
 
 fixRLSPolicies()
+

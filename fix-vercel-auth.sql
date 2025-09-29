@@ -28,3 +28,4 @@ BEGIN
     RAISE NOTICE 'RLS disabled for authentication tables. Vercel authentication should now work!';
     RAISE NOTICE 'Login credentials: admin@default.com / password123 / default';
 END $$;
+
