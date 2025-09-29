@@ -49,7 +49,7 @@ export async function PUT(
     }
 
     // Check if user has admin role or is editing themselves
-    if (session.user.role !== 'admin' && session.user.role !== 'tenant_admin' && session.user.id !== params.id) {
+    if (session.user.role !== 'admin' && session.user.id !== params.id) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -103,7 +103,7 @@ export async function PUT(
     }
 
     // Only admins can change role and active status
-    if (session.user.role === 'admin' || session.user.role === 'tenant_admin') {
+    if (session.user.role === 'admin') {
       updateData.role = role
       updateData.is_active = is_active
     }
@@ -163,7 +163,7 @@ export async function DELETE(
     }
 
     // Check if user has admin role
-    if (session.user.role !== 'admin' && session.user.role !== 'tenant_admin') {
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

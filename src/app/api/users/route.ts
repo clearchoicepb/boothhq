@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin role
-    if (session.user.role !== 'admin' && session.user.role !== 'tenant_admin') {
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
