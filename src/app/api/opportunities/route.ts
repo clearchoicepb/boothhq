@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
     if (cleanedOpportunityData.actual_close_date === '') {
       cleanedOpportunityData.actual_close_date = null
     }
+    
+    // Convert empty string dates to null and handle date_type
     if (cleanedOpportunityData.event_date === '') {
       cleanedOpportunityData.event_date = null
     }
@@ -91,35 +93,21 @@ export async function POST(request: NextRequest) {
     if (cleanedOpportunityData.final_date === '') {
       cleanedOpportunityData.final_date = null
     }
-
-    // Fix date_type values to match database constraints
+    
+    // Handle date_type mapping from form values to database values
     if (cleanedOpportunityData.date_type === 'single_day') {
       cleanedOpportunityData.date_type = 'single'
-      // For single day, set event_date from first event_dates entry if available
-      if (event_dates && event_dates.length > 0 && event_dates[0].event_date) {
-        cleanedOpportunityData.event_date = event_dates[0].event_date
-      }
-      // Clear other date fields
-      cleanedOpportunityData.initial_date = null
-      cleanedOpportunityData.final_date = null
-    } else if (cleanedOpportunityData.date_type === 'same_location_sequential' || 
-               cleanedOpportunityData.date_type === 'same_location_non_sequential' || 
-               cleanedOpportunityData.date_type === 'multiple_locations') {
+    } else if (['same_location_sequential', 'same_location_non_sequential', 'multiple_locations'].includes(cleanedOpportunityData.date_type)) {
       cleanedOpportunityData.date_type = 'multiple'
-      // For multiple days, set initial_date and final_date from event_dates
-      if (event_dates && event_dates.length > 0) {
-        const sortedDates = event_dates
-          .filter(d => d.event_date)
-          .map(d => d.event_date)
-          .sort()
-        if (sortedDates.length > 0) {
-          cleanedOpportunityData.initial_date = sortedDates[0]
-          cleanedOpportunityData.final_date = sortedDates[sortedDates.length - 1]
-        }
-      }
-      // Clear event_date for multiple day events
-      cleanedOpportunityData.event_date = null
     }
+    
+    // Remove fields that don't exist in the current database schema (mailing fields)
+    delete cleanedOpportunityData.mailing_address_line1
+    delete cleanedOpportunityData.mailing_address_line2
+    delete cleanedOpportunityData.mailing_city
+    delete cleanedOpportunityData.mailing_state
+    delete cleanedOpportunityData.mailing_postal_code
+    delete cleanedOpportunityData.mailing_country
 
     // Create the opportunity first
     console.log('Creating opportunity with cleaned data:', cleanedOpportunityData)

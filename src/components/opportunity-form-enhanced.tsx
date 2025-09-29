@@ -178,13 +178,19 @@ export function OpportunityFormEnhanced({
     setIsSubmitting(true)
 
     try {
+      // Only include fields that exist in the current database schema
       const opportunityData = {
-        ...formData,
-        amount: parseFloat(formData.amount),
+        name: formData.name,
+        description: formData.description,
+        amount: parseFloat(formData.amount) || null,
+        stage: formData.stage || 'prospecting',
+        probability: parseInt(formData.probability) || 50,
+        expected_close_date: formData.expected_close_date || null,
+        actual_close_date: formData.actual_close_date || null,
+        event_type: formData.event_type || null,
         lead_id: customer?.type === 'lead' ? customer.id : (opportunity?.lead_id || null),
         account_id: customer?.type === 'account' ? customer.id : (opportunity?.account_id || null),
-        contact_id: contact?.id || (opportunity?.contact_id || null),
-        event_dates: eventDates.filter(date => date.event_date)
+        contact_id: contact?.id || (opportunity?.contact_id || null)
       }
 
       if (opportunity && onSubmit) {

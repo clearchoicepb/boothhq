@@ -28,6 +28,18 @@ export const eventFormConfig: FormConfig<Event> = {
       gridCols: 1
     },
     {
+      name: 'date_type',
+      type: 'select',
+      label: 'Event Duration',
+      options: [
+        { value: 'single_day', label: 'Single Day' },
+        { value: 'same_location_sequential', label: 'Same Location - Sequential Dates' },
+        { value: 'same_location_non_sequential', label: 'Series of Events - Same Location' },
+        { value: 'multiple_locations', label: 'Multiple Events - Multiple Locations' }
+      ],
+      gridCols: 2
+    },
+    {
       name: 'start_date',
       type: 'datetime',
       label: 'Start Date & Time',

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { LeadFormSequential } from '@/components/lead-form-sequential'
 import { OpportunityFormEnhanced } from '@/components/opportunity-form-enhanced'
+import { EntityForm } from '@/components/forms'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
 
@@ -107,26 +108,16 @@ export default function NewOpportunitySequentialPage() {
   const handleOpportunitySaved = async (opportunityData: any) => {
     try {
       console.log('Creating opportunity with data:', opportunityData)
-      const response = await fetch('/api/opportunities', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(opportunityData),
-      })
-
-      if (response.ok) {
-        const newOpportunity = await response.json()
-        console.log('Opportunity created successfully:', newOpportunity)
-        router.push(`/${tenantSubdomain}/opportunities/${newOpportunity.id}`)
-      } else {
-        const errorData = await response.json()
-        console.error('Failed to create opportunity:', errorData)
-        alert(`Failed to create opportunity: ${errorData.error || 'Unknown error'}`)
-      }
+      
+      // Use the polymorphic API client
+      const { apiClient } = await import('@/lib/polymorphic-api-client')
+      const newOpportunity = await apiClient.create('opportunities', opportunityData)
+      
+      console.log('Opportunity created successfully:', newOpportunity)
+      router.push(`/${tenantSubdomain}/opportunities/${newOpportunity.id}`)
     } catch (error) {
       console.error('Error creating opportunity:', error)
-      alert('Error creating opportunity. Please try again.')
+      alert(`Error creating opportunity: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -205,11 +196,22 @@ export default function NewOpportunitySequentialPage() {
                 {createdLead.name} has been added as a lead. Now let's create the opportunity.
               </p>
             </div>
-            <OpportunityFormEnhanced
+            <EntityForm
+              entity="opportunities"
+              initialData={{
+                name: '',
+                description: '',
+                stage: 'prospecting',
+                amount: 0,
+                probability: 50,
+                account_id: createdLead.type === 'account' ? createdLead.id : null,
+                lead_id: createdLead.type === 'lead' ? createdLead.id : null
+              }}
               isOpen={true}
               onClose={() => setStep('lead-creation')}
-              onSave={handleOpportunitySaved}
-              customer={createdLead}
+              onSubmit={handleOpportunitySaved}
+              title="Create Opportunity"
+              submitLabel="Create Opportunity"
             />
           </div>
         )}

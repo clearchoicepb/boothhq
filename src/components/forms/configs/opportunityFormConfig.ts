@@ -87,10 +87,16 @@ export const opportunityFormConfig: FormConfig<Opportunity> = {
       gridCols: 1
     },
     {
-      name: 'event_date',
-      type: 'date',
-      label: 'Event Date',
-      gridCols: 1
+      name: 'date_type',
+      type: 'select',
+      label: 'Event Duration',
+      options: [
+        { value: 'single_day', label: 'Single Day' },
+        { value: 'same_location_sequential', label: 'Same Location - Sequential Dates' },
+        { value: 'same_location_non_sequential', label: 'Series of Events - Same Location' },
+        { value: 'multiple_locations', label: 'Multiple Events - Multiple Locations' }
+      ],
+      gridCols: 2
     }
   ],
   sections: [
@@ -100,22 +106,7 @@ export const opportunityFormConfig: FormConfig<Opportunity> = {
     },
     {
       title: 'Event Information',
-      fields: [
-        'date_type',
-        'initial_date',
-        'final_date'
-      ]
-    },
-    {
-      title: 'Mailing Information',
-      fields: [
-        'mailing_address_line1',
-        'mailing_address_line2',
-        'mailing_city',
-        'mailing_state',
-        'mailing_postal_code',
-        'mailing_country'
-      ]
+      fields: ['event_date', 'initial_date', 'final_date']
     }
   ],
   relatedData: [
@@ -148,61 +139,24 @@ opportunityFormConfig.fields.push(
     gridCols: 2
   },
   {
-    name: 'date_type',
-    type: 'select',
-    label: 'Date Type',
-    options: [
-      { value: 'single', label: 'Single Date' },
-      { value: 'range', label: 'Date Range' }
-    ],
-    section: 'Event Information'
+    name: 'event_date',
+    type: 'date',
+    label: 'Event Date',
+    section: 'Event Information',
+    gridCols: 1
   },
   {
     name: 'initial_date',
     type: 'date',
-    label: 'Initial Date',
-    section: 'Event Information'
+    label: 'Start Date',
+    section: 'Event Information',
+    gridCols: 1
   },
   {
     name: 'final_date',
     type: 'date',
-    label: 'Final Date',
-    section: 'Event Information'
-  },
-  {
-    name: 'mailing_address_line1',
-    type: 'text',
-    label: 'Mailing Address Line 1',
-    section: 'Mailing Information'
-  },
-  {
-    name: 'mailing_address_line2',
-    type: 'text',
-    label: 'Mailing Address Line 2',
-    section: 'Mailing Information'
-  },
-  {
-    name: 'mailing_city',
-    type: 'text',
-    label: 'Mailing City',
-    section: 'Mailing Information'
-  },
-  {
-    name: 'mailing_state',
-    type: 'text',
-    label: 'Mailing State',
-    section: 'Mailing Information'
-  },
-  {
-    name: 'mailing_postal_code',
-    type: 'text',
-    label: 'Mailing Postal Code',
-    section: 'Mailing Information'
-  },
-  {
-    name: 'mailing_country',
-    type: 'text',
-    label: 'Mailing Country',
-    section: 'Mailing Information'
+    label: 'End Date',
+    section: 'Event Information',
+    gridCols: 1
   }
 )
