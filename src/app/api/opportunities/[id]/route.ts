@@ -75,9 +75,8 @@ export async function PUT(
       'contact_id', 'lead_id', 'event_type', 'date_type',
       'event_date', 'initial_date', 'final_date',
       'is_converted', 'converted_at',
-      'converted_event_id', 'converted_from_opportunity_id',
-      'updated_by', 'created_by'
-      // mailing_address_* fields not yet in schema
+      'converted_event_id', 'converted_from_opportunity_id'
+      // Not yet in schema: 'updated_by', 'created_by', 'mailing_address_*'
     ]
 
     const filteredData = Object.keys(opportunityData)
@@ -91,11 +90,6 @@ export async function PUT(
     const updateData = {
       ...filteredData,
       updated_at: new Date().toISOString()
-    }
-
-    // Only add updated_by if the field exists in the schema
-    if (allowedFields.includes('updated_by')) {
-      updateData.updated_by = session.user.id
     }
 
     const { data, error } = await supabase
