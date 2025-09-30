@@ -86,6 +86,25 @@ export async function PUT(
         return obj
       }, {} as any)
 
+    // Transform date_type from form values to database values
+    if (filteredData.date_type === 'single_day') {
+      filteredData.date_type = 'single'
+    } else if (['same_location_sequential', 'same_location_non_sequential', 'multiple_locations'].includes(filteredData.date_type)) {
+      filteredData.date_type = 'multiple'
+    }
+
+    // Populate initial_date and final_date from event_dates if date_type is 'multiple'
+    if (event_dates && Array.isArray(event_dates) && event_dates.length > 0) {
+      const dates = event_dates.map(d => new Date(d.event_date)).sort((a, b) => a.getTime() - b.getTime())
+      filteredData.initial_date = dates[0].toISOString().split('T')[0]
+      filteredData.final_date = dates[dates.length - 1].toISOString().split('T')[0]
+      filteredData.event_date = null // Clear single event date
+    } else if (filteredData.date_type === 'single' && filteredData.event_date) {
+      // Ensure initial/final are null for single day events
+      filteredData.initial_date = null
+      filteredData.final_date = null
+    }
+
     // Update the opportunity
     const updateData = {
       ...filteredData,
