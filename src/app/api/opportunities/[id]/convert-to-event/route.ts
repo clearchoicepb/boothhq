@@ -22,10 +22,13 @@ export async function POST(
 
     // Start a transaction-like process
     try {
-      // 1. Get the opportunity data
+      // 1. Get the opportunity data with event_dates
       const { data: opportunity, error: oppError } = await supabase
         .from('opportunities')
-        .select('*')
+        .select(`
+          *,
+          event_dates(*)
+        `)
         .eq('id', opportunityId)
         .eq('tenant_id', session.user.tenantId)
         .single()
@@ -71,13 +74,22 @@ export async function POST(
         }, { status: 500 })
       }
 
-      // 3. Create event dates if provided
+      // 3. Copy event dates from opportunity to event
       let createdEventDates = []
-      if (eventDates && eventDates.length > 0) {
-        const eventDatesData = eventDates.map((date: any) => ({
-          ...date,
+      const opportunityEventDates = opportunity.event_dates || eventDates || []
+
+      if (opportunityEventDates.length > 0) {
+        const eventDatesData = opportunityEventDates.map((date: any) => ({
+          tenant_id: session.user.tenantId,
           event_id: event.id,
-          tenant_id: session.user.tenantId
+          location_id: date.location_id,
+          event_date: date.event_date,
+          start_time: date.start_time,
+          end_time: date.end_time,
+          notes: date.notes || null,
+          status: 'scheduled',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }))
 
         const { data: datesData, error: datesError } = await supabase

@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  ArrowLeft, 
-  Edit, 
-  Mail, 
-  Phone, 
+import {
+  ArrowLeft,
+  Edit,
+  Mail,
+  Phone,
   Calendar,
   Building2,
   User,
@@ -20,9 +20,11 @@ import { ActivityTimeline } from '@/components/activity-timeline'
 import { RelationshipManager } from '@/components/relationship-manager'
 import { DataValidation } from '@/components/data-validation'
 import { Button } from '@/components/ui/button'
+import { LeadConversionModal } from '@/components/lead-conversion-modal'
 
 interface Lead {
   id: string
+  tenant_id: string
   lead_type?: 'personal' | 'company'
   first_name: string
   last_name: string
@@ -34,6 +36,11 @@ interface Lead {
   source: string | null
   status: 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted'
   assigned_to: string | null
+  notes: string | null
+  is_converted: boolean
+  converted_at: string | null
+  converted_account_id: string | null
+  converted_contact_id: string | null
   created_at: string
   updated_at: string
 }
@@ -42,12 +49,14 @@ export default function LeadDetailPage() {
   const { data: session, status } = useSession()
   const { tenant, loading: tenantLoading } = useTenant()
   const params = useParams()
+  const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const leadId = params.id as string
 
   const [lead, setLead] = useState<Lead | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isConversionModalOpen, setIsConversionModalOpen] = useState(false)
 
   useEffect(() => {
     if (session && tenant && leadId) {
@@ -90,6 +99,32 @@ export default function LeadDetailPage() {
         return 'bg-purple-100 text-purple-800'
       default:
         return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const handleConvertLead = async (conversionData: any) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/convert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(conversionData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to convert lead')
+      }
+
+      const result = await response.json()
+
+      // Redirect to the new account page
+      if (result.account?.id) {
+        router.push(`/${tenantSubdomain}/accounts/${result.account.id}`)
+      }
+    } catch (error) {
+      console.error('Error converting lead:', error)
+      throw error
     }
   }
 
@@ -167,7 +202,10 @@ export default function LeadDetailPage() {
               </div>
               <div className="flex items-center space-x-3">
                 {lead.status !== 'converted' && (
-                  <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                  <Button
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    onClick={() => setIsConversionModalOpen(true)}
+                  >
                     <ArrowRight className="h-4 w-4 mr-2" />
                     Convert
                   </Button>
@@ -330,7 +368,10 @@ export default function LeadDetailPage() {
                   </Button>
 
                   {lead.status !== 'converted' && (
-                    <Button className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white">
+                    <Button
+                      className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={() => setIsConversionModalOpen(true)}
+                    >
                       <ArrowRight className="h-4 w-4 mr-2" />
                       Convert Lead
                     </Button>
@@ -364,7 +405,7 @@ export default function LeadDetailPage() {
               </div>
 
               {/* Related Records */}
-              <RelationshipManager 
+              <RelationshipManager
                 recordId={lead.id}
                 recordType="leads"
                 tenantSubdomain={tenantSubdomain}
@@ -372,6 +413,16 @@ export default function LeadDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Lead Conversion Modal */}
+        {lead && (
+          <LeadConversionModal
+            lead={lead}
+            isOpen={isConversionModalOpen}
+            onClose={() => setIsConversionModalOpen(false)}
+            onConvert={handleConvertLead}
+          />
+        )}
       </div>
     </AppLayout>
   )

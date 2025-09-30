@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
       cleanedOpportunityData.date_type = 'multiple'
     }
     
-    // Remove fields that don't exist in the current database schema (mailing fields)
+    // Remove fields that don't exist in the current database schema
+    delete cleanedOpportunityData.lead_id // Remove until migrations are run
     delete cleanedOpportunityData.mailing_address_line1
     delete cleanedOpportunityData.mailing_address_line2
     delete cleanedOpportunityData.mailing_city

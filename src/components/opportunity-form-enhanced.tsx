@@ -85,6 +85,8 @@ export function OpportunityFormEnhanced({
     { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }
   ])
 
+  // Shared location for same_location_* types
+  const [sharedLocationId, setSharedLocationId] = useState<string>('')
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -155,6 +157,11 @@ export function OpportunityFormEnhanced({
     if (!formData.event_type) newErrors.event_type = 'Event type is required'
     if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Valid amount is required'
 
+    // Validate shared location for same_location types
+    if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
+      if (!sharedLocationId) newErrors.shared_location = 'Location is required'
+    }
+
     // Validate event dates based on date_type
     if (formData.date_type === 'single_day') {
       if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
@@ -165,6 +172,11 @@ export function OpportunityFormEnhanced({
         if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
         if (!date.start_time) newErrors[`start_time_${index}`] = `Start time ${index + 1} is required`
         if (!date.end_time) newErrors[`end_time_${index}`] = `End time ${index + 1} is required`
+
+        // For multiple_locations, validate per-date location
+        if (formData.date_type === 'multiple_locations' && !date.location_id) {
+          newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
+        }
       })
     }
 
@@ -174,22 +186,33 @@ export function OpportunityFormEnhanced({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     setIsSubmitting(true)
 
     try {
+      // For single_day and same_location types, populate location_id from shared location
+      let finalEventDates = eventDates
+      if (formData.date_type === 'single_day' || formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
+        finalEventDates = eventDates.map(date => ({
+          ...date,
+          location_id: sharedLocationId || date.location_id
+        }))
+      }
+
       // Only include fields that exist in the current database schema
       const opportunityData = {
         name: formData.name,
         description: formData.description,
         amount: parseFloat(formData.amount) || null,
         stage: formData.stage || 'prospecting',
-        probability: parseInt(formData.probability) || 50,
+        probability: parseInt(formData.probability.toString()) || 50,
         expected_close_date: formData.expected_close_date || null,
         actual_close_date: formData.actual_close_date || null,
         event_type: formData.event_type || null,
+        date_type: formData.date_type,
+        event_dates: finalEventDates.filter(date => date.event_date),
         lead_id: customer?.type === 'lead' ? customer.id : (opportunity?.lead_id || null),
         account_id: customer?.type === 'account' ? customer.id : (opportunity?.account_id || null),
         contact_id: contact?.id || (opportunity?.contact_id || null)
@@ -336,6 +359,27 @@ export function OpportunityFormEnhanced({
           </Select>
         </div>
 
+        {/* Shared Location for single_day and same_location types */}
+        {(formData.date_type === 'single_day' || formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Location {formData.date_type !== 'single_day' && '*'}
+            </label>
+            <LocationSelector
+              selectedLocationId={sharedLocationId || null}
+              onLocationChange={(locationId) => {
+                setSharedLocationId(locationId || '')
+                // Clear error when location is selected
+                if (errors.shared_location) {
+                  setErrors(prev => ({ ...prev, shared_location: '' }))
+                }
+              }}
+              placeholder={formData.date_type === 'single_day' ? "Select location (optional)" : "Select location for all dates"}
+            />
+            {errors.shared_location && <p className="text-red-500 text-xs mt-1">{errors.shared_location}</p>}
+          </div>
+        )}
+
         {/* Event Dates */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -373,7 +417,7 @@ export function OpportunityFormEnhanced({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${formData.date_type === 'multiple_locations' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Date *
@@ -419,13 +463,28 @@ export function OpportunityFormEnhanced({
                   )}
                 </div>
 
-                <div>
-                  <LocationSelector
-                    selectedLocationId={date.location_id || null}
-                    onLocationChange={(locationId) => handleEventDateChange(index, 'location_id', locationId || '')}
-                    placeholder="Select location for this date"
-                  />
-                </div>
+                {/* Only show per-date location selector for multiple_locations type */}
+                {formData.date_type === 'multiple_locations' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Location *
+                    </label>
+                    <LocationSelector
+                      selectedLocationId={date.location_id || null}
+                      onLocationChange={(locationId) => {
+                        handleEventDateChange(index, 'location_id', locationId || '')
+                        // Clear error when location is selected
+                        if (errors[`location_${index}`]) {
+                          setErrors(prev => ({ ...prev, [`location_${index}`]: '' }))
+                        }
+                      }}
+                      placeholder="Select location"
+                    />
+                    {errors[`location_${index}`] && (
+                      <p className="text-red-500 text-xs mt-1">{errors[`location_${index}`]}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="mt-3">

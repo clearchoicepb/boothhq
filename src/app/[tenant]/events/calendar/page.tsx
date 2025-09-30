@@ -11,13 +11,17 @@ import { useParams } from 'next/navigation'
 
 interface Event {
   id: string
-  name: string
-  event_date: string
-  start_time: string
-  end_time: string
+  title: string
+  start_date: string
+  end_date: string | null
   status: string
-  venue_name: string
-  account_name: string
+  location: string | null
+  account_name: string | null
+  event_dates?: Array<{
+    event_date: string
+    start_time: string | null
+    end_time: string | null
+  }>
 }
 
 export default function EventsCalendarPage() {

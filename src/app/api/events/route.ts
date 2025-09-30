@@ -28,10 +28,20 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         accounts!events_account_id_fkey(name),
-        contacts!events_contact_id_fkey(first_name, last_name)
+        contacts!events_contact_id_fkey(first_name, last_name),
+        event_dates(
+          id,
+          event_date,
+          start_time,
+          end_time,
+          location_id,
+          notes,
+          status,
+          locations(id, name, address_line1, city, state)
+        )
       `)
       .eq('tenant_id', session.user.tenantId)
-      .order('created_at', { ascending: true })
+      .order('start_date', { ascending: true })
 
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter)

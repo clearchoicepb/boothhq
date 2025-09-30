@@ -124,48 +124,34 @@ export default function OpportunityDetailPage() {
   const handleConvertToEvent = async () => {
     if (!opportunity) return
 
+    if (!confirm('Convert this opportunity to an event? This will create an event record and mark the opportunity as converted.')) {
+      return
+    }
+
     try {
       const response = await fetch(`/api/opportunities/${opportunityId}/convert-to-event`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          eventData: {
-            title: opportunity.name,
-            description: opportunity.description,
-            event_type: opportunity.event_type || 'corporate',
-            status: 'scheduled',
-            date_type: (opportunity as any).date_type || 'single_day',
-            start_date: (opportunity as any).event_date || (opportunity as any).initial_date,
-            end_date: (opportunity as any).final_date,
-            mailing_address_line1: (opportunity as any).mailing_address_line1,
-            mailing_address_line2: (opportunity as any).mailing_address_line2,
-            mailing_city: (opportunity as any).mailing_city,
-            mailing_state: (opportunity as any).mailing_state,
-            mailing_postal_code: (opportunity as any).mailing_postal_code,
-            mailing_country: (opportunity as any).mailing_country
-          }
-        }),
+        body: JSON.stringify({})
       })
 
       if (response.ok) {
         const result = await response.json()
-        
-        // Refresh the opportunity data
-        await fetchOpportunity()
-        
-        // Navigate to the new event
-        router.push(`/${tenantSubdomain}/events/${result.event.id}`)
-        
+
         // Show success message
         alert('Opportunity converted to event successfully!')
+
+        // Navigate to the events list (since we don't have event detail page yet)
+        router.push(`/${tenantSubdomain}/events`)
       } else {
-        throw new Error('Failed to convert opportunity to event')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to convert opportunity to event')
       }
     } catch (error) {
       console.error('Error converting opportunity to event:', error)
-      alert('Failed to convert opportunity to event. Please try again.')
+      alert(`Failed to convert opportunity to event: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

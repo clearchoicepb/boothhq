@@ -9,18 +9,35 @@ import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon } from 'lucid
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
+interface EventDate {
+  id: string
+  event_date: string
+  start_time: string | null
+  end_time: string | null
+  location_id: string | null
+  notes: string | null
+  status: string
+  locations?: {
+    id: string
+    name: string
+    address_line1: string | null
+    city: string | null
+    state: string | null
+  }
+}
+
 interface Event {
   id: string
-  name: string
+  title: string
   event_type: string
-  event_date: string
-  start_time: string
-  end_time: string
+  start_date: string
+  end_date: string | null
+  date_type: string | null
   status: string
-  venue_name: string
-  account_name: string
-  contact_name: string
-  total_cost: number
+  location: string | null
+  account_name: string | null
+  contact_name: string | null
+  event_dates?: EventDate[]
   created_at: string
 }
 
@@ -101,8 +118,8 @@ export default function EventsPage() {
   }
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = (event.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (event.venue_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (event.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (event.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (event.account_name && event.account_name.toLowerCase().includes(searchTerm.toLowerCase()))
     return matchesSearch
   })
@@ -239,77 +256,91 @@ export default function EventsPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cost</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredEvents.map((event) => (
-                    <tr key={event.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.name || 'Untitled Event'}>
-                            {event.name || 'Untitled Event'}
+                  {filteredEvents.map((event) => {
+                    const eventDateCount = event.event_dates?.length || 0
+                    const firstDate = event.event_dates?.[0] || null
+                    const displayDate = event.start_date ? new Date(event.start_date).toLocaleDateString() : 'No date'
+                    const displayLocation = firstDate?.locations?.name || event.location || 'No location'
+
+                    return (
+                      <tr key={event.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.title || 'Untitled Event'}>
+                              {event.title || 'Untitled Event'}
+                            </div>
+                            <div className="text-sm text-gray-500 capitalize">{event.event_type || 'Other'}</div>
                           </div>
-                          <div className="text-sm text-gray-500 capitalize">{event.event_type || 'Other'}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>{event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date'}</div>
-                        <div className="text-gray-500">
-                          {event.start_time || '--'} - {event.end_time || '--'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.venue_name || 'No venue'}>
-                        {event.venue_name || 'No venue'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.account_name || 'No account'}>
-                        {event.account_name || 'No account'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          event.status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
-                          event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {event.status || 'Unknown'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${event.total_cost?.toLocaleString() || '0'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Link href={`/${tenantSubdomain}/events/${event.id}`}>
-                            <button 
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div>{displayDate}</div>
+                          {eventDateCount > 1 && (
+                            <div className="text-xs text-gray-500">
+                              +{eventDateCount - 1} more date{eventDateCount > 2 ? 's' : ''}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 truncate max-w-32" title={displayLocation}>
+                          {displayLocation}
+                          {event.date_type && event.date_type !== 'single_day' && (
+                            <div className="text-xs text-gray-500 mt-1 capitalize">
+                              {event.date_type.replace(/_/g, ' ')}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.account_name || 'No account'}>
+                          {event.account_name || 'No account'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            event.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                            event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {event.status || 'Unknown'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {eventDateCount > 0 ? `${eventDateCount} date${eventDateCount > 1 ? 's' : ''}` : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <Link href={`/${tenantSubdomain}/events/${event.id}`}>
+                              <button
+                                className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
+                                aria-label="View event details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            </Link>
+                            <button
                               className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
-                              aria-label="View event details"
+                              aria-label="Edit event"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </button>
-                          </Link>
-                          <button 
-                            className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
-                            aria-label="Edit event"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteEvent(event.id)}
-                            className="text-red-600 hover:text-red-800 cursor-pointer transition-colors duration-150 active:scale-95"
-                            aria-label="Delete event"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            <button
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="text-red-600 hover:text-red-800 cursor-pointer transition-colors duration-150 active:scale-95"
+                              aria-label="Delete event"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

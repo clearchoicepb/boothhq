@@ -265,28 +265,37 @@ export const entityConfigs: Record<string, EntityConfig> = {
     transformRequest: (data) => {
       // Transform request data to match database constraints
       const transformed = { ...data }
-      
+
       // Remove status field if present (opportunities use stage instead)
       if (transformed.status) {
         delete transformed.status
       }
-      
+
+      // Remove fields that don't exist in the current database schema
+      delete transformed.lead_id // Remove until migrations are run
+      delete transformed.mailing_address_line1
+      delete transformed.mailing_address_line2
+      delete transformed.mailing_city
+      delete transformed.mailing_state
+      delete transformed.mailing_postal_code
+      delete transformed.mailing_country
+
       // Convert empty date strings to null
       if (transformed.expected_close_date === '') transformed.expected_close_date = null
       if (transformed.actual_close_date === '') transformed.actual_close_date = null
       if (transformed.event_date === '') transformed.event_date = null
       if (transformed.initial_date === '') transformed.initial_date = null
       if (transformed.final_date === '') transformed.final_date = null
-      
+
       // Fix date_type values to match database constraints
       if (transformed.date_type === 'single_day') {
         transformed.date_type = 'single'
-      } else if (transformed.date_type === 'same_location_sequential' || 
-                 transformed.date_type === 'same_location_non_sequential' || 
+      } else if (transformed.date_type === 'same_location_sequential' ||
+                 transformed.date_type === 'same_location_non_sequential' ||
                  transformed.date_type === 'multiple_locations') {
         transformed.date_type = 'multiple'
       }
-      
+
       return transformed
     },
     transformResponse: (data) => {

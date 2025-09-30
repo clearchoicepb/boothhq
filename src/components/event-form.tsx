@@ -18,12 +18,12 @@ interface EventFormProps {
 
 export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) {
   const [formData, setFormData] = useState<EventInsert>({
-    name: '',
+    tenant_id: '',
+    title: '',
     event_type: 'meeting',
-    event_date: '',
-    start_time: '',
-    end_time: '',
-    venue_name: '',
+    start_date: '',
+    end_date: null,
+    location: '',
     status: 'scheduled',
     account_id: null,
     contact_id: null,
@@ -44,12 +44,12 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
   useEffect(() => {
     if (event) {
       setFormData({
-        name: (event as any).name || '',
+        tenant_id: event.tenant_id,
+        title: event.title || '',
         event_type: event.event_type || 'meeting',
-        event_date: (event as any).event_date ? new Date((event as any).event_date).toISOString().slice(0, 10) : '',
-        start_time: (event as any).start_time || '',
-        end_time: (event as any).end_time || '',
-        venue_name: (event as any).venue_name || '',
+        start_date: event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
+        end_date: event.end_date || null,
+        location: event.location || '',
         status: event.status || 'scheduled',
         account_id: event.account_id,
         contact_id: event.contact_id,
@@ -60,14 +60,14 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
       const now = new Date()
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
       const defaultStartDate = now.toISOString().slice(0, 16)
-      
+
       setFormData({
-        name: '',
+        tenant_id: '',
+        title: '',
         event_type: 'meeting',
-        event_date: defaultStartDate.slice(0, 10),
-        start_time: defaultStartDate.slice(11, 16),
-        end_time: '',
-        venue_name: '',
+        start_date: defaultStartDate,
+        end_date: null,
+        location: '',
         status: 'scheduled',
         account_id: null,
         contact_id: null,
@@ -96,17 +96,12 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Event name is required'
+    if (!formData.title.trim()) {
+      newErrors.title = 'Event title is required'
     }
 
     if (!formData.start_date) {
       newErrors.start_date = 'Start date is required'
-    } else {
-      const startDate = new Date(formData.start_date)
-      if (startDate < new Date()) {
-        newErrors.start_date = 'Start date cannot be in the past'
-      }
     }
 
     if (formData.end_date && formData.start_date) {
@@ -212,18 +207,18 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Event Title */}
           <div className="md:col-span-2">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Event Name *
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              Event Title *
             </label>
             <Input
-              id="name"
+              id="title"
               type="text"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              className={errors.name ? 'border-red-300' : ''}
-              placeholder="Enter event name"
+              value={formData.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              className={errors.title ? 'border-red-300' : ''}
+              placeholder="Enter event title"
             />
-            {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
+            {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title}</p>}
           </div>
 
           {/* Event Type */}
