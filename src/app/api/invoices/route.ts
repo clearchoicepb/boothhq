@@ -60,14 +60,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if request has a body
+    const contentLength = request.headers.get('content-length')
+    if (!contentLength || contentLength === '0') {
+      return NextResponse.json({ error: 'Request body is required' }, { status: 400 })
+    }
+
     let body
     try {
-      body = await request.json()
+      const text = await request.text()
+      if (!text || text.trim() === '') {
+        return NextResponse.json({ error: 'Request body is empty' }, { status: 400 })
+      }
+      body = JSON.parse(text)
     } catch (error) {
       console.error('Error parsing request body:', error)
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })

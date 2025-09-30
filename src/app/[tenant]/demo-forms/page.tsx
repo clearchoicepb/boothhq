@@ -11,7 +11,6 @@ export default function DemoFormsPage() {
   const [formData, setFormData] = useState<any>(null)
 
   const handleFormSubmit = async (data: any) => {
-    console.log('Form submitted:', data)
     setFormData(data)
     setActiveForm(null)
     // In a real app, you'd save this data

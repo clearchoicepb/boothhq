@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
       last_name,
       role,
       phone,
-      is_active,
       address_line_1,
       address_line_2,
       city,

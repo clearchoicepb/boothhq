@@ -141,13 +141,6 @@ export async function POST(
         }
       }
 
-      console.log('Lead conversion completed successfully:', {
-        leadId,
-        accountId: account.id,
-        contactId: contact?.id,
-        opportunityId
-      })
-
       const response = NextResponse.json({
         success: true,
         account,

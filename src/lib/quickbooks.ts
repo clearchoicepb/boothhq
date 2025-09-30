@@ -243,7 +243,6 @@ export const getQuickBooksService = async (tenantId: string): Promise<QuickBooks
       .single()
 
     if (error || !settings?.quickbooks_access_token || !settings?.quickbooks_company_id) {
-      console.log('QuickBooks not configured for tenant:', tenantId)
       return null
     }
 

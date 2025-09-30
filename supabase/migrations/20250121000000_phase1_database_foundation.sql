@@ -136,12 +136,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Add some sample locations for testing
-INSERT INTO locations (tenant_id, name, address_line1, city, state, postal_code, is_one_time) 
-VALUES 
-  ('550e8400-e29b-41d4-a716-446655440000', 'Sample Venue', '123 Main St', 'Anytown', 'CA', '12345', FALSE),
-  ('550e8400-e29b-41d4-a716-446655440000', 'Community Center', '456 Oak Ave', 'Anytown', 'CA', '12345', FALSE)
-ON CONFLICT DO NOTHING;
+-- Sample data removed to avoid foreign key constraint issues
 
 -- Success message
 DO $$

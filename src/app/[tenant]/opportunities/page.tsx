@@ -241,7 +241,7 @@ function OpportunitiesPageContent() {
       
       if (autoCalculateProbability) {
         // Use stage-based probability from settings
-        const stageSettings = stages.find(stage => stage.id === opp.stage)
+        const stageSettings = stages.find((stage: any) => stage.id === opp.stage)
         probability = stageSettings?.probability || 0
       } else {
         // Use individual opportunity probability
@@ -293,7 +293,7 @@ function OpportunitiesPageContent() {
     
     if (autoCalculateProbability) {
       // Use stage-based probability from settings
-      const stageSettings = stages.find(stage => stage.id === opportunity.stage)
+      const stageSettings = stages.find((stage: any) => stage.id === opportunity.stage)
       return stageSettings?.probability || 0
     } else {
       // Use individual opportunity probability
@@ -556,7 +556,7 @@ function OpportunitiesPageContent() {
                     </label>
                     <Select
                       value={filterStage}
-                      onChange={(value: string) => setFilterStage(value)}
+                      onChange={(e) => setFilterStage(e.target.value)}
                     >
                       <option value="all">All Stages</option>
                       {(settings.opportunities?.stages || [
@@ -566,7 +566,7 @@ function OpportunitiesPageContent() {
                         { id: 'negotiation', name: 'Negotiation', enabled: true },
                         { id: 'closed_won', name: 'Closed Won', enabled: true },
                         { id: 'closed_lost', name: 'Closed Lost', enabled: true }
-                      ]).filter(stage => stage.enabled !== false).map((stage) => (
+                      ]).filter((stage: any) => stage.enabled !== false).map((stage: any) => (
                         <option key={stage.id || stage} value={stage.id || stage}>
                           {stage.name || stage}
                         </option>
@@ -580,7 +580,7 @@ function OpportunitiesPageContent() {
                     </label>
                     <Select
                       value={dateFilter}
-                      onChange={(value: string) => setDateFilter(value)}
+                      onChange={(e) => setDateFilter(e.target.value)}
                     >
                       <option value="all">All Time</option>
                       <option value="today">Today</option>
@@ -606,7 +606,7 @@ function OpportunitiesPageContent() {
                     </label>
                     <Select
                       value={dateType}
-                      onChange={(value: string) => setDateType(value as 'created' | 'closed')}
+                      onChange={(e) => setDateType(e.target.value as 'created' | 'closed')}
                     >
                       <option value="created">Created Date</option>
                       <option value="closed">Closed Date</option>

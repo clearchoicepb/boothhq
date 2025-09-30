@@ -26,7 +26,7 @@ export function BaseForm<T extends Record<string, any>>({
   isOpen,
   title,
   submitLabel,
-  className = "sm:max-w-2xl"
+  className = "sm:max-w-5xl"
 }: BaseFormProps<T>) {
   const [state, setState] = useState<FormState<T>>({
     data: { ...config.defaultValues, ...initialData },
@@ -200,6 +200,7 @@ export function BaseForm<T extends Record<string, any>>({
               value={value || ''}
               onChange={(e) => handleFieldChange(field.name, e.target.value || null)}
               aria-label={`Select ${field.label}`}
+              title={field.label}
             >
               <option value="">Select {field.label}</option>
               {options.map((option: SelectOption) => (
@@ -241,6 +242,54 @@ export function BaseForm<T extends Record<string, any>>({
             />
           )
 
+        case 'checkbox':
+          return (
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id={field.name}
+                checked={!!value}
+                onChange={(e) => handleFieldChange(field.name, e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                required={field.required}
+                aria-label={field.label}
+              />
+              <label htmlFor={field.name} className="text-sm text-gray-700">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+            </div>
+          )
+
+        case 'multiSelect':
+          const multiOptions = field.options || []
+          const selectedValues = Array.isArray(value) ? value : []
+          
+          return (
+            <div className="space-y-2" role="group" aria-label={field.label}>
+              {multiOptions.map((option: SelectOption) => (
+                <div key={option.value} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`${field.name}-${option.value}`}
+                    checked={selectedValues.includes(option.value)}
+                    onChange={(e) => {
+                      const newValues = e.target.checked
+                        ? [...selectedValues, option.value]
+                        : selectedValues.filter(v => v !== option.value)
+                      handleFieldChange(field.name, newValues)
+                    }}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    aria-label={`${field.label}: ${option.label}`}
+                  />
+                  <label htmlFor={`${field.name}-${option.value}`} className="text-sm text-gray-700">
+                    {option.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          )
+
         default:
           return <Input {...commonProps} />
       }
@@ -253,10 +302,12 @@ export function BaseForm<T extends Record<string, any>>({
         field.gridCols === 3 && 'md:col-span-3',
         field.gridCols === 4 && 'md:col-span-4'
       )}>
-        <label className="block text-sm font-medium text-gray-700">
-          {field.label}
-          {field.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
+        {field.type !== 'checkbox' && field.type !== 'multiSelect' && (
+          <label className="block text-sm font-medium text-gray-700">
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+        )}
         {fieldElement}
         {hasError && (
           <p className="text-sm text-red-600">{error}</p>
@@ -322,12 +373,23 @@ export function BaseForm<T extends Record<string, any>>({
         {/* Render sections or all fields */}
         {(() => {
           const sections = getFieldsBySection()
-          return Object.entries(sections).map(([sectionTitle, fields]) => 
-            sectionTitle ? renderSection(sectionTitle, fields) : (
-              <div key="main" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {fields.map(renderField)}
-              </div>
-            )
+
+          // Render ungrouped fields first (empty string key), then named sections
+          const entries = Object.entries(sections)
+          const ungrouped = entries.find(([title]) => title === '')
+          const named = entries.filter(([title]) => title !== '')
+
+          return (
+            <>
+              {ungrouped && (
+                <div key="main" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {ungrouped[1].map(renderField)}
+                </div>
+              )}
+              {named.map(([sectionTitle, fields]) =>
+                renderSection(sectionTitle, fields)
+              )}
+            </>
           )
         })()}
 

@@ -69,6 +69,42 @@ export const accountFormConfig: FormConfig<Account> = {
         { value: 'prospect', label: 'Prospect' }
       ],
       gridCols: 1
+    },
+    // Address Information
+    {
+      name: 'address',
+      type: 'text',
+      label: 'Address',
+      section: 'Address Information',
+      gridCols: 2
+    },
+    {
+      name: 'city',
+      type: 'text',
+      label: 'City',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'state',
+      type: 'text',
+      label: 'State',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'country',
+      type: 'text',
+      label: 'Country',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'postal_code',
+      type: 'text',
+      label: 'Postal Code',
+      section: 'Address Information',
+      gridCols: 1
     }
   ],
   sections: [
@@ -87,37 +123,3 @@ export const accountFormConfig: FormConfig<Account> = {
     status: 'active'
   }
 }
-
-// Add address fields to the config
-accountFormConfig.fields.push(
-  {
-    name: 'address',
-    type: 'text',
-    label: 'Address',
-    section: 'Address Information'
-  },
-  {
-    name: 'city',
-    type: 'text',
-    label: 'City',
-    section: 'Address Information'
-  },
-  {
-    name: 'state',
-    type: 'text',
-    label: 'State',
-    section: 'Address Information'
-  },
-  {
-    name: 'country',
-    type: 'text',
-    label: 'Country',
-    section: 'Address Information'
-  },
-  {
-    name: 'postal_code',
-    type: 'text',
-    label: 'Postal Code',
-    section: 'Address Information'
-  }
-)

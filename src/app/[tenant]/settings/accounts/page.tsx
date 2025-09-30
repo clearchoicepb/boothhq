@@ -143,7 +143,6 @@ export default function AccountsSettingsPage() {
       setSettings(globalSettings.accounts);
     } else if (!settingsLoading) {
       // If no settings are loaded and we're not loading, initialize with defaults
-      console.log('No settings found, using defaults');
     }
   }, [globalSettings, settingsLoading]);
 

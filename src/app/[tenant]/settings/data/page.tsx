@@ -396,7 +396,7 @@ export default function DataManagementSettingsPage() {
                       value={settings.importExportSettings.supportedFormats.join(', ')}
                       onChange={(e) => {
                         const formats = e.target.value.split(',').map(f => f.trim()).filter(f => f);
-                        handleSelect('importExportSettings.supportedFormats', formats);
+                        handleSelect('importExportSettings.supportedFormats', formats as any);
                       }}
                       placeholder="csv, xlsx, json"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"

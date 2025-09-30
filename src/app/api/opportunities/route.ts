@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('Opportunity creation request:', body)
     const supabase = createServerSupabaseClient()
 
     // Extract event_dates from the request body
@@ -110,7 +109,6 @@ export async function POST(request: NextRequest) {
     delete cleanedOpportunityData.mailing_country
 
     // Create the opportunity first
-    console.log('Creating opportunity with cleaned data:', cleanedOpportunityData)
     const { data: opportunity, error: oppError } = await supabase
       .from('opportunities')
       .insert({
@@ -143,7 +141,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Opportunity created successfully:', opportunity)
     const response = NextResponse.json(opportunity)
     
     // Add caching headers for better performance

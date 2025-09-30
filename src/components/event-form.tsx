@@ -44,12 +44,12 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
   useEffect(() => {
     if (event) {
       setFormData({
-        name: event.name || '',
+        name: (event as any).name || '',
         event_type: event.event_type || 'meeting',
-        event_date: event.event_date ? new Date(event.event_date).toISOString().slice(0, 10) : '',
-        start_time: event.start_time || '',
-        end_time: event.end_time || '',
-        venue_name: event.venue_name || '',
+        event_date: (event as any).event_date ? new Date((event as any).event_date).toISOString().slice(0, 10) : '',
+        start_time: (event as any).start_time || '',
+        end_time: (event as any).end_time || '',
+        venue_name: (event as any).venue_name || '',
         status: event.status || 'scheduled',
         account_id: event.account_id,
         contact_id: event.contact_id,

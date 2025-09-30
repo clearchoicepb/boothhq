@@ -86,7 +86,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         mailing_city: event.mailing_city || '',
         mailing_state: event.mailing_state || '',
         mailing_postal_code: event.mailing_postal_code || '',
-        mailing_country: event.mailing_country || 'US'
+        mailing_country: event.mailing_country || 'US',
+        converted_from_opportunity_id: opportunityId || ''
       })
     } else {
       // Reset form for new event
@@ -101,7 +102,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         mailing_city: '',
         mailing_state: '',
         mailing_postal_code: '',
-        mailing_country: 'US'
+        mailing_country: 'US',
+        converted_from_opportunity_id: opportunityId || ''
       })
     }
   }, [event, isOpen])
@@ -172,7 +174,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_dates: eventDates.filter(date => date.event_date)
       }
 
-      console.log('Creating event with data:', eventData)
       onSave(eventData)
     } catch (error) {
       console.error('Error creating event:', error)

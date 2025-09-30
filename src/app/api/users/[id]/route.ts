@@ -6,10 +6,11 @@ import { ROLES, isAdmin, canManageUsers, type UserRole } from '@/lib/roles'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await params
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,7 +21,7 @@ export async function GET(
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -40,33 +41,22 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+    const { id } = await params
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('PUT /api/users/[id] - Full session:', JSON.stringify(session, null, 2))
-    console.log('PUT /api/users/[id] - Session user role:', session.user.role)
-    console.log('PUT /api/users/[id] - Session user role type:', typeof session.user.role)
-    console.log('PUT /api/users/[id] - User ID being edited:', params.id)
-    console.log('PUT /api/users/[id] - Session user ID:', session.user.id)
-
     // Check if user has admin role or is editing themselves
-    console.log('PUT /api/users/[id] - Testing canManageUsers with role:', session.user.role)
-    console.log('PUT /api/users/[id] - canManageUsers result:', canManageUsers(session.user.role as UserRole))
-    console.log('PUT /api/users/[id] - isAdmin result:', isAdmin(session.user.role as UserRole))
-    
-    if (!canManageUsers(session.user.role as UserRole) && session.user.id !== params.id) {
-      console.log('PUT /api/users/[id] - Permission denied - not admin and not self')
+    if (!canManageUsers(session.user.role as UserRole) && session.user.id !== id) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     const body = await request.json()
-    console.log('PUT /api/users/[id] - Request body:', JSON.stringify(body, null, 2))
     
     const {
       email,
@@ -75,7 +65,6 @@ export async function PUT(
       last_name,
       role,
       phone,
-      is_active,
       address_line_1,
       address_line_2,
       city,
@@ -101,6 +90,11 @@ export async function PUT(
       updated_at: new Date().toISOString()
     }
 
+    // Add status if provided
+    if (body.status) {
+      updateData.status = body.status
+    }
+
     // Only admins can change role
     if (isAdmin(session.user.role as UserRole)) {
       updateData.role = role
@@ -113,7 +107,7 @@ export async function PUT(
         .select('id')
         .eq('email', email)
         .eq('tenant_id', session.user.tenantId)
-        .neq('id', params.id)
+        .neq('id', id)
         .single()
 
       if (existingUser) {
@@ -128,7 +122,7 @@ export async function PUT(
     const { data: user, error } = await supabase
       .from('users')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
@@ -149,10 +143,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await params
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -164,7 +159,7 @@ export async function DELETE(
     }
 
     // Prevent users from deleting themselves
-    if (session.user.id === params.id) {
+    if (session.user.id === id) {
       return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
     }
 
@@ -173,7 +168,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('users')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('tenant_id', session.user.tenantId)
 
     if (error) {

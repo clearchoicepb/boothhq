@@ -106,7 +106,6 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         const result = await response.json()
-        console.log('Lead converted successfully:', result)
         
         // Refresh the opportunity data
         await fetchOpportunity()
@@ -137,22 +136,21 @@ export default function OpportunityDetailPage() {
             description: opportunity.description,
             event_type: opportunity.event_type || 'corporate',
             status: 'scheduled',
-            date_type: opportunity.date_type || 'single_day',
-            start_date: opportunity.event_date || opportunity.initial_date,
-            end_date: opportunity.final_date,
-            mailing_address_line1: opportunity.mailing_address_line1,
-            mailing_address_line2: opportunity.mailing_address_line2,
-            mailing_city: opportunity.mailing_city,
-            mailing_state: opportunity.mailing_state,
-            mailing_postal_code: opportunity.mailing_postal_code,
-            mailing_country: opportunity.mailing_country
+            date_type: (opportunity as any).date_type || 'single_day',
+            start_date: (opportunity as any).event_date || (opportunity as any).initial_date,
+            end_date: (opportunity as any).final_date,
+            mailing_address_line1: (opportunity as any).mailing_address_line1,
+            mailing_address_line2: (opportunity as any).mailing_address_line2,
+            mailing_city: (opportunity as any).mailing_city,
+            mailing_state: (opportunity as any).mailing_state,
+            mailing_postal_code: (opportunity as any).mailing_postal_code,
+            mailing_country: (opportunity as any).mailing_country
           }
         }),
       })
 
       if (response.ok) {
         const result = await response.json()
-        console.log('Opportunity converted to event successfully:', result)
         
         // Refresh the opportunity data
         await fetchOpportunity()
@@ -435,7 +433,7 @@ export default function OpportunityDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                {!opportunity.is_converted && (
+                {!(opportunity as any).is_converted && (
                   <Button 
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                     onClick={() => handleConvertToEvent()}
@@ -493,7 +491,6 @@ export default function OpportunityDetailPage() {
             <NotesSection
               entityId={opportunity.id}
               entityType="opportunity"
-              entityName={opportunity.name}
             />
 
             {/* Timeline */}

@@ -25,15 +25,11 @@ export class GenericApiHandler {
         } as any
       })
       
-      console.log(`[${this.entity}] GET request - Session:`, session ? 'authenticated' : 'not authenticated')
       
       if (!session?.user) {
-        console.log(`[${this.entity}] GET request - No session found`)
-        console.log(`[${this.entity}] Request headers:`, Object.fromEntries(request.headers.entries()))
         return NextResponse.json({ error: 'Unauthorized - No session found' }, { status: 401 })
       }
 
-      console.log(`[${this.entity}] GET request - Tenant ID:`, session.user.tenantId)
 
       const { searchParams } = new URL(request.url)
       const filters = this.extractFilters(searchParams)

@@ -211,7 +211,6 @@ export function RelationshipManager({ recordId, recordType, tenantSubdomain }: R
 
   const handleAddRelationship = () => {
     // This would typically make an API call to create the relationship
-    console.log('Adding relationship:', newRelationship)
     setShowAddModal(false)
     setNewRelationship({
       type: 'contact',
@@ -225,7 +224,6 @@ export function RelationshipManager({ recordId, recordType, tenantSubdomain }: R
   const handleRemoveRelationship = (relatedId: string) => {
     if (confirm('Are you sure you want to remove this relationship?')) {
       // This would typically make an API call to remove the relationship
-      console.log('Removing relationship:', relatedId)
       setRelatedRecords(prev => prev.filter(r => r.id !== relatedId))
     }
   }

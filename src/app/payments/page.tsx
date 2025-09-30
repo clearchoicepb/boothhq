@@ -69,7 +69,6 @@ export default function PaymentsPage() {
     } catch (error) {
       // Silently handle Supabase connection errors when using placeholder credentials
       if (error instanceof Error && error.message.includes('Invalid URL')) {
-        console.log('Using placeholder Supabase credentials - payments data not available')
       } else {
         console.error('Error fetching payments:', error)
       }
@@ -88,7 +87,6 @@ export default function PaymentsPage() {
       } catch (error) {
         // Silently handle Supabase connection errors when using placeholder credentials
         if (error instanceof Error && error.message.includes('Invalid URL')) {
-          console.log('Using placeholder Supabase credentials - delete operation not available')
         } else {
           console.error('Error deleting payment:', error)
         }

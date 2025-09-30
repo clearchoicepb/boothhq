@@ -302,3 +302,5 @@ export function EventDetailModal({ event, isOpen, onClose, tenantSubdomain }: Ev
 
 
 
+
+

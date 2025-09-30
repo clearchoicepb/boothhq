@@ -7,12 +7,10 @@ import { existsSync } from 'fs'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Photo upload API called')
     
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
-      console.log('No session found, returning 401')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -21,16 +19,7 @@ export async function POST(request: NextRequest) {
     const entityType = formData.get('entityType') as string
     const entityName = formData.get('entityName') as string
 
-    console.log('Upload request:', { 
-      fileName: file?.name, 
-      fileSize: file?.size, 
-      fileType: file?.type,
-      entityType,
-      entityName 
-    })
-
     if (!file) {
-      console.log('No file provided')
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
@@ -46,10 +35,8 @@ export async function POST(request: NextRequest) {
 
     // Create uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), 'public', 'uploads', entityType)
-    console.log('Uploads directory:', uploadsDir)
     
     if (!existsSync(uploadsDir)) {
-      console.log('Creating uploads directory:', uploadsDir)
       await mkdir(uploadsDir, { recursive: true })
     }
 
@@ -60,18 +47,15 @@ export async function POST(request: NextRequest) {
     const fileName = `${timestamp}-${randomString}.${fileExtension}`
     const filePath = join(uploadsDir, fileName)
     
-    console.log('Saving file to:', filePath)
 
     // Convert file to buffer and save
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     await writeFile(filePath, buffer)
     
-    console.log('File saved successfully')
 
     // Return the public URL
     const photoUrl = `/uploads/${entityType}/${fileName}`
-    console.log('Returning photoUrl:', photoUrl)
 
     return NextResponse.json({ photoUrl })
   } catch (error) {

@@ -455,13 +455,13 @@ export default function RepositoryDemoPage() {
                       {field.type === 'textarea' ? (
                         <Textarea
                           value={formData[field.name] || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                          onChange={(e) => setFormData((prev: any) => ({ ...prev, [field.name]: e.target.value }))}
                           required={field.required}
                         />
                       ) : field.type === 'select' ? (
                         <Select
                           value={formData[field.name] || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                          onChange={(e) => setFormData((prev: any) => ({ ...prev, [field.name]: e.target.value }))}
                           required={field.required}
                         >
                           <option value="">Select {field.label}</option>
@@ -475,7 +475,7 @@ export default function RepositoryDemoPage() {
                         <Input
                           type={field.type}
                           value={formData[field.name] || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                          onChange={(e) => setFormData((prev: any) => ({ ...prev, [field.name]: e.target.value }))}
                           required={field.required}
                         />
                       )}

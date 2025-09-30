@@ -573,7 +573,6 @@ export class GenericRepository<T = any> {
       }
 
       // For now, just log to console. In production, save to audit table
-      console.log(`[AUDIT] ${action.toUpperCase()} ${this.entity}:${entityId}`, auditLog)
       
       // TODO: Implement actual audit logging to database
       // await this.supabase.from('audit_logs').insert(auditLog)

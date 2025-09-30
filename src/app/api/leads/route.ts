@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('Lead creation request:', body)
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create lead', details: error.message }, { status: 500 })
     }
 
-    console.log('Lead created successfully:', data)
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error:', error)

@@ -51,12 +51,15 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // For now, accept any password for admin@default.com (temporary fix)
-          // TODO: Add password_hash column and proper password verification
-          if (credentials.email === 'admin@default.com' && credentials.password === 'password123') {
-            // Password is valid
-          } else {
-            console.error('Invalid credentials')
+          // Verify password using bcrypt
+          if (!user.password_hash) {
+            console.error('User has no password hash set')
+            return null
+          }
+
+          const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
+          if (!isValidPassword) {
+            console.error('Invalid password')
             return null
           }
 
@@ -66,7 +69,6 @@ export const authOptions: NextAuthOptions = {
             .update({ last_login: new Date().toISOString() })
             .eq('id', user.id)
 
-          console.log('Authentication successful for:', user.email)
           return {
             id: user.id,
             email: user.email,

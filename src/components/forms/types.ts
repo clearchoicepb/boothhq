@@ -1,6 +1,6 @@
 export interface FieldConfig {
   name: string
-  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password'
+  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect'
   label: string
   required?: boolean
   placeholder?: string
@@ -36,6 +36,7 @@ export interface RelatedDataConfig {
   endpoint: string
   displayField: string
   valueField: string
+  displayFormat?: string // For complex display formats like 'first_name last_name'
 }
 
 export interface FormConfig<T = any> {

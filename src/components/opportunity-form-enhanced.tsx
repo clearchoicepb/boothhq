@@ -70,6 +70,7 @@ export function OpportunityFormEnhanced({
     stage: 'prospecting',
     probability: 50,
     expected_close_date: '',
+    actual_close_date: '',
     event_type: '',
     date_type: 'single_day',
     mailing_address_line1: '',
@@ -98,6 +99,7 @@ export function OpportunityFormEnhanced({
         stage: opportunity.stage || 'prospecting',
         probability: opportunity.probability || 50,
         expected_close_date: opportunity.expected_close_date || '',
+        actual_close_date: opportunity.actual_close_date || '',
         event_type: opportunity.event_type || '',
         date_type: opportunity.date_type || 'single_day',
         mailing_address_line1: opportunity.mailing_address_line1 || '',
@@ -195,11 +197,9 @@ export function OpportunityFormEnhanced({
 
       if (opportunity && onSubmit) {
         // Editing mode
-        console.log('Updating opportunity with data:', opportunityData)
         await onSubmit(opportunityData)
       } else if (onSave) {
         // Creation mode
-        console.log('Creating opportunity with data:', opportunityData)
         onSave(opportunityData)
       }
     } catch (error) {

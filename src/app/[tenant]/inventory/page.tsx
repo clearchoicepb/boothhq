@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout/app-layout'
+import { InventoryForm } from '@/components/inventory-form'
 import { Search, Plus, Package, Edit, Trash2, Eye, Wrench, MapPin, DollarSign } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -42,6 +43,8 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [conditionFilter, setConditionFilter] = useState<string>('all')
+  const [showForm, setShowForm] = useState(false)
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
 
   const fetchEquipment = useCallback(async () => {
     try {
@@ -125,6 +128,62 @@ export default function InventoryPage() {
     ).length
   }
 
+  const handleEdit = (equipmentItem: Equipment) => {
+    setEditingEquipment(equipmentItem)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (equipmentId: string) => {
+    if (!confirm('Are you sure you want to delete this equipment?')) return
+
+    try {
+      const response = await fetch(`/api/equipment/${equipmentId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        await fetchEquipment()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.message || 'Failed to delete equipment'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting equipment:', error)
+      alert('Failed to delete equipment')
+    }
+  }
+
+  const handleFormClose = () => {
+    setShowForm(false)
+    setEditingEquipment(null)
+  }
+
+  const handleFormSubmit = async (data: any) => {
+    try {
+      const url = editingEquipment ? `/api/equipment/${editingEquipment.id}` : '/api/equipment'
+      const method = editingEquipment ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (response.ok) {
+        await fetchEquipment()
+        handleFormClose()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.message || 'Failed to save equipment'}`)
+      }
+    } catch (error) {
+      console.error('Error saving equipment:', error)
+      alert('Failed to save equipment')
+    }
+  }
+
   if (status === 'loading' || loading || localLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -162,12 +221,10 @@ export default function InventoryPage() {
               <Link href={`/${tenantSubdomain}/dashboard`}>
                 <Button variant="outline">Back to Dashboard</Button>
               </Link>
-              <Link href={`/${tenantSubdomain}/inventory/new`}>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Equipment
-                </Button>
-              </Link>
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Equipment
+              </Button>
             </div>
           </div>
         </div>
@@ -350,15 +407,15 @@ export default function InventoryPage() {
                               <Eye className="h-4 w-4" />
                             </button>
                           </Link>
-                          <Link href={`/${tenantSubdomain}/inventory/${item.id}/edit`}>
-                            <button 
-                              className="text-indigo-600 hover:text-indigo-900 cursor-pointer transition-colors duration-150 active:scale-95"
-                              aria-label="Edit equipment"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                          </Link>
                           <button 
+                            onClick={() => handleEdit(item)}
+                            className="text-indigo-600 hover:text-indigo-900 cursor-pointer transition-colors duration-150 active:scale-95"
+                            aria-label="Edit equipment"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
                             className="text-red-600 hover:text-red-900 cursor-pointer transition-colors duration-150 active:scale-95"
                             aria-label="Delete equipment"
                           >
@@ -423,6 +480,14 @@ export default function InventoryPage() {
         </div>
       </div>
       </div>
+
+      {/* Inventory Form Modal */}
+      <InventoryForm
+        equipment={editingEquipment}
+        isOpen={showForm}
+        onClose={handleFormClose}
+        onSubmit={handleFormSubmit}
+      />
     </AppLayout>
   )
 }

@@ -61,6 +61,42 @@ export const contactFormConfig: FormConfig<Contact> = {
         { value: 'inactive', label: 'Inactive' }
       ],
       gridCols: 1
+    },
+    // Address Information
+    {
+      name: 'address_line_1',
+      type: 'text',
+      label: 'Address Line 1',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'address_line_2',
+      type: 'text',
+      label: 'Address Line 2',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'city',
+      type: 'text',
+      label: 'City',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'state',
+      type: 'text',
+      label: 'State',
+      section: 'Address Information',
+      gridCols: 1
+    },
+    {
+      name: 'zip_code',
+      type: 'text',
+      label: 'Zip Code',
+      section: 'Address Information',
+      gridCols: 1
     }
   ],
   sections: [
@@ -88,37 +124,3 @@ export const contactFormConfig: FormConfig<Contact> = {
     tenant_id: ''
   }
 }
-
-// Add address fields to the config
-contactFormConfig.fields.push(
-  {
-    name: 'address_line_1',
-    type: 'text',
-    label: 'Address Line 1',
-    section: 'Address Information'
-  },
-  {
-    name: 'address_line_2',
-    type: 'text',
-    label: 'Address Line 2',
-    section: 'Address Information'
-  },
-  {
-    name: 'city',
-    type: 'text',
-    label: 'City',
-    section: 'Address Information'
-  },
-  {
-    name: 'state',
-    type: 'text',
-    label: 'State',
-    section: 'Address Information'
-  },
-  {
-    name: 'zip_code',
-    type: 'text',
-    label: 'Zip Code',
-    section: 'Address Information'
-  }
-)

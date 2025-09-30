@@ -110,7 +110,6 @@ export default function CalendarPage() {
   }
 
   const handleDateClick = (date: string) => {
-    console.log('Date clicked:', date)
     // You can implement date-specific actions here
   }
 

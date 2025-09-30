@@ -77,7 +77,7 @@ export default function EventEditPage() {
 
   if (status === 'loading' || loading || isLoading) {
     return (
-      <AccessGuard>
+      <AccessGuard module="events" action="edit">
         <AppLayout>
           <div className="flex items-center justify-center min-h-screen">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -89,7 +89,7 @@ export default function EventEditPage() {
 
   if (!canManageEvents) {
     return (
-      <AccessGuard>
+      <AccessGuard module="events" action="edit">
         <AppLayout>
           <div className="text-center py-12">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
@@ -102,7 +102,7 @@ export default function EventEditPage() {
 
   if (!event) {
     return (
-      <AccessGuard>
+      <AccessGuard module="events" action="edit">
         <AppLayout>
           <div className="text-center py-12">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Event Not Found</h1>
@@ -114,7 +114,7 @@ export default function EventEditPage() {
   }
 
   return (
-    <AccessGuard>
+    <AccessGuard module="events" action="edit">
       <AppLayout>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <EventFormEnhanced

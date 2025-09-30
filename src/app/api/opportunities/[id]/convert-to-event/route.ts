@@ -107,17 +107,11 @@ export async function POST(
 
       if (oppUpdateError) {
         console.error('Error updating opportunity:', oppUpdateError)
-        return NextResponse.json({ 
-          error: 'Failed to update opportunity', 
-          details: oppUpdateError.message 
+        return NextResponse.json({
+          error: 'Failed to update opportunity',
+          details: oppUpdateError.message
         }, { status: 500 })
       }
-
-      console.log('Opportunity to event conversion completed successfully:', {
-        opportunityId,
-        eventId: event.id,
-        eventDatesCount: createdEventDates.length
-      })
 
       const response = NextResponse.json({
         success: true,

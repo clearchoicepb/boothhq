@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AppLayout } from '@/components/layout/app-layout';
 import { 
   Settings as SettingsIcon,
   Users,
@@ -204,8 +203,7 @@ export default function SettingsPage() {
   const categories = Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>;
 
   return (
-    <AppLayout>
-      <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white">
         {/* Header */}
         <div className="border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-6 py-6">
@@ -314,7 +312,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }
 

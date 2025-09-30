@@ -116,8 +116,9 @@ export function hasPermission(
   if (module === 'settings') {
     return action === 'view' ? modulePermissions.view : modulePermissions.edit
   }
-  
-  return modulePermissions[action] === true
+
+  // For other modules, check if action exists and is true
+  return action in modulePermissions && (modulePermissions as any)[action] === true
 }
 
 // Hook to check permissions

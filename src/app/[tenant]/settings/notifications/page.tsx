@@ -531,7 +531,7 @@ export default function NotificationsSettingsPage() {
                       value={settings.reminderSettings.eventReminderDays.join(', ')}
                       onChange={(e) => {
                         const days = e.target.value.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
-                        handleSelect('reminderSettings.eventReminderDays', days);
+                        handleSelect('reminderSettings.eventReminderDays', days as any);
                       }}
                       placeholder="7, 3, 1"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
@@ -548,7 +548,7 @@ export default function NotificationsSettingsPage() {
                       value={settings.reminderSettings.paymentReminderDays.join(', ')}
                       onChange={(e) => {
                         const days = e.target.value.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
-                        handleSelect('reminderSettings.paymentReminderDays', days);
+                        handleSelect('reminderSettings.paymentReminderDays', days as any);
                       }}
                       placeholder="7, 3, 1"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
@@ -567,7 +567,7 @@ export default function NotificationsSettingsPage() {
                       value={settings.reminderSettings.maintenanceReminderDays.join(', ')}
                       onChange={(e) => {
                         const days = e.target.value.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
-                        handleSelect('reminderSettings.maintenanceReminderDays', days);
+                        handleSelect('reminderSettings.maintenanceReminderDays', days as any);
                       }}
                       placeholder="14, 7, 1"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
@@ -584,7 +584,7 @@ export default function NotificationsSettingsPage() {
                       value={settings.reminderSettings.followUpReminderDays.join(', ')}
                       onChange={(e) => {
                         const days = e.target.value.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
-                        handleSelect('reminderSettings.followUpReminderDays', days);
+                        handleSelect('reminderSettings.followUpReminderDays', days as any);
                       }}
                       placeholder="3, 7, 14"
                       className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"

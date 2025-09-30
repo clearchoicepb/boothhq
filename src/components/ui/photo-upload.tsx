@@ -40,19 +40,16 @@ export function PhotoUpload({
   // Automatically save favicon URL when it's successfully fetched
   useEffect(() => {
     if (faviconUrl && !currentPhotoUrl && !previewUrl) {
-      console.log('Auto-saving favicon URL:', faviconUrl)
       onPhotoChange(faviconUrl)
     }
   }, [faviconUrl, currentPhotoUrl, previewUrl, onPhotoChange])
 
   // Debug logging
-  console.log('PhotoUpload props:', { currentPhotoUrl, entityType, entityName, websiteUrl, faviconUrl })
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
-    console.log('File selected:', { name: file.name, type: file.type, size: file.size })
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -77,7 +74,6 @@ export function PhotoUpload({
         formData.append('entityName', entityName.trim())
       }
 
-      console.log('Uploading file with FormData:', { entityType, entityName: entityName?.trim() })
 
       // Upload to our API
       const response = await fetch('/api/upload/photo', {
@@ -85,7 +81,6 @@ export function PhotoUpload({
         body: formData,
       })
 
-      console.log('Upload response status:', response.status)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Upload failed' }))
@@ -94,7 +89,6 @@ export function PhotoUpload({
       }
 
       const { photoUrl } = await response.json()
-      console.log('Upload successful, photoUrl:', photoUrl)
       
       if (!photoUrl) {
         throw new Error('No photo URL returned from server')
@@ -163,7 +157,6 @@ export function PhotoUpload({
                 // Don't show error to user, just log it
               }}
               onLoad={() => {
-                console.log('Favicon loaded successfully:', faviconUrl)
               }}
             />
             <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center">

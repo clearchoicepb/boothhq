@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Website URL is required' }, { status: 400 })
     }
 
-    console.log('Fetching favicon for:', websiteUrl)
 
     // Try to fetch the actual favicon
     const result = await fetchFavicon(websiteUrl)

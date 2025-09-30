@@ -96,7 +96,6 @@ export function LeadFormSequential({ onSave, onCancel }: LeadFormSequentialProps
         photo_url: formData.photo_url || null,
       }
 
-      console.log('Lead form data being sent:', dataToSave)
       await onSave(dataToSave)
       // Don't call onClose() here - let the parent component handle the flow
     } catch (error) {
@@ -329,6 +328,8 @@ export function LeadFormSequential({ onSave, onCancel }: LeadFormSequentialProps
     </form>
   )
 }
+
+
 
 
 

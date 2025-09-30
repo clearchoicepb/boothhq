@@ -13,7 +13,7 @@ export function Sidebar() {
   // Don't render quick actions if permissions are still loading
   if (isLoading) {
     return (
-      <div className="sidebar-responsive fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto shadow-lg">
+      <div className="sidebar-responsive fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto shadow-lg pt-16">
         <div className="p-4">
           {/* Logo/Brand */}
           <div className="mb-6">
@@ -112,7 +112,7 @@ export function Sidebar() {
   ]
 
   return (
-    <div className="sidebar-responsive fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto shadow-lg">
+    <div className="sidebar-responsive fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto shadow-lg pt-16">
       <div className="p-4">
         {/* Logo/Brand */}
         <div className="mb-6">

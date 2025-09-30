@@ -28,7 +28,6 @@ export async function fetchFavicon(url: string): Promise<string | null> {
     const data = await response.json()
     
     if (data.success && data.favicon) {
-      console.log(`Favicon fetched from: ${data.source}`)
       return data.favicon
     }
     

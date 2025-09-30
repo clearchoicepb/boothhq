@@ -100,11 +100,9 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error saving settings:', error)
-      console.log('Settings array to upsert:', JSON.stringify(settingsArray, null, 2))
       
       // If it's a duplicate key error, try individual upserts
       if (error.code === '23505') {
-        console.log('Duplicate key error, trying individual upserts...')
         for (const setting of settingsArray) {
           const { error: individualError } = await supabase
             .from('tenant_settings')

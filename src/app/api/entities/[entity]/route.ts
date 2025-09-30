@@ -13,17 +13,13 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions)
     
-    console.log(`[${entity}] GET request - Session:`, session ? 'authenticated' : 'not authenticated')
     
     const config = getEntityConfig(entity)
-    console.log(`[${entity}] Using search fields:`, config.searchFields)
     
     if (!session?.user) {
-      console.log(`[${entity}] GET request - No session found`)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log(`[${entity}] GET request - Tenant ID:`, session.user.tenantId)
 
     const { searchParams } = new URL(request.url)
     

@@ -69,7 +69,6 @@ export default function NewOpportunitySequentialPage() {
 
   const handleLeadCreated = async (leadData: any) => {
     try {
-      console.log('Creating lead with data:', leadData)
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: {
@@ -80,7 +79,6 @@ export default function NewOpportunitySequentialPage() {
 
       if (response.ok) {
         const newLead = await response.json()
-        console.log('Lead created successfully:', newLead)
         
         // Convert lead to customer format
         const customer: Customer = {
@@ -107,13 +105,11 @@ export default function NewOpportunitySequentialPage() {
 
   const handleOpportunitySaved = async (opportunityData: any) => {
     try {
-      console.log('Creating opportunity with data:', opportunityData)
       
       // Use the polymorphic API client
       const { apiClient } = await import('@/lib/polymorphic-api-client')
       const newOpportunity = await apiClient.create('opportunities', opportunityData)
       
-      console.log('Opportunity created successfully:', newOpportunity)
       router.push(`/${tenantSubdomain}/opportunities/${newOpportunity.id}`)
     } catch (error) {
       console.error('Error creating opportunity:', error)

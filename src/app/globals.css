@@ -35,12 +35,19 @@ body {
   display: none;
 }
 
+/* Ensure header always stays on top */
+header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+}
+
 /* Responsive sidebar - hide on screens smaller than 1024px */
 @media (max-width: 1023px) {
   .sidebar-responsive {
     display: none !important;
   }
-  
+
   .main-content-responsive {
     margin-left: 0 !important;
     width: 100% !important;
@@ -69,8 +76,14 @@ body {
 @media (min-width: 1024px) {
   .sidebar-responsive {
     display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    z-index: 50 !important;
+    padding-top: 4rem !important; /* Account for header height */
   }
-  
+
   .main-content-responsive {
     margin-left: 16rem !important; /* 256px = w-64 */
     width: calc(100% - 16rem) !important;
@@ -173,8 +186,20 @@ body {
   .mobile-nav {
     padding: 0.5rem !important;
   }
-  
+
   .mobile-nav .space-x-2 {
     gap: 0.25rem !important;
+  }
+}
+
+/* Modal should sit below header and sidebar */
+.modal-overlay {
+  z-index: 40 !important;
+}
+
+/* Ensure modals don't cover sticky elements */
+@media (min-width: 1024px) {
+  .modal-overlay {
+    z-index: 40 !important;
   }
 }

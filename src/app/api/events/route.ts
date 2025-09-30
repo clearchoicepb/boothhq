@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
     const statusFilter = searchParams.get('status') || 'all'
     const typeFilter = searchParams.get('type') || 'all'
 
-    console.log('Fetching events for tenant:', session.user.tenantId, 'with filters:', { statusFilter, typeFilter })
 
     let query = supabase
       .from('events')
@@ -53,7 +52,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('Successfully fetched events:', data?.length || 0)
 
     // Transform the data to include account_name and contact_name
     const transformedData = data?.map(event => ({
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('Event creation request:', body)
     const supabase = createServerSupabaseClient()
 
     // Extract event_dates from the request body
@@ -126,7 +123,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Event created successfully:', event)
     const response = NextResponse.json(event)
     
     // Add caching headers for better performance

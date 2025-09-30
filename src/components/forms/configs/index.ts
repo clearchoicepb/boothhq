@@ -3,6 +3,11 @@ import { accountFormConfig } from './accountFormConfig'
 import { eventFormConfig } from './eventFormConfig'
 import { opportunityFormConfig } from './opportunityFormConfig'
 import { invoiceFormConfig } from './invoiceFormConfig'
+import { userFormConfig } from './userFormConfig'
+import { roleFormConfig } from './roleFormConfig'
+import { leadFormConfig } from './leadFormConfig'
+import { paymentFormConfig } from './paymentFormConfig'
+import { inventoryFormConfig } from './inventoryFormConfig'
 import { FormConfig } from '../types'
 
 export const entityConfigs = {
@@ -10,7 +15,12 @@ export const entityConfigs = {
   accounts: accountFormConfig,
   events: eventFormConfig,
   opportunities: opportunityFormConfig,
-  invoices: invoiceFormConfig
+  invoices: invoiceFormConfig,
+  users: userFormConfig,
+  roles: roleFormConfig,
+  leads: leadFormConfig,
+  payments: paymentFormConfig,
+  inventory: inventoryFormConfig
 } as const
 
 export type EntityType = keyof typeof entityConfigs

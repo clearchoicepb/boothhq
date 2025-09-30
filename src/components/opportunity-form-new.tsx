@@ -139,7 +139,6 @@ export function OpportunityFormNew({ isOpen, onClose, onSave, customer, contact 
         lead_id: customer.type === 'lead' ? customer.id : null
       }
 
-      console.log('Opportunity form data being sent:', opportunityData)
       onSave(opportunityData)
     } catch (error) {
       console.error('Error saving opportunity:', error)
