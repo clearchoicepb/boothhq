@@ -68,17 +68,16 @@ export async function PUT(
     const supabase = createServerSupabaseClient()
 
 
-    // Filter out fields that might not exist in the database schema
+    // Only allow fields that exist in the current database schema
     const allowedFields = [
-      'name', 'description', 'amount', 'stage', 'probability', 
-      'expected_close_date', 'actual_close_date', 'account_id', 
-      'contact_id', 'lead_id', 'event_type', 'date_type', 
+      'name', 'description', 'amount', 'stage', 'probability',
+      'expected_close_date', 'actual_close_date', 'account_id',
+      'contact_id', 'date_type',
       'event_date', 'initial_date', 'final_date',
-      'mailing_address_line1', 'mailing_address_line2', 
-      'mailing_city', 'mailing_state', 'mailing_postal_code', 
-      'mailing_country', 'is_converted', 'converted_at', 
+      'is_converted', 'converted_at',
       'converted_event_id', 'converted_from_opportunity_id',
       'updated_by', 'created_by'
+      // Removed until migrations are run: 'lead_id', 'event_type', 'mailing_address_*'
     ]
 
     const filteredData = Object.keys(opportunityData)
