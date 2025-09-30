@@ -210,10 +210,11 @@ export function OpportunityFormEnhanced({
         probability: parseInt(formData.probability.toString()) || 50,
         expected_close_date: formData.expected_close_date || null,
         actual_close_date: formData.actual_close_date || null,
-        event_type: formData.event_type || null,
         date_type: formData.date_type,
-        event_dates: finalEventDates.filter(date => date.event_date),
-        lead_id: customer?.type === 'lead' ? customer.id : (opportunity?.lead_id || null),
+        // These fields removed until migrations are run:
+        // event_type: formData.event_type || null,
+        // event_dates: finalEventDates.filter(date => date.event_date),
+        // lead_id: customer?.type === 'lead' ? customer.id : (opportunity?.lead_id || null),
         account_id: customer?.type === 'account' ? customer.id : (opportunity?.account_id || null),
         contact_id: contact?.id || (opportunity?.contact_id || null)
       }
