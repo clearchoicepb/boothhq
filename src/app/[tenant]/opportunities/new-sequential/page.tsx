@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { LeadFormSequential } from '@/components/lead-form-sequential'
 import { OpportunityFormEnhanced } from '@/components/opportunity-form-enhanced'
-import { EntityForm } from '@/components/forms'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
 
@@ -192,22 +191,13 @@ export default function NewOpportunitySequentialPage() {
                 {createdLead.name} has been added as a lead. Now let's create the opportunity.
               </p>
             </div>
-            <EntityForm
-              entity="opportunities"
-              initialData={{
-                name: '',
-                description: '',
-                stage: 'prospecting',
-                amount: 0,
-                probability: 50,
-                account_id: createdLead.type === 'account' ? createdLead.id : null,
-                lead_id: createdLead.type === 'lead' ? createdLead.id : null
-              }}
-              isOpen={true}
+            <OpportunityFormEnhanced
+              customer={createdLead}
+              onSave={handleOpportunitySaved}
               onClose={() => setStep('lead-creation')}
-              onSubmit={handleOpportunitySaved}
-              title="Create Opportunity"
-              submitLabel="Create Opportunity"
+              submitButtonText="Create Opportunity"
+              showCancelButton={true}
+              onCancel={() => setStep('lead-creation')}
             />
           </div>
         )}
