@@ -101,9 +101,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Remove fields that don't exist in the current database schema
-    delete cleanedOpportunityData.lead_id // Remove until migrations are run
-    delete cleanedOpportunityData.event_type // Remove until migrations are run
-    delete cleanedOpportunityData.event_dates // Remove until migrations are run
+    delete cleanedOpportunityData.event_dates // event_dates is a separate table, not a column
     delete cleanedOpportunityData.mailing_address_line1
     delete cleanedOpportunityData.mailing_address_line2
     delete cleanedOpportunityData.mailing_city

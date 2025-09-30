@@ -272,9 +272,6 @@ export const entityConfigs: Record<string, EntityConfig> = {
       }
 
       // Remove fields that don't exist in the current database schema
-      delete transformed.lead_id // Remove until migrations are run
-      delete transformed.event_type // Remove until migrations are run
-      delete transformed.event_dates // Remove until migrations are run
       delete transformed.mailing_address_line1
       delete transformed.mailing_address_line2
       delete transformed.mailing_city
