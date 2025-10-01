@@ -71,8 +71,6 @@ export async function POST(request: NextRequest) {
     const twilioData = await twilioResponse.json()
 
     // Log the communication in the database
-    const supabase = createServerSupabaseClient()
-
     const communicationData: any = {
       tenant_id: session.user.tenantId,
       created_by: session.user.id,
