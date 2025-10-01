@@ -9,57 +9,50 @@ export const authOptions: NextAuthOptions = {
       name: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-        tenant: { label: 'Company', type: 'text' }
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password || !credentials?.tenant) {
+        if (!credentials?.email || !credentials?.password) {
           return null
         }
 
         try {
           // Create server-side Supabase client with service role key
           const supabase = createServerSupabaseClient()
-          
-          // Get tenant by subdomain
-          const { data: tenant, error: tenantError } = await supabase
-            .from('tenants')
-            .select('*')
-            .eq('subdomain', credentials.tenant)
-            .eq('status', 'active')
-            .single()
 
-          if (tenantError || !tenant) {
-            console.error('Tenant lookup error:', tenantError)
-            console.error('Subdomain:', credentials.tenant)
-            return null
-          }
-
-          // Get user by email and tenant
-          const { data: user, error: userError } = await supabase
+          // Get all users with this email across all tenants
+          const { data: users, error: usersError } = await supabase
             .from('users')
-            .select('*')
+            .select('*, tenants!inner(*)')
             .eq('email', credentials.email)
-            .eq('tenant_id', tenant.id)
             .eq('status', 'active')
-            .single()
+            .eq('tenants.status', 'active')
 
-          if (userError || !user) {
-            console.error('User lookup error:', userError)
-            console.error('Tenant ID:', tenant.id)
+          if (usersError || !users || users.length === 0) {
+            console.error('User lookup error:', usersError)
             console.error('Email:', credentials.email)
             return null
           }
 
-          // Verify password using bcrypt
-          if (!user.password_hash) {
-            console.error('User has no password hash set')
-            return null
+          // Find the first user with matching password
+          let authenticatedUser = null
+          let matchedTenant = null
+
+          for (const user of users) {
+            if (!user.password_hash) {
+              continue
+            }
+
+            const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
+            if (isValidPassword) {
+              authenticatedUser = user
+              matchedTenant = user.tenants
+              break
+            }
           }
 
-          const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
-          if (!isValidPassword) {
-            console.error('Invalid password')
+          if (!authenticatedUser || !matchedTenant) {
+            console.error('Invalid password or no matching user found')
             return null
           }
 
@@ -67,17 +60,23 @@ export const authOptions: NextAuthOptions = {
           await supabase
             .from('users')
             .update({ last_login: new Date().toISOString() })
-            .eq('id', user.id)
+            .eq('id', authenticatedUser.id)
+
+          // If user belongs to multiple tenants, log a message
+          // (Future enhancement: show tenant selector)
+          if (users.length > 1) {
+            console.log(`User ${credentials.email} belongs to ${users.length} tenants. Using first tenant: ${matchedTenant.subdomain}`)
+          }
 
           return {
-            id: user.id,
-            email: user.email,
-            name: `${user.first_name} ${user.last_name}`.trim(),
-            role: user.role,
-            tenantId: tenant.id,
-            tenantName: tenant.name,
-            tenantSubdomain: tenant.subdomain,
-            permissions: user.permissions || {}
+            id: authenticatedUser.id,
+            email: authenticatedUser.email,
+            name: `${authenticatedUser.first_name} ${authenticatedUser.last_name}`.trim(),
+            role: authenticatedUser.role,
+            tenantId: matchedTenant.id,
+            tenantName: matchedTenant.name,
+            tenantSubdomain: matchedTenant.subdomain,
+            permissions: authenticatedUser.permissions || {}
           }
         } catch (error) {
           console.error('Auth error:', error)

@@ -18,6 +18,7 @@ export function TopNav() {
   const { permissions } = usePermissions()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
 
@@ -34,8 +35,14 @@ export function TopNav() {
   ]
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/auth/signin' })
-    router.push('/auth/signin')
+    setIsSigningOut(true)
+    try {
+      await signOut({ callbackUrl: '/auth/signin' })
+      router.push('/auth/signin')
+    } catch (error) {
+      console.error('Sign out error:', error)
+      setIsSigningOut(false)
+    }
   }
 
   // Close menus when clicking outside
@@ -151,10 +158,11 @@ export function TopNav() {
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                    disabled={isSigningOut}
+                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <LogOut className="h-4 w-4 mr-3" />
-                    Sign out
+                    {isSigningOut ? 'Signing out...' : 'Sign out'}
                   </button>
                 </div>
               )}

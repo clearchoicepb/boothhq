@@ -7,12 +7,14 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Search, Plus, DollarSign, Eye, Edit, Trash2, Grid, List, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { Search, Plus, DollarSign, Eye, Edit, Trash2, Grid, List, ThumbsUp, ThumbsDown, Mail, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import type { Opportunity } from '@/lib/supabase-client'
+import { SendEmailModal } from '@/components/send-email-modal'
+import { SendSMSModal } from '@/components/send-sms-modal'
 
 interface OpportunityWithRelations extends Opportunity {
   account_name: string | null
@@ -39,6 +41,9 @@ function OpportunitiesPageContent() {
   const [showBucketPopup, setShowBucketPopup] = useState<'won' | 'lost' | null>(null)
   const [dateFilter, setDateFilter] = useState<string>('all')
   const [dateType, setDateType] = useState<'created' | 'closed'>('created')
+  const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithRelations | null>(null)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showSMSModal, setShowSMSModal] = useState(false)
 
   useEffect(() => {
     if (session && tenant) {
@@ -762,7 +767,7 @@ function OpportunitiesPageContent() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Link href={`/${tenantSubdomain}/opportunities/${opportunity.id}`}>
-                            <button 
+                            <button
                               className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
                               onClick={(e) => e.stopPropagation()}
                               title="View Details"
@@ -770,14 +775,36 @@ function OpportunitiesPageContent() {
                               <Eye className="h-4 w-4" />
                             </button>
                           </Link>
-                          <button 
+                          <button
                             className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
                             onClick={(e) => e.stopPropagation()}
                             title="Edit Opportunity"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button 
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedOpportunity(opportunity)
+                              setShowEmailModal(true)
+                            }}
+                            className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
+                            title="Send Email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedOpportunity(opportunity)
+                              setShowSMSModal(true)
+                            }}
+                            className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
+                            title="Send SMS"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDeleteOpportunity(opportunity.id)
@@ -1029,6 +1056,39 @@ function OpportunitiesPageContent() {
           )}
         </div>
       </div>
+
+      {/* Send Email Modal */}
+      <SendEmailModal
+        isOpen={showEmailModal}
+        onClose={() => {
+          setShowEmailModal(false)
+          setSelectedOpportunity(null)
+        }}
+        onSuccess={() => {
+          fetchOpportunities()
+          alert('Email sent successfully!')
+        }}
+        defaultSubject={selectedOpportunity ? `Regarding: ${selectedOpportunity.name}` : ''}
+        opportunityId={selectedOpportunity?.id}
+        accountId={selectedOpportunity?.account_id || undefined}
+        contactId={selectedOpportunity?.contact_id || undefined}
+      />
+
+      {/* Send SMS Modal */}
+      <SendSMSModal
+        isOpen={showSMSModal}
+        onClose={() => {
+          setShowSMSModal(false)
+          setSelectedOpportunity(null)
+        }}
+        onSuccess={() => {
+          fetchOpportunities()
+          alert('SMS sent successfully!')
+        }}
+        opportunityId={selectedOpportunity?.id}
+        accountId={selectedOpportunity?.account_id || undefined}
+        contactId={selectedOpportunity?.contact_id || undefined}
+      />
     </AppLayout>
   )
 }

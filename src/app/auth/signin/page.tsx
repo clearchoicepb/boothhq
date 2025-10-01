@@ -5,12 +5,11 @@ import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Building2 } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [tenant, setTenant] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,17 +24,16 @@ export default function SignInPage() {
       const result = await signIn('credentials', {
         email,
         password,
-        tenant,
         redirect: false,
       })
 
       if (result?.error) {
-        setError('Invalid credentials. Please check your company subdomain, email, and password.')
+        setError('Invalid credentials. Please check your email and password.')
       } else if (result?.ok) {
         // Get the session to determine redirect
         const session = await getSession()
-        if (session?.user?.tenantId) {
-          router.push(`/${session.user.tenantId}/dashboard`)
+        if (session?.user?.tenantSubdomain) {
+          router.push(`/${session.user.tenantSubdomain}/dashboard`)
         } else {
           router.push('/dashboard')
         }
@@ -71,28 +69,6 @@ export default function SignInPage() {
                 </div>
               </div>
             )}
-
-            <div>
-              <label htmlFor="tenant" className="block text-sm font-medium text-gray-700">
-                Company Subdomain
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Building2 className="h-5 w-5 text-gray-400" />
-                </div>
-                <Input
-                  id="tenant"
-                  name="tenant"
-                  type="text"
-                  autoComplete="organization"
-                  required
-                  value={tenant}
-                  onChange={(e) => setTenant(e.target.value)}
-                  className="pl-10"
-                  placeholder="Enter company subdomain"
-                />
-              </div>
-            </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -173,7 +149,6 @@ export default function SignInPage() {
             <div className="mt-4 bg-gray-50 rounded-md p-4">
               <p className="text-sm text-gray-600 mb-2">For testing purposes:</p>
               <div className="text-xs text-gray-500 space-y-1">
-                <p><strong>Company Subdomain:</strong> default</p>
                 <p><strong>Email:</strong> admin@default.com</p>
                 <p><strong>Password:</strong> password123</p>
               </div>
