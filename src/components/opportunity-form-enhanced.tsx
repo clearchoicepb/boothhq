@@ -94,6 +94,46 @@ export function OpportunityFormEnhanced({
   // Populate form when editing existing opportunity
   useEffect(() => {
     if (opportunity) {
+      // Convert DB date_type to form date_type
+      let formDateType = 'single_day'
+      if (opportunity.date_type === 'single') {
+        formDateType = 'single_day'
+      } else if (opportunity.date_type === 'multiple') {
+        // Infer the specific multiple type from event_dates
+        if (opportunity.event_dates && opportunity.event_dates.length > 0) {
+          const locations = opportunity.event_dates.map((d: any) => d.location_id).filter((l: any) => l)
+          const uniqueLocations = new Set(locations)
+
+          if (uniqueLocations.size > 1) {
+            // Different locations = multiple_locations
+            formDateType = 'multiple_locations'
+          } else if (uniqueLocations.size === 1) {
+            // Same location - check if sequential
+            const dates = opportunity.event_dates
+              .map((d: any) => new Date(d.event_date))
+              .sort((a: Date, b: Date) => a.getTime() - b.getTime())
+
+            // Check if dates are sequential (no gaps)
+            let isSequential = true
+            for (let i = 1; i < dates.length; i++) {
+              const diffDays = Math.floor((dates[i].getTime() - dates[i-1].getTime()) / (1000 * 60 * 60 * 24))
+              if (diffDays > 1) {
+                isSequential = false
+                break
+              }
+            }
+
+            formDateType = isSequential ? 'same_location_sequential' : 'same_location_non_sequential'
+          } else {
+            // No locations set, default to non-sequential
+            formDateType = 'same_location_non_sequential'
+          }
+        } else {
+          // No event dates, default to non-sequential
+          formDateType = 'same_location_non_sequential'
+        }
+      }
+
       setFormData({
         name: opportunity.name || '',
         description: opportunity.description || '',
@@ -103,7 +143,7 @@ export function OpportunityFormEnhanced({
         expected_close_date: opportunity.expected_close_date || '',
         actual_close_date: opportunity.actual_close_date || '',
         event_type: opportunity.event_type || '',
-        date_type: opportunity.date_type || 'single_day',
+        date_type: formDateType,
         mailing_address_line1: opportunity.mailing_address_line1 || '',
         mailing_address_line2: opportunity.mailing_address_line2 || '',
         mailing_city: opportunity.mailing_city || '',
@@ -111,17 +151,25 @@ export function OpportunityFormEnhanced({
         mailing_postal_code: opportunity.mailing_postal_code || '',
         mailing_country: opportunity.mailing_country || 'US'
       })
-      
+
       // If opportunity has event dates, populate them
       if (opportunity.event_dates && opportunity.event_dates.length > 0) {
-        setEventDates(opportunity.event_dates.map((date: any) => ({
+        const eventDates = opportunity.event_dates.map((date: any) => ({
           id: date.id,
           event_date: date.event_date || '',
           start_time: date.start_time || '',
           end_time: date.end_time || '',
           location_id: date.location_id || '',
           notes: date.notes || ''
-        })))
+        }))
+        setEventDates(eventDates)
+
+        // Set shared location if all dates have the same location
+        const locations = eventDates.map(d => d.location_id).filter(l => l)
+        const uniqueLocations = new Set(locations)
+        if (uniqueLocations.size === 1 && locations.length > 0) {
+          setSharedLocationId(locations[0])
+        }
       }
     }
   }, [opportunity])
@@ -131,16 +179,28 @@ export function OpportunityFormEnhanced({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
+    // Clear event_dates error when date_type changes
+    if (field === 'date_type' && errors.event_dates) {
+      setErrors(prev => ({ ...prev, event_dates: '' }))
+    }
   }
 
   const handleEventDateChange = (index: number, field: string, value: string) => {
-    setEventDates(prev => prev.map((date, i) => 
+    setEventDates(prev => prev.map((date, i) =>
       i === index ? { ...date, [field]: value } : date
     ))
+    // Clear event_dates error when user updates dates
+    if (errors.event_dates) {
+      setErrors(prev => ({ ...prev, event_dates: '' }))
+    }
   }
 
   const addEventDate = () => {
     setEventDates(prev => [...prev, { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }])
+    // Clear event_dates error when user adds a date
+    if (errors.event_dates) {
+      setErrors(prev => ({ ...prev, event_dates: '' }))
+    }
   }
 
   const removeEventDate = (index: number) => {
@@ -159,24 +219,69 @@ export function OpportunityFormEnhanced({
 
     // Validate shared location for same_location types
     if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
-      if (!sharedLocationId) newErrors.shared_location = 'Location is required'
+      if (!sharedLocationId) newErrors.shared_location = 'Location is required for all dates'
     }
+
+    // Get valid dates (dates that have event_date filled)
+    const validDates = eventDates.filter(date => date.event_date)
 
     // Validate event dates based on date_type
     if (formData.date_type === 'single_day') {
+      // Single day: must have exactly 1 date
+      if (validDates.length === 0) {
+        newErrors.event_date = 'Event date is required'
+      } else if (validDates.length > 1) {
+        newErrors.event_date = 'Single day events can only have one date'
+      }
+
       if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
       if (!eventDates[0]?.start_time) newErrors.start_time = 'Start time is required'
       if (!eventDates[0]?.end_time) newErrors.end_time = 'End time is required'
-    } else {
+    } else if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
+      // Same location types: must have at least 2 dates
+      if (validDates.length < 2) {
+        newErrors.event_dates = `${formData.date_type === 'same_location_sequential' ? 'Sequential' : 'Non-sequential'} events require at least 2 dates`
+      }
+
+      // For sequential dates, verify they are actually sequential (no gaps)
+      if (formData.date_type === 'same_location_sequential' && validDates.length >= 2) {
+        const sortedDates = validDates
+          .map(d => new Date(d.event_date))
+          .sort((a, b) => a.getTime() - b.getTime())
+
+        for (let i = 1; i < sortedDates.length; i++) {
+          const diffDays = Math.floor((sortedDates[i].getTime() - sortedDates[i-1].getTime()) / (1000 * 60 * 60 * 24))
+          if (diffDays !== 1) {
+            newErrors.event_dates = 'Sequential dates must be consecutive days with no gaps (e.g., Jan 1, Jan 2, Jan 3)'
+            break
+          }
+        }
+      }
+
       eventDates.forEach((date, index) => {
         if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
         if (!date.start_time) newErrors[`start_time_${index}`] = `Start time ${index + 1} is required`
         if (!date.end_time) newErrors[`end_time_${index}`] = `End time ${index + 1} is required`
+      })
+    } else if (formData.date_type === 'multiple_locations') {
+      // Multiple locations: must have at least 2 dates AND at least 2 different locations
+      if (validDates.length < 2) {
+        newErrors.event_dates = 'Multiple location events require at least 2 dates'
+      }
 
-        // For multiple_locations, validate per-date location
-        if (formData.date_type === 'multiple_locations' && !date.location_id) {
-          newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
-        }
+      // Check for at least 2 different locations
+      const locations = validDates.map(date => date.location_id).filter(loc => loc)
+      const uniqueLocations = new Set(locations)
+
+      if (uniqueLocations.size < 2) {
+        newErrors.event_dates = 'Multiple location events require at least 2 different locations'
+      }
+
+      eventDates.forEach((date, index) => {
+        if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+        if (!date.start_time) newErrors[`start_time_${index}`] = `Start time ${index + 1} is required`
+        if (!date.end_time) newErrors[`end_time_${index}`] = `End time ${index + 1} is required`
+        if (!date.location_id) newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
       })
     }
 
@@ -383,9 +488,14 @@ export function OpportunityFormEnhanced({
         {/* Event Dates */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Event Dates *
-            </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Event Dates *
+              </label>
+              {errors.event_dates && (
+                <p className="text-red-500 text-xs mt-1">{errors.event_dates}</p>
+              )}
+            </div>
             {formData.date_type !== 'single_day' && (
               <Button
                 type="button"

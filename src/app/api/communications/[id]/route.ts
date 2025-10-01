@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
   request: NextRequest,
@@ -17,15 +17,19 @@ export async function GET(
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
-      .from('event_dates')
+      .from('communications')
       .select(`
         *,
-        locations (
-          id,
-          name,
-          address_line1,
-          city,
-          state
+        contacts (
+          first_name,
+          last_name
+        ),
+        accounts (
+          name
+        ),
+        leads (
+          first_name,
+          last_name
         )
       `)
       .eq('id', (await params).id)
@@ -33,16 +37,11 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching event date:', error)
-      return NextResponse.json({ error: 'Failed to fetch event date' }, { status: 500 })
+      console.error('Error fetching communication:', error)
+      return NextResponse.json({ error: 'Failed to fetch communication' }, { status: 500 })
     }
 
-    const response = NextResponse.json(data)
-    
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-    
-    return response
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -64,25 +63,29 @@ export async function PUT(
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
-      .from('event_dates')
+      .from('communications')
       .update(body)
       .eq('id', (await params).id)
       .eq('tenant_id', session.user.tenantId)
       .select(`
         *,
-        locations (
-          id,
-          name,
-          address_line1,
-          city,
-          state
+        contacts (
+          first_name,
+          last_name
+        ),
+        accounts (
+          name
+        ),
+        leads (
+          first_name,
+          last_name
         )
       `)
       .single()
 
     if (error) {
-      console.error('Error updating event date:', error)
-      return NextResponse.json({ error: 'Failed to update event date', details: error.message }, { status: 500 })
+      console.error('Error updating communication:', error)
+      return NextResponse.json({ error: 'Failed to update communication', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
@@ -106,14 +109,14 @@ export async function DELETE(
     const supabase = createServerSupabaseClient()
 
     const { error } = await supabase
-      .from('event_dates')
+      .from('communications')
       .delete()
       .eq('id', (await params).id)
       .eq('tenant_id', session.user.tenantId)
 
     if (error) {
-      console.error('Error deleting event date:', error)
-      return NextResponse.json({ error: 'Failed to delete event date', details: error.message }, { status: 500 })
+      console.error('Error deleting communication:', error)
+      return NextResponse.json({ error: 'Failed to delete communication', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
@@ -122,10 +125,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-
-
-
-
-

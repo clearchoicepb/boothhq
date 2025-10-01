@@ -86,28 +86,39 @@ export async function PUT(
         return obj
       }, {} as any)
 
-    // Transform date_type from form values to database values
+    // Transform date_type from form values to database values (handle both form and DB formats)
+    let finalDateType = filteredData.date_type
     if (filteredData.date_type === 'single_day') {
-      filteredData.date_type = 'single'
+      finalDateType = 'single'
     } else if (['same_location_sequential', 'same_location_non_sequential', 'multiple_locations'].includes(filteredData.date_type)) {
-      filteredData.date_type = 'multiple'
+      finalDateType = 'multiple'
+    } else if (filteredData.date_type === 'single' || filteredData.date_type === 'multiple') {
+      // Already in DB format, keep as is
+      finalDateType = filteredData.date_type
     }
 
-    // Handle date fields based on date_type
-    if (event_dates && Array.isArray(event_dates) && event_dates.length > 0) {
-      const dates = event_dates.map(d => new Date(d.event_date)).sort((a, b) => a.getTime() - b.getTime())
+    filteredData.date_type = finalDateType
 
-      if (filteredData.date_type === 'single') {
-        // For single day events: use first date as event_date, clear initial/final
+    // Handle date fields based on final date_type
+    // IMPORTANT: Always clear unused fields to satisfy DB constraints
+    if (finalDateType === 'single') {
+      // For single day events: populate event_date if provided, always clear initial/final
+      if (event_dates && Array.isArray(event_dates) && event_dates.length > 0) {
+        const dates = event_dates.map(d => new Date(d.event_date)).sort((a, b) => a.getTime() - b.getTime())
         filteredData.event_date = dates[0].toISOString().split('T')[0]
-        filteredData.initial_date = null
-        filteredData.final_date = null
-      } else if (filteredData.date_type === 'multiple') {
-        // For multiple day events: use initial/final, clear event_date
+      }
+      // Must clear these even if no event_dates provided (to satisfy constraint)
+      filteredData.initial_date = null
+      filteredData.final_date = null
+    } else if (finalDateType === 'multiple') {
+      // For multiple day events: populate initial/final if provided, always clear event_date
+      if (event_dates && Array.isArray(event_dates) && event_dates.length > 0) {
+        const dates = event_dates.map(d => new Date(d.event_date)).sort((a, b) => a.getTime() - b.getTime())
         filteredData.initial_date = dates[0].toISOString().split('T')[0]
         filteredData.final_date = dates[dates.length - 1].toISOString().split('T')[0]
-        filteredData.event_date = null
       }
+      // Must clear this even if no event_dates provided (to satisfy constraint)
+      filteredData.event_date = null
     }
 
     // Update the opportunity
