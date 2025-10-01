@@ -18,10 +18,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Phone number and message are required' }, { status: 400 })
     }
 
-    // Get Twilio credentials from environment
-    const accountSid = process.env.TWILIO_ACCOUNT_SID
-    const authToken = process.env.TWILIO_AUTH_TOKEN
-    const fromNumber = process.env.TWILIO_PHONE_NUMBER
+    const supabase = createServerSupabaseClient()
+
+    // Get Twilio credentials from settings (fallback to environment variables)
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('integrations')
+      .eq('tenant_id', session.user.tenantId)
+      .single()
+
+    let accountSid = process.env.TWILIO_ACCOUNT_SID
+    let authToken = process.env.TWILIO_AUTH_TOKEN
+    let fromNumber = process.env.TWILIO_PHONE_NUMBER
+
+    // Override with database settings if available
+    if (settings?.integrations?.thirdPartyIntegrations?.twilio?.enabled) {
+      const twilioSettings = settings.integrations.thirdPartyIntegrations.twilio
+      accountSid = twilioSettings.accountSid || accountSid
+      authToken = twilioSettings.authToken || authToken
+      fromNumber = twilioSettings.phoneNumber || fromNumber
+    }
 
     if (!accountSid || !authToken || !fromNumber) {
       return NextResponse.json({ error: 'Twilio credentials not configured' }, { status: 500 })

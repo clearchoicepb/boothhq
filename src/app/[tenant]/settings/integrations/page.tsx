@@ -871,10 +871,20 @@ export default function IntegrationsSettingsPage() {
                 {/* Twilio */}
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-md font-medium text-gray-900 flex items-center">
-                      <MessageSquare className="h-5 w-5 mr-2 text-[#347dc4]" />
-                      Twilio (SMS)
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-md font-medium text-gray-900 flex items-center">
+                        <MessageSquare className="h-5 w-5 mr-2 text-[#347dc4]" />
+                        Twilio (SMS)
+                      </h3>
+                      {settings.thirdPartyIntegrations.twilio.enabled &&
+                       settings.thirdPartyIntegrations.twilio.accountSid &&
+                       settings.thirdPartyIntegrations.twilio.authToken &&
+                       settings.thirdPartyIntegrations.twilio.phoneNumber && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          ✓ Configured
+                        </span>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleToggle('thirdPartyIntegrations.twilio.enabled')}
                       className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150"
