@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { 
+import {
   Settings as SettingsIcon,
   Users,
   UserCheck,
@@ -20,7 +20,8 @@ import {
   Globe,
   CreditCard,
   Mail,
-  BarChart3
+  BarChart3,
+  FileType
 } from 'lucide-react';
 
 interface SettingsSection {
@@ -175,6 +176,14 @@ const settingsSections: SettingsSection[] = [
     icon: BarChart3,
     href: '/analytics',
     category: 'integrations'
+  },
+  {
+    id: 'templates',
+    title: 'Templates',
+    description: 'Create and manage email, SMS, and contract templates',
+    icon: FileType,
+    href: '/templates',
+    category: 'system'
   }
 ];
 

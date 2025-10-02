@@ -12,7 +12,10 @@ import { LeadConversionModal } from '@/components/lead-conversion-modal'
 import { LogCommunicationModal } from '@/components/log-communication-modal'
 import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
+import { GenerateContractModal } from '@/components/generate-contract-modal'
 import AttachmentsSection from '@/components/attachments-section'
+import { TasksSection } from '@/components/tasks-section'
+import { CreateTaskModal } from '@/components/create-task-modal'
 import { Lead } from '@/lib/supabase-client'
 
 interface EventDate {
@@ -67,8 +70,11 @@ export default function OpportunityDetailPage() {
   const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [communications, setCommunications] = useState<any[]>([])
   const [communicationsPage, setCommunicationsPage] = useState(1)
+  const [tasksKey, setTasksKey] = useState(0)
 
   useEffect(() => {
     if (session && tenant && opportunityId) {
@@ -347,7 +353,10 @@ export default function OpportunityDetailPage() {
               </Link>
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                onClick={() => setIsContractModalOpen(true)}
+              >
                 <FileText className="h-4 w-4 mr-2" />
                 Generate Contract
               </Button>
@@ -833,6 +842,27 @@ export default function OpportunityDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Tasks Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+                <Button
+                  size="sm"
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add
+                </Button>
+              </div>
+              <TasksSection
+                key={tasksKey}
+                entityType="opportunity"
+                entityId={opportunity.id}
+                onRefresh={() => setTasksKey(prev => prev + 1)}
+              />
+            </div>
+
             {/* Additional Details */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Details</h3>
@@ -927,6 +957,30 @@ export default function OpportunityDetailPage() {
         accountId={opportunity?.account_id || undefined}
         contactId={opportunity?.contact_id || undefined}
         leadId={opportunity?.lead_id || undefined}
+      />
+
+      {/* Generate Contract Modal */}
+      <GenerateContractModal
+        isOpen={isContractModalOpen}
+        onClose={() => setIsContractModalOpen(false)}
+        opportunityId={opportunityId}
+        accountId={opportunity?.account_id || undefined}
+        contactId={opportunity?.contact_id || undefined}
+        leadId={opportunity?.lead_id || undefined}
+        onSuccess={() => {
+          alert('Contract generated successfully!')
+        }}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        entityType="opportunity"
+        entityId={opportunityId}
+        onSuccess={() => {
+          setTasksKey(prev => prev + 1)
+        }}
       />
     </div>
   )
