@@ -12,6 +12,7 @@ import { LeadConversionModal } from '@/components/lead-conversion-modal'
 import { LogCommunicationModal } from '@/components/log-communication-modal'
 import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
+import AttachmentsSection from '@/components/attachments-section'
 import { Lead } from '@/lib/supabase-client'
 
 interface EventDate {
@@ -346,31 +347,14 @@ export default function OpportunityDetailPage() {
               </Link>
             </div>
             <div className="flex space-x-2">
-              {/* Important Files Dropdown */}
-              <div className="relative group">
-                <Button variant="outline">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Files
-                </Button>
-                <div className="absolute right-0 top-full pt-1 hidden group-hover:block z-10">
-                  <div className="w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                    <div className="py-1">
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Create Quote
-                      </button>
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate Contract
-                      </button>
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Upload Presentations
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <Button variant="outline">
+                <FileText className="h-4 w-4 mr-2" />
+                Generate Contract
+              </Button>
+              <Button variant="outline">
+                <FileText className="h-4 w-4 mr-2" />
+                Generate Invoice
+              </Button>
 
               {!(opportunity as any).is_converted && (
                 <Button
@@ -837,6 +821,14 @@ export default function OpportunityDetailPage() {
               />
             </div>
 
+            {/* Attachments Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <AttachmentsSection
+                entityType="opportunity"
+                entityId={opportunity.id}
+              />
+            </div>
+
           </div>
 
           {/* Sidebar */}
@@ -920,6 +912,7 @@ export default function OpportunityDetailPage() {
         opportunityId={opportunityId}
         accountId={opportunity?.account_id || undefined}
         contactId={opportunity?.contact_id || undefined}
+        leadId={opportunity?.lead_id || undefined}
       />
 
       {/* Send SMS Modal */}
@@ -933,6 +926,7 @@ export default function OpportunityDetailPage() {
         opportunityId={opportunityId}
         accountId={opportunity?.account_id || undefined}
         contactId={opportunity?.contact_id || undefined}
+        leadId={opportunity?.lead_id || undefined}
       />
     </div>
   )

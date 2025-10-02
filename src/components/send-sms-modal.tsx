@@ -5,7 +5,14 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { MessageSquare, Loader2 } from 'lucide-react'
+import { MessageSquare, Loader2, FileText } from 'lucide-react'
+import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
+
+interface Template {
+  id: string
+  name: string
+  content: string
+}
 
 interface SendSMSModalProps {
   isOpen: boolean
@@ -34,6 +41,27 @@ export function SendSMSModal({
   const [to, setTo] = useState(defaultTo)
   const [message, setMessage] = useState(defaultMessage)
   const [error, setError] = useState('')
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+
+  // Fetch templates
+  useEffect(() => {
+    if (isOpen) {
+      fetchTemplates()
+    }
+  }, [isOpen])
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch('/api/templates?type=sms')
+      if (response.ok) {
+        const data = await response.json()
+        setTemplates(data)
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error)
+    }
+  }
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -41,8 +69,32 @@ export function SendSMSModal({
       setTo(defaultTo)
       setMessage(defaultMessage)
       setError('')
+      setSelectedTemplateId('')
     }
   }, [isOpen, defaultTo, defaultMessage])
+
+  const handleTemplateSelect = async (templateId: string) => {
+    setSelectedTemplateId(templateId)
+
+    if (!templateId) return
+
+    const template = templates.find(t => t.id === templateId)
+    if (!template) return
+
+    // Fetch merge field data
+    const mergeData = await getMergeFieldData({
+      opportunityId,
+      accountId,
+      contactId,
+      leadId,
+    })
+
+    // Replace merge fields in template
+    const replacedMessage = replaceMergeFields(template.content, mergeData)
+
+    // Set message from template
+    setMessage(replacedMessage)
+  }
 
   const handleSend = async () => {
     // Validate
@@ -124,6 +176,31 @@ export function SendSMSModal({
             Include country code (e.g., +1 for US)
           </p>
         </div>
+
+        {/* Template Selector */}
+        {templates.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Choose Template (Optional)
+            </label>
+            <div className="relative">
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                disabled={loading}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
+              >
+                <option value="">-- Select a template --</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+              <FileText className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        )}
 
         {/* Message Field */}
         <div>
