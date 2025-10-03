@@ -21,7 +21,8 @@ import {
   CreditCard,
   Mail,
   BarChart3,
-  FileType
+  FileType,
+  Plus
 } from 'lucide-react';
 
 interface SettingsSection {
@@ -184,6 +185,22 @@ const settingsSections: SettingsSection[] = [
     icon: FileType,
     href: '/templates',
     category: 'system'
+  },
+  {
+    id: 'packages',
+    title: 'Packages',
+    description: 'Manage service packages and pricing for quotes',
+    icon: Package,
+    href: '/packages',
+    category: 'operations'
+  },
+  {
+    id: 'add-ons',
+    title: 'Add-ons',
+    description: 'Manage add-on items and services for quotes',
+    icon: Plus,
+    href: '/add-ons',
+    category: 'operations'
   }
 ];
 

@@ -351,7 +351,7 @@ function OpportunitiesPageContent() {
 
     try {
       // Update the opportunity stage via API
-      const response = await fetch(`/api/entities/opportunities/${draggedOpportunity.id}`, {
+      const response = await fetch(`/api/opportunities/${draggedOpportunity.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
