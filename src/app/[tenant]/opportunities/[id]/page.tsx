@@ -81,10 +81,13 @@ export default function OpportunityDetailPage() {
   const actionsRef = useRef<HTMLDivElement>(null)
   const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
+  const [quotes, setQuotes] = useState<any[]>([])
+  const [quotesLoading, setQuotesLoading] = useState(false)
 
   useEffect(() => {
     if (session && tenant && opportunityId) {
       fetchOpportunity()
+      fetchQuotes()
     }
   }, [session, tenant, opportunityId])
 
@@ -140,6 +143,21 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching lead:', error)
+    }
+  }
+
+  const fetchQuotes = async () => {
+    try {
+      setQuotesLoading(true)
+      const response = await fetch(`/api/quotes?opportunity_id=${opportunityId}`)
+      if (response.ok) {
+        const quotesData = await response.json()
+        setQuotes(quotesData)
+      }
+    } catch (error) {
+      console.error('Error fetching quotes:', error)
+    } finally {
+      setQuotesLoading(false)
     }
   }
 
@@ -409,13 +427,32 @@ export default function OpportunityDetailPage() {
                         Generate Contract
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setIsActionsOpen(false)
+                          // Generate quote from opportunity
+                          const response = await fetch('/api/quotes', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              opportunity_id: opportunityId,
+                              account_id: opportunity.account_id,
+                              contact_id: opportunity.contact_id,
+                              tax_rate: 0.08,
+                              status: 'draft'
+                            })
+                          })
+
+                          if (response.ok) {
+                            const quote = await response.json()
+                            router.push(`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`)
+                          } else {
+                            alert('Failed to generate quote')
+                          }
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate Invoice
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Generate Quote
                       </button>
                       <div className="border-t border-gray-100 my-1"></div>
                       <button
@@ -476,7 +513,11 @@ export default function OpportunityDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="pricing" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
               <DollarSign className="h-4 w-4 mr-2" />
-              Pricing & Quote
+              Pricing
+            </TabsTrigger>
+            <TabsTrigger value="quotes" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
+              <FileText className="h-4 w-4 mr-2" />
+              Quotes
             </TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
               <ListTodo className="h-4 w-4 mr-2" />
@@ -780,7 +821,7 @@ export default function OpportunityDetailPage() {
             </div>
           </TabsContent>
 
-          {/* Pricing & Quote Tab */}
+          {/* Pricing Tab */}
           <TabsContent value="pricing" className="mt-0">
             <div className="bg-white rounded-lg shadow p-6">
               <OpportunityPricing
@@ -788,8 +829,112 @@ export default function OpportunityDetailPage() {
                 currentAmount={opportunity?.amount || 0}
                 onAmountUpdate={() => {
                   fetchOpportunity()
+                  fetchQuotes()
                 }}
               />
+            </div>
+          </TabsContent>
+
+          {/* Quotes Tab */}
+          <TabsContent value="quotes" className="mt-0">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Quotes</h3>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    const response = await fetch('/api/quotes', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        opportunity_id: opportunityId,
+                        account_id: opportunity?.account_id,
+                        contact_id: opportunity?.contact_id,
+                        tax_rate: 0.08,
+                        status: 'draft'
+                      })
+                    })
+
+                    if (response.ok) {
+                      const quote = await response.json()
+                      router.push(`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`)
+                    } else {
+                      alert('Failed to generate quote')
+                    }
+                  }}
+                  className="bg-[#347dc4] hover:bg-[#2c6aa3]"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Generate Quote
+                </Button>
+              </div>
+
+              {quotesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-500">Loading quotes...</p>
+                </div>
+              ) : quotes.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600 mb-1">No quotes yet</p>
+                  <p className="text-sm text-gray-500">Generate a quote from your pricing items</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote #</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valid Until</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {quotes.map((quote) => (
+                        <tr key={quote.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-[#347dc4]">
+                            <Link href={`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`}>
+                              {quote.quote_number}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {new Date(quote.issue_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {quote.valid_until ? new Date(quote.valid_until).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
+                            ${quote.total_amount.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              quote.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                              quote.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                              quote.status === 'viewed' ? 'bg-purple-100 text-purple-800' :
+                              quote.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                              quote.status === 'declined' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right">
+                            <Link href={`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`}>
+                              <button className="text-[#347dc4] hover:text-[#2c6aa3] font-medium">
+                                View
+                              </button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </TabsContent>
 

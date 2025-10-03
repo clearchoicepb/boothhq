@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { DollarSign, Plus, Edit2, Trash2, Package, PlusCircle } from 'lucide-react'
 
@@ -39,6 +40,8 @@ interface OpportunityPricingProps {
 }
 
 export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdate }: OpportunityPricingProps) {
+  const params = useParams()
+  const tenantSubdomain = params.tenant as string
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [packages, setPackages] = useState<PackageItem[]>([])
   const [addOns, setAddOns] = useState<AddOn[]>([])
@@ -46,6 +49,7 @@ export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdat
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalType, setModalType] = useState<'package' | 'add_on' | 'custom'>('package')
   const [editingItem, setEditingItem] = useState<LineItem | null>(null)
+  const [generatingQuote, setGeneratingQuote] = useState(false)
   const [formData, setFormData] = useState({
     selectedId: '',
     name: '',
@@ -167,6 +171,41 @@ export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdat
     }
   }
 
+  const handleGenerateQuote = async () => {
+    if (lineItems.length === 0) {
+      alert('Please add at least one item before generating a quote')
+      return
+    }
+
+    if (!confirm('Generate a quote from these line items?')) return
+
+    try {
+      setGeneratingQuote(true)
+
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          opportunity_id: opportunityId,
+          tax_rate: 0.08, // Default 8% tax, can be customized
+          status: 'draft'
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to generate quote')
+
+      const quote = await response.json()
+
+      // Redirect to the quote detail page with return URL
+      window.location.href = `/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`
+    } catch (error) {
+      console.error('Error generating quote:', error)
+      alert('Failed to generate quote')
+    } finally {
+      setGeneratingQuote(false)
+    }
+  }
+
   const totalAmount = lineItems.reduce((sum, item) => sum + Number(item.total), 0)
 
   if (loading) {
@@ -180,35 +219,57 @@ export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdat
 
   return (
     <div className="space-y-4">
-      {/* Add Items Buttons */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          onClick={() => openModal('package')}
-          size="sm"
-          variant="outline"
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-        >
-          <Package className="h-4 w-4 mr-2" />
-          Add Package
-        </Button>
-        <Button
-          onClick={() => openModal('add_on')}
-          size="sm"
-          variant="outline"
-          className="text-purple-600 border-purple-600 hover:bg-purple-50"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Add-on
-        </Button>
-        <Button
-          onClick={() => openModal('custom')}
-          size="sm"
-          variant="outline"
-          className="text-green-600 border-green-600 hover:bg-green-50"
-        >
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Custom Item
-        </Button>
+      {/* Header with Add Items Buttons and Generate Quote */}
+      <div className="flex flex-wrap justify-between items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => openModal('package')}
+            size="sm"
+            variant="outline"
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Add Package
+          </Button>
+          <Button
+            onClick={() => openModal('add_on')}
+            size="sm"
+            variant="outline"
+            className="text-purple-600 border-purple-600 hover:bg-purple-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Add-on
+          </Button>
+          <Button
+            onClick={() => openModal('custom')}
+            size="sm"
+            variant="outline"
+            className="text-green-600 border-green-600 hover:bg-green-50"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Custom Item
+          </Button>
+        </div>
+
+        {lineItems.length > 0 && (
+          <Button
+            onClick={handleGenerateQuote}
+            disabled={generatingQuote}
+            className="bg-[#347dc4] hover:bg-[#2c6aa3] text-white"
+          >
+            {generatingQuote ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generating...
+              </>
+            ) : (
+              <>
+                <DollarSign className="h-4 w-4 mr-2" />
+                Generate Quote
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Line Items Table */}

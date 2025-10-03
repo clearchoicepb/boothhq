@@ -3,10 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
-// PUT - Update a line item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; lineItemId: string }> }
+  { params }: { params: { id: string; lineItemId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,74 +14,48 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: opportunityId, lineItemId } = await params
     const body = await request.json()
-    const {
-      name,
-      description,
-      quantity,
-      unit_price,
-      sort_order,
-    } = body
-
     const supabase = createServerSupabaseClient()
 
     const updateData: any = {
-      updated_at: new Date().toISOString(),
+      item_type: body.item_type,
+      package_id: body.package_id || null,
+      add_on_id: body.add_on_id || null,
+      name: body.name,
+      description: body.description || null,
+      quantity: parseFloat(body.quantity),
+      unit_price: parseFloat(body.unit_price),
+      total: parseFloat(body.quantity) * parseFloat(body.unit_price),
+      sort_order: body.sort_order || 0
     }
 
-    if (name !== undefined) updateData.name = name
-    if (description !== undefined) updateData.description = description
-    if (quantity !== undefined) updateData.quantity = quantity
-    if (unit_price !== undefined) updateData.unit_price = unit_price
-    if (sort_order !== undefined) updateData.sort_order = sort_order
-
-    // Recalculate total if quantity or unit_price changed
-    if (quantity !== undefined || unit_price !== undefined) {
-      const { data: currentItem } = await supabase
-        .from('opportunity_line_items')
-        .select('quantity, unit_price')
-        .eq('id', lineItemId)
-        .eq('tenant_id', session.user.tenantId)
-        .single()
-
-      const newQuantity = quantity !== undefined ? quantity : currentItem?.quantity || 1
-      const newUnitPrice = unit_price !== undefined ? unit_price : currentItem?.unit_price || 0
-
-      updateData.total = Number(newQuantity) * Number(newUnitPrice)
-    }
-
-    const { data: lineItem, error: updateError } = await supabase
+    const { data, error } = await supabase
       .from('opportunity_line_items')
       .update(updateData)
-      .eq('id', lineItemId)
-      .eq('opportunity_id', opportunityId)
+      .eq('id', params.lineItemId)
+      .eq('opportunity_id', params.id)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
 
-    if (updateError) {
-      console.error('Error updating line item:', updateError)
-      return NextResponse.json({
-        error: 'Failed to update line item',
-        details: updateError.message
-      }, { status: 500 })
+    if (error) {
+      console.error('Error updating line item:', error)
+      return NextResponse.json({ error: 'Failed to update line item' }, { status: 500 })
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, opportunityId, session.user.tenantId)
+    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
 
-    return NextResponse.json({ success: true, lineItem })
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// DELETE - Delete a line item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; lineItemId: string }> }
+  { params }: { params: { id: string; lineItemId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -91,26 +64,22 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: opportunityId, lineItemId } = await params
     const supabase = createServerSupabaseClient()
 
-    const { error: deleteError } = await supabase
+    const { error } = await supabase
       .from('opportunity_line_items')
       .delete()
-      .eq('id', lineItemId)
-      .eq('opportunity_id', opportunityId)
+      .eq('id', params.lineItemId)
+      .eq('opportunity_id', params.id)
       .eq('tenant_id', session.user.tenantId)
 
-    if (deleteError) {
-      console.error('Error deleting line item:', deleteError)
-      return NextResponse.json({
-        error: 'Failed to delete line item',
-        details: deleteError.message
-      }, { status: 500 })
+    if (error) {
+      console.error('Error deleting line item:', error)
+      return NextResponse.json({ error: 'Failed to delete line item' }, { status: 500 })
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, opportunityId, session.user.tenantId)
+    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -119,16 +88,15 @@ export async function DELETE(
   }
 }
 
-// Helper function to update opportunity amount based on line items
 async function updateOpportunityAmount(supabase: any, opportunityId: string, tenantId: string) {
-  // Sum all line item totals
+  // Calculate total from all line items
   const { data: lineItems } = await supabase
     .from('opportunity_line_items')
     .select('total')
     .eq('opportunity_id', opportunityId)
     .eq('tenant_id', tenantId)
 
-  const totalAmount = lineItems?.reduce((sum: number, item: any) => sum + Number(item.total || 0), 0) || 0
+  const totalAmount = lineItems?.reduce((sum: number, item: any) => sum + parseFloat(item.total), 0) || 0
 
   // Update opportunity amount
   await supabase
