@@ -47,6 +47,16 @@ export default function InvoiceDetailPage() {
   const tenantSubdomain = params.tenant as string
   const invoiceId = params.id as string
 
+  // Get return URL from browser URL
+  const [returnTo, setReturnTo] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      setReturnTo(urlParams.get('returnTo'))
+    }
+  }, [])
+
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [localLoading, setLocalLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -204,7 +214,7 @@ export default function InvoiceDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Link href={`/${tenantSubdomain}/invoices`}>
+              <Link href={returnTo || `/${tenantSubdomain}/invoices`}>
                 <Button variant="outline" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back

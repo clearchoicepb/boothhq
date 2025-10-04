@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -56,25 +56,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
+    // Filter to only include valid contact fields
+    const contactData = {
+      tenant_id: session.user.tenantId,
+      account_id: body.account_id || null,
+      first_name: body.first_name,
+      last_name: body.last_name,
+      email: body.email || null,
+      phone: body.phone || null,
+      job_title: body.job_title || null,
+      department: body.department || null,
+      address: body.address || null,
+      avatar_url: body.avatar_url || null,
+      status: body.status || 'active'
+    }
+
     const { data, error } = await supabase
       .from('contacts')
-      .insert({
-        ...body,
-        tenant_id: session.user.tenantId
-      })
+      .insert(contactData)
       .select()
       .single()
 
     if (error) {
       console.error('Error creating contact:', error)
-      return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create contact', details: error }, { status: 500 })
     }
 
     const response = NextResponse.json(data)
-    
+
     // Add caching headers for better performance
     response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-    
+
     return response
   } catch (error) {
     console.error('Error:', error)

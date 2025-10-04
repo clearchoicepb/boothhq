@@ -40,22 +40,26 @@ export async function POST(
       }
 
       // 2. Create the account
+      const billingAddress = {
+        address_line1: mailingAddress?.address_line1 || '',
+        address_line2: mailingAddress?.address_line2 || '',
+        city: mailingAddress?.city || '',
+        state: mailingAddress?.state || '',
+        postal_code: mailingAddress?.postal_code || '',
+        country: mailingAddress?.country || 'US'
+      }
+
       const { data: account, error: accountError } = await supabase
         .from('accounts')
         .insert({
           tenant_id: session.user.tenantId,
           name: accountData.name,
+          account_type: accountData.account_type || 'individual',
           email: accountData.email,
           phone: accountData.phone,
           website: accountData.website,
           industry: accountData.industry,
-          size: accountData.size,
-          address_line1: mailingAddress?.address_line1 || null,
-          address_line2: mailingAddress?.address_line2 || null,
-          city: mailingAddress?.city || null,
-          state: mailingAddress?.state || null,
-          postal_code: mailingAddress?.postal_code || null,
-          country: mailingAddress?.country || 'US',
+          billing_address: billingAddress,
           notes: `Converted from lead: ${lead.first_name} ${lead.last_name}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -83,9 +87,8 @@ export async function POST(
             last_name: contactData.last_name,
             email: contactData.email || lead.email,
             phone: contactData.phone || lead.phone,
-            title: contactData.title || null,
+            job_title: contactData.title || null,
             department: contactData.department || null,
-            notes: `Converted from lead: ${lead.first_name} ${lead.last_name}`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })

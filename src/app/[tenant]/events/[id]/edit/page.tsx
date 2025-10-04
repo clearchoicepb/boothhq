@@ -73,7 +73,7 @@ export default function EventEditPage() {
     router.push(`/${tenantSubdomain}/events/${eventId}`)
   }
 
-  const canManageEvents = hasPermission('events', 'write')
+  const canManageEvents = hasPermission('events', 'edit')
 
   if (status === 'loading' || loading || isLoading) {
     return (

@@ -104,11 +104,22 @@ export default function NewOpportunitySequentialPage() {
 
   const handleOpportunitySaved = async (opportunityData: any) => {
     try {
-      
+      let finalOpportunityData = { ...opportunityData }
+
+      // If we have a lead, store the lead_id for later conversion
+      if (createdLead && createdLead.type === 'lead') {
+        finalOpportunityData = {
+          ...opportunityData,
+          lead_id: createdLead.id,
+          account_id: null,
+          contact_id: null
+        }
+      }
+
       // Use the polymorphic API client
       const { apiClient } = await import('@/lib/polymorphic-api-client')
-      const newOpportunity = await apiClient.create('opportunities', opportunityData)
-      
+      const newOpportunity = await apiClient.create('opportunities', finalOpportunityData)
+
       router.push(`/${tenantSubdomain}/opportunities/${newOpportunity.id}`)
     } catch (error) {
       console.error('Error creating opportunity:', error)

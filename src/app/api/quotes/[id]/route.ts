@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,6 +14,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const quoteId = params.id
     const supabase = createServerSupabaseClient()
 
     const { data: quote, error } = await supabase
@@ -24,7 +26,7 @@ export async function GET(
         contacts!quotes_contact_id_fkey(first_name, last_name, email, phone),
         opportunities!quotes_opportunity_id_fkey(name, stage)
       `)
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -37,7 +39,7 @@ export async function GET(
     const { data: lineItems, error: lineItemsError } = await supabase
       .from('quote_line_items')
       .select('*')
-      .eq('quote_id', params.id)
+      .eq('quote_id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .order('sort_order', { ascending: true })
 
@@ -63,7 +65,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -72,6 +74,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const quoteId = params.id
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
@@ -104,14 +108,14 @@ export async function PUT(
       await supabase
         .from('quote_line_items')
         .delete()
-        .eq('quote_id', params.id)
+        .eq('quote_id', quoteId)
         .eq('tenant_id', session.user.tenantId)
 
       // Insert new line items
       if (body.line_items.length > 0) {
         const lineItemsData = body.line_items.map((item: any) => ({
           tenant_id: session.user.tenantId,
-          quote_id: params.id,
+          quote_id: quoteId,
           item_type: item.item_type,
           package_id: item.package_id || null,
           add_on_id: item.add_on_id || null,
@@ -141,7 +145,7 @@ export async function PUT(
     const { data: quote, error } = await supabase
       .from('quotes')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
@@ -160,7 +164,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -169,13 +173,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const quoteId = params.id
     const supabase = createServerSupabaseClient()
 
     // Delete quote (line items will be cascade deleted)
     const { error } = await supabase
       .from('quotes')
       .delete()
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
 
     if (error) {

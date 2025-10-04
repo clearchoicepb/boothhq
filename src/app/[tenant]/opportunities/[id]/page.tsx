@@ -6,7 +6,7 @@ import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, MoreVertical, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, MoreVertical, ChevronDown, Clock, X } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { LeadConversionModal } from '@/components/lead-conversion-modal'
@@ -83,11 +83,16 @@ export default function OpportunityDetailPage() {
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
   const [quotes, setQuotes] = useState<any[]>([])
   const [quotesLoading, setQuotesLoading] = useState(false)
+  const [activities, setActivities] = useState<any[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
+  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
 
   useEffect(() => {
     if (session && tenant && opportunityId) {
       fetchOpportunity()
       fetchQuotes()
+      fetchActivities()
     }
   }, [session, tenant, opportunityId])
 
@@ -161,6 +166,37 @@ export default function OpportunityDetailPage() {
     }
   }
 
+  const fetchActivities = async () => {
+    try {
+      setActivitiesLoading(true)
+      const response = await fetch(`/api/opportunities/${opportunityId}/activity`)
+      if (response.ok) {
+        const activitiesData = await response.json()
+        setActivities(activitiesData)
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error)
+    } finally {
+      setActivitiesLoading(false)
+    }
+  }
+
+  const handleActivityClick = (activity: any) => {
+    setSelectedActivity(activity)
+
+    // For different activity types, handle differently
+    if (activity.type === 'communication') {
+      setSelectedCommunication(activity.metadata)
+      setIsCommunicationDetailOpen(true)
+    } else if (activity.type === 'quote') {
+      // Navigate to quote detail page
+      router.push(`/${tenantSubdomain}/quotes/${activity.metadata.id}?returnTo=opportunities/${opportunityId}`)
+    } else {
+      // For other types, just open a generic modal
+      setIsActivityDetailOpen(true)
+    }
+  }
+
   const fetchLocations = async (eventDates: EventDate[]) => {
     try {
       const response = await fetch('/api/locations')
@@ -221,13 +257,53 @@ export default function OpportunityDetailPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          stage: newStage
+          stage: newStage,
+          actual_close_date: newStage === 'closed_won' ? new Date().toISOString().split('T')[0] : null
         }),
       })
 
       if (response.ok) {
         // Refresh the opportunity data
         await fetchOpportunity()
+
+        // If stage changed to closed_won, prompt to convert to event
+        if (newStage === 'closed_won') {
+          const shouldConvert = confirm(
+            '🎉 Congratulations! This opportunity is now Won!\n\n' +
+            'Would you like to convert it to an event now? This will:\n' +
+            '• Create an event record\n' +
+            '• Convert any accepted quote to an invoice\n' +
+            '• Copy all event dates and details'
+          )
+
+          if (shouldConvert) {
+            try {
+              const convertResponse = await fetch(`/api/opportunities/${opportunityId}/convert-to-event`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  eventData: {
+                    event_type: opportunity?.event_type || 'corporate',
+                    start_date: opportunity?.event_date || opportunity?.initial_date,
+                    end_date: opportunity?.final_date
+                  }
+                })
+              })
+
+              if (convertResponse.ok) {
+                const result = await convertResponse.json()
+                alert(result.message || 'Opportunity converted to event successfully!')
+                router.push(`/${tenantSubdomain}/events/${result.event.id}`)
+              } else {
+                const error = await convertResponse.json()
+                alert(`Failed to convert: ${error.error || 'Unknown error'}`)
+              }
+            } catch (error) {
+              console.error('Error converting to event:', error)
+              alert('Failed to convert opportunity to event')
+            }
+          }
+        }
       } else {
         alert('Failed to update stage')
       }
@@ -454,6 +530,61 @@ export default function OpportunityDetailPage() {
                         <DollarSign className="h-4 w-4 mr-2" />
                         Generate Quote
                       </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Convert this opportunity to an event? This will create an event and convert any accepted quote to an invoice.')) return
+
+                          setIsActionsOpen(false)
+
+                          try {
+                            // First, update opportunity to closed_won if not already
+                            if (opportunity.stage !== 'closed_won') {
+                              const updateResponse = await fetch(`/api/opportunities/${opportunityId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  stage: 'closed_won',
+                                  actual_close_date: new Date().toISOString().split('T')[0]
+                                })
+                              })
+
+                              if (!updateResponse.ok) {
+                                alert('Failed to update opportunity stage')
+                                return
+                              }
+                            }
+
+                            // Then convert to event
+                            const response = await fetch(`/api/opportunities/${opportunityId}/convert-to-event`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                eventData: {
+                                  event_type: opportunity.event_type || 'corporate',
+                                  start_date: opportunity.event_date || opportunity.initial_date,
+                                  end_date: opportunity.final_date
+                                }
+                              })
+                            })
+
+                            if (response.ok) {
+                              const result = await response.json()
+                              alert(result.message || 'Opportunity converted to event successfully!')
+                              router.push(`/${tenantSubdomain}/events/${result.event.id}`)
+                            } else {
+                              const error = await response.json()
+                              alert(`Failed to convert: ${error.error || 'Unknown error'}`)
+                            }
+                          } catch (error) {
+                            console.error('Error converting to event:', error)
+                            alert('Failed to convert opportunity to event')
+                          }
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Convert to Event
+                      </button>
                       <div className="border-t border-gray-100 my-1"></div>
                       <button
                         onClick={() => {
@@ -518,6 +649,10 @@ export default function OpportunityDetailPage() {
             <TabsTrigger value="quotes" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
               <FileText className="h-4 w-4 mr-2" />
               Quotes
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
+              <Clock className="h-4 w-4 mr-2" />
+              Activity
             </TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
               <ListTodo className="h-4 w-4 mr-2" />
@@ -938,6 +1073,58 @@ export default function OpportunityDetailPage() {
             </div>
           </TabsContent>
 
+          {/* Activity Timeline Tab */}
+          <TabsContent value="activity" className="mt-0">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Activity Timeline</h3>
+
+              {activitiesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-500">Loading activities...</p>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <Clock className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600 mb-1">No activity yet</p>
+                  <p className="text-sm text-gray-500">Activity will appear here as you work with this opportunity</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activities.map((activity, index) => (
+                    <div key={activity.id} className="relative pl-8 pb-6 border-l-2 border-gray-200 last:border-l-0 last:pb-0">
+                      {/* Timeline dot */}
+                      <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-[#347dc4]"></div>
+
+                      {/* Activity content */}
+                      <div
+                        className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleActivityClick(activity)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            {activity.type === 'communication' && <MessageSquare className="h-4 w-4 text-blue-600" />}
+                            {activity.type === 'task' && <ListTodo className="h-4 w-4 text-purple-600" />}
+                            {activity.type === 'quote' && <FileText className="h-4 w-4 text-green-600" />}
+                            {activity.type === 'note' && <Info className="h-4 w-4 text-orange-600" />}
+                            {activity.type === 'attachment' && <Paperclip className="h-4 w-4 text-gray-600" />}
+                            <span className="font-medium text-gray-900">{activity.title}</span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(activity.date).toLocaleString()}
+                          </span>
+                        </div>
+                        {activity.description && (
+                          <p className="text-sm text-gray-600 ml-6">{activity.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-0">
             <div className="bg-white rounded-lg shadow p-6">
@@ -1334,6 +1521,123 @@ export default function OpportunityDetailPage() {
                   onClick={() => {
                     setIsCommunicationDetailOpen(false)
                     setSelectedCommunication(null)
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Detail Modal */}
+      {isActivityDetailOpen && selectedActivity && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  {selectedActivity.type === 'task' && <ListTodo className="h-6 w-6 text-purple-600" />}
+                  {selectedActivity.type === 'note' && <Info className="h-6 w-6 text-orange-600" />}
+                  {selectedActivity.type === 'attachment' && <Paperclip className="h-6 w-6 text-gray-600" />}
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">{selectedActivity.title}</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {new Date(selectedActivity.date).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsActivityDetailOpen(false)
+                    setSelectedActivity(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-4">
+                {selectedActivity.description && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-2">
+                      {selectedActivity.type === 'task' ? 'Description' :
+                       selectedActivity.type === 'note' ? 'Note Content' :
+                       'Details'}
+                    </label>
+                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedActivity.description}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Task-specific fields */}
+                {selectedActivity.type === 'task' && selectedActivity.metadata && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          selectedActivity.metadata.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          selectedActivity.metadata.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          selectedActivity.metadata.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedActivity.metadata.status}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Priority</label>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          selectedActivity.metadata.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                          selectedActivity.metadata.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                          selectedActivity.metadata.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedActivity.metadata.priority}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedActivity.metadata.due_date && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Due Date</label>
+                        <p className="text-sm text-gray-900">
+                          {new Date(selectedActivity.metadata.due_date).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Attachment-specific fields */}
+                {selectedActivity.type === 'attachment' && selectedActivity.metadata && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">File Name</label>
+                    <p className="text-sm text-gray-900 font-mono">{selectedActivity.metadata.file_name}</p>
+                  </div>
+                )}
+
+                {/* Note-specific fields */}
+                {selectedActivity.type === 'note' && selectedActivity.metadata && selectedActivity.metadata.content && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Full Note</label>
+                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedActivity.metadata.content}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsActivityDetailOpen(false)
+                    setSelectedActivity(null)
                   }}
                 >
                   Close

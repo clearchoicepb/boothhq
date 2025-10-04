@@ -5,15 +5,18 @@ import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
+    const params = await context.params
+    const eventId = params.id
+
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
@@ -21,9 +24,10 @@ export async function GET(
       .select(`
         *,
         accounts!events_account_id_fkey(name),
-        contacts!events_contact_id_fkey(first_name, last_name)
+        contacts!events_contact_id_fkey(first_name, last_name),
+        opportunities!events_opportunity_id_fkey(name)
       `)
-      .eq('id', (await params).id)
+      .eq('id', eventId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -36,12 +40,13 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
-    // Transform the data to include account_name and contact_name
+    // Transform the data to include account_name, contact_name, and opportunity_name
     const transformedData = {
       ...data,
       account_name: data.accounts?.name || null,
-      contact_name: data.contacts ? 
-        `${data.contacts.first_name} ${data.contacts.last_name}`.trim() : null
+      contact_name: data.contacts ?
+        `${data.contacts.first_name} ${data.contacts.last_name}`.trim() : null,
+      opportunity_name: data.opportunities?.name || null
     }
 
     return NextResponse.json(transformedData)
@@ -53,22 +58,24 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const eventId = params.id
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
       .from('events')
       .update(body)
-      .eq('id', (await params).id)
+      .eq('id', eventId)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
@@ -87,21 +94,23 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const eventId = params.id
     const supabase = createServerSupabaseClient()
 
     const { error } = await supabase
       .from('events')
       .delete()
-      .eq('id', (await params).id)
+      .eq('id', eventId)
       .eq('tenant_id', session.user.tenantId)
 
     if (error) {

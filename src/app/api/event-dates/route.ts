@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     }
     
     const { searchParams } = new URL(request.url)
-    const opportunityId = searchParams.get('opportunityId')
-    const eventId = searchParams.get('eventId')
+    const opportunityId = searchParams.get('opportunity_id') || searchParams.get('opportunityId')
+    const eventId = searchParams.get('event_id') || searchParams.get('eventId')
     const status = searchParams.get('status')
     
     const supabase = createServerSupabaseClient()

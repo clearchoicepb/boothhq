@@ -64,6 +64,16 @@ export default function NewInvoicePage() {
     { id: '1', description: '', quantity: 1, unit_price: 0, total_price: 0 }
   ])
 
+  // Get return URL from browser URL
+  const [returnTo, setReturnTo] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      setReturnTo(urlParams.get('returnTo'))
+    }
+  }, [])
+
   useEffect(() => {
     if (session && tenant) {
       fetchAccounts()
@@ -225,8 +235,11 @@ export default function NewInvoicePage() {
 
       const data = await response.json()
 
-      // Redirect to the invoice detail page
-      router.push(`/${tenantSubdomain}/invoices/${data.id}`)
+      // Redirect to the invoice detail page with returnTo if available
+      const redirectUrl = returnTo
+        ? `/${tenantSubdomain}/invoices/${data.id}?returnTo=${encodeURIComponent(returnTo)}`
+        : `/${tenantSubdomain}/invoices/${data.id}`
+      router.push(redirectUrl)
     } catch (error) {
       console.error('Error:', error)
       alert('Error creating invoice. Please try again.')
@@ -266,7 +279,7 @@ export default function NewInvoicePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Link href={`/${tenantSubdomain}/invoices`}>
+              <Link href={returnTo || `/${tenantSubdomain}/invoices`}>
                 <Button variant="outline" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back

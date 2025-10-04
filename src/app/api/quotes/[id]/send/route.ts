@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,6 +14,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const quoteId = params.id
     const supabase = createServerSupabaseClient()
 
     // Update quote status to 'sent' and record sent timestamp
@@ -23,7 +25,7 @@ export async function POST(
         status: 'sent',
         sent_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()

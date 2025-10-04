@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -35,11 +35,19 @@ export default function EventDetailPage() {
   const { tenant, loading } = useTenant()
   const { hasPermission } = usePermissions()
   const params = useParams()
+  const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const eventId = params.id as string
   const [event, setEvent] = useState<EventWithRelations | null>(null)
   const [eventDates, setEventDates] = useState<EventDate[]>([])
   const [localLoading, setLocalLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [activities, setActivities] = useState<any[]>([])
+  const [attachments, setAttachments] = useState<any[]>([])
+  const [loadingInvoices, setLoadingInvoices] = useState(false)
+  const [loadingActivities, setLoadingActivities] = useState(false)
+  const [loadingAttachments, setLoadingAttachments] = useState(false)
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -73,12 +81,90 @@ export default function EventDetailPage() {
     }
   }, [eventId])
 
+  const fetchInvoices = useCallback(async () => {
+    try {
+      setLoadingInvoices(true)
+      const response = await fetch(`/api/invoices?event_id=${eventId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setInvoices(data)
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error)
+    } finally {
+      setLoadingInvoices(false)
+    }
+  }, [eventId])
+
+  const fetchActivities = useCallback(async () => {
+    try {
+      setLoadingActivities(true)
+      const response = await fetch(`/api/events/${eventId}/activity`)
+      if (response.ok) {
+        const data = await response.json()
+        setActivities(data)
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error)
+    } finally {
+      setLoadingActivities(false)
+    }
+  }, [eventId])
+
+  const fetchAttachments = useCallback(async () => {
+    try {
+      setLoadingAttachments(true)
+      const response = await fetch(`/api/attachments?event_id=${eventId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAttachments(data)
+      }
+    } catch (error) {
+      console.error('Error fetching attachments:', error)
+    } finally {
+      setLoadingAttachments(false)
+    }
+  }, [eventId])
+
   useEffect(() => {
     if (session && tenant && eventId) {
       fetchEvent()
       fetchEventDates()
     }
   }, [session, tenant, eventId, fetchEvent, fetchEventDates])
+
+  useEffect(() => {
+    if (session && tenant && eventId) {
+      if (activeTab === 'invoices') {
+        fetchInvoices()
+      } else if (activeTab === 'activity') {
+        fetchActivities()
+      } else if (activeTab === 'files') {
+        fetchAttachments()
+      }
+    }
+  }, [activeTab, session, tenant, eventId, fetchInvoices, fetchActivities, fetchAttachments])
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete event')
+      }
+
+      router.push(`/${tenantSubdomain}/events`)
+    } catch (error) {
+      console.error('Error deleting event:', error)
+      alert('Failed to delete event')
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -169,7 +255,7 @@ export default function EventDetailPage() {
                       Edit
                     </Button>
                   </Link>
-                  <Button variant="outline" className="text-red-600 hover:text-red-700">
+                  <Button variant="outline" className="text-red-600 hover:text-red-700" onClick={handleDelete}>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </Button>
@@ -178,6 +264,58 @@ export default function EventDetailPage() {
             </div>
           </div>
 
+          {/* Tabs */}
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('invoices')}
+                className={`${
+                  activeTab === 'invoices'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Invoices
+              </button>
+              <button
+                onClick={() => setActiveTab('activity')}
+                className={`${
+                  activeTab === 'activity'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                Activity
+              </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`${
+                  activeTab === 'files'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+              >
+                <Paperclip className="h-4 w-4 mr-2" />
+                Files
+              </button>
+            </nav>
+          </div>
+
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
@@ -375,7 +513,7 @@ export default function EventDetailPage() {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                 <div className="space-y-3">
-                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}`} className="block">
+                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&returnTo=events/${event.id}`} className="block">
                     <Button className="w-full" variant="outline">
                       <DollarSign className="h-4 w-4 mr-2" />
                       Create Invoice
@@ -408,6 +546,176 @@ export default function EventDetailPage() {
               </div>
             </div>
           </div>
+          )}
+
+          {/* Invoices Tab */}
+          {activeTab === 'invoices' && (
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
+                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&returnTo=events/${event.id}`}>
+                    <Button size="sm">
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Create Invoice
+                    </Button>
+                  </Link>
+                </div>
+
+                {loadingInvoices ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="text-center py-12">
+                    <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices</h3>
+                    <p className="mt-1 text-sm text-gray-500">Get started by creating a new invoice.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice #</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {invoices.map((invoice) => (
+                          <tr key={invoice.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {invoice.invoice_number}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                invoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                                invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {invoice.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              ${invoice.total_amount?.toFixed(2) || '0.00'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <Link href={`/${tenantSubdomain}/invoices/${invoice.id}?returnTo=events/${event.id}`} className="text-blue-600 hover:text-blue-900">
+                                View
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Activity Tab */}
+          {activeTab === 'activity' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Activity Timeline</h2>
+
+              {loadingActivities ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-12">
+                  <Activity className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No activity yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">Activity will appear here as you work on this event.</p>
+                </div>
+              ) : (
+                <div className="flow-root">
+                  <ul className="-mb-8">
+                    {activities.map((activity, activityIdx) => (
+                      <li key={activity.id}>
+                        <div className="relative pb-8">
+                          {activityIdx !== activities.length - 1 && (
+                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                          )}
+                          <div className="relative flex space-x-3">
+                            <div>
+                              <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                                <Activity className="h-4 w-4 text-white" />
+                              </span>
+                            </div>
+                            <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                                {activity.description && (
+                                  <p className="text-sm text-gray-500">{activity.description}</p>
+                                )}
+                              </div>
+                              <div className="whitespace-nowrap text-right text-sm text-gray-500">
+                                {new Date(activity.date).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Files Tab */}
+          {activeTab === 'files' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Files & Attachments</h2>
+                <Button size="sm">
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Upload File
+                </Button>
+              </div>
+
+              {loadingAttachments ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : attachments.length === 0 ? (
+                <div className="text-center py-12">
+                  <Paperclip className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
+                  <p className="mt-1 text-sm text-gray-500">Upload documents, images, or other files related to this event.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {attachments.map((attachment) => (
+                    <div key={attachment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center space-x-3">
+                        <Paperclip className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{attachment.file_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {attachment.file_size ? `${(attachment.file_size / 1024).toFixed(2)} KB` : 'Unknown size'} •
+                            Uploaded {new Date(attachment.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        Download
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </AppLayout>
     </AccessGuard>

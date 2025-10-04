@@ -278,6 +278,7 @@ export const entityConfigs: Record<string, EntityConfig> = {
       delete transformed.mailing_state
       delete transformed.mailing_postal_code
       delete transformed.mailing_country
+      delete transformed.event_dates  // event_dates belongs to events table, not opportunities
 
       // Convert empty date strings to null
       if (transformed.expected_close_date === '') transformed.expected_close_date = null
@@ -298,12 +299,14 @@ export const entityConfigs: Record<string, EntityConfig> = {
       return transformed
     },
     transformResponse: (data) => {
-      return data.map((opportunity: any) => ({
-        ...opportunity,
-        account_name: opportunity.accounts?.name || null,
-        contact_name: opportunity.contacts ? 
-          `${opportunity.contacts.first_name} ${opportunity.contacts.last_name}`.trim() : null
-      }))
+      return data
+        .filter((opportunity: any) => !opportunity.is_converted) // Filter out converted opportunities
+        .map((opportunity: any) => ({
+          ...opportunity,
+          account_name: opportunity.accounts?.name || null,
+          contact_name: opportunity.contacts ?
+            `${opportunity.contacts.first_name} ${opportunity.contacts.last_name}`.trim() : null
+        }))
     }
   },
 
