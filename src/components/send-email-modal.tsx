@@ -26,6 +26,7 @@ interface SendEmailModalProps {
   accountId?: string
   contactId?: string
   leadId?: string
+  eventId?: string
 }
 
 export function SendEmailModal({
@@ -38,7 +39,8 @@ export function SendEmailModal({
   opportunityId,
   accountId,
   contactId,
-  leadId
+  leadId,
+  eventId
 }: SendEmailModalProps) {
   const [loading, setLoading] = useState(false)
   const [to, setTo] = useState(defaultTo)
@@ -92,6 +94,7 @@ export function SendEmailModal({
       accountId,
       contactId,
       leadId,
+      eventId,
     })
 
     // Replace merge fields in template
@@ -134,6 +137,7 @@ export function SendEmailModal({
           account_id: accountId,
           contact_id: contactId,
           lead_id: leadId,
+          event_id: eventId,
         }),
       })
 

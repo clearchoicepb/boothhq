@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
 
     const body = await request.json()
-    const { to, message, opportunity_id, account_id, contact_id, lead_id } = body
+    const { to, message, opportunity_id, account_id, contact_id, lead_id, event_id } = body
 
     // Validate input
     if (!to || !message) {
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
     if (account_id) communicationData.account_id = account_id
     if (contact_id) communicationData.contact_id = contact_id
     if (lead_id) communicationData.lead_id = lead_id
+    if (event_id) communicationData.event_id = event_id
 
     const { data: communication, error: dbError } = await supabase
       .from('communications')

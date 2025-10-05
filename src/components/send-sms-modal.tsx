@@ -24,6 +24,7 @@ interface SendSMSModalProps {
   accountId?: string
   contactId?: string
   leadId?: string
+  eventId?: string
 }
 
 export function SendSMSModal({
@@ -35,7 +36,8 @@ export function SendSMSModal({
   opportunityId,
   accountId,
   contactId,
-  leadId
+  leadId,
+  eventId
 }: SendSMSModalProps) {
   const [loading, setLoading] = useState(false)
   const [to, setTo] = useState(defaultTo)
@@ -87,6 +89,7 @@ export function SendSMSModal({
       accountId,
       contactId,
       leadId,
+      eventId,
     })
 
     // Replace merge fields in template
@@ -126,6 +129,7 @@ export function SendSMSModal({
           account_id: accountId,
           contact_id: contactId,
           lead_id: leadId,
+          event_id: eventId,
         }),
       })
 

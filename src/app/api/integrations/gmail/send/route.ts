@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { to, subject, body: emailBody, opportunity_id, account_id, contact_id, lead_id } = body
+    const { to, subject, body: emailBody, opportunity_id, account_id, contact_id, lead_id, event_id } = body
 
     if (!to || !subject || !emailBody) {
       return NextResponse.json(
@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
         account_id: account_id || null,
         contact_id: contact_id || null,
         lead_id: lead_id || null,
+        event_id: event_id || null,
         communication_type: 'email',
         direction: 'outbound',
         subject,
