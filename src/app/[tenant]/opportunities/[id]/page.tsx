@@ -87,12 +87,18 @@ export default function OpportunityDetailPage() {
   const [activitiesLoading, setActivitiesLoading] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
+  const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
+  const [editAccountId, setEditAccountId] = useState<string>('')
+  const [editContactId, setEditContactId] = useState<string>('')
+  const [accounts, setAccounts] = useState<any[]>([])
+  const [contacts, setContacts] = useState<any[]>([])
 
   useEffect(() => {
     if (session && tenant && opportunityId) {
       fetchOpportunity()
       fetchQuotes()
       fetchActivities()
+      fetchAccountsAndContacts()
     }
   }, [session, tenant, opportunityId])
 
@@ -324,6 +330,64 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching communications:', error)
+    }
+  }
+
+  const fetchAccountsAndContacts = async () => {
+    try {
+      const [accountsRes, contactsRes] = await Promise.all([
+        fetch('/api/accounts'),
+        fetch('/api/contacts')
+      ])
+
+      if (accountsRes.ok) {
+        const accountsData = await accountsRes.json()
+        setAccounts(accountsData)
+      }
+
+      if (contactsRes.ok) {
+        const contactsData = await contactsRes.json()
+        setContacts(contactsData)
+      }
+    } catch (error) {
+      console.error('Error fetching accounts and contacts:', error)
+    }
+  }
+
+  const handleStartEditAccountContact = () => {
+    setEditAccountId(opportunity?.account_id || '')
+    setEditContactId(opportunity?.contact_id || '')
+    setIsEditingAccountContact(true)
+  }
+
+  const handleCancelEditAccountContact = () => {
+    setEditAccountId('')
+    setEditContactId('')
+    setIsEditingAccountContact(false)
+  }
+
+  const handleSaveAccountContact = async () => {
+    try {
+      const response = await fetch(`/api/opportunities/${opportunityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_id: editAccountId || null,
+          contact_id: editContactId || null
+        }),
+      })
+
+      if (response.ok) {
+        await fetchOpportunity()
+        setIsEditingAccountContact(false)
+      } else {
+        alert('Failed to update account/contact')
+      }
+    } catch (error) {
+      console.error('Error updating account/contact:', error)
+      alert('Error updating account/contact')
     }
   }
 
@@ -700,39 +764,133 @@ export default function OpportunityDetailPage() {
                           </div>
                         </div>
                       </div>
+                    ) : isEditingAccountContact ? (
+                      <div>
+                        <select
+                          value={editContactId}
+                          onChange={(e) => setEditContactId(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
+                        >
+                          <option value="">-- No Contact --</option>
+                          {contacts
+                            .filter(c => !editAccountId || c.account_id === editAccountId)
+                            .map(contact => (
+                              <option key={contact.id} value={contact.id}>
+                                {contact.first_name} {contact.last_name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
                     ) : opportunity.contact_name ? (
-                      <Link
-                        href={`/${tenantSubdomain}/contacts/${opportunity.contact_id}`}
-                        className="flex items-center text-[#347dc4] hover:text-[#2c6aa3]"
-                      >
-                        <User className="h-5 w-5 mr-2" />
-                        <div>
-                          <p className="text-xl font-semibold">{opportunity.contact_name}</p>
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                            Contact
-                          </span>
-                        </div>
-                      </Link>
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={`/${tenantSubdomain}/contacts/${opportunity.contact_id}`}
+                          className="flex items-center text-[#347dc4] hover:text-[#2c6aa3]"
+                        >
+                          <User className="h-5 w-5 mr-2" />
+                          <div>
+                            <p className="text-xl font-semibold">{opportunity.contact_name}</p>
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                              Contact
+                            </span>
+                          </div>
+                        </Link>
+                        <button
+                          onClick={handleStartEditAccountContact}
+                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
+                          title="Edit contact"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">No client assigned</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-500 italic">No client assigned</p>
+                        <button
+                          onClick={handleStartEditAccountContact}
+                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
+                          title="Edit contact"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-2">Account</label>
-                    {opportunity.account_name ? (
-                      <Link
-                        href={`/${tenantSubdomain}/accounts/${opportunity.account_id}`}
-                        className="flex items-center text-[#347dc4] hover:text-[#2c6aa3]"
-                      >
-                        <Building2 className="h-5 w-5 mr-2" />
-                        <p className="text-xl font-semibold">{opportunity.account_name}</p>
-                      </Link>
+                    {isEditingAccountContact ? (
+                      <div>
+                        <select
+                          value={editAccountId}
+                          onChange={(e) => {
+                            setEditAccountId(e.target.value)
+                            // Clear contact if changing account
+                            if (e.target.value !== opportunity?.account_id) {
+                              setEditContactId('')
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
+                        >
+                          <option value="">-- No Account --</option>
+                          {accounts.map(account => (
+                            <option key={account.id} value={account.id}>
+                              {account.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : opportunity.account_name ? (
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={`/${tenantSubdomain}/accounts/${opportunity.account_id}`}
+                          className="flex items-center text-[#347dc4] hover:text-[#2c6aa3]"
+                        >
+                          <Building2 className="h-5 w-5 mr-2" />
+                          <p className="text-xl font-semibold">{opportunity.account_name}</p>
+                        </Link>
+                        <button
+                          onClick={handleStartEditAccountContact}
+                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
+                          title="Edit account"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">No account assigned</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-500 italic">No account assigned</p>
+                        <button
+                          onClick={handleStartEditAccountContact}
+                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
+                          title="Edit account"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
+
+                {/* Save/Cancel buttons for inline editing */}
+                {isEditingAccountContact && (
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      onClick={handleSaveAccountContact}
+                      className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      title="Save changes"
+                    >
+                      <CheckCircle className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={handleCancelEditAccountContact}
+                      className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                      title="Cancel"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Key Metrics - Event Date, Deal Value, Probability, Stage */}

@@ -72,13 +72,7 @@ export function OpportunityFormEnhanced({
     expected_close_date: '',
     actual_close_date: '',
     event_type: '',
-    date_type: 'single_day',
-    mailing_address_line1: '',
-    mailing_address_line2: '',
-    mailing_city: '',
-    mailing_state: '',
-    mailing_postal_code: '',
-    mailing_country: 'US'
+    date_type: 'single_day'
   })
 
   const [eventDates, setEventDates] = useState<EventDate[]>([
@@ -88,8 +82,53 @@ export function OpportunityFormEnhanced({
   // Shared location for same_location_* types
   const [sharedLocationId, setSharedLocationId] = useState<string>('')
 
+  // Account and contact selection for editing
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('')
+  const [selectedContactId, setSelectedContactId] = useState<string>('')
+  const [accounts, setAccounts] = useState<any[]>([])
+  const [contacts, setContacts] = useState<any[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(false)
+  const [loadingContacts, setLoadingContacts] = useState(false)
+
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Fetch accounts and contacts when editing (not creating from customer)
+  useEffect(() => {
+    if (opportunity && !customer) {
+      fetchAccountsAndContacts()
+      // Set selected account and contact from opportunity
+      setSelectedAccountId(opportunity.account_id || '')
+      setSelectedContactId(opportunity.contact_id || '')
+    }
+  }, [opportunity, customer])
+
+  const fetchAccountsAndContacts = async () => {
+    try {
+      setLoadingAccounts(true)
+      setLoadingContacts(true)
+
+      const [accountsRes, contactsRes] = await Promise.all([
+        fetch('/api/accounts'),
+        fetch('/api/contacts')
+      ])
+
+      if (accountsRes.ok) {
+        const accountsData = await accountsRes.json()
+        setAccounts(accountsData)
+      }
+
+      if (contactsRes.ok) {
+        const contactsData = await contactsRes.json()
+        setContacts(contactsData)
+      }
+    } catch (error) {
+      console.error('Error fetching accounts/contacts:', error)
+    } finally {
+      setLoadingAccounts(false)
+      setLoadingContacts(false)
+    }
+  }
 
   // Populate form when editing existing opportunity
   useEffect(() => {
@@ -143,13 +182,7 @@ export function OpportunityFormEnhanced({
         expected_close_date: opportunity.expected_close_date || '',
         actual_close_date: opportunity.actual_close_date || '',
         event_type: opportunity.event_type || '',
-        date_type: formDateType,
-        mailing_address_line1: opportunity.mailing_address_line1 || '',
-        mailing_address_line2: opportunity.mailing_address_line2 || '',
-        mailing_city: opportunity.mailing_city || '',
-        mailing_state: opportunity.mailing_state || '',
-        mailing_postal_code: opportunity.mailing_postal_code || '',
-        mailing_country: opportunity.mailing_country || 'US'
+        date_type: formDateType
       })
 
       // If opportunity has event dates, populate them
@@ -319,8 +352,8 @@ export function OpportunityFormEnhanced({
         date_type: formData.date_type,
         event_dates: finalEventDates.filter(date => date.event_date),
         lead_id: customer?.type === 'lead' ? customer.id : (opportunity?.lead_id || null),
-        account_id: customer?.type === 'account' ? customer.id : (opportunity?.account_id || null),
-        contact_id: contact?.id || (opportunity?.contact_id || null)
+        account_id: customer?.type === 'account' ? customer.id : (selectedAccountId || opportunity?.account_id || null),
+        contact_id: contact?.id || (selectedContactId || opportunity?.contact_id || null)
       }
 
       if (opportunity && onSubmit) {
@@ -376,6 +409,57 @@ export function OpportunityFormEnhanced({
               {customer.type === 'lead' ? 'Lead' : 'Account'}: {customer.name}
               {contact && ` (Contact: ${contact.first_name} ${contact.last_name})`}
             </p>
+          </div>
+        )}
+
+        {/* Account and Contact Selection (for editing without customer) */}
+        {!customer && opportunity && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Account
+              </label>
+              <Select
+                value={selectedAccountId}
+                onChange={(e) => {
+                  setSelectedAccountId(e.target.value)
+                  // Reset contact when account changes
+                  setSelectedContactId('')
+                }}
+                disabled={loadingAccounts}
+              >
+                <option value="">-- No Account --</option>
+                {accounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Contact
+              </label>
+              <Select
+                value={selectedContactId}
+                onChange={(e) => setSelectedContactId(e.target.value)}
+                disabled={loadingContacts}
+              >
+                <option value="">-- No Contact --</option>
+                {contacts
+                  .filter(c => !selectedAccountId || c.account_id === selectedAccountId)
+                  .map(contact => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.first_name} {contact.last_name}
+                      {contact.account_id && selectedAccountId !== contact.account_id && ` (${accounts.find(a => a.id === contact.account_id)?.name || 'Other Account'})`}
+                    </option>
+                  ))}
+              </Select>
+              {selectedAccountId && contacts.filter(c => c.account_id === selectedAccountId).length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">No contacts available for this account</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -610,55 +694,6 @@ export function OpportunityFormEnhanced({
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Mailing Address */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Mailing Address (Optional)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <Input
-                value={formData.mailing_address_line1}
-                onChange={(e) => handleInputChange('mailing_address_line1', e.target.value)}
-                placeholder="Address Line 1"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Input
-                value={formData.mailing_address_line2}
-                onChange={(e) => handleInputChange('mailing_address_line2', e.target.value)}
-                placeholder="Address Line 2"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_city}
-                onChange={(e) => handleInputChange('mailing_city', e.target.value)}
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_state}
-                onChange={(e) => handleInputChange('mailing_state', e.target.value)}
-                placeholder="State"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_postal_code}
-                onChange={(e) => handleInputChange('mailing_postal_code', e.target.value)}
-                placeholder="ZIP Code"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_country}
-                onChange={(e) => handleInputChange('mailing_country', e.target.value)}
-                placeholder="Country"
-              />
-            </div>
-          </div>
         </div>
 
         {/* Description */}

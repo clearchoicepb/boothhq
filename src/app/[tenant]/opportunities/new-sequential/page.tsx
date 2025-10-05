@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { LeadFormSequential } from '@/components/lead-form-sequential'
 import { OpportunityFormEnhanced } from '@/components/opportunity-form-enhanced'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Plus } from 'lucide-react'
 
 interface Customer {
   id: string
@@ -31,10 +32,13 @@ export default function NewOpportunitySequentialPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const tenantSubdomain = params.tenant as string
-  
-  const [step, setStep] = useState<'lead-creation' | 'opportunity-creation'>('lead-creation')
+
+  const [step, setStep] = useState<'lead-creation' | 'contact-selection' | 'opportunity-creation'>('lead-creation')
   const [createdLead, setCreatedLead] = useState<any>(null)
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [preSelectedAccountId, setPreSelectedAccountId] = useState<string | null>(null)
+  const [accountContacts, setAccountContacts] = useState<Contact[]>([])
+  const [accountInfo, setAccountInfo] = useState<any>(null)
 
   useEffect(() => {
     const accountId = searchParams.get('account_id')
@@ -47,9 +51,15 @@ export default function NewOpportunitySequentialPage() {
 
   const fetchAccountAndProceed = async (accountId: string) => {
     try {
-      const response = await fetch(`/api/accounts/${accountId}`)
-      if (response.ok) {
-        const account = await response.json()
+      const [accountResponse, contactsResponse] = await Promise.all([
+        fetch(`/api/accounts/${accountId}`),
+        fetch(`/api/contacts`)
+      ])
+
+      if (accountResponse.ok) {
+        const account = await accountResponse.json()
+        setAccountInfo(account)
+
         const customer: Customer = {
           id: account.id,
           name: account.name || '',
@@ -59,7 +69,15 @@ export default function NewOpportunitySequentialPage() {
           company: account.account_type === 'company' ? account.name : undefined
         }
         setCreatedLead(customer)
-        setStep('opportunity-creation')
+
+        // Fetch and filter contacts for this account
+        if (contactsResponse.ok) {
+          const allContacts = await contactsResponse.json()
+          const filteredContacts = allContacts.filter((c: Contact) => c.account_id === accountId)
+          setAccountContacts(filteredContacts)
+        }
+
+        setStep('contact-selection')
       }
     } catch (error) {
       console.error('Error fetching account:', error)
@@ -102,6 +120,11 @@ export default function NewOpportunitySequentialPage() {
     }
   }
 
+  const handleContactSelected = (contact: Contact | null) => {
+    setSelectedContact(contact)
+    setStep('opportunity-creation')
+  }
+
   const handleOpportunitySaved = async (opportunityData: any) => {
     try {
       let finalOpportunityData = { ...opportunityData }
@@ -113,6 +136,14 @@ export default function NewOpportunitySequentialPage() {
           lead_id: createdLead.id,
           account_id: null,
           contact_id: null
+        }
+      } else if (createdLead && createdLead.type === 'account') {
+        // If we have an account, store the account_id and contact_id
+        finalOpportunityData = {
+          ...opportunityData,
+          lead_id: null,
+          account_id: createdLead.id,
+          contact_id: selectedContact?.id || null
         }
       }
 
@@ -129,7 +160,13 @@ export default function NewOpportunitySequentialPage() {
 
   const handleBack = () => {
     if (step === 'opportunity-creation') {
-      setStep('lead-creation')
+      if (preSelectedAccountId) {
+        setStep('contact-selection')
+      } else {
+        setStep('lead-creation')
+      }
+    } else if (step === 'contact-selection') {
+      router.push(`/${tenantSubdomain}/accounts/${preSelectedAccountId}`)
     } else {
       router.push(`/${tenantSubdomain}/opportunities`)
     }
@@ -148,8 +185,10 @@ export default function NewOpportunitySequentialPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Create New Opportunity</h1>
           <p className="text-gray-600 mt-2">
-            {step === 'lead-creation' 
+            {step === 'lead-creation'
               ? 'First, create a new lead for this opportunity'
+              : step === 'contact-selection'
+              ? 'Select or create a contact for this opportunity'
               : 'Now, provide the event details for this opportunity'
             }
           </p>
@@ -159,25 +198,25 @@ export default function NewOpportunitySequentialPage() {
         <div className="mb-8">
           <div className="flex items-center">
             <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-              step === 'lead-creation' 
-                ? 'bg-blue-600 text-white' 
-                : createdLead ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'
+              step === 'lead-creation' || step === 'contact-selection'
+                ? 'bg-blue-600 text-white'
+                : createdLead || selectedContact ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'
             }`}>
-              {createdLead ? <CheckCircle className="h-5 w-5" /> : '1'}
+              {createdLead || selectedContact ? <CheckCircle className="h-5 w-5" /> : '1'}
             </div>
             <div className={`flex-1 h-1 mx-4 ${
               step === 'opportunity-creation' ? 'bg-green-600' : 'bg-gray-300'
             }`} />
             <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-              step === 'opportunity-creation' 
-                ? 'bg-blue-600 text-white' 
+              step === 'opportunity-creation'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-300 text-gray-600'
             }`}>
               2
             </div>
           </div>
           <div className="flex justify-between mt-2 text-sm text-gray-600">
-            <span>Create Lead</span>
+            <span>{preSelectedAccountId ? 'Select Contact' : 'Create Lead'}</span>
             <span>Event Details</span>
           </div>
         </div>
@@ -193,22 +232,103 @@ export default function NewOpportunitySequentialPage() {
           </div>
         )}
 
+        {step === 'contact-selection' && accountInfo && (
+          <div className="bg-white rounded-lg shadow p-6 lg:p-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Select Contact</h2>
+
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="font-medium text-blue-800">Account: {accountInfo.name}</h3>
+              <p className="text-sm text-blue-600 mt-1">
+                Select an existing contact or create a new one for this opportunity
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-md font-medium text-gray-900">Existing Contacts</h3>
+                <Link href={`/${tenantSubdomain}/contacts/new?account_id=${preSelectedAccountId}&returnTo=opportunities/new-sequential?account_id=${preSelectedAccountId}`}>
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Contact
+                  </Button>
+                </Link>
+              </div>
+
+              {accountContacts.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                  <p className="text-sm text-gray-500">No contacts found for this account</p>
+                  <p className="text-xs text-gray-400 mt-1">Create a contact to continue</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {accountContacts.map((contact) => (
+                    <div
+                      key={contact.id}
+                      onClick={() => setSelectedContact(contact)}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedContact?.id === contact.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {contact.first_name} {contact.last_name}
+                          </p>
+                          {contact.email && (
+                            <p className="text-sm text-gray-600">{contact.email}</p>
+                          )}
+                          {contact.phone && (
+                            <p className="text-sm text-gray-600">{contact.phone}</p>
+                          )}
+                        </div>
+                        {selectedContact?.id === contact.id && (
+                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between pt-4 border-t mt-6">
+                <Button variant="outline" onClick={() => handleContactSelected(null)}>
+                  Skip (No Contact)
+                </Button>
+                <Button
+                  onClick={() => handleContactSelected(selectedContact)}
+                  disabled={!selectedContact}
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {step === 'opportunity-creation' && createdLead && (
           <div className="bg-white rounded-lg shadow p-6 lg:p-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Create Opportunity</h2>
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h3 className="font-medium text-green-800">Lead Created Successfully!</h3>
+              <h3 className="font-medium text-green-800">
+                {createdLead.type === 'lead' ? 'Lead Created Successfully!' : 'Contact Selected!'}
+              </h3>
               <p className="text-sm text-green-600">
-                {createdLead.name} has been added as a lead. Now let's create the opportunity.
+                {createdLead.type === 'lead'
+                  ? `${createdLead.name} has been added as a lead. Now let's create the opportunity.`
+                  : `Account: ${createdLead.name}${selectedContact ? ` | Contact: ${selectedContact.first_name} ${selectedContact.last_name}` : ' (No contact selected)'}`
+                }
               </p>
             </div>
             <OpportunityFormEnhanced
               customer={createdLead}
+              contact={selectedContact || undefined}
               onSave={handleOpportunitySaved}
-              onClose={() => setStep('lead-creation')}
+              onClose={() => preSelectedAccountId ? setStep('contact-selection') : setStep('lead-creation')}
               submitButtonText="Create Opportunity"
               showCancelButton={true}
-              onCancel={() => setStep('lead-creation')}
+              onCancel={() => preSelectedAccountId ? setStep('contact-selection') : setStep('lead-creation')}
             />
           </div>
         )}

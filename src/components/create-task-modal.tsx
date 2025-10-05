@@ -12,11 +12,17 @@ interface User {
   email: string
 }
 
+interface EventDate {
+  id: string
+  event_date: string
+}
+
 interface CreateTaskModalProps {
   isOpen: boolean
   onClose: () => void
   entityType?: string
   entityId?: string
+  eventDates?: EventDate[]
   onSuccess?: () => void
 }
 
@@ -25,6 +31,7 @@ export function CreateTaskModal({
   onClose,
   entityType,
   entityId,
+  eventDates,
   onSuccess
 }: CreateTaskModalProps) {
   const [users, setUsers] = useState<User[]>([])
@@ -35,6 +42,7 @@ export function CreateTaskModal({
     title: '',
     description: '',
     assignedTo: '',
+    eventDateId: '',
     priority: 'medium',
     status: 'pending',
     dueDate: '',
@@ -49,6 +57,7 @@ export function CreateTaskModal({
         title: '',
         description: '',
         assignedTo: '',
+        eventDateId: '',
         priority: 'medium',
         status: 'pending',
         dueDate: '',
@@ -91,6 +100,7 @@ export function CreateTaskModal({
           title: formData.title,
           description: formData.description,
           assignedTo: formData.assignedTo || null,
+          eventDateId: formData.eventDateId || null,
           priority: formData.priority,
           status: formData.status,
           dueDate: formData.dueDate || null,
@@ -157,6 +167,26 @@ export function CreateTaskModal({
             placeholder="Add task details..."
           />
         </div>
+
+        {entityType === 'event' && eventDates && eventDates.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Event Date (Optional)
+            </label>
+            <select
+              value={formData.eventDateId}
+              onChange={(e) => setFormData({ ...formData, eventDateId: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            >
+              <option value="">Overall Event (not specific to a date)</option>
+              {eventDates.map((eventDate) => (
+                <option key={eventDate.id} value={eventDate.id}>
+                  {new Date(eventDate.event_date).toLocaleDateString()}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>

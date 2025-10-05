@@ -6,7 +6,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-client'
 // GET - Download/view a specific attachment
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,13 +14,16 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const attachmentId = params.id
+
     const supabase = createServerSupabaseClient()
 
     // Fetch attachment metadata
     const { data: attachment, error } = await supabase
       .from('attachments')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', attachmentId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -60,7 +63,7 @@ export async function GET(
 // DELETE - Remove an attachment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -68,13 +71,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const attachmentId = params.id
+
     const supabase = createServerSupabaseClient()
 
     // Fetch attachment to get storage path
     const { data: attachment, error: fetchError } = await supabase
       .from('attachments')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', attachmentId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -99,7 +105,7 @@ export async function DELETE(
     const { error: dbError } = await supabase
       .from('attachments')
       .delete()
-      .eq('id', params.id)
+      .eq('id', attachmentId)
       .eq('tenant_id', session.user.tenantId)
 
     if (dbError) {

@@ -95,6 +95,14 @@ const settingsSections: SettingsSection[] = [
     category: 'operations'
   },
   {
+    id: 'staff-roles',
+    title: 'Staff Roles',
+    description: 'Manage staff role categories for operations and event team members',
+    icon: UserCheck,
+    href: '/staff-roles',
+    category: 'operations'
+  },
+  {
     id: 'inventory',
     title: 'Inventory',
     description: 'Manage equipment categories, maintenance schedules, and tracking',

@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,12 +14,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const opportunityId = params.id
+
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
       .from('opportunity_line_items')
       .select('*')
-      .eq('opportunity_id', params.id)
+      .eq('opportunity_id', opportunityId)
       .eq('tenant_id', session.user.tenantId)
       .order('sort_order', { ascending: true })
 
@@ -37,7 +40,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -46,12 +49,15 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const opportunityId = params.id
+
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
     const lineItemData = {
       tenant_id: session.user.tenantId,
-      opportunity_id: params.id,
+      opportunity_id: opportunityId,
       item_type: body.item_type,
       package_id: body.package_id || null,
       add_on_id: body.add_on_id || null,
@@ -75,7 +81,7 @@ export async function POST(
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
+    await updateOpportunityAmount(supabase, opportunityId, session.user.tenantId)
 
     return NextResponse.json(data)
   } catch (error) {

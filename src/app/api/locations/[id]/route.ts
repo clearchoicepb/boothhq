@@ -5,21 +5,24 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
+    const params = await context.params
+    const locationId = params.id
+
     const supabase = createServerSupabaseClient()
-    
+
     const { data, error } = await supabase
       .from('locations')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', locationId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -42,14 +45,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const params = await context.params
+    const locationId = params.id
 
     const body = await request.json()
     const supabase = createServerSupabaseClient()
@@ -57,7 +63,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from('locations')
       .update(body)
-      .eq('id', params.id)
+      .eq('id', locationId)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
@@ -76,21 +82,24 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const params = await context.params
+    const locationId = params.id
 
     const supabase = createServerSupabaseClient()
 
     const { error } = await supabase
       .from('locations')
       .delete()
-      .eq('id', params.id)
+      .eq('id', locationId)
       .eq('tenant_id', session.user.tenantId)
 
     if (error) {

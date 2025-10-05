@@ -6,7 +6,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-client'
 // GET - Get single template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,12 +14,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const templateId = params.id
+
     const supabase = createServerSupabaseClient()
 
     const { data: template, error } = await supabase
       .from('templates')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', templateId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -43,13 +46,16 @@ export async function GET(
 // PUT - Update template
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const params = await context.params
+    const templateId = params.id
 
     const body = await request.json()
     const { name, subject, content, merge_fields, is_active } = body
@@ -66,7 +72,7 @@ export async function PUT(
     const { data: template, error } = await supabase
       .from('templates')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', templateId)
       .eq('tenant_id', session.user.tenantId)
       .select()
       .single()
@@ -92,7 +98,7 @@ export async function PUT(
 // DELETE - Delete template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -100,12 +106,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await context.params
+    const templateId = params.id
+
     const supabase = createServerSupabaseClient()
 
     const { error } = await supabase
       .from('templates')
       .delete()
-      .eq('id', params.id)
+      .eq('id', templateId)
       .eq('tenant_id', session.user.tenantId)
 
     if (error) {

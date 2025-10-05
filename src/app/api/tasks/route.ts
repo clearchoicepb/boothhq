@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
+        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
       `)
       .eq('tenant_id', session.user.tenantId)
       .order('created_at', { ascending: false })
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       assignedTo,
       entityType,
       entityId,
+      eventDateId,
       status = 'pending',
       priority = 'medium',
       dueDate,
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
         created_by: session.user.id,
         entity_type: entityType || null,
         entity_id: entityId || null,
+        event_date_id: eventDateId || null,
         status,
         priority,
         due_date: dueDate || null,
@@ -105,7 +108,8 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
+        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
       `)
       .single()
 

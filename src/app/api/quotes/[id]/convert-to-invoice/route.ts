@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -13,6 +13,9 @@ export async function POST(
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const params = await context.params
+    const quoteId = params.id
 
     const body = await request.json()
     const { event_id, due_date } = body
@@ -27,7 +30,7 @@ export async function POST(
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -58,7 +61,7 @@ export async function POST(
     const { data: quoteLineItems } = await supabase
       .from('quote_line_items')
       .select('*')
-      .eq('quote_id', params.id)
+      .eq('quote_id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .order('sort_order', { ascending: true })
 
@@ -134,7 +137,7 @@ export async function POST(
     await supabase
       .from('quotes')
       .update({ invoice_id: invoice.id })
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
 
     return NextResponse.json({

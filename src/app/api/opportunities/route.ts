@@ -94,12 +94,42 @@ export async function POST(request: NextRequest) {
     }
     
     // Handle date_type mapping from form values to database values
+    let finalDateType = cleanedOpportunityData.date_type
     if (cleanedOpportunityData.date_type === 'single_day') {
-      cleanedOpportunityData.date_type = 'single'
+      finalDateType = 'single'
     } else if (['same_location_sequential', 'same_location_non_sequential', 'multiple_locations'].includes(cleanedOpportunityData.date_type)) {
-      cleanedOpportunityData.date_type = 'multiple'
+      finalDateType = 'multiple'
     }
-    
+    cleanedOpportunityData.date_type = finalDateType
+
+    // Populate event_date/initial_date/final_date from event_dates array
+    if (event_dates && event_dates.length > 0) {
+      const dates = event_dates
+        .filter((d: any) => d.event_date)
+        .map((d: any) => new Date(d.event_date))
+        .sort((a: Date, b: Date) => a.getTime() - b.getTime())
+
+      if (dates.length > 0) {
+        if (finalDateType === 'single') {
+          cleanedOpportunityData.event_date = dates[0].toISOString().split('T')[0]
+          cleanedOpportunityData.initial_date = null
+          cleanedOpportunityData.final_date = null
+        } else if (finalDateType === 'multiple') {
+          cleanedOpportunityData.event_date = null
+          cleanedOpportunityData.initial_date = dates[0].toISOString().split('T')[0]
+          cleanedOpportunityData.final_date = dates[dates.length - 1].toISOString().split('T')[0]
+        }
+      }
+    } else {
+      // No event dates provided, clear all date fields based on type
+      if (finalDateType === 'single') {
+        cleanedOpportunityData.initial_date = null
+        cleanedOpportunityData.final_date = null
+      } else if (finalDateType === 'multiple') {
+        cleanedOpportunityData.event_date = null
+      }
+    }
+
     // Remove fields that don't exist in the current database schema
     delete cleanedOpportunityData.event_dates // event_dates is a separate table, not a column
     delete cleanedOpportunityData.mailing_address_line1

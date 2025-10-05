@@ -35,6 +35,7 @@ interface Task {
   created_by: string
   entity_type: string | null
   entity_id: string | null
+  event_date_id: string | null
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   due_date: string | null
@@ -52,6 +53,10 @@ interface Task {
     first_name: string
     last_name: string
     email: string
+  }
+  event_date?: {
+    id: string
+    event_date: string
   }
 }
 
@@ -191,6 +196,11 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
                   {task.priority}
                 </span>
+                {task.event_date && (
+                  <span className="text-xs text-blue-600 font-medium">
+                    📅 {new Date(task.event_date.event_date).toLocaleDateString()}
+                  </span>
+                )}
                 {task.assigned_to_user && (
                   <span className="text-xs text-gray-500 truncate">
                     {task.assigned_to_user.first_name} {task.assigned_to_user.last_name}

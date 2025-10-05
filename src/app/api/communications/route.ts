@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const accountId = searchParams.get('account_id')
     const contactId = searchParams.get('contact_id')
     const leadId = searchParams.get('lead_id')
+    const eventId = searchParams.get('event_id')
 
     let query = supabase
       .from('communications')
@@ -48,6 +49,9 @@ export async function GET(request: NextRequest) {
     }
     if (leadId) {
       query = query.eq('lead_id', leadId)
+    }
+    if (eventId) {
+      query = query.eq('event_id', eventId)
     }
 
     const { data, error } = await query

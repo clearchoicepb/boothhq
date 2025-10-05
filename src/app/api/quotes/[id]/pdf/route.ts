@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -13,6 +13,9 @@ export async function GET(
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const params = await context.params
+    const quoteId = params.id
 
     const supabase = createServerSupabaseClient()
 
@@ -25,7 +28,7 @@ export async function GET(
         contacts!quotes_contact_id_fkey(first_name, last_name, email, phone),
         opportunities!quotes_opportunity_id_fkey(name)
       `)
-      .eq('id', params.id)
+      .eq('id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .single()
 
@@ -38,7 +41,7 @@ export async function GET(
     const { data: lineItems } = await supabase
       .from('quote_line_items')
       .select('*')
-      .eq('quote_id', params.id)
+      .eq('quote_id', quoteId)
       .eq('tenant_id', session.user.tenantId)
       .order('sort_order', { ascending: true })
 
@@ -47,7 +50,7 @@ export async function GET(
       await supabase
         .from('quotes')
         .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
-        .eq('id', params.id)
+        .eq('id', quoteId)
         .eq('tenant_id', session.user.tenantId)
     }
 
