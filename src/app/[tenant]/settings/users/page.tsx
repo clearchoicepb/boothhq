@@ -9,7 +9,9 @@ import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Building, Shield } 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { Modal } from '@/components/ui/modal'
 import { EntityForm } from '@/components/forms/EntityForm'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 interface User {
   id: string
@@ -49,6 +51,9 @@ export default function UsersSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [viewingUser, setViewingUser] = useState<User | null>(null)
+  const [userHistory, setUserHistory] = useState<any>(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
 
@@ -74,6 +79,22 @@ export default function UsersSettingsPage() {
   useEffect(() => {
     fetchUsers()
   }, [])
+
+  const handleView = async (user: User) => {
+    setViewingUser(user)
+    setLoadingHistory(true)
+    try {
+      const response = await fetch(`/api/users/${user.id}/history`)
+      if (response.ok) {
+        const data = await response.json()
+        setUserHistory(data)
+      }
+    } catch (error) {
+      console.error('Error fetching user history:', error)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
 
   const handleEdit = (user: User) => {
     setEditingUser(user)
@@ -292,6 +313,14 @@ export default function UsersSettingsPage() {
                       <Button
                         variant="outline"
                     size="sm"
+                    onClick={() => handleView(user)}
+                      >
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                      </Button>
+                      <Button
+                        variant="outline"
+                    size="sm"
                     onClick={() => handleEdit(user)}
                       >
                     <Edit className="w-4 h-4 mr-1" />
@@ -347,6 +376,357 @@ export default function UsersSettingsPage() {
         title={editingUser ? 'Edit User' : 'Add New User'}
         submitLabel={editingUser ? 'Update User' : 'Create User'}
       />
+
+      {/* User Detail View Modal */}
+      <Modal
+        isOpen={!!viewingUser}
+        onClose={() => {
+          setViewingUser(null)
+          setUserHistory(null)
+        }}
+        title=""
+        className="sm:max-w-6xl"
+      >
+        {viewingUser && (
+          <div className="flex flex-col h-[70vh]">
+            {/* Header with Profile */}
+            <div className="border-b border-gray-200 pb-4 mb-4 flex-shrink-0">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center space-x-4">
+                  {viewingUser.avatar_url ? (
+                    <img
+                      className="h-16 w-16 rounded-full object-cover"
+                      src={viewingUser.avatar_url}
+                      alt={`${viewingUser.first_name} ${viewingUser.last_name}`}
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                      <User className="h-8 w-8 text-blue-600" />
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {viewingUser.first_name} {viewingUser.last_name}
+                    </h2>
+                    <p className="text-gray-600">{viewingUser.job_title || viewingUser.email}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getStatusBadge(viewingUser.status)}
+                      <span className="text-sm text-gray-500">• {getRoleLabel(viewingUser.role)}</span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    setUserHistory(null)
+                    setViewingUser(null)
+                    handleEdit(viewingUser)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              </div>
+            </div>
+
+            {/* Tabs Content */}
+            <div className="flex-1 overflow-hidden -mx-6 flex flex-col">
+              <Tabs defaultValue="overview" className="h-full flex flex-col">
+                <div className="border-b border-gray-200 px-6 flex-shrink-0">
+                  <TabsList className="p-0 h-auto">
+                    <TabsTrigger value="overview" className="border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none px-4 py-3">
+                      Overview
+                    </TabsTrigger>
+                    <TabsTrigger value="employment" className="border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none px-4 py-3">
+                      Employment
+                    </TabsTrigger>
+                    <TabsTrigger value="events" className="border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none px-4 py-3">
+                      Events
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent rounded-none px-4 py-3">
+                      History
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Overview Tab */}
+                <TabsContent value="overview" className="p-6 space-y-6 overflow-auto flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Contact Information Card */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <Mail className="w-5 h-5 mr-2 text-blue-600" />
+                        Contact Information
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Email</label>
+                          <p className="mt-1 text-sm text-gray-900">{viewingUser.email}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Phone</label>
+                          <p className="mt-1 text-sm text-gray-900">{viewingUser.phone || 'Not provided'}</p>
+                        </div>
+                        {(viewingUser.address_line_1 || viewingUser.city) && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-500">Address</label>
+                            <div className="mt-1 text-sm text-gray-900 space-y-1">
+                              {viewingUser.address_line_1 && <p>{viewingUser.address_line_1}</p>}
+                              {viewingUser.address_line_2 && <p>{viewingUser.address_line_2}</p>}
+                              {(viewingUser.city || viewingUser.state) && (
+                                <p>{[viewingUser.city, viewingUser.state, viewingUser.zip_code].filter(Boolean).join(', ')}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Role & Permissions Card */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <Shield className="w-5 h-5 mr-2 text-blue-600" />
+                        Role & Permissions
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">System Role</label>
+                          <p className="mt-1 text-sm font-medium text-gray-900">{getRoleLabel(viewingUser.role)}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Department</label>
+                          <p className="mt-1 text-sm text-gray-900">{viewingUser.department || 'Not assigned'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Custom Permissions</label>
+                          {viewingUser.permissions && typeof viewingUser.permissions === 'object' && Object.keys(viewingUser.permissions).length > 0 ? (
+                            <div className="mt-2 space-y-1">
+                              {Object.entries(viewingUser.permissions).map(([key, value]) => (
+                                <div key={key} className="flex justify-between text-sm">
+                                  <span className="text-gray-600">{key}</span>
+                                  <span className="text-gray-900">{String(value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-sm text-gray-500">None</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Activity Card */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Activity</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Last Login</label>
+                          <p className="mt-1 text-sm text-gray-900">
+                            {viewingUser.last_login_at ? new Date(viewingUser.last_login_at).toLocaleString() : 'Never'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Created</label>
+                          <p className="mt-1 text-sm text-gray-900">
+                            {new Date(viewingUser.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Employment Tab */}
+                <TabsContent value="employment" className="p-6 space-y-6 overflow-auto flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Employment Details</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Job Title</label>
+                          <p className="mt-1 text-sm text-gray-900">{viewingUser.job_title || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Employee Type</label>
+                          <p className="mt-1 text-sm text-gray-900">{viewingUser.employee_type || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Current Pay Rate</label>
+                          <p className="mt-1 text-sm text-gray-900 font-medium">
+                            {viewingUser.pay_rate ? `$${viewingUser.pay_rate}/hr` : 'Not set'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Employment Dates</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Hire Date</label>
+                          <p className="mt-1 text-sm text-gray-900">
+                            {viewingUser.hire_date ? new Date(viewingUser.hire_date).toLocaleDateString() : 'Not set'}
+                          </p>
+                        </div>
+                        {viewingUser.termination_date && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-500">Termination Date</label>
+                            <p className="mt-1 text-sm text-gray-900">
+                              {new Date(viewingUser.termination_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pay Rate History */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Pay Rate History</h3>
+                    {loadingHistory ? (
+                      <p className="text-sm text-gray-500">Loading...</p>
+                    ) : userHistory?.payRateHistory && userHistory.payRateHistory.length > 0 ? (
+                      <div className="overflow-x-auto -mx-4">
+                        <table className="min-w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Effective Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pay Rate</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {userHistory.payRateHistory.map((rate: any) => (
+                              <tr key={rate.id}>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {new Date(rate.effective_date).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {rate.end_date ? new Date(rate.end_date).toLocaleDateString() :
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Current</span>
+                                  }
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                  ${rate.pay_rate}/hr
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  {rate.notes || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No pay rate history available</p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Events Tab */}
+                <TabsContent value="events" className="p-6 overflow-auto flex-1">
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Events Worked</h3>
+                    {loadingHistory ? (
+                      <p className="text-sm text-gray-500">Loading...</p>
+                    ) : userHistory?.eventAssignments && userHistory.eventAssignments.length > 0 ? (
+                      <div className="overflow-x-auto -mx-4">
+                        <table className="min-w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {userHistory.eventAssignments.map((assignment: any) => (
+                              <tr key={assignment.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                  {assignment.event?.title || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {assignment.event?.start_date ? new Date(assignment.event.start_date).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {assignment.staff_role?.name || assignment.role || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  {assignment.event?.location || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                    assignment.event?.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    assignment.event?.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                    assignment.event?.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {assignment.event?.status || 'N/A'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No events worked yet</p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* History Tab */}
+                <TabsContent value="history" className="p-6 overflow-auto flex-1">
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Role History</h3>
+                    {loadingHistory ? (
+                      <p className="text-sm text-gray-500">Loading...</p>
+                    ) : userHistory?.roleHistory && userHistory.roleHistory.length > 0 ? (
+                      <div className="overflow-x-auto -mx-4">
+                        <table className="min-w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Effective Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {userHistory.roleHistory.map((roleItem: any) => (
+                              <tr key={roleItem.id}>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {new Date(roleItem.effective_date).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">
+                                  {roleItem.end_date ? new Date(roleItem.end_date).toLocaleDateString() :
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Current</span>
+                                  }
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                  {getRoleLabel(roleItem.role)}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  {roleItem.notes || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No role history available</p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

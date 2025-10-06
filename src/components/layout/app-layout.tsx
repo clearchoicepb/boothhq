@@ -11,7 +11,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SettingsProvider>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-white">
         {/* Sidebar - Responsive positioning */}
         <Sidebar />
         

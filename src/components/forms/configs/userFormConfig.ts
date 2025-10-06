@@ -92,6 +92,14 @@ export const userFormConfig: FormConfig<any> = {
       label: 'Hire Date',
       gridCols: 1
     },
+    {
+      name: 'password',
+      type: 'password',
+      label: 'Password',
+      required: false,
+      gridCols: 1,
+      placeholder: 'Leave blank to keep current password'
+    },
     // Address Information
     {
       name: 'address_line_1',
