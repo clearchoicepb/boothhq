@@ -1,0 +1,77 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { createServerSupabaseClient } from '@/lib/supabase-client'
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createServerSupabaseClient()
+    const { searchParams } = new URL(request.url)
+    const isActiveFilter = searchParams.get('is_active')
+    const categoryFilter = searchParams.get('category')
+
+    let query = supabase
+      .from('equipment_types')
+      .select('*')
+      .eq('tenant_id', session.user.tenantId)
+      .order('sort_order', { ascending: true })
+
+    if (isActiveFilter === 'true') {
+      query = query.eq('is_active', true)
+    }
+
+    if (categoryFilter && categoryFilter !== 'all') {
+      query = query.eq('category', categoryFilter)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching equipment types:', error)
+      return NextResponse.json({ error: 'Failed to fetch equipment types' }, { status: 500 })
+    }
+
+    return NextResponse.json(data || [])
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const supabase = createServerSupabaseClient()
+
+    const { data, error } = await supabase
+      .from('equipment_types')
+      .insert({
+        ...body,
+        tenant_id: session.user.tenantId
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating equipment type:', error)
+      return NextResponse.json({ error: 'Failed to create equipment type' }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

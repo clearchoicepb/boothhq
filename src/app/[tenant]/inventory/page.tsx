@@ -11,24 +11,30 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 
-interface Equipment {
+interface EquipmentItem {
   id: string
-  name: string
-  description: string | null
+  item_id: string
+  equipment_type: string
   model: string | null
+  name: string
   serial_number: string | null
+  status: string
+  location: string | null
+  booth_id: string | null
+  booth_name: string | null
+  booth_type: string | null
+  assigned_to_user_id: string | null
+  assigned_user_name: string | null
+  assigned_to_event_id: string | null
+  assigned_event_name: string | null
+  assigned_date: string | null
+  condition: string
+  notes: string | null
+  last_checked_date: string | null
+  metadata: any
   purchase_date: string | null
   purchase_price: number | null
-  current_value: number | null
-  status: string
-  condition: string
-  location: string | null
-  maintenance_notes: string | null
-  last_maintenance_date: string | null
-  next_maintenance_date: string | null
-  photo_url: string | null
-  category_id: string | null
-  category_name: string | null
+  image_url: string | null
   created_at: string
   updated_at: string
 }
@@ -38,22 +44,22 @@ export default function InventoryPage() {
   const { tenant, loading } = useTenant()
   const params = useParams()
   const tenantSubdomain = params.tenant as string
-  const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [equipment, setEquipment] = useState<EquipmentItem[]>([])
   const [localLoading, setLocalLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [conditionFilter, setConditionFilter] = useState<string>('all')
+  const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
-  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
+  const [editingEquipment, setEditingEquipment] = useState<EquipmentItem | null>(null)
 
   const fetchEquipment = useCallback(async () => {
     try {
       setLocalLoading(true)
-      
-      const response = await fetch(`/api/equipment?status=${statusFilter}&condition=${conditionFilter}`)
-      
+
+      const response = await fetch(`/api/equipment-items?status=${statusFilter}&equipment_type=${equipmentTypeFilter}`)
+
       if (!response.ok) {
-        console.error('Error fetching equipment')
+        console.error('Error fetching equipment items')
         return
       }
 
@@ -64,7 +70,7 @@ export default function InventoryPage() {
     } finally {
       setLocalLoading(false)
     }
-  }, [statusFilter, conditionFilter])
+  }, [statusFilter, equipmentTypeFilter])
 
   useEffect(() => {
     if (session && tenant) {
@@ -73,13 +79,15 @@ export default function InventoryPage() {
   }, [session, tenant, fetchEquipment])
 
   const filteredEquipment = equipment.filter(item => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.item_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.equipment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.location?.toLowerCase().includes(searchTerm.toLowerCase())
-    
+      item.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.booth_name?.toLowerCase().includes(searchTerm.toLowerCase())
+
     return matchesSearch
   })
 
@@ -87,8 +95,10 @@ export default function InventoryPage() {
     switch (status) {
       case 'available':
         return 'bg-green-100 text-green-800'
-      case 'in_use':
+      case 'assigned_to_booth':
         return 'bg-blue-100 text-blue-800'
+      case 'deployed':
+        return 'bg-purple-100 text-purple-800'
       case 'maintenance':
         return 'bg-yellow-100 text-yellow-800'
       case 'retired':
@@ -106,7 +116,7 @@ export default function InventoryPage() {
         return 'bg-blue-100 text-blue-800'
       case 'fair':
         return 'bg-yellow-100 text-yellow-800'
-      case 'poor':
+      case 'needs_repair':
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -114,30 +124,27 @@ export default function InventoryPage() {
   }
 
   const getTotalValue = () => {
-    return equipment.reduce((sum, item) => sum + (item.current_value || 0), 0)
+    return equipment.reduce((sum, item) => sum + (item.purchase_price || 0), 0)
   }
 
   const getAvailableCount = () => {
     return equipment.filter(item => item.status === 'available').length
   }
 
-  const getMaintenanceDue = () => {
-    const today = new Date()
-    return equipment.filter(item => 
-      item.next_maintenance_date && new Date(item.next_maintenance_date) <= today
-    ).length
+  const getAssignedToBoothCount = () => {
+    return equipment.filter(item => item.status === 'assigned_to_booth').length
   }
 
-  const handleEdit = (equipmentItem: Equipment) => {
+  const handleEdit = (equipmentItem: EquipmentItem) => {
     setEditingEquipment(equipmentItem)
     setShowForm(true)
   }
 
   const handleDelete = async (equipmentId: string) => {
-    if (!confirm('Are you sure you want to delete this equipment?')) return
+    if (!confirm('Are you sure you want to delete this equipment item?')) return
 
     try {
-      const response = await fetch(`/api/equipment/${equipmentId}`, {
+      const response = await fetch(`/api/equipment-items/${equipmentId}`, {
         method: 'DELETE',
       })
 
@@ -145,11 +152,11 @@ export default function InventoryPage() {
         await fetchEquipment()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to delete equipment'}`)
+        alert(`Error: ${error.error || 'Failed to delete equipment item'}`)
       }
     } catch (error) {
-      console.error('Error deleting equipment:', error)
-      alert('Failed to delete equipment')
+      console.error('Error deleting equipment item:', error)
+      alert('Failed to delete equipment item')
     }
   }
 
@@ -160,7 +167,7 @@ export default function InventoryPage() {
 
   const handleFormSubmit = async (data: any) => {
     try {
-      const url = editingEquipment ? `/api/equipment/${editingEquipment.id}` : '/api/equipment'
+      const url = editingEquipment ? `/api/equipment-items/${editingEquipment.id}` : '/api/equipment-items'
       const method = editingEquipment ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
@@ -176,11 +183,11 @@ export default function InventoryPage() {
         handleFormClose()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to save equipment'}`)
+        alert(`Error: ${error.error || 'Failed to save equipment item'}`)
       }
     } catch (error) {
-      console.error('Error saving equipment:', error)
-      alert('Failed to save equipment')
+      console.error('Error saving equipment item:', error)
+      alert('Failed to save equipment item')
     }
   }
 
@@ -238,7 +245,7 @@ export default function InventoryPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search equipment..."
+                placeholder="Search by item ID, name, type, booth..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -253,23 +260,27 @@ export default function InventoryPage() {
               >
                 <option value="all">All Statuses</option>
                 <option value="available">Available</option>
-                <option value="in_use">In Use</option>
+                <option value="assigned_to_booth">Assigned to Booth</option>
+                <option value="deployed">Deployed</option>
                 <option value="maintenance">Maintenance</option>
                 <option value="retired">Retired</option>
               </select>
             </div>
             <div>
               <select
-                value={conditionFilter}
-                onChange={(e) => setConditionFilter(e.target.value)}
+                value={equipmentTypeFilter}
+                onChange={(e) => setEquipmentTypeFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-label="Filter by condition"
+                aria-label="Filter by equipment type"
               >
-                <option value="all">All Conditions</option>
-                <option value="excellent">Excellent</option>
-                <option value="good">Good</option>
-                <option value="fair">Fair</option>
-                <option value="poor">Poor</option>
+                <option value="all">All Types</option>
+                <option value="Camera">Camera</option>
+                <option value="iPad">iPad</option>
+                <option value="Printer">Printer</option>
+                <option value="Hot Spot">Hot Spot</option>
+                <option value="Backdrop">Backdrop</option>
+                <option value="Battery Pack">Battery Pack</option>
+                <option value="Server">Server</option>
               </select>
             </div>
           </div>
@@ -287,7 +298,7 @@ export default function InventoryPage() {
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No equipment found</h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm || statusFilter !== 'all' || conditionFilter !== 'all'
+                {searchTerm || statusFilter !== 'all' || equipmentTypeFilter !== 'all'
                   ? 'Try adjusting your search terms or filters.'
                   : 'Get started by adding your first piece of equipment.'
                 }
@@ -305,13 +316,16 @@ export default function InventoryPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Equipment
+                      Item ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+                      Equipment Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Model/Serial
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Booth
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Location
@@ -323,9 +337,6 @@ export default function InventoryPage() {
                       Condition
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Value
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -334,12 +345,17 @@ export default function InventoryPage() {
                   {filteredEquipment.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {item.item_id}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            {item.photo_url ? (
-                              <Image 
-                                className="h-10 w-10 rounded-lg object-cover" 
-                                src={item.photo_url} 
+                            {item.image_url ? (
+                              <Image
+                                className="h-10 w-10 rounded-lg object-cover"
+                                src={item.image_url}
                                 alt={item.name}
                                 width={40}
                                 height={40}
@@ -354,25 +370,26 @@ export default function InventoryPage() {
                             <div className="text-sm font-medium text-gray-900 truncate max-w-xs" title={item.name}>
                               {item.name}
                             </div>
-                            {item.description && (
-                              <div className="text-sm text-gray-500 truncate max-w-xs">
-                                {item.description}
+                            {item.serial_number && (
+                              <div className="text-sm text-gray-500 text-xs">
+                                SN: {item.serial_number}
                               </div>
                             )}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.category_name || '-'}
+                        {item.equipment_type}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>
-                          {item.model && <div className="truncate max-w-20" title={item.model}>{item.model}</div>}
-                          {item.serial_number && (
-                            <div className="text-gray-500 text-xs truncate max-w-20" title={`SN: ${item.serial_number}`}>SN: {item.serial_number}</div>
-                          )}
-                          {!item.model && !item.serial_number && '-'}
-                        </div>
+                        {item.booth_name ? (
+                          <div>
+                            <div className="font-medium">{item.booth_name}</div>
+                            {item.booth_type && (
+                              <div className="text-xs text-gray-500">{item.booth_type}</div>
+                            )}
+                          </div>
+                        ) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.location ? (
@@ -386,35 +403,32 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                          {item.status.replace('_', ' ')}
+                          {item.status.replace(/_/g, ' ')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getConditionColor(item.condition)}`}>
-                          {item.condition}
+                          {item.condition.replace(/_/g, ' ')}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.current_value ? `$${item.current_value.toLocaleString()}` : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Link href={`/${tenantSubdomain}/inventory/${item.id}`}>
-                            <button 
+                            <button
                               className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
                               aria-label="View equipment details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                           </Link>
-                          <button 
+                          <button
                             onClick={() => handleEdit(item)}
                             className="text-indigo-600 hover:text-indigo-900 cursor-pointer transition-colors duration-150 active:scale-95"
                             aria-label="Edit equipment"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDelete(item.id)}
                             className="text-red-600 hover:text-red-900 cursor-pointer transition-colors duration-150 active:scale-95"
                             aria-label="Delete equipment"
@@ -458,11 +472,11 @@ export default function InventoryPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Wrench className="h-8 w-8 text-yellow-600" />
+                <Package className="h-8 w-8 text-blue-600" />
               </div>
               <div className="ml-5">
-                <p className="text-sm font-medium text-gray-500">Maintenance Due</p>
-                <p className="text-2xl font-semibold text-gray-900">{getMaintenanceDue()}</p>
+                <p className="text-sm font-medium text-gray-500">Assigned to Booth</p>
+                <p className="text-2xl font-semibold text-gray-900">{getAssignedToBoothCount()}</p>
               </div>
             </div>
           </div>

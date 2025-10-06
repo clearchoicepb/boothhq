@@ -4,96 +4,74 @@ export const inventoryFormConfig: FormConfig<any> = {
   entity: 'inventory',
   fields: [
     {
-      name: 'name',
+      name: 'item_id',
       type: 'text',
-      label: 'Item Name',
+      label: 'Item ID',
+      placeholder: 'e.g., C107, HS111',
       required: true,
       gridCols: 1
     },
     {
-      name: 'description',
-      type: 'textarea',
-      label: 'Description',
-      gridCols: 2
+      name: 'name',
+      type: 'text',
+      label: 'Equipment Name',
+      placeholder: 'e.g., Canon Camera, Hot Spot Verizon',
+      required: true,
+      gridCols: 1
     },
     {
-      name: 'category',
+      name: 'equipment_type',
       type: 'select',
-      label: 'Category',
+      label: 'Equipment Type',
+      required: true,
       options: [
-        { value: 'audio', label: 'Audio Equipment' },
-        { value: 'lighting', label: 'Lighting' },
-        { value: 'video', label: 'Video Equipment' },
-        { value: 'furniture', label: 'Furniture' },
-        { value: 'decorations', label: 'Decorations' },
-        { value: 'catering', label: 'Catering Equipment' },
-        { value: 'transportation', label: 'Transportation' },
-        { value: 'other', label: 'Other' }
+        { value: 'Camera', label: 'Camera' },
+        { value: 'iPad', label: 'iPad' },
+        { value: 'Printer', label: 'Printer' },
+        { value: 'Hot Spot', label: 'Hot Spot' },
+        { value: 'Backdrop', label: 'Backdrop' },
+        { value: 'Battery Pack', label: 'Battery Pack' },
+        { value: 'Server', label: 'Server' },
+        { value: 'Other', label: 'Other' }
       ],
       gridCols: 1
     },
     {
-      name: 'sku',
+      name: 'model',
       type: 'text',
-      label: 'SKU',
+      label: 'Model',
+      placeholder: 'e.g., Canon EOS R5',
       gridCols: 1
     },
     {
-      name: 'quantity_available',
-      type: 'number',
-      label: 'Quantity Available',
+      name: 'serial_number',
+      type: 'text',
+      label: 'Serial Number',
+      gridCols: 1
+    },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
       required: true,
-      validation: {
-        min: 0
-      },
-      gridCols: 1
-    },
-    {
-      name: 'quantity_total',
-      type: 'number',
-      label: 'Total Quantity',
-      required: true,
-      validation: {
-        min: 0
-      },
-      gridCols: 1
-    },
-    {
-      name: 'unit_cost',
-      type: 'number',
-      label: 'Unit Cost',
-      validation: {
-        min: 0
-      },
-      gridCols: 1
-    },
-    {
-      name: 'rental_rate_daily',
-      type: 'number',
-      label: 'Daily Rental Rate',
-      validation: {
-        min: 0
-      },
-      gridCols: 1
-    },
-    {
-      name: 'rental_rate_weekly',
-      type: 'number',
-      label: 'Weekly Rental Rate',
-      validation: {
-        min: 0
-      },
+      options: [
+        { value: 'available', label: 'Available' },
+        { value: 'assigned_to_booth', label: 'Assigned to Booth' },
+        { value: 'deployed', label: 'Deployed' },
+        { value: 'maintenance', label: 'Maintenance' },
+        { value: 'retired', label: 'Retired' }
+      ],
       gridCols: 1
     },
     {
       name: 'condition',
       type: 'select',
       label: 'Condition',
+      required: true,
       options: [
         { value: 'excellent', label: 'Excellent' },
         { value: 'good', label: 'Good' },
         { value: 'fair', label: 'Fair' },
-        { value: 'poor', label: 'Poor' },
         { value: 'needs_repair', label: 'Needs Repair' }
       ],
       gridCols: 1
@@ -101,13 +79,8 @@ export const inventoryFormConfig: FormConfig<any> = {
     {
       name: 'location',
       type: 'text',
-      label: 'Storage Location',
-      gridCols: 1
-    },
-    {
-      name: 'supplier',
-      type: 'text',
-      label: 'Supplier',
+      label: 'Location',
+      placeholder: 'Office, person name, etc.',
       gridCols: 1
     },
     {
@@ -117,48 +90,29 @@ export const inventoryFormConfig: FormConfig<any> = {
       gridCols: 1
     },
     {
-      name: 'warranty_expiry',
-      type: 'date',
-      label: 'Warranty Expiry',
+      name: 'purchase_price',
+      type: 'number',
+      label: 'Purchase Price',
+      validation: {
+        min: 0
+      },
       gridCols: 1
     },
     {
-      name: 'is_active',
-      type: 'checkbox',
-      label: 'Active',
-      gridCols: 1
-    },
-    // Maintenance Information
-    {
-      name: 'last_maintenance_date',
-      type: 'date',
-      label: 'Last Maintenance Date',
-      section: 'Maintenance Information',
-      gridCols: 1
+      name: 'image_url',
+      type: 'text',
+      label: 'Image URL',
+      gridCols: 2
     },
     {
-      name: 'maintenance_notes',
+      name: 'notes',
       type: 'textarea',
-      label: 'Maintenance Notes',
-      section: 'Maintenance Information',
+      label: 'Notes',
       gridCols: 2
     }
   ],
-  sections: [
-    {
-      title: 'Maintenance Information',
-      fields: ['last_maintenance_date', 'maintenance_notes']
-    }
-  ],
   defaultValues: {
-    condition: 'good',
-    is_active: true,
-    quantity_available: 0,
-    quantity_total: 0
+    status: 'available',
+    condition: 'good'
   }
 }
-
-
-
-
-

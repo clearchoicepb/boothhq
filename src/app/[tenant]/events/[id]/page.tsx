@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -19,6 +19,9 @@ import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
 import AttachmentsSection from '@/components/attachments-section'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { AccountSelect } from '@/components/account-select'
+import { ContactSelect } from '@/components/contact-select'
+import { EventBoothAssignments } from '@/components/event-booth-assignments'
 
 interface EventWithRelations extends EventType {
   account_name: string | null
@@ -789,6 +792,10 @@ export default function EventDetailPage() {
                 <User className="h-4 w-4 mr-2" />
                 Staffing
               </TabsTrigger>
+              <TabsTrigger value="equipment" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
+                <Package className="h-4 w-4 mr-2" />
+                Equipment
+              </TabsTrigger>
               <TabsTrigger value="details" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <FileText className="h-4 w-4 mr-2" />
                 Scope/Details
@@ -1089,23 +1096,17 @@ export default function EventDetailPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Account</label>
                     {isEditingAccountContact ? (
-                      <select
-                        value={editAccountId}
-                        onChange={(e) => {
-                          setEditAccountId(e.target.value)
-                          if (e.target.value !== event?.account_id) {
+                      <AccountSelect
+                        value={editAccountId || null}
+                        onChange={(accountId) => {
+                          setEditAccountId(accountId || '')
+                          if (accountId !== event?.account_id) {
                             setEditContactId('')
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">-- No Account --</option>
-                        {accounts.map(account => (
-                          <option key={account.id} value={account.id}>
-                            {account.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Search accounts..."
+                        allowCreate={false}
+                      />
                     ) : event.account_name ? (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
@@ -1145,20 +1146,13 @@ export default function EventDetailPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Contact</label>
                     {isEditingAccountContact ? (
-                      <select
-                        value={editContactId}
-                        onChange={(e) => setEditContactId(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">-- No Contact --</option>
-                        {contacts
-                          .filter(c => !editAccountId || c.account_id === editAccountId)
-                          .map(contact => (
-                            <option key={contact.id} value={contact.id}>
-                              {contact.first_name} {contact.last_name}
-                            </option>
-                          ))}
-                      </select>
+                      <ContactSelect
+                        value={editContactId || null}
+                        onChange={(contactId) => setEditContactId(contactId || '')}
+                        accountId={editAccountId || null}
+                        placeholder="Search contacts..."
+                        allowCreate={false}
+                      />
                     ) : event.contact_name ? (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
@@ -1938,6 +1932,11 @@ export default function EventDetailPage() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* Equipment Tab */}
+          <TabsContent value="equipment" className="mt-0">
+            <EventBoothAssignments eventId={eventId} tenantSubdomain={tenantSubdomain} />
           </TabsContent>
 
           {/* Event Scope/Details Tab */}

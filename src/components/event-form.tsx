@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
+import { AccountSelect } from '@/components/account-select'
+import { ContactSelect } from '@/components/contact-select'
 import type { Event, EventInsert, EventUpdate, Account, Contact, Opportunity } from '@/lib/supabase-client'
 
 interface EventFormProps {
@@ -301,39 +303,30 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
 
           {/* Account */}
           <div>
-            <label htmlFor="account_id" className="block text-sm font-medium text-gray-700 mb-1">
-              Account
-            </label>
-            <Select
-              value={formData.account_id || ''}
-              onChange={(e) => handleInputChange('account_id', e.target.value || null)}
-            >
-              <option value="">Select account</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </Select>
+            <AccountSelect
+              value={formData.account_id}
+              onChange={(accountId) => {
+                handleInputChange('account_id', accountId)
+                // Clear contact if account changes
+                if (accountId !== formData.account_id) {
+                  handleInputChange('contact_id', null)
+                }
+              }}
+              label="Account"
+              placeholder="Search accounts..."
+            />
           </div>
 
           {/* Contact */}
           <div>
-            <label htmlFor="contact_id" className="block text-sm font-medium text-gray-700 mb-1">
-              Contact
-            </label>
-            <Select
-              value={formData.contact_id || ''}
-              onChange={(e) => handleInputChange('contact_id', e.target.value || null)}
+            <ContactSelect
+              value={formData.contact_id}
+              onChange={(contactId) => handleInputChange('contact_id', contactId)}
+              accountId={formData.account_id}
+              label="Contact"
+              placeholder="Search contacts..."
               disabled={!formData.account_id}
-            >
-              <option value="">Select contact</option>
-              {filteredContacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.first_name} {contact.last_name}
-                </option>
-              ))}
-            </Select>
+            />
             {!formData.account_id && (
               <p className="text-gray-500 text-sm mt-1">Select an account first to see contacts</p>
             )}
