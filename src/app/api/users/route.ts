@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       email,
-      password_hash,
+      password,
       first_name,
       last_name,
       role,
@@ -73,14 +73,29 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!email || !first_name || !last_name || !tenant_id) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: email, first_name, last_name' 
+      return NextResponse.json({
+        error: 'Missing required fields: email, first_name, last_name'
+      }, { status: 400 })
+    }
+
+    // Validate password for new users
+    if (!password) {
+      return NextResponse.json({
+        error: 'Password is required for new users'
       }, { status: 400 })
     }
 
     const supabase = createServerSupabaseClient()
 
-    // Check if user already exists
+    // Check if user already exists in auth.users
+    const { data: existingAuthUsers } = await supabase.auth.admin.listUsers()
+    const authUserExists = existingAuthUsers?.users?.some(u => u.email === email)
+
+    if (authUserExists) {
+      return NextResponse.json({ error: 'User with this email already exists in auth system' }, { status: 400 })
+    }
+
+    // Check if user already exists in users table
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
@@ -92,10 +107,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
     }
 
-    // Create new user with all staffing fields
-    const { data: user, error } = await supabase
+    // Step 1: Create auth user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        first_name,
+        last_name,
+        tenant_id
+      }
+    })
+
+    if (authError) {
+      console.error('Error creating auth user:', authError)
+      return NextResponse.json({ error: `Failed to create auth user: ${authError.message}` }, { status: 500 })
+    }
+
+    if (!authData.user) {
+      return NextResponse.json({ error: 'Failed to create auth user' }, { status: 500 })
+    }
+
+    // Step 2: Create user record in users table with the auth user's ID
+    const { data: user, error: userError } = await supabase
       .from('users')
       .insert({
+        id: authData.user.id, // Use the auth user's ID
         email,
         first_name,
         last_name,
@@ -121,14 +158,14 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating user:', error)
-      return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+    if (userError) {
+      console.error('Error creating user record:', userError)
+      // Rollback: delete the auth user if we can't create the user record
+      await supabase.auth.admin.deleteUser(authData.user.id)
+      return NextResponse.json({ error: `Failed to create user record: ${userError.message}` }, { status: 500 })
     }
 
-    // Remove password from response
-    const { password_hash: pwdHash, ...userWithoutPassword } = user
-    return NextResponse.json(userWithoutPassword, { status: 201 })
+    return NextResponse.json(user, { status: 201 })
   } catch (error) {
     console.error('Error in POST /api/users:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

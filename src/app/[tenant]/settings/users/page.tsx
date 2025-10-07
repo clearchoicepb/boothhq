@@ -139,7 +139,6 @@ export default function UsersSettingsPage() {
 
       // Remove any fields that don't exist in the database
       delete payload.is_active
-      delete payload.password_hash
 
       // Don't include password if editing and password is empty
       if (editingUser && !data.password) {
