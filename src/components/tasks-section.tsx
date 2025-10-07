@@ -71,6 +71,7 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
   const [loading, setLoading] = useState(true)
   const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set())
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [dateFilter, setDateFilter] = useState<string>('all') // 'all', 'overall', or event_date_id
 
   useEffect(() => {
     fetchTasks()
@@ -146,6 +147,59 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
     }
   }
 
+  // Group tasks for events with multiple dates
+  const groupTasksByDate = () => {
+    const overallTasks = tasks.filter(t => !t.event_date_id)
+    const dateTasks = tasks.filter(t => t.event_date_id)
+
+    // Group by event date
+    const grouped: Record<string, Task[]> = {}
+    dateTasks.forEach(task => {
+      if (task.event_date) {
+        const dateKey = task.event_date.event_date
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = []
+        }
+        grouped[dateKey].push(task)
+      }
+    })
+
+    // Sort dates
+    const sortedDates = Object.keys(grouped).sort((a, b) =>
+      new Date(a).getTime() - new Date(b).getTime()
+    )
+
+    return { overallTasks, grouped, sortedDates }
+  }
+
+  // Filter tasks based on selected filter
+  const getFilteredTasks = () => {
+    if (dateFilter === 'all') {
+      return tasks
+    } else if (dateFilter === 'overall') {
+      return tasks.filter(t => !t.event_date_id)
+    } else {
+      return tasks.filter(t => t.event_date_id === dateFilter)
+    }
+  }
+
+  // Check if this is an event with multiple event dates
+  const isEventWithDates = entityType === 'event' && tasks.some(t => t.event_date_id)
+
+  // Get unique event dates for filter dropdown
+  const eventDatesMap = new Map<string, { id: string; date: string }>()
+  tasks.filter(t => t.event_date).forEach(t => {
+    if (t.event_date && !eventDatesMap.has(t.event_date.id)) {
+      eventDatesMap.set(t.event_date.id, {
+        id: t.event_date.id,
+        date: t.event_date.event_date
+      })
+    }
+  })
+  const eventDates = Array.from(eventDatesMap.values()).sort((a, b) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  )
+
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -154,6 +208,55 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
       </div>
     )
   }
+
+  // Helper to render a single task
+  const renderTask = (task: Task) => (
+    <div
+      key={task.id}
+      onClick={() => setSelectedTask(task)}
+      className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors ${
+        task.status === 'completed' ? 'opacity-60' : ''
+      }`}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          const nextStatus = task.status === 'completed' ? 'pending' : 'completed'
+          handleStatusChange(task.id, nextStatus)
+        }}
+        disabled={updatingTasks.has(task.id)}
+        className="flex-shrink-0"
+      >
+        {getStatusIcon(task.status)}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium text-gray-900 truncate ${task.status === 'completed' ? 'line-through' : ''}`}>
+          {task.title}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+            {task.priority}
+          </span>
+          {task.event_date && !isEventWithDates && (
+            <span className="text-xs text-blue-600 font-medium">
+              📅 {new Date(task.event_date.event_date).toLocaleDateString()}
+            </span>
+          )}
+          {task.assigned_to_user && (
+            <span className="text-xs text-gray-500 truncate">
+              {task.assigned_to_user.first_name} {task.assigned_to_user.last_name}
+            </span>
+          )}
+          {task.due_date && (
+            <span className="text-xs text-gray-500">
+              {new Date(task.due_date).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 
   if (tasks.length === 0) {
     return (
@@ -165,57 +268,75 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
     )
   }
 
+  // Render grouped view for events with dates, otherwise flat list
+  const { overallTasks, grouped, sortedDates } = groupTasksByDate()
+  const filteredTasks = getFilteredTasks()
+
   return (
     <>
-      <div className="space-y-1">
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            onClick={() => setSelectedTask(task)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors ${
-              task.status === 'completed' ? 'opacity-60' : ''
-            }`}
+      {/* Filter dropdown for events with dates */}
+      {isEventWithDates && (
+        <div className="mb-4">
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                const nextStatus = task.status === 'completed' ? 'pending' : 'completed'
-                handleStatusChange(task.id, nextStatus)
-              }}
-              disabled={updatingTasks.has(task.id)}
-              className="flex-shrink-0"
-            >
-              {getStatusIcon(task.status)}
-            </button>
+            <option value="all">All Tasks</option>
+            <option value="overall">Overall Event Tasks</option>
+            {eventDates.map((ed) => (
+              <option key={ed.id} value={ed.id}>
+                {new Date(ed.date).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium text-gray-900 truncate ${task.status === 'completed' ? 'line-through' : ''}`}>
-                {task.title}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
-                  {task.priority}
+      {/* Show grouped view if event with dates and viewing all */}
+      {isEventWithDates && dateFilter === 'all' ? (
+        <div className="space-y-6">
+          {/* Overall Event Tasks */}
+          {overallTasks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 px-2">
+                Overall Event Tasks
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  ({overallTasks.length})
                 </span>
-                {task.event_date && (
-                  <span className="text-xs text-blue-600 font-medium">
-                    📅 {new Date(task.event_date.event_date).toLocaleDateString()}
-                  </span>
-                )}
-                {task.assigned_to_user && (
-                  <span className="text-xs text-gray-500 truncate">
-                    {task.assigned_to_user.first_name} {task.assigned_to_user.last_name}
-                  </span>
-                )}
-                {task.due_date && (
-                  <span className="text-xs text-gray-500">
-                    {new Date(task.due_date).toLocaleDateString()}
-                  </span>
-                )}
+              </h3>
+              <div className="space-y-1">
+                {overallTasks.map(renderTask)}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+
+          {/* Date-Specific Tasks */}
+          {sortedDates.map((date) => (
+            <div key={date}>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 px-2">
+                📅 {new Date(date).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  ({grouped[date].length})
+                </span>
+              </h3>
+              <div className="space-y-1">
+                {grouped[date].map(renderTask)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Flat list view */
+        <div className="space-y-1">
+          {filteredTasks.map(renderTask)}
+        </div>
+      )}
 
       {/* Task Detail Modal */}
       {selectedTask && (

@@ -63,12 +63,44 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // Transform the data to include account_name and contact_name
+    // Fetch core task completion status for all events
+    const eventIds = data?.map(e => e.id) || []
+    let coreTasksStatus: Record<string, boolean> = {}
+
+    if (eventIds.length > 0) {
+      const { data: coreTasksData } = await supabase
+        .from('event_core_task_completion')
+        .select('event_id, is_completed')
+        .in('event_id', eventIds)
+
+      // Group by event_id and check if all are completed
+      if (coreTasksData) {
+        const grouped = coreTasksData.reduce((acc, task) => {
+          if (!acc[task.event_id]) {
+            acc[task.event_id] = { total: 0, completed: 0 }
+          }
+          acc[task.event_id].total++
+          if (task.is_completed) {
+            acc[task.event_id].completed++
+          }
+          return acc
+        }, {} as Record<string, { total: number; completed: number }>)
+
+        // Determine if event is ready (all core tasks completed)
+        Object.keys(grouped).forEach(eventId => {
+          const status = grouped[eventId]
+          coreTasksStatus[eventId] = status.total > 0 && status.total === status.completed
+        })
+      }
+    }
+
+    // Transform the data to include account_name, contact_name, and core_tasks_ready
     const transformedData = data?.map(event => ({
       ...event,
       account_name: event.accounts?.name || null,
-      contact_name: event.contacts ? 
-        `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null
+      contact_name: event.contacts ?
+        `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null,
+      core_tasks_ready: coreTasksStatus[event.id] || false
     })) || []
 
     const response = NextResponse.json(transformedData)

@@ -22,7 +22,8 @@ import {
   Mail,
   BarChart3,
   FileType,
-  Plus
+  Plus,
+  CheckCircle2
 } from 'lucide-react';
 
 interface SettingsSection {
@@ -92,6 +93,14 @@ const settingsSections: SettingsSection[] = [
     description: 'Configure event types, templates, and scheduling preferences',
     icon: Calendar,
     href: '/events',
+    category: 'operations'
+  },
+  {
+    id: 'core-tasks',
+    title: 'Core Event Tasks',
+    description: 'Customize checklist tasks for event readiness tracking',
+    icon: CheckCircle2,
+    href: '/core-tasks',
     category: 'operations'
   },
   {

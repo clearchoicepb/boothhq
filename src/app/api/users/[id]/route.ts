@@ -76,9 +76,12 @@ export async function PUT(
       pay_rate,
       payroll_info,
       hire_date,
+      termination_date,
       emergency_contact_name,
       emergency_contact_phone,
-      emergency_contact_relationship
+      emergency_contact_relationship,
+      permissions,
+      avatar_url
     } = body
 
     const supabase = createServerSupabaseClient()
@@ -89,6 +92,26 @@ export async function PUT(
       last_name,
       updated_at: new Date().toISOString()
     }
+
+    // Add all staffing fields if provided
+    if (phone !== undefined) updateData.phone = phone
+    if (address_line_1 !== undefined) updateData.address_line_1 = address_line_1
+    if (address_line_2 !== undefined) updateData.address_line_2 = address_line_2
+    if (city !== undefined) updateData.city = city
+    if (state !== undefined) updateData.state = state
+    if (zip_code !== undefined) updateData.zip_code = zip_code
+    if (job_title !== undefined) updateData.job_title = job_title
+    if (department !== undefined) updateData.department = department
+    if (employee_type !== undefined) updateData.employee_type = employee_type
+    if (pay_rate !== undefined) updateData.pay_rate = pay_rate
+    if (payroll_info !== undefined) updateData.payroll_info = payroll_info
+    if (hire_date !== undefined) updateData.hire_date = hire_date
+    if (termination_date !== undefined) updateData.termination_date = termination_date
+    if (emergency_contact_name !== undefined) updateData.emergency_contact_name = emergency_contact_name
+    if (emergency_contact_phone !== undefined) updateData.emergency_contact_phone = emergency_contact_phone
+    if (emergency_contact_relationship !== undefined) updateData.emergency_contact_relationship = emergency_contact_relationship
+    if (permissions !== undefined) updateData.permissions = permissions
+    if (avatar_url !== undefined) updateData.avatar_url = avatar_url
 
     // Add status if provided
     if (body.status) {

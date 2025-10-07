@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -39,6 +39,7 @@ interface Event {
   contact_name: string | null
   event_dates?: EventDate[]
   created_at: string
+  core_tasks_ready?: boolean
 }
 
 export default function EventsPage() {
@@ -301,14 +302,22 @@ export default function EventsPage() {
                           {event.account_name || 'No account'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                            event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {event.status || 'Unknown'}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              event.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                              event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {event.status || 'Unknown'}
+                            </span>
+                            {event.core_tasks_ready && (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Ready for Event
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {eventDateCount > 0 ? `${eventDateCount} date${eventDateCount > 1 ? 's' : ''}` : 'N/A'}

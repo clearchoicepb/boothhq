@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
     }
 
-    // Create new user (only with fields that actually exist in the database)
+    // Create new user with all staffing fields
     const { data: user, error } = await supabase
       .from('users')
       .insert({
@@ -101,7 +101,22 @@ export async function POST(request: NextRequest) {
         last_name,
         role: role || 'user',
         tenant_id,
-        status: 'active'
+        status: 'active',
+        phone,
+        address_line_1,
+        address_line_2,
+        city,
+        state,
+        zip_code,
+        job_title,
+        department,
+        employee_type,
+        pay_rate,
+        payroll_info,
+        hire_date,
+        emergency_contact_name,
+        emergency_contact_phone,
+        emergency_contact_relationship
       })
       .select()
       .single()

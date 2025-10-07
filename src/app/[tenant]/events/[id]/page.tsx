@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
 import { EventBoothAssignments } from '@/components/event-booth-assignments'
+import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
 
 interface EventWithRelations extends EventType {
   account_name: string | null
@@ -761,8 +762,22 @@ export default function EventDetailPage() {
             </div>
           </div>
 
+          {/* Core Tasks Checklist */}
+          <div className="mb-4 relative z-10">
+            <EventCoreTasksChecklist
+              eventId={eventId}
+              onCompletionChange={(allCompleted) => {
+                // Optionally refresh event data to update status
+                if (allCompleted) {
+                  fetchEvent()
+                }
+              }}
+            />
+          </div>
+
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="relative z-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start bg-white border-b border-gray-200 rounded-none h-auto p-0 mb-6">
               <TabsTrigger value="overview" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <FileText className="h-4 w-4 mr-2" />
@@ -2011,6 +2026,7 @@ export default function EventDetailPage() {
             </div>
           </TabsContent>
         </Tabs>
+          </div>
         </div>
       </AppLayout>
 
