@@ -56,6 +56,9 @@ export default function UsersSettingsPage() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<string>('')
+  const [processingBulk, setProcessingBulk] = useState(false)
 
   const tenantSubdomain = useParams().tenant as string
 
@@ -173,14 +176,70 @@ export default function UsersSettingsPage() {
     }
   }
 
+  const handleToggleUser = (userId: string) => {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(userId)) {
+        newSet.delete(userId)
+      } else {
+        newSet.add(userId)
+      }
+      return newSet
+    })
+  }
+
+  const handleToggleAll = () => {
+    if (selectedUsers.size === filteredUsers.length) {
+      setSelectedUsers(new Set())
+    } else {
+      setSelectedUsers(new Set(filteredUsers.map(u => u.id)))
+    }
+  }
+
+  const handleBulkAction = async () => {
+    if (!bulkAction || selectedUsers.size === 0) return
+
+    const action = bulkAction
+    const userIds = Array.from(selectedUsers)
+
+    if (!confirm(`Are you sure you want to ${action} ${userIds.length} user(s)?`)) {
+      return
+    }
+
+    setProcessingBulk(true)
+
+    try {
+      const response = await fetch('/api/users/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userIds })
+      })
+
+      if (response.ok) {
+        await fetchUsers()
+        setSelectedUsers(new Set())
+        setBulkAction('')
+        alert(`Successfully ${action}d ${userIds.length} user(s)`)
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.message || 'Failed to perform bulk action'}`)
+      }
+    } catch (error) {
+      console.error('Error performing bulk action:', error)
+      alert('Failed to perform bulk action')
+    } finally {
+      setProcessingBulk(false)
+    }
+  }
+
   const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const matchesRole = roleFilter === 'all' || user.role === roleFilter
-    
+
     return matchesSearch && matchesRole
   })
 
@@ -244,38 +303,98 @@ export default function UsersSettingsPage() {
                 </Button>
               </div>
 
-      {/* Filters */}
+      {/* Filters and Bulk Actions */}
       <div className="flex gap-4">
         <div className="flex-1">
-                        <Input
+          <Input
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
-                        />
-                      </div>
+          />
+        </div>
         <div className="w-48">
-                      <Select
+          <Select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-                      >
+          >
             <option value="all">All Roles</option>
             {ROLES_WITH_LABELS.map(role => (
-                          <option key={role.value} value={role.value}>
-                            {role.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    </div>
+              <option key={role.value} value={role.value}>
+                {role.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedUsers.size >= 2 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-900">
+              {selectedUsers.size} user(s) selected
+            </span>
+            <div className="flex items-center gap-2">
+              <Select
+                value={bulkAction}
+                onChange={(e) => setBulkAction(e.target.value)}
+                className="w-48"
+              >
+                <option value="">Bulk Change...</option>
+                <option value="archive">Archive</option>
+                <option value="deactivate">Deactivate</option>
+                <option value="reactivate">Reactivate</option>
+                <option value="delete">Delete</option>
+              </Select>
+              <Button
+                onClick={handleBulkAction}
+                disabled={!bulkAction || processingBulk}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {processingBulk ? 'Processing...' : 'Confirm'}
+              </Button>
+              <Button
+                onClick={() => setSelectedUsers(new Set())}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Users Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        {/* Select All Header */}
+        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+              onChange={handleToggleAll}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="ml-2 text-sm text-gray-700">
+              Select all users
+            </span>
+          </label>
+        </div>
+
         <ul className="divide-y divide-gray-200">
           {filteredUsers.map((user) => (
             <li key={user.id} className="px-6 py-4 hover:bg-gray-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.has(user.id)}
+                      onChange={() => handleToggleUser(user.id)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                  </div>
                   <div className="flex-shrink-0">
                     {user.avatar_url ? (
                       <img
