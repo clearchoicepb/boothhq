@@ -24,6 +24,7 @@ export function EventCoreTasksChecklist({ eventId, onCompletionChange }: EventCo
   const [coreTasks, setCoreTasks] = useState<CoreTaskCompletion[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<Set<string>>(new Set())
+  const [previousCompletionStatus, setPreviousCompletionStatus] = useState<boolean | null>(null)
 
   useEffect(() => {
     fetchCoreTasks()
@@ -46,7 +47,9 @@ export function EventCoreTasksChecklist({ eventId, onCompletionChange }: EventCo
             setCoreTasks(retryData)
 
             const allCompleted = retryData.length > 0 && retryData.every((task: CoreTaskCompletion) => task.is_completed)
-            if (onCompletionChange) {
+            // Only notify if completion status changed
+            if (onCompletionChange && previousCompletionStatus !== allCompleted) {
+              setPreviousCompletionStatus(allCompleted)
               onCompletionChange(allCompleted)
             }
           }
@@ -55,7 +58,9 @@ export function EventCoreTasksChecklist({ eventId, onCompletionChange }: EventCo
 
           // Check if all tasks are completed
           const allCompleted = data.length > 0 && data.every((task: CoreTaskCompletion) => task.is_completed)
-          if (onCompletionChange) {
+          // Only notify if completion status changed
+          if (onCompletionChange && previousCompletionStatus !== allCompleted) {
+            setPreviousCompletionStatus(allCompleted)
             onCompletionChange(allCompleted)
           }
         }

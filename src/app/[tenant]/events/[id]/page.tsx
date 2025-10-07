@@ -766,12 +766,6 @@ export default function EventDetailPage() {
           <div className="mb-4 relative z-10">
             <EventCoreTasksChecklist
               eventId={eventId}
-              onCompletionChange={(allCompleted) => {
-                // Optionally refresh event data to update status
-                if (allCompleted) {
-                  fetchEvent()
-                }
-              }}
             />
           </div>
 
