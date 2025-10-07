@@ -16,11 +16,15 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Create server-side Supabase client with service role key
-          const supabase = createServerSupabaseClient()
+          // Create client with ANON key for user authentication
+          const { createClient } = await import('@supabase/supabase-js')
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-          // First, try to authenticate with Supabase Auth
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          const anonClient = createClient(supabaseUrl, supabaseAnonKey)
+
+          // Authenticate with Supabase Auth using anon key
+          const { data: authData, error: authError } = await anonClient.auth.signInWithPassword({
             email: credentials.email,
             password: credentials.password
           })
@@ -29,6 +33,9 @@ export const authOptions: NextAuthOptions = {
             console.error('Supabase auth error:', authError?.message)
             return null
           }
+
+          // Now use service role key for database queries
+          const supabase = createServerSupabaseClient()
 
           // Get all users with this email across all tenants
           const { data: users, error: usersError } = await supabase
