@@ -8,19 +8,12 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    console.log('Bulk action - Session:', session?.user)
-
     if (!session?.user) {
-      console.log('Bulk action - No session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has admin role
-    console.log('Bulk action - User role:', session.user.role)
-    console.log('Bulk action - Is admin?:', isAdmin(session.user.role as UserRole))
-
     if (!isAdmin(session.user.role as UserRole)) {
-      console.log('Bulk action - Insufficient permissions')
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
