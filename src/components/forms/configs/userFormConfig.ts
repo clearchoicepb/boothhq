@@ -98,7 +98,7 @@ export const userFormConfig: FormConfig<any> = {
       label: 'Password',
       required: false,
       gridCols: 1,
-      placeholder: 'Leave blank to keep current password'
+      placeholder: 'Required for new users, leave blank to keep current password'
     },
     // Address Information
     {

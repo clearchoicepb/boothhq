@@ -131,6 +131,12 @@ export default function UsersSettingsPage() {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users'
       const method = editingUser ? 'PUT' : 'POST'
 
+      // Validate password for new users
+      if (!editingUser && !data.password) {
+        alert('Password is required for new users')
+        return
+      }
+
       // Add tenant_id to the payload and clean up field names
       const payload = {
         ...data,
