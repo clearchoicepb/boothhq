@@ -1,7 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
-import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -20,6 +19,17 @@ export const authOptions: NextAuthOptions = {
           // Create server-side Supabase client with service role key
           const supabase = createServerSupabaseClient()
 
+          // First, try to authenticate with Supabase Auth
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          })
+
+          if (authError || !authData.user) {
+            console.error('Supabase auth error:', authError?.message)
+            return null
+          }
+
           // Get all users with this email across all tenants
           const { data: users, error: usersError } = await supabase
             .from('users')
@@ -34,27 +44,9 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // Find the first user with matching password
-          let authenticatedUser = null
-          let matchedTenant = null
-
-          for (const user of users) {
-            if (!user.password_hash) {
-              continue
-            }
-
-            const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
-            if (isValidPassword) {
-              authenticatedUser = user
-              matchedTenant = user.tenants
-              break
-            }
-          }
-
-          if (!authenticatedUser || !matchedTenant) {
-            console.error('Invalid password or no matching user found')
-            return null
-          }
+          // Use the first active user (in the future, we can show a tenant selector)
+          const authenticatedUser = users[0]
+          const matchedTenant = authenticatedUser.tenants
 
           // Update last login
           await supabase
