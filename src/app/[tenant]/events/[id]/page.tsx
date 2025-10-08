@@ -1347,7 +1347,7 @@ export default function EventDetailPage() {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                 <div className="space-y-3">
-                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&returnTo=events/${event.id}`} className="block">
+                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&account_id=${event.account_id || ''}&contact_id=${event.contact_id || ''}&returnTo=events/${event.id}`} className="block">
                     <Button className="w-full" variant="outline">
                       <DollarSign className="h-4 w-4 mr-2" />
                       Create Invoice
@@ -1388,7 +1388,7 @@ export default function EventDetailPage() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
-                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&returnTo=events/${event.id}`}>
+                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&account_id=${event.account_id || ''}&contact_id=${event.contact_id || ''}&returnTo=events/${event.id}`}>
                     <Button size="sm">
                       <DollarSign className="h-4 w-4 mr-2" />
                       Create Invoice

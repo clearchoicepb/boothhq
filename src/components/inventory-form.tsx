@@ -32,3 +32,5 @@ export function InventoryForm({ equipment, isOpen, onClose, onSubmit }: Inventor
 
 
 
+
+

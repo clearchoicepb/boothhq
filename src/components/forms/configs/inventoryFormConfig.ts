@@ -116,3 +116,5 @@ export const inventoryFormConfig: FormConfig<any> = {
     condition: 'good'
   }
 }
+
+

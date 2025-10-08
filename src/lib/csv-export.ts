@@ -1,7 +1,10 @@
 /**
- * CSV Export Utilities
- * Converts data to CSV format and triggers download
+ * CSV and PDF Export Utilities
+ * Converts data to CSV/PDF format and triggers download
  */
+
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 export interface CSVColumn {
   key: string
@@ -210,4 +213,264 @@ export function exportCompleteDashboard(data: any, dateRange: string): void {
   })
 
   downloadCSV(csvContent, filename)
+}
+
+// ==================== PDF EXPORT FUNCTIONS ====================
+
+/**
+ * Download PDF file
+ */
+function downloadPDF(doc: jsPDF, filename: string): void {
+  doc.save(filename)
+}
+
+/**
+ * Add PDF header
+ */
+function addPDFHeader(doc: jsPDF, title: string, dateRange: string): void {
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.text(title, 14, 20)
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Date Range: ${dateRange}`, 14, 28)
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34)
+
+  // Line under header
+  doc.setLineWidth(0.5)
+  doc.line(14, 38, 196, 38)
+}
+
+/**
+ * Export dashboard summary to PDF
+ */
+export function exportDashboardSummaryPDF(data: any, dateRange: string): void {
+  const doc = new jsPDF()
+  const timestamp = new Date().toISOString().split('T')[0]
+  const filename = `dashboard-summary-${dateRange}-${timestamp}.pdf`
+
+  addPDFHeader(doc, 'Dashboard Summary', getDateRangeLabel(dateRange))
+
+  const tableData = [
+    ['Total Revenue', formatCurrency(data.dashboard.totalRevenue), `${data.dashboard.revenueChange >= 0 ? '+' : ''}${data.dashboard.revenueChange}%`],
+    ['Total Events', data.dashboard.totalEvents.toString(), `${data.dashboard.eventsChange >= 0 ? '+' : ''}${data.dashboard.eventsChange}%`],
+    ['Active Leads', data.dashboard.activeLeads.toString(), `${data.dashboard.leadsChange >= 0 ? '+' : ''}${data.dashboard.leadsChange}%`],
+    ['Conversion Rate', `${data.dashboard.conversionRate}%`, '-']
+  ]
+
+  autoTable(doc, {
+    head: [['Metric', 'Value', 'Change vs Previous Period']],
+    body: tableData,
+    startY: 45,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 10 }
+  })
+
+  downloadPDF(doc, filename)
+}
+
+/**
+ * Export revenue trend to PDF
+ */
+export function exportRevenueTrendPDF(data: any, dateRange: string): void {
+  const doc = new jsPDF()
+  const timestamp = new Date().toISOString().split('T')[0]
+  const filename = `revenue-trend-${dateRange}-${timestamp}.pdf`
+
+  addPDFHeader(doc, 'Revenue Trend', getDateRangeLabel(dateRange))
+
+  const tableData = data.revenueByMonth.map((row: any) => [
+    row.month,
+    formatCurrency(row.revenue)
+  ])
+
+  autoTable(doc, {
+    head: [['Month', 'Revenue']],
+    body: tableData,
+    startY: 45,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 10 }
+  })
+
+  downloadPDF(doc, filename)
+}
+
+/**
+ * Export lead sources to PDF
+ */
+export function exportLeadSourcesPDF(data: any, dateRange: string): void {
+  const doc = new jsPDF()
+  const timestamp = new Date().toISOString().split('T')[0]
+  const filename = `lead-sources-${dateRange}-${timestamp}.pdf`
+
+  addPDFHeader(doc, 'Lead Sources', getDateRangeLabel(dateRange))
+
+  const tableData = data.leadsBySource.map((row: any) => [
+    row.source,
+    row.count.toString()
+  ])
+
+  const total = data.leadsBySource.reduce((sum: number, row: any) => sum + row.count, 0)
+  tableData.push(['TOTAL', total.toString()])
+
+  autoTable(doc, {
+    head: [['Source', 'Count']],
+    body: tableData,
+    startY: 45,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 10 },
+    footStyles: { fillColor: [52, 125, 196], fontStyle: 'bold' }
+  })
+
+  downloadPDF(doc, filename)
+}
+
+/**
+ * Export opportunity pipeline to PDF
+ */
+export function exportOpportunityPipelinePDF(data: any, dateRange: string): void {
+  const doc = new jsPDF()
+  const timestamp = new Date().toISOString().split('T')[0]
+  const filename = `opportunity-pipeline-${dateRange}-${timestamp}.pdf`
+
+  addPDFHeader(doc, 'Opportunity Pipeline', getDateRangeLabel(dateRange))
+
+  const tableData = data.opportunityPipeline.map((row: any) => [
+    row.stage,
+    formatCurrency(row.value),
+    row.count.toString()
+  ])
+
+  const totalValue = data.opportunityPipeline.reduce((sum: number, row: any) => sum + row.value, 0)
+  const totalCount = data.opportunityPipeline.reduce((sum: number, row: any) => sum + row.count, 0)
+  tableData.push(['TOTAL', formatCurrency(totalValue), totalCount.toString()])
+
+  autoTable(doc, {
+    head: [['Stage', 'Total Value', 'Count']],
+    body: tableData,
+    startY: 45,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 10 },
+    footStyles: { fillColor: [52, 125, 196], fontStyle: 'bold' }
+  })
+
+  downloadPDF(doc, filename)
+}
+
+/**
+ * Export complete dashboard report to PDF
+ */
+export function exportCompleteDashboardPDF(data: any, dateRange: string): void {
+  const doc = new jsPDF()
+  const timestamp = new Date().toISOString().split('T')[0]
+  const filename = `complete-dashboard-report-${dateRange}-${timestamp}.pdf`
+
+  addPDFHeader(doc, 'Complete Dashboard Report', getDateRangeLabel(dateRange))
+
+  // KPI Summary
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Key Performance Indicators', 14, 48)
+
+  const kpiData = [
+    ['Total Revenue', formatCurrency(data.dashboard.totalRevenue), `${data.dashboard.revenueChange >= 0 ? '+' : ''}${data.dashboard.revenueChange}%`],
+    ['Total Events', data.dashboard.totalEvents.toString(), `${data.dashboard.eventsChange >= 0 ? '+' : ''}${data.dashboard.eventsChange}%`],
+    ['Active Leads', data.dashboard.activeLeads.toString(), `${data.dashboard.leadsChange >= 0 ? '+' : ''}${data.dashboard.leadsChange}%`],
+    ['Conversion Rate', `${data.dashboard.conversionRate}%`, '-']
+  ]
+
+  autoTable(doc, {
+    head: [['Metric', 'Value', 'Change']],
+    body: kpiData,
+    startY: 53,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 9 }
+  })
+
+  // Revenue Trend
+  let finalY = (doc as any).lastAutoTable.finalY || 53
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Revenue Trend', 14, finalY + 15)
+
+  const revenueData = data.revenueByMonth.map((row: any) => [row.month, formatCurrency(row.revenue)])
+
+  autoTable(doc, {
+    head: [['Month', 'Revenue']],
+    body: revenueData,
+    startY: finalY + 20,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 9 }
+  })
+
+  // Check if we need a new page
+  finalY = (doc as any).lastAutoTable.finalY || finalY + 20
+  if (finalY > 220) {
+    doc.addPage()
+    finalY = 20
+  }
+
+  // Lead Sources
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Lead Sources', 14, finalY + 15)
+
+  const leadData = data.leadsBySource.map((row: any) => [row.source, row.count.toString()])
+
+  autoTable(doc, {
+    head: [['Source', 'Count']],
+    body: leadData,
+    startY: finalY + 20,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 9 }
+  })
+
+  // Opportunity Pipeline
+  finalY = (doc as any).lastAutoTable.finalY || finalY + 20
+  if (finalY > 220) {
+    doc.addPage()
+    finalY = 20
+  }
+
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Opportunity Pipeline', 14, finalY + 15)
+
+  const pipelineData = data.opportunityPipeline.map((row: any) => [
+    row.stage,
+    formatCurrency(row.value),
+    row.count.toString()
+  ])
+
+  autoTable(doc, {
+    head: [['Stage', 'Total Value', 'Count']],
+    body: pipelineData,
+    startY: finalY + 20,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 125, 196] },
+    styles: { fontSize: 9 }
+  })
+
+  downloadPDF(doc, filename)
+}
+
+/**
+ * Helper function to get date range label
+ */
+function getDateRangeLabel(range: string): string {
+  const labels: Record<string, string> = {
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    '1y': 'Last Year'
+  }
+  return labels[range] || range
 }

@@ -24,7 +24,9 @@ interface Contact {
 interface Event {
   id: string
   name: string
-  event_date: string
+  event_type: string
+  start_date: string
+  end_date: string
   account_id: string | null
 }
 
@@ -66,11 +68,29 @@ export default function NewInvoicePage() {
 
   // Get return URL from browser URL
   const [returnTo, setReturnTo] = useState<string | null>(null)
+  const [urlParams, setUrlParams] = useState<{
+    accountId?: string
+    contactId?: string
+    eventId?: string
+  }>({})
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search)
-      setReturnTo(urlParams.get('returnTo'))
+      const params = new URLSearchParams(window.location.search)
+      setReturnTo(params.get('returnTo'))
+
+      // Store URL parameters to be applied after data is fetched
+      const accountId = params.get('account_id')
+      const contactId = params.get('contact_id')
+      const eventId = params.get('event_id')
+
+      if (accountId || contactId || eventId) {
+        setUrlParams({
+          ...(accountId && { accountId }),
+          ...(contactId && { contactId }),
+          ...(eventId && { eventId })
+        })
+      }
     }
   }, [])
 
@@ -81,6 +101,20 @@ export default function NewInvoicePage() {
       fetchEvents()
     }
   }, [session, tenant])
+
+  // Apply URL parameters after data is loaded
+  useEffect(() => {
+    if (accounts.length > 0 && contacts.length > 0 && events.length > 0 && Object.keys(urlParams).length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        ...(urlParams.accountId && { account_id: urlParams.accountId }),
+        ...(urlParams.contactId && { contact_id: urlParams.contactId }),
+        ...(urlParams.eventId && { event_id: urlParams.eventId })
+      }))
+      // Clear URL params after applying them once
+      setUrlParams({})
+    }
+  }, [accounts, contacts, events, urlParams])
 
   useEffect(() => {
     // Filter contacts based on selected account
@@ -98,17 +132,28 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     // Filter events based on selected account
-    if (formData.account_id) {
-      const filtered = events.filter(event => event.account_id === formData.account_id)
-      setFilteredEvents(filtered)
-      // Reset event selection if current event is not in filtered list
-      if (formData.event_id && !filtered.find(e => e.id === formData.event_id)) {
-        setFormData(prev => ({ ...prev, event_id: '' }))
-      }
-    } else {
-      setFilteredEvents(events)
+    const filtered = formData.account_id
+      ? events.filter(event => event.account_id === formData.account_id)
+      : events
+
+    // Sort events: upcoming first (by start_date ascending), then past events (by start_date descending)
+    const now = new Date()
+    const upcomingEvents = filtered
+      .filter(event => new Date(event.start_date) >= now)
+      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+
+    const pastEvents = filtered
+      .filter(event => new Date(event.start_date) < now)
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+
+    const sortedEvents = [...upcomingEvents, ...pastEvents]
+    setFilteredEvents(sortedEvents)
+
+    // Reset event selection if current event is not in filtered list
+    if (formData.event_id && !filtered.find(e => e.id === formData.event_id)) {
+      setFormData(prev => ({ ...prev, event_id: '' }))
     }
-  }, [formData.account_id, events])
+  }, [formData.account_id, events, formData.event_id])
 
   const fetchAccounts = async () => {
     try {
@@ -384,11 +429,15 @@ export default function NewInvoicePage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
               >
                 <option value="">Select an event (optional)</option>
-                {filteredEvents.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.name} - {new Date(event.event_date).toLocaleDateString()}
-                  </option>
-                ))}
+                {filteredEvents.map((event) => {
+                  const startDate = new Date(event.start_date)
+                  const isPast = startDate < new Date()
+                  return (
+                    <option key={event.id} value={event.id}>
+                      {event.event_type} - {startDate.toLocaleDateString()} {isPast ? '(Past)' : ''}
+                    </option>
+                  )
+                })}
               </select>
             </div>
 

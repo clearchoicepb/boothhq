@@ -3,6 +3,30 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 
+// Helper function to count event days in a period
+function countEventDays(events: any[], periodStart: Date, periodEnd: Date): number {
+  if (!events) return 0
+
+  let totalDays = 0
+
+  events.forEach(event => {
+    const eventStart = new Date(event.start_date)
+    const eventEnd = new Date(event.end_date)
+
+    // Find overlap between event and period
+    const overlapStart = eventStart > periodStart ? eventStart : periodStart
+    const overlapEnd = eventEnd < periodEnd ? eventEnd : periodEnd
+
+    if (overlapStart <= overlapEnd) {
+      // Count days (inclusive)
+      const days = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      totalDays += days
+    }
+  })
+
+  return totalDays
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -11,110 +35,214 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const range = searchParams.get('range') || '30d'
+    const range = searchParams.get('range') || 'this_month'
+    const customStartParam = searchParams.get('startDate')
+    const customEndParam = searchParams.get('endDate')
 
     // Calculate date range
-    const endDate = new Date()
-    const startDate = new Date()
-    const previousStartDate = new Date()
+    const now = new Date()
+    let startDate = new Date()
+    let endDate = new Date()
+    let previousStartDate = new Date()
+    let previousEndDate = new Date()
 
-    switch (range) {
-      case '7d':
-        startDate.setDate(startDate.getDate() - 7)
-        previousStartDate.setDate(previousStartDate.getDate() - 14)
+    // Handle custom date range
+    if (range === 'custom' && customStartParam && customEndParam) {
+      startDate = new Date(customStartParam)
+      startDate.setHours(0, 0, 0, 0)
+      endDate = new Date(customEndParam)
+      endDate.setHours(23, 59, 59, 999)
+
+      // Calculate previous period (same duration)
+      const durationMs = endDate.getTime() - startDate.getTime()
+      previousEndDate = new Date(startDate)
+      previousEndDate.setMilliseconds(-1)
+      previousStartDate = new Date(previousEndDate.getTime() - durationMs)
+      previousStartDate.setHours(0, 0, 0, 0)
+    } else {
+      // Handle preset ranges
+      switch (range) {
+      case 'this_week':
+        // Start of this week (Sunday)
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - now.getDay())
+        startDate.setHours(0, 0, 0, 0)
+        endDate = new Date()
+        // Previous week
+        previousEndDate = new Date(startDate)
+        previousEndDate.setMilliseconds(-1)
+        previousStartDate = new Date(previousEndDate)
+        previousStartDate.setDate(previousEndDate.getDate() - 6)
+        previousStartDate.setHours(0, 0, 0, 0)
         break
-      case '30d':
-        startDate.setDate(startDate.getDate() - 30)
-        previousStartDate.setDate(previousStartDate.getDate() - 60)
+      case 'this_month':
+        // Start of this month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+        endDate = new Date()
+        // Previous month
+        previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0)
+        previousEndDate = new Date(startDate)
+        previousEndDate.setMilliseconds(-1)
         break
-      case '90d':
-        startDate.setDate(startDate.getDate() - 90)
-        previousStartDate.setDate(previousStartDate.getDate() - 180)
+      case 'this_quarter':
+        // Start of this quarter
+        const currentQuarter = Math.floor(now.getMonth() / 3)
+        startDate = new Date(now.getFullYear(), currentQuarter * 3, 1, 0, 0, 0, 0)
+        endDate = new Date()
+        // Previous quarter
+        previousStartDate = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1, 0, 0, 0, 0)
+        previousEndDate = new Date(startDate)
+        previousEndDate.setMilliseconds(-1)
         break
-      case '1y':
-        startDate.setFullYear(startDate.getFullYear() - 1)
-        previousStartDate.setFullYear(previousStartDate.getFullYear() - 2)
+      case 'this_year':
+        // Start of this year
+        startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+        endDate = new Date()
+        // Previous year
+        previousStartDate = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0)
+        previousEndDate = new Date(startDate)
+        previousEndDate.setMilliseconds(-1)
         break
+      case 'yesterday':
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - 1)
+        startDate.setHours(0, 0, 0, 0)
+        endDate = new Date(startDate)
+        endDate.setHours(23, 59, 59, 999)
+        // Day before yesterday
+        previousStartDate = new Date(startDate)
+        previousStartDate.setDate(startDate.getDate() - 1)
+        previousEndDate = new Date(previousStartDate)
+        previousEndDate.setHours(23, 59, 59, 999)
+        break
+      case 'last_week':
+        // Start of last week (Sunday)
+        const lastWeekStart = new Date(now)
+        lastWeekStart.setDate(now.getDate() - now.getDay() - 7)
+        lastWeekStart.setHours(0, 0, 0, 0)
+        startDate = lastWeekStart
+        endDate = new Date(lastWeekStart)
+        endDate.setDate(lastWeekStart.getDate() + 6)
+        endDate.setHours(23, 59, 59, 999)
+        // Week before last
+        previousStartDate = new Date(startDate)
+        previousStartDate.setDate(startDate.getDate() - 7)
+        previousEndDate = new Date(previousStartDate)
+        previousEndDate.setDate(previousStartDate.getDate() + 6)
+        previousEndDate.setHours(23, 59, 59, 999)
+        break
+      case 'last_quarter':
+        const lastQuarter = Math.floor(now.getMonth() / 3) - 1
+        const lastQuarterYear = lastQuarter < 0 ? now.getFullYear() - 1 : now.getFullYear()
+        const lastQuarterMonth = lastQuarter < 0 ? 9 : lastQuarter * 3
+        startDate = new Date(lastQuarterYear, lastQuarterMonth, 1, 0, 0, 0, 0)
+        endDate = new Date(lastQuarterYear, lastQuarterMonth + 3, 0, 23, 59, 59, 999)
+        // Quarter before last
+        const prevQuarter = lastQuarter - 1
+        const prevQuarterYear = prevQuarter < 0 ? lastQuarterYear - 1 : lastQuarterYear
+        const prevQuarterMonth = prevQuarter < 0 ? 9 : prevQuarter * 3
+        previousStartDate = new Date(prevQuarterYear, prevQuarterMonth, 1, 0, 0, 0, 0)
+        previousEndDate = new Date(prevQuarterYear, prevQuarterMonth + 3, 0, 23, 59, 59, 999)
+        break
+      case 'last_year':
+        startDate = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999)
+        // Year before last
+        previousStartDate = new Date(now.getFullYear() - 2, 0, 1, 0, 0, 0, 0)
+        previousEndDate = new Date(now.getFullYear() - 2, 11, 31, 23, 59, 59, 999)
+        break
+      default:
+        // Default to this month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+        endDate = new Date()
+        previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0)
+        previousEndDate = new Date(startDate)
+        previousEndDate.setMilliseconds(-1)
+      }
     }
 
     const supabase = createServerSupabaseClient()
     const tenantId = session.user.tenantId
 
-    // Get total revenue (from invoices)
-    const { data: currentRevenue } = await supabase
+    // 1. Total Revenue Generated (invoices created in period)
+    const { data: currentInvoices } = await supabase
       .from('invoices')
       .select('total')
       .eq('tenant_id', tenantId)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
 
-    const { data: previousRevenue } = await supabase
+    const { data: previousInvoices } = await supabase
       .from('invoices')
       .select('total')
       .eq('tenant_id', tenantId)
       .gte('created_at', previousStartDate.toISOString())
-      .lt('created_at', startDate.toISOString())
+      .lte('created_at', previousEndDate.toISOString())
 
-    const totalRevenue = currentRevenue?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
-    const prevRevenue = previousRevenue?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
-    const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0
+    const totalRevenueGenerated = currentInvoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
+    const prevRevenueGenerated = previousInvoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
+    const revenueGeneratedChange = prevRevenueGenerated > 0 ? ((totalRevenueGenerated - prevRevenueGenerated) / prevRevenueGenerated) * 100 : 0
 
-    // Get total events
-    const { data: currentEvents } = await supabase
-      .from('events')
-      .select('id')
+    // 2. Total Payments Received (payments received in period)
+    const { data: currentPayments } = await supabase
+      .from('invoice_payments')
+      .select('amount')
       .eq('tenant_id', tenantId)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
+      .gte('payment_date', startDate.toISOString())
+      .lte('payment_date', endDate.toISOString())
 
-    const { data: previousEvents } = await supabase
-      .from('events')
-      .select('id')
+    const { data: previousPayments } = await supabase
+      .from('invoice_payments')
+      .select('amount')
       .eq('tenant_id', tenantId)
-      .gte('created_at', previousStartDate.toISOString())
-      .lt('created_at', startDate.toISOString())
+      .gte('payment_date', previousStartDate.toISOString())
+      .lte('payment_date', previousEndDate.toISOString())
 
-    const totalEvents = currentEvents?.length || 0
-    const prevEvents = previousEvents?.length || 0
-    const eventsChange = prevEvents > 0 ? ((totalEvents - prevEvents) / prevEvents) * 100 : 0
+    const totalPaymentsReceived = currentPayments?.reduce((sum, pmt) => sum + (pmt.amount || 0), 0) || 0
+    const prevPaymentsReceived = previousPayments?.reduce((sum, pmt) => sum + (pmt.amount || 0), 0) || 0
+    const paymentsReceivedChange = prevPaymentsReceived > 0 ? ((totalPaymentsReceived - prevPaymentsReceived) / prevPaymentsReceived) * 100 : 0
 
-    // Get active leads
-    const { data: currentLeads } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('status', 'active')
-
-    const { data: allLeads } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .gte('created_at', startDate.toISOString())
-
-    const { data: previousLeadsCount } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .gte('created_at', previousStartDate.toISOString())
-      .lt('created_at', startDate.toISOString())
-
-    const activeLeads = currentLeads?.length || 0
-    const prevLeadsCount = previousLeadsCount?.length || 0
-    const currentLeadsCount = allLeads?.length || 0
-    const leadsChange = prevLeadsCount > 0 ? ((currentLeadsCount - prevLeadsCount) / prevLeadsCount) * 100 : 0
-
-    // Get conversion rate (leads to opportunities)
-    const { data: opportunities } = await supabase
+    // 3. Total Events Booked (opportunities won in period)
+    const { data: currentWonOpps } = await supabase
       .from('opportunities')
       .select('id')
       .eq('tenant_id', tenantId)
-      .gte('created_at', startDate.toISOString())
+      .eq('stage', 'Won')
+      .gte('updated_at', startDate.toISOString())
+      .lte('updated_at', endDate.toISOString())
 
-    const conversionRate = currentLeadsCount > 0
-      ? ((opportunities?.length || 0) / currentLeadsCount * 100).toFixed(1)
-      : 0
+    const { data: previousWonOpps } = await supabase
+      .from('opportunities')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('stage', 'Won')
+      .gte('updated_at', previousStartDate.toISOString())
+      .lte('updated_at', previousEndDate.toISOString())
 
-    // Get revenue by month (last 6 months for chart)
+    const totalEventsBooked = currentWonOpps?.length || 0
+    const prevEventsBooked = previousWonOpps?.length || 0
+    const eventsBookedChange = prevEventsBooked > 0 ? ((totalEventsBooked - prevEventsBooked) / prevEventsBooked) * 100 : 0
+
+    // 4. Total Scheduled Events (event days in period)
+    // Get all events that overlap with the period
+    const { data: currentEvents } = await supabase
+      .from('events')
+      .select('start_date, end_date')
+      .eq('tenant_id', tenantId)
+      .or(`start_date.lte.${endDate.toISOString()},end_date.gte.${startDate.toISOString()}`)
+
+    const { data: previousEvents } = await supabase
+      .from('events')
+      .select('start_date, end_date')
+      .eq('tenant_id', tenantId)
+      .or(`start_date.lte.${previousEndDate.toISOString()},end_date.gte.${previousStartDate.toISOString()}`)
+
+    // Count event days
+    const totalScheduledEvents = countEventDays(currentEvents, startDate, endDate)
+    const prevScheduledEvents = countEventDays(previousEvents, previousStartDate, previousEndDate)
+    const scheduledEventsChange = prevScheduledEvents > 0 ? ((totalScheduledEvents - prevScheduledEvents) / prevScheduledEvents) * 100 : 0
+
+    // Get revenue and payments by month (last 6 months for chart)
     const revenueByMonth = []
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date()
@@ -134,67 +262,101 @@ export async function GET(request: NextRequest) {
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString())
 
+      const { data: monthPayments } = await supabase
+        .from('invoice_payments')
+        .select('amount')
+        .eq('tenant_id', tenantId)
+        .gte('payment_date', monthStart.toISOString())
+        .lte('payment_date', monthEnd.toISOString())
+
       const revenue = monthRevenue?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
+      const payments = monthPayments?.reduce((sum, pmt) => sum + (pmt.amount || 0), 0) || 0
 
       revenueByMonth.push({
         month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
-        revenue: Math.round(revenue)
+        revenue: Math.round(revenue),
+        payments: Math.round(payments)
       })
     }
 
-    // Get leads by source
-    const { data: leadsData } = await supabase
-      .from('leads')
-      .select('source')
+    // Get events booked and scheduled by month
+    const eventsByMonth = []
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date()
+      monthStart.setMonth(monthStart.getMonth() - i)
+      monthStart.setDate(1)
+      monthStart.setHours(0, 0, 0, 0)
+
+      const monthEnd = new Date(monthStart)
+      monthEnd.setMonth(monthEnd.getMonth() + 1)
+      monthEnd.setDate(0)
+      monthEnd.setHours(23, 59, 59, 999)
+
+      // Events booked (opportunities won)
+      const { data: monthWonOpps } = await supabase
+        .from('opportunities')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('stage', 'Won')
+        .gte('updated_at', monthStart.toISOString())
+        .lte('updated_at', monthEnd.toISOString())
+
+      // Scheduled event days
+      const { data: monthEvents } = await supabase
+        .from('events')
+        .select('start_date, end_date')
+        .eq('tenant_id', tenantId)
+        .or(`start_date.lte.${monthEnd.toISOString()},end_date.gte.${monthStart.toISOString()}`)
+
+      const booked = monthWonOpps?.length || 0
+      const scheduled = countEventDays(monthEvents, monthStart, monthEnd)
+
+      eventsByMonth.push({
+        month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
+        booked,
+        scheduled
+      })
+    }
+
+    // Get invoice status breakdown
+    const { data: invoicesData } = await supabase
+      .from('invoices')
+      .select('status, total')
       .eq('tenant_id', tenantId)
       .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
 
-    const sourceMap = new Map<string, number>()
-    leadsData?.forEach(lead => {
-      const source = lead.source || 'Unknown'
-      sourceMap.set(source, (sourceMap.get(source) || 0) + 1)
-    })
-
-    const leadsBySource = Array.from(sourceMap.entries()).map(([source, count]) => ({
-      source,
-      count
-    }))
-
-    // Get opportunity pipeline
-    const { data: opportunitiesData } = await supabase
-      .from('opportunities')
-      .select('stage, value')
-      .eq('tenant_id', tenantId)
-
-    const stageMap = new Map<string, { value: number; count: number }>()
-    opportunitiesData?.forEach(opp => {
-      const stage = opp.stage || 'Unknown'
-      const current = stageMap.get(stage) || { value: 0, count: 0 }
-      stageMap.set(stage, {
-        value: current.value + (opp.value || 0),
-        count: current.count + 1
+    const statusMap = new Map<string, { count: number; amount: number }>()
+    invoicesData?.forEach(invoice => {
+      const status = invoice.status || 'Unknown'
+      const current = statusMap.get(status) || { count: 0, amount: 0 }
+      statusMap.set(status, {
+        count: current.count + 1,
+        amount: current.amount + (invoice.total || 0)
       })
     })
 
-    const opportunityPipeline = Array.from(stageMap.entries()).map(([stage, data]) => ({
-      stage,
-      value: Math.round(data.value),
-      count: data.count
+    const invoicesByStatus = Array.from(statusMap.entries()).map(([status, data]) => ({
+      status,
+      count: data.count,
+      amount: Math.round(data.amount)
     }))
 
     return NextResponse.json({
       dashboard: {
-        totalRevenue: Math.round(totalRevenue),
-        totalEvents,
-        activeLeads,
-        conversionRate: parseFloat(conversionRate as string),
-        revenueChange: Math.round(revenueChange * 10) / 10,
-        eventsChange: Math.round(eventsChange * 10) / 10,
-        leadsChange: Math.round(leadsChange * 10) / 10
+        totalRevenueGenerated: Math.round(totalRevenueGenerated),
+        totalPaymentsReceived: Math.round(totalPaymentsReceived),
+        totalEventsBooked,
+        totalScheduledEvents,
+        revenueGeneratedChange: Math.round(revenueGeneratedChange * 10) / 10,
+        paymentsReceivedChange: Math.round(paymentsReceivedChange * 10) / 10,
+        eventsBookedChange: Math.round(eventsBookedChange * 10) / 10,
+        scheduledEventsChange: Math.round(scheduledEventsChange * 10) / 10
       },
       revenueByMonth,
-      leadsBySource,
-      opportunityPipeline
+      eventsByMonth,
+      paymentsByMonth: revenueByMonth.map(m => ({ month: m.month, amount: m.payments })),
+      invoicesByStatus
     })
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
