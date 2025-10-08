@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { useSettings } from '@/lib/settings-context';
-import { 
+import {
   ArrowLeft,
   Palette,
   Settings,
@@ -13,16 +13,21 @@ import {
   ToggleRight,
   Monitor,
   Smartphone,
-  Tablet
+  Tablet,
+  Upload,
+  X
 } from 'lucide-react';
 
 interface AppearanceSettings {
+  // Branding
+  logoUrl: string | null;
+
   // Theme Settings
   theme: 'light' | 'dark' | 'auto';
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
-  
+
   // Layout Settings
   sidebarCollapsed: boolean;
   sidebarPosition: 'left' | 'right';
@@ -57,9 +62,13 @@ interface AppearanceSettings {
 export default function AppearanceSettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
   const { settings: globalSettings, updateSettings, loading: settingsLoading } = useSettings();
-  
+
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [settings, setSettings] = useState<AppearanceSettings>({
+    // Branding
+    logoUrl: null,
+
     // Theme Settings
     theme: 'light',
     primaryColor: '#347dc4',
@@ -117,14 +126,59 @@ export default function AppearanceSettingsPage() {
       const keys = path.split('.');
       const newSettings = { ...prev };
       let current = newSettings as Record<string, unknown>;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         current = current[keys[i]] as Record<string, unknown>;
       }
-      
+
       current[keys[keys.length - 1]] = value;
       return newSettings;
     });
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'logo');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setSettings(prev => ({ ...prev, logoUrl: data.url }));
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      alert('Error uploading logo. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setSettings(prev => ({ ...prev, logoUrl: null }));
   };
 
   // Load settings from global context
@@ -195,7 +249,58 @@ export default function AppearanceSettingsPage() {
 
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="space-y-8">
-            
+
+            {/* Logo/Branding Section */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Upload className="h-5 w-5 mr-2 text-[#347dc4]" />
+                Company Logo
+              </h2>
+
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Upload your company logo. This will be displayed in the sidebar and on documents.
+                </p>
+
+                {settings.logoUrl ? (
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={settings.logoUrl}
+                      alt="Company Logo"
+                      className="h-20 w-auto object-contain border border-gray-200 rounded p-2"
+                    />
+                    <button
+                      onClick={handleRemoveLogo}
+                      className="flex items-center px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Remove Logo
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-600">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">PNG, JPG, SVG (max 5MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={uploading}
+                      />
+                    </label>
+                    {uploading && <p className="text-sm text-gray-500 mt-2">Uploading...</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Theme Settings */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

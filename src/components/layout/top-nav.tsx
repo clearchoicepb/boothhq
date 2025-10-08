@@ -3,10 +3,11 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
-import { LogOut, User, ChevronDown, LayoutDashboard, Users, Building2, Target, Calendar, FileText, Camera, TrendingUp, Settings, Menu } from 'lucide-react'
+import { LogOut, User, ChevronDown, LayoutDashboard, Users, Building2, Target, Calendar, FileText, Camera, TrendingUp, Settings, Menu, Plus, BarChart3 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { usePermissions } from '@/lib/permissions'
+import { useTenant } from '@/lib/tenant-context'
 import { GlobalSearch } from '@/components/global-search'
 
 export function TopNav() {
@@ -16,22 +17,55 @@ export function TopNav() {
   const params = useParams()
   const tenantSubdomain = params.tenant as string
   const { permissions } = usePermissions()
+  const { tenant } = useTenant()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const quickActionsRef = useRef<HTMLDivElement>(null)
 
   const navigation = [
     { name: 'Dashboard', href: `/${tenantSubdomain}/dashboard`, icon: LayoutDashboard },
-    { name: 'Leads', href: `/${tenantSubdomain}/leads`, icon: Target, permission: permissions.leads.view },
     { name: 'Opportunities', href: `/${tenantSubdomain}/opportunities`, icon: TrendingUp, permission: permissions.opportunities?.view },
-    { name: 'Contacts', href: `/${tenantSubdomain}/contacts`, icon: Users, permission: permissions.contacts.view },
-    { name: 'Accounts', href: `/${tenantSubdomain}/accounts`, icon: Building2, permission: permissions.accounts.view },
     { name: 'Events', href: `/${tenantSubdomain}/events`, icon: Calendar, permission: permissions.events.view },
-    { name: 'Invoices', href: `/${tenantSubdomain}/invoices`, icon: FileText, permission: permissions.invoices.view },
-    { name: 'Inventory', href: `/${tenantSubdomain}/inventory`, icon: Camera, permission: permissions.events.view }, // Using events permission for inventory
+    { name: 'Reports', href: `/${tenantSubdomain}/reports`, icon: BarChart3 },
+    { name: 'Inventory', href: `/${tenantSubdomain}/inventory`, icon: Camera, permission: permissions.events.view },
     { name: 'Settings', href: `/${tenantSubdomain}/settings`, icon: Settings, permission: permissions.settings?.view },
+  ]
+
+  const quickActions = [
+    {
+      label: 'New Lead',
+      href: `/${tenantSubdomain}/leads/new`,
+      icon: TrendingUp,
+      permission: permissions.leads?.create
+    },
+    {
+      label: 'New Contact',
+      href: `/${tenantSubdomain}/contacts/new`,
+      icon: Users,
+      permission: permissions.contacts?.create
+    },
+    {
+      label: 'New Account',
+      href: `/${tenantSubdomain}/accounts/new`,
+      icon: Building2,
+      permission: permissions.accounts?.create
+    },
+    {
+      label: 'New Event',
+      href: `/${tenantSubdomain}/events/new`,
+      icon: Calendar,
+      permission: permissions.events?.create
+    },
+    {
+      label: 'New Invoice',
+      href: `/${tenantSubdomain}/invoices/new`,
+      icon: FileText,
+      permission: permissions.invoices?.create
+    }
   ]
 
   const handleSignOut = async () => {
@@ -54,6 +88,9 @@ export function TopNav() {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setIsMobileMenuOpen(false)
       }
+      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target as Node)) {
+        setIsQuickActionsOpen(false)
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
@@ -65,10 +102,10 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       {/* Navigation Menu */}
-      <nav className="mobile-nav px-3 sm:px-6 py-3">
-        <div className="flex items-center justify-between gap-2">
+      <nav className="px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-2 xl:space-x-4 2xl:space-x-6">
+          <div className="hidden lg:flex items-center space-x-6">
             {navigation.filter(item => !item.permission || item.permission).map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -76,14 +113,14 @@ export function TopNav() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center space-x-1 xl:space-x-1.5 px-1.5 xl:px-2 2xl:px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-colors duration-150 ${
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     isActive
                       ? 'bg-[#347dc4] text-white'
                       : 'text-gray-700 hover:bg-gray-100 hover:text-[#347dc4]'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                  <span className="whitespace-nowrap">{item.name}</span>
+                  <Icon className="h-4 w-4" />
+                  <span>{item.name}</span>
                 </Link>
               )
             })}
@@ -131,11 +168,48 @@ export function TopNav() {
             )}
           </div>
           
+          {/* Quick Actions Dropdown */}
+          <div className="relative flex-shrink-0" ref={quickActionsRef}>
+            <button
+              onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+              onMouseEnter={() => setIsQuickActionsOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-150"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="text-sm font-medium">Quick Actions</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+
+            {isQuickActionsOpen && (
+              <div
+                className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[51]"
+                onMouseLeave={() => setIsQuickActionsOpen(false)}
+              >
+                {quickActions
+                  .filter(action => action.permission !== false)
+                  .map((action) => {
+                    const Icon = action.icon
+                    return (
+                      <Link
+                        key={action.label}
+                        href={action.href}
+                        onClick={() => setIsQuickActionsOpen(false)}
+                        className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#347dc4] transition-colors duration-150"
+                      >
+                        <Icon className="h-4 w-4 mr-3 text-[#347dc4]" />
+                        <span>{action.label}</span>
+                      </Link>
+                    )
+                  })}
+              </div>
+            )}
+          </div>
+
           {/* Global Search */}
-          <div className="hidden md:flex flex-1 max-w-[200px] xl:max-w-xs 2xl:max-w-md mx-1 xl:mx-2 2xl:mx-6">
+          <div className="hidden md:flex flex-1 max-w-[400px] xl:max-w-2xl 2xl:max-w-4xl mx-1 xl:mx-2 2xl:mx-6">
             <GlobalSearch tenantSubdomain={tenantSubdomain} />
           </div>
-          
+
           {session && (
             <div className="relative flex-shrink-0" ref={userMenuRef}>
               <button
