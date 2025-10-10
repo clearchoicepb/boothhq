@@ -196,6 +196,8 @@ export interface Database {
           probability: number | null
           expected_close_date: string | null
           actual_close_date: string | null
+          close_reason: string | null
+          close_notes: string | null
           event_type: string | null
           date_type: string | null
           event_date: string | null
@@ -226,6 +228,8 @@ export interface Database {
           probability?: number | null
           expected_close_date?: string | null
           actual_close_date?: string | null
+          close_reason?: string | null
+          close_notes?: string | null
           event_type?: string | null
           date_type?: string | null
           event_date?: string | null
@@ -256,6 +260,8 @@ export interface Database {
           probability?: number | null
           expected_close_date?: string | null
           actual_close_date?: string | null
+          close_reason?: string | null
+          close_notes?: string | null
           event_type?: string | null
           date_type?: string | null
           event_date?: string | null

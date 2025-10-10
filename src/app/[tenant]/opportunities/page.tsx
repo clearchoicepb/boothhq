@@ -16,6 +16,7 @@ import { usePermissions } from '@/lib/permissions'
 import type { Opportunity } from '@/lib/supabase-client'
 import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
+import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
 
 interface OpportunityWithRelations extends Opportunity {
   account_name: string | null
@@ -45,6 +46,11 @@ function OpportunitiesPageContent() {
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithRelations | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
+
+  // Close opportunity modal state
+  const [showCloseModal, setShowCloseModal] = useState(false)
+  const [pendingCloseStage, setPendingCloseStage] = useState<'closed_won' | 'closed_lost' | null>(null)
+  const [opportunityToClose, setOpportunityToClose] = useState<OpportunityWithRelations | null>(null)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -390,28 +396,54 @@ function OpportunitiesPageContent() {
       return
     }
 
+    // If dropping to closed_won or closed_lost, show the modal
+    if (newStage === 'closed_won' || newStage === 'closed_lost') {
+      setOpportunityToClose(draggedOpportunity)
+      setPendingCloseStage(newStage)
+      setShowCloseModal(true)
+      return
+    }
+
+    // For non-closed stages, update immediately
+    await updateOpportunityStage(draggedOpportunity.id, newStage)
+    setDraggedOpportunity(null)
+  }
+
+  const updateOpportunityStage = async (
+    opportunityId: string,
+    newStage: string,
+    closeReason?: string,
+    closeNotes?: string
+  ) => {
     try {
-      // Update the opportunity stage via API
-      const response = await fetch(`/api/opportunities/${draggedOpportunity.id}`, {
+      const body: any = { stage: newStage }
+
+      // Include close reason and notes if provided
+      if (closeReason !== undefined) {
+        body.close_reason = closeReason
+      }
+      if (closeNotes !== undefined) {
+        body.close_notes = closeNotes
+      }
+
+      const response = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          stage: newStage
-        }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
         // Update local state optimistically
-        setOpportunities(prev => 
-          prev.map(opp => 
-            opp.id === draggedOpportunity.id 
-              ? { ...opp, stage: newStage }
+        setOpportunities(prev =>
+          prev.map(opp =>
+            opp.id === opportunityId
+              ? { ...opp, stage: newStage, close_reason: closeReason || opp.close_reason, close_notes: closeNotes || opp.close_notes }
               : opp
           )
         )
-        
+
         // Show animation for closed buckets
         if (newStage === 'closed_won') {
           setShowAnimation('won')
@@ -422,12 +454,28 @@ function OpportunitiesPageContent() {
         }
       } else {
         console.error('Failed to update opportunity stage')
+        throw new Error('Failed to update opportunity stage')
       }
     } catch (error) {
       console.error('Error updating opportunity stage:', error)
+      throw error
     }
+  }
 
+  const handleCloseOpportunityConfirm = async (data: { closeReason: string; closeNotes: string }) => {
+    if (!opportunityToClose || !pendingCloseStage) return
+
+    await updateOpportunityStage(
+      opportunityToClose.id,
+      pendingCloseStage,
+      data.closeReason,
+      data.closeNotes
+    )
+
+    // Clean up
     setDraggedOpportunity(null)
+    setOpportunityToClose(null)
+    setPendingCloseStage(null)
   }
 
   const handleDragEnd = () => {
@@ -765,6 +813,9 @@ function OpportunitiesPageContent() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
+                    {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Reason</th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estimated Value</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -804,6 +855,28 @@ function OpportunitiesPageContent() {
                           {opportunity.stage}
                         </span>
                       </td>
+                      {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {opportunity.close_reason ? (
+                            <div>
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                opportunity.stage === 'closed_won'
+                                  ? 'bg-green-50 text-green-700 border border-green-200'
+                                  : 'bg-red-50 text-red-700 border border-red-200'
+                              }`}>
+                                {opportunity.close_reason}
+                              </span>
+                              {opportunity.close_notes && (
+                                <p className="text-xs text-gray-500 mt-1 truncate max-w-xs" title={opportunity.close_notes}>
+                                  {opportunity.close_notes}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">No reason provided</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {getOpportunityProbability(opportunity)}%
                       </td>
@@ -1089,12 +1162,21 @@ function OpportunitiesPageContent() {
                                 <p className="text-xs text-gray-600 truncate">
                                   {opportunity.account_name} • ${opportunity.amount?.toLocaleString() || '0'}
                                 </p>
+                                {opportunity.close_reason && (
+                                  <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
+                                    showBucketPopup === 'won'
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-red-100 text-red-700'
+                                  }`}>
+                                    {opportunity.close_reason}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                             <span className="text-xs text-gray-500">
-                              {getOpportunityProbability(opportunity)}%
+                              ${opportunity.amount?.toLocaleString() || '0'}
                             </span>
                           </div>
                         </div>
@@ -1145,6 +1227,23 @@ function OpportunitiesPageContent() {
         accountId={selectedOpportunity?.account_id || undefined}
         contactId={selectedOpportunity?.contact_id || undefined}
       />
+
+      {/* Close Opportunity Modal */}
+      {opportunityToClose && pendingCloseStage && (
+        <CloseOpportunityModal
+          isOpen={showCloseModal}
+          onClose={() => {
+            setShowCloseModal(false)
+            setOpportunityToClose(null)
+            setPendingCloseStage(null)
+            setDraggedOpportunity(null)
+          }}
+          opportunityId={opportunityToClose.id}
+          opportunityName={opportunityToClose.name}
+          closedAs={pendingCloseStage === 'closed_won' ? 'won' : 'lost'}
+          onConfirm={handleCloseOpportunityConfirm}
+        />
+      )}
     </AppLayout>
   )
 }
