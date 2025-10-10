@@ -5,6 +5,7 @@ import { SessionProvider } from '@/components/session-provider'
 import { TenantProvider } from '@/lib/tenant-context'
 import { SettingsProvider } from '@/lib/settings-context'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { SearchPalette } from '@/components/SearchPalette'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,6 +34,7 @@ export default function RootLayout({
                 <div className="min-h-screen bg-gray-50">
                   {children}
                 </div>
+                <SearchPalette />
               </SettingsProvider>
             </TenantProvider>
           </SessionProvider>
