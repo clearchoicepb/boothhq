@@ -7,6 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
+import { Pagination } from '@/components/ui/pagination'
 import { Search, Plus, DollarSign, Eye, Edit, Trash2, Grid, List, ThumbsUp, ThumbsDown, Mail, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -45,11 +46,17 @@ function OpportunitiesPageContent() {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(25)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
   useEffect(() => {
     if (session && tenant) {
       fetchOpportunities()
     }
-  }, [session, tenant, filterStage])
+  }, [session, tenant, filterStage, currentPage, currentView])
 
   // Set view from settings
   useEffect(() => {
@@ -61,16 +68,50 @@ function OpportunitiesPageContent() {
   const fetchOpportunities = async () => {
     try {
       setLocalLoading(true)
-      const response = await fetch(`/api/entities/opportunities?stage=${filterStage}`)
+
+      // Build query params based on current view
+      const params = new URLSearchParams({
+        stage: filterStage,
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString()
+      })
+
+      // For pipeline view, only fetch active opportunities
+      if (currentView === 'pipeline') {
+        params.append('pipelineView', 'true')
+      }
+
+      const response = await fetch(`/api/entities/opportunities?${params.toString()}`)
       if (response.ok) {
-        const data = await response.json()
-        setOpportunities(data)
+        const result = await response.json()
+
+        // Handle paginated response
+        if (result.data && result.pagination) {
+          setOpportunities(result.data)
+          setTotalItems(result.pagination.total)
+          setTotalPages(result.pagination.totalPages)
+        } else {
+          // Fallback for non-paginated response
+          setOpportunities(result)
+        }
       }
     } catch (error) {
       console.error('Error fetching opportunities:', error)
     } finally {
       setLocalLoading(false)
     }
+  }
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterStage, searchTerm, dateFilter, dateType])
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleDeleteOpportunity = async (opportunityId: string) => {
@@ -494,6 +535,7 @@ function OpportunitiesPageContent() {
                     {calculationMode === 'expected' && 'Expected Opportunities'}
                   </p>
                   <p className="text-2xl font-semibold text-gray-900">{currentStats.qty}</p>
+                  <p className="text-xs text-gray-500 mt-1">On current page</p>
                 </div>
               </div>
             </div>
@@ -513,6 +555,7 @@ function OpportunitiesPageContent() {
                   <p className="text-2xl font-semibold text-gray-900">
                     ${Math.round(currentStats.amount).toLocaleString()}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">On current page</p>
                 </div>
               </div>
             </div>
@@ -530,6 +573,9 @@ function OpportunitiesPageContent() {
                       Based on probability-weighted values
                       {settings.opportunities?.autoCalculateProbability ? ' (stage-based)' : ' (individual)'}
                     </p>
+                  )}
+                  {calculationMode !== 'expected' && (
+                    <p className="text-xs text-gray-500 mt-1">On current page</p>
                   )}
                 </div>
               </div>
@@ -821,6 +867,16 @@ function OpportunitiesPageContent() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              loading={localLoading}
+            />
           </div>
           )}
 

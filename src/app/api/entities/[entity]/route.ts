@@ -23,30 +23,53 @@ export async function GET(
 
     const { searchParams } = new URL(request.url)
     
-    // Extract filters
+    // Extract filters and pagination params
     const search = searchParams.get('search') || undefined
     const status = searchParams.get('status') || undefined
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
-    
+    const stage = searchParams.get('stage') || undefined
+    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 25
+    const pipelineView = searchParams.get('pipelineView') === 'true'
+
     const supabase = createServerSupabaseClient()
 
-    // Build the query
+    // Build the count query first
+    let countQuery = supabase
+      .from(config.table)
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', session.user.tenantId)
+
+    // Build the data query
     let query = supabase
       .from(config.table)
       .select('*')
       .eq('tenant_id', session.user.tenantId)
 
-    // Apply search filter
+    // Apply search filter to both queries
     if (search && config.searchFields.length > 0) {
-      const searchConditions = config.searchFields.map(field => 
+      const searchConditions = config.searchFields.map(field =>
         `${field}.ilike.%${search}%`
       ).join(',')
       query = query.or(searchConditions)
+      countQuery = countQuery.or(searchConditions)
     }
 
-    // Apply status filter
+    // Apply status filter to both queries
     if (status && status !== 'all') {
       query = query.eq('status', status)
+      countQuery = countQuery.eq('status', status)
+    }
+
+    // Apply stage filter for opportunities (to both queries)
+    if (stage && stage !== 'all' && entity === 'opportunities') {
+      query = query.eq('stage', stage)
+      countQuery = countQuery.eq('stage', stage)
+    }
+
+    // For pipeline view, exclude closed opportunities
+    if (pipelineView && entity === 'opportunities') {
+      query = query.not('stage', 'in', '(closed_won,closed_lost)')
+      countQuery = countQuery.not('stage', 'in', '(closed_won,closed_lost)')
     }
 
     // Apply ordering
@@ -54,24 +77,44 @@ export async function GET(
     const orderDirection = config.defaultOrder?.direction || 'desc'
     query = query.order(orderBy, { ascending: orderDirection === 'asc' })
 
-    // Apply limit
-    query = query.limit(limit)
+    // Apply pagination
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    query = query.range(from, to)
 
-    const { data, error } = await query
+    // Execute both queries in parallel
+    const [{ data, error }, { count, error: countError }] = await Promise.all([
+      query,
+      countQuery
+    ])
 
-    if (error) {
-      console.error(`Error fetching ${entity}:`, error)
-      return NextResponse.json({ 
+    if (error || countError) {
+      console.error(`Error fetching ${entity}:`, error || countError)
+      return NextResponse.json({
         error: `Failed to fetch ${entity}`,
-        details: error.message 
+        details: (error || countError)?.message
       }, { status: 500 })
     }
 
     // Transform response if needed
-    const transformedData = config.transformResponse ? 
+    const transformedData = config.transformResponse ?
       config.transformResponse(data) : data
 
-    const response = NextResponse.json(transformedData || [])
+    // Calculate pagination metadata
+    const total = count || 0
+    const totalPages = Math.ceil(total / limit)
+    const hasMore = page < totalPages
+
+    const response = NextResponse.json({
+      data: transformedData || [],
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore
+      }
+    })
     
     // Add caching headers
     response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
