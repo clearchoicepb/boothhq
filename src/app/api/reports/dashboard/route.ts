@@ -167,32 +167,33 @@ export async function GET(request: NextRequest) {
     // 1. Total Revenue Generated (invoices created in period)
     const { data: currentInvoices } = await supabase
       .from('invoices')
-      .select('total')
+      .select('total_amount')
       .eq('tenant_id', tenantId)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
 
     const { data: previousInvoices } = await supabase
       .from('invoices')
-      .select('total')
+      .select('total_amount')
       .eq('tenant_id', tenantId)
       .gte('created_at', previousStartDate.toISOString())
       .lte('created_at', previousEndDate.toISOString())
 
-    const totalRevenueGenerated = currentInvoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
-    const prevRevenueGenerated = previousInvoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
+    const totalRevenueGenerated = currentInvoices?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
+    const prevRevenueGenerated = previousInvoices?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
     const revenueGeneratedChange = prevRevenueGenerated > 0 ? ((totalRevenueGenerated - prevRevenueGenerated) / prevRevenueGenerated) * 100 : 0
 
     // 2. Total Payments Received (payments received in period)
+    // Note: After running add-tenant-to-payments.sql migration, we can query directly by tenant_id
     const { data: currentPayments } = await supabase
-      .from('invoice_payments')
+      .from('payments')
       .select('amount')
       .eq('tenant_id', tenantId)
       .gte('payment_date', startDate.toISOString())
       .lte('payment_date', endDate.toISOString())
 
     const { data: previousPayments } = await supabase
-      .from('invoice_payments')
+      .from('payments')
       .select('amount')
       .eq('tenant_id', tenantId)
       .gte('payment_date', previousStartDate.toISOString())
@@ -203,19 +204,24 @@ export async function GET(request: NextRequest) {
     const paymentsReceivedChange = prevPaymentsReceived > 0 ? ((totalPaymentsReceived - prevPaymentsReceived) / prevPaymentsReceived) * 100 : 0
 
     // 3. Total Events Booked (opportunities won in period)
-    const { data: currentWonOpps } = await supabase
+    const { data: currentWonOpps, error: wonOppsError } = await supabase
       .from('opportunities')
       .select('id')
       .eq('tenant_id', tenantId)
-      .eq('stage', 'Won')
+      .eq('stage', 'closed_won')
       .gte('updated_at', startDate.toISOString())
       .lte('updated_at', endDate.toISOString())
+
+    if (wonOppsError) {
+      console.error('Error fetching won opportunities:', wonOppsError)
+    }
+    console.log('Current won opps:', currentWonOpps?.length, 'from', startDate.toISOString(), 'to', endDate.toISOString())
 
     const { data: previousWonOpps } = await supabase
       .from('opportunities')
       .select('id')
       .eq('tenant_id', tenantId)
-      .eq('stage', 'Won')
+      .eq('stage', 'closed_won')
       .gte('updated_at', previousStartDate.toISOString())
       .lte('updated_at', previousEndDate.toISOString())
 
@@ -224,23 +230,42 @@ export async function GET(request: NextRequest) {
     const eventsBookedChange = prevEventsBooked > 0 ? ((totalEventsBooked - prevEventsBooked) / prevEventsBooked) * 100 : 0
 
     // 4. Total Scheduled Events (event days in period)
-    // Get all events that overlap with the period
-    const { data: currentEvents } = await supabase
+    // First, let's see ALL events for this tenant
+    const { data: allEvents } = await supabase
+      .from('events')
+      .select('id, start_date, end_date, event_type')
+      .eq('tenant_id', tenantId)
+
+    console.log('ALL events in database for tenant:', JSON.stringify(allEvents, null, 2))
+
+    // Get all events that overlap with the period (start_date <= period_end AND end_date >= period_start)
+    const { data: currentEvents, error: eventsError } = await supabase
       .from('events')
       .select('start_date, end_date')
       .eq('tenant_id', tenantId)
-      .or(`start_date.lte.${endDate.toISOString()},end_date.gte.${startDate.toISOString()}`)
+      .lte('start_date', endDate.toISOString())
+      .gte('end_date', startDate.toISOString())
+
+    if (eventsError) {
+      console.error('Error fetching events:', eventsError)
+    }
+    console.log('Period:', startDate.toISOString(), 'to', endDate.toISOString())
+    console.log('Current events found:', currentEvents?.length)
+    console.log('Matching events:', JSON.stringify(currentEvents, null, 2))
 
     const { data: previousEvents } = await supabase
       .from('events')
       .select('start_date, end_date')
       .eq('tenant_id', tenantId)
-      .or(`start_date.lte.${previousEndDate.toISOString()},end_date.gte.${previousStartDate.toISOString()}`)
+      .lte('start_date', previousEndDate.toISOString())
+      .gte('end_date', previousStartDate.toISOString())
 
     // Count event days
     const totalScheduledEvents = countEventDays(currentEvents, startDate, endDate)
     const prevScheduledEvents = countEventDays(previousEvents, previousStartDate, previousEndDate)
     const scheduledEventsChange = prevScheduledEvents > 0 ? ((totalScheduledEvents - prevScheduledEvents) / prevScheduledEvents) * 100 : 0
+
+    console.log('Total scheduled events:', totalScheduledEvents)
 
     // Get revenue and payments by month (last 6 months for chart)
     const revenueByMonth = []
@@ -257,19 +282,19 @@ export async function GET(request: NextRequest) {
 
       const { data: monthRevenue } = await supabase
         .from('invoices')
-        .select('total')
+        .select('total_amount')
         .eq('tenant_id', tenantId)
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString())
 
       const { data: monthPayments } = await supabase
-        .from('invoice_payments')
+        .from('payments')
         .select('amount')
         .eq('tenant_id', tenantId)
         .gte('payment_date', monthStart.toISOString())
         .lte('payment_date', monthEnd.toISOString())
 
-      const revenue = monthRevenue?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
+      const revenue = monthRevenue?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
       const payments = monthPayments?.reduce((sum, pmt) => sum + (pmt.amount || 0), 0) || 0
 
       revenueByMonth.push({
@@ -297,7 +322,7 @@ export async function GET(request: NextRequest) {
         .from('opportunities')
         .select('id')
         .eq('tenant_id', tenantId)
-        .eq('stage', 'Won')
+        .eq('stage', 'closed_won')
         .gte('updated_at', monthStart.toISOString())
         .lte('updated_at', monthEnd.toISOString())
 
@@ -306,7 +331,8 @@ export async function GET(request: NextRequest) {
         .from('events')
         .select('start_date, end_date')
         .eq('tenant_id', tenantId)
-        .or(`start_date.lte.${monthEnd.toISOString()},end_date.gte.${monthStart.toISOString()}`)
+        .lte('start_date', monthEnd.toISOString())
+        .gte('end_date', monthStart.toISOString())
 
       const booked = monthWonOpps?.length || 0
       const scheduled = countEventDays(monthEvents, monthStart, monthEnd)
@@ -321,7 +347,7 @@ export async function GET(request: NextRequest) {
     // Get invoice status breakdown
     const { data: invoicesData } = await supabase
       .from('invoices')
-      .select('status, total')
+      .select('status, total_amount')
       .eq('tenant_id', tenantId)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
@@ -332,7 +358,7 @@ export async function GET(request: NextRequest) {
       const current = statusMap.get(status) || { count: 0, amount: 0 }
       statusMap.set(status, {
         count: current.count + 1,
-        amount: current.amount + (invoice.total || 0)
+        amount: current.amount + (invoice.total_amount || 0)
       })
     })
 

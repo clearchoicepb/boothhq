@@ -19,13 +19,13 @@ import {
   exportCompleteDashboard,
   exportDashboardSummary,
   exportRevenueTrend,
-  exportLeadSources,
-  exportOpportunityPipeline,
+  exportEventsTrend,
+  exportInvoicesByStatus,
   exportCompleteDashboardPDF,
   exportDashboardSummaryPDF,
   exportRevenueTrendPDF,
-  exportLeadSourcesPDF,
-  exportOpportunityPipelinePDF
+  exportEventsTrendPDF,
+  exportInvoicesByStatusPDF
 } from '@/lib/csv-export'
 import {
   LineChart,
@@ -163,10 +163,14 @@ export default function ReportsPage() {
         url += `&startDate=${reportConfig.customStartDate}&endDate=${reportConfig.customEndDate}`
       }
 
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        credentials: 'include'
+      })
       if (response.ok) {
         const data = await response.json()
         setReportData(data)
+      } else {
+        console.error('Error fetching report data:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching report data:', error)
@@ -195,11 +199,11 @@ export default function ReportsPage() {
         case 'revenue':
           exportRevenueTrendPDF(reportData, dateRange)
           break
-        case 'leads':
-          exportLeadSourcesPDF(reportData, dateRange)
+        case 'events':
+          exportEventsTrendPDF(reportData, dateRange)
           break
-        case 'pipeline':
-          exportOpportunityPipelinePDF(reportData, dateRange)
+        case 'invoices':
+          exportInvoicesByStatusPDF(reportData, dateRange)
           break
         default:
           exportCompleteDashboardPDF(reportData, dateRange)
@@ -215,11 +219,11 @@ export default function ReportsPage() {
         case 'revenue':
           exportRevenueTrend(reportData, dateRange)
           break
-        case 'leads':
-          exportLeadSources(reportData, dateRange)
+        case 'events':
+          exportEventsTrend(reportData, dateRange)
           break
-        case 'pipeline':
-          exportOpportunityPipeline(reportData, dateRange)
+        case 'invoices':
+          exportInvoicesByStatus(reportData, dateRange)
           break
         default:
           exportCompleteDashboard(reportData, dateRange)
@@ -390,18 +394,18 @@ export default function ReportsPage() {
 
                       <div className="border-t border-gray-200 my-1"></div>
 
-                      {/* Lead Sources Data */}
+                      {/* Events Trend Data */}
                       <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">Lead Sources Data</div>
+                        <div className="text-sm font-medium text-gray-900 mb-1">Events Trend Data</div>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleExport('leads', 'csv')}
+                            onClick={() => handleExport('events', 'csv')}
                             className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
                           >
                             CSV
                           </button>
                           <button
-                            onClick={() => handleExport('leads', 'pdf')}
+                            onClick={() => handleExport('events', 'pdf')}
                             className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
                           >
                             PDF
@@ -411,18 +415,18 @@ export default function ReportsPage() {
 
                       <div className="border-t border-gray-200 my-1"></div>
 
-                      {/* Opportunity Pipeline Data */}
+                      {/* Invoices by Status Data */}
                       <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">Opportunity Pipeline Data</div>
+                        <div className="text-sm font-medium text-gray-900 mb-1">Invoices by Status Data</div>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleExport('pipeline', 'csv')}
+                            onClick={() => handleExport('invoices', 'csv')}
                             className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
                           >
                             CSV
                           </button>
                           <button
-                            onClick={() => handleExport('pipeline', 'pdf')}
+                            onClick={() => handleExport('invoices', 'pdf')}
                             className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
                           >
                             PDF
