@@ -79,7 +79,7 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD'
-  }).format(value)
+  }).format(value || 0)
 }
 
 /**
@@ -95,7 +95,7 @@ export function formatDate(value: string | Date): string {
  * Format percentage values
  */
 export function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`
+  return `${(value || 0).toFixed(1)}%`
 }
 
 /**
@@ -106,10 +106,26 @@ export function exportDashboardSummary(data: any, dateRange: string): void {
   const filename = `dashboard-summary-${dateRange}-${timestamp}.csv`
 
   const summaryData = [
-    { metric: 'Total Revenue', value: formatCurrency(data.dashboard.totalRevenue), change: `${data.dashboard.revenueChange}%` },
-    { metric: 'Total Events', value: data.dashboard.totalEvents, change: `${data.dashboard.eventsChange}%` },
-    { metric: 'Active Leads', value: data.dashboard.activeLeads, change: `${data.dashboard.leadsChange}%` },
-    { metric: 'Conversion Rate', value: `${data.dashboard.conversionRate}%`, change: '-' }
+    {
+      metric: 'Revenue Generated',
+      value: formatCurrency(data.dashboard?.totalRevenueGenerated || 0),
+      change: `${(data.dashboard?.revenueGeneratedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.revenueGeneratedChange || 0}%`
+    },
+    {
+      metric: 'Payments Received',
+      value: formatCurrency(data.dashboard?.totalPaymentsReceived || 0),
+      change: `${(data.dashboard?.paymentsReceivedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.paymentsReceivedChange || 0}%`
+    },
+    {
+      metric: 'Events Booked',
+      value: data.dashboard?.totalEventsBooked || 0,
+      change: `${(data.dashboard?.eventsBookedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.eventsBookedChange || 0}%`
+    },
+    {
+      metric: 'Scheduled Events',
+      value: data.dashboard?.totalScheduledEvents || 0,
+      change: `${(data.dashboard?.scheduledEventsChange || 0) >= 0 ? '+' : ''}${data.dashboard?.scheduledEventsChange || 0}%`
+    }
   ]
 
   const columns: CSVColumn[] = [
@@ -131,43 +147,45 @@ export function exportRevenueTrend(data: any, dateRange: string): void {
 
   const columns: CSVColumn[] = [
     { key: 'month', label: 'Month' },
-    { key: 'revenue', label: 'Revenue', format: formatCurrency }
+    { key: 'revenue', label: 'Revenue Generated', format: formatCurrency },
+    { key: 'payments', label: 'Payments Received', format: formatCurrency }
   ]
 
-  const csv = convertToCSV(data.revenueByMonth, columns)
+  const csv = convertToCSV(data.revenueByMonth || [], columns)
   downloadCSV(csv, filename)
 }
 
 /**
- * Export lead sources to CSV
+ * Export events trend to CSV
  */
-export function exportLeadSources(data: any, dateRange: string): void {
+export function exportEventsTrend(data: any, dateRange: string): void {
   const timestamp = new Date().toISOString().split('T')[0]
-  const filename = `lead-sources-${dateRange}-${timestamp}.csv`
+  const filename = `events-trend-${dateRange}-${timestamp}.csv`
 
   const columns: CSVColumn[] = [
-    { key: 'source', label: 'Source' },
-    { key: 'count', label: 'Count' }
+    { key: 'month', label: 'Month' },
+    { key: 'booked', label: 'Events Booked' },
+    { key: 'scheduled', label: 'Scheduled Event Days' }
   ]
 
-  const csv = convertToCSV(data.leadsBySource, columns)
+  const csv = convertToCSV(data.eventsByMonth || [], columns)
   downloadCSV(csv, filename)
 }
 
 /**
- * Export opportunity pipeline to CSV
+ * Export invoices by status to CSV
  */
-export function exportOpportunityPipeline(data: any, dateRange: string): void {
+export function exportInvoicesByStatus(data: any, dateRange: string): void {
   const timestamp = new Date().toISOString().split('T')[0]
-  const filename = `opportunity-pipeline-${dateRange}-${timestamp}.csv`
+  const filename = `invoices-by-status-${dateRange}-${timestamp}.csv`
 
   const columns: CSVColumn[] = [
-    { key: 'stage', label: 'Stage' },
-    { key: 'value', label: 'Total Value', format: formatCurrency },
-    { key: 'count', label: 'Opportunity Count' }
+    { key: 'status', label: 'Status' },
+    { key: 'count', label: 'Count' },
+    { key: 'amount', label: 'Total Amount', format: formatCurrency }
   ]
 
-  const csv = convertToCSV(data.opportunityPipeline, columns)
+  const csv = convertToCSV(data.invoicesByStatus || [], columns)
   downloadCSV(csv, filename)
 }
 
@@ -183,34 +201,40 @@ export function exportCompleteDashboard(data: any, dateRange: string): void {
   // KPI Summary Section
   csvContent += 'KEY PERFORMANCE INDICATORS\n'
   csvContent += 'Metric,Value,Change vs Previous Period\n'
-  csvContent += `Total Revenue,"${formatCurrency(data.dashboard.totalRevenue)}",${data.dashboard.revenueChange}%\n`
-  csvContent += `Total Events,${data.dashboard.totalEvents},${data.dashboard.eventsChange}%\n`
-  csvContent += `Active Leads,${data.dashboard.activeLeads},${data.dashboard.leadsChange}%\n`
-  csvContent += `Conversion Rate,${data.dashboard.conversionRate}%,-\n`
+  csvContent += `Revenue Generated,"${formatCurrency(data.dashboard?.totalRevenueGenerated || 0)}",${(data.dashboard?.revenueGeneratedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.revenueGeneratedChange || 0}%\n`
+  csvContent += `Payments Received,"${formatCurrency(data.dashboard?.totalPaymentsReceived || 0)}",${(data.dashboard?.paymentsReceivedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.paymentsReceivedChange || 0}%\n`
+  csvContent += `Events Booked,${data.dashboard?.totalEventsBooked || 0},${(data.dashboard?.eventsBookedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.eventsBookedChange || 0}%\n`
+  csvContent += `Scheduled Events,${data.dashboard?.totalScheduledEvents || 0},${(data.dashboard?.scheduledEventsChange || 0) >= 0 ? '+' : ''}${data.dashboard?.scheduledEventsChange || 0}%\n`
   csvContent += '\n'
 
   // Revenue Trend Section
   csvContent += 'REVENUE TREND\n'
-  csvContent += 'Month,Revenue\n'
-  data.revenueByMonth.forEach((row: any) => {
-    csvContent += `${row.month},"${formatCurrency(row.revenue)}"\n`
-  })
+  csvContent += 'Month,Revenue Generated,Payments Received\n'
+  if (data.revenueByMonth) {
+    data.revenueByMonth.forEach((row: any) => {
+      csvContent += `${row.month},"${formatCurrency(row.revenue || 0)}","${formatCurrency(row.payments || 0)}"\n`
+    })
+  }
   csvContent += '\n'
 
-  // Lead Sources Section
-  csvContent += 'LEAD SOURCES\n'
-  csvContent += 'Source,Count\n'
-  data.leadsBySource.forEach((row: any) => {
-    csvContent += `${row.source},${row.count}\n`
-  })
+  // Events Trend Section
+  csvContent += 'EVENTS TREND\n'
+  csvContent += 'Month,Events Booked,Scheduled Event Days\n'
+  if (data.eventsByMonth) {
+    data.eventsByMonth.forEach((row: any) => {
+      csvContent += `${row.month},${row.booked || 0},${row.scheduled || 0}\n`
+    })
+  }
   csvContent += '\n'
 
-  // Opportunity Pipeline Section
-  csvContent += 'OPPORTUNITY PIPELINE\n'
-  csvContent += 'Stage,Total Value,Count\n'
-  data.opportunityPipeline.forEach((row: any) => {
-    csvContent += `${row.stage},"${formatCurrency(row.value)}",${row.count}\n`
-  })
+  // Invoices by Status Section
+  csvContent += 'INVOICES BY STATUS\n'
+  csvContent += 'Status,Count,Total Amount\n'
+  if (data.invoicesByStatus) {
+    data.invoicesByStatus.forEach((row: any) => {
+      csvContent += `${row.status},${row.count || 0},"${formatCurrency(row.amount || 0)}"\n`
+    })
+  }
 
   downloadCSV(csvContent, filename)
 }
@@ -253,10 +277,26 @@ export function exportDashboardSummaryPDF(data: any, dateRange: string): void {
   addPDFHeader(doc, 'Dashboard Summary', getDateRangeLabel(dateRange))
 
   const tableData = [
-    ['Total Revenue', formatCurrency(data.dashboard.totalRevenue), `${data.dashboard.revenueChange >= 0 ? '+' : ''}${data.dashboard.revenueChange}%`],
-    ['Total Events', data.dashboard.totalEvents.toString(), `${data.dashboard.eventsChange >= 0 ? '+' : ''}${data.dashboard.eventsChange}%`],
-    ['Active Leads', data.dashboard.activeLeads.toString(), `${data.dashboard.leadsChange >= 0 ? '+' : ''}${data.dashboard.leadsChange}%`],
-    ['Conversion Rate', `${data.dashboard.conversionRate}%`, '-']
+    [
+      'Revenue Generated',
+      formatCurrency(data.dashboard?.totalRevenueGenerated || 0),
+      `${(data.dashboard?.revenueGeneratedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.revenueGeneratedChange || 0}%`
+    ],
+    [
+      'Payments Received',
+      formatCurrency(data.dashboard?.totalPaymentsReceived || 0),
+      `${(data.dashboard?.paymentsReceivedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.paymentsReceivedChange || 0}%`
+    ],
+    [
+      'Events Booked',
+      (data.dashboard?.totalEventsBooked || 0).toString(),
+      `${(data.dashboard?.eventsBookedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.eventsBookedChange || 0}%`
+    ],
+    [
+      'Scheduled Events',
+      (data.dashboard?.totalScheduledEvents || 0).toString(),
+      `${(data.dashboard?.scheduledEventsChange || 0) >= 0 ? '+' : ''}${data.dashboard?.scheduledEventsChange || 0}%`
+    ]
   ]
 
   autoTable(doc, {
@@ -281,13 +321,14 @@ export function exportRevenueTrendPDF(data: any, dateRange: string): void {
 
   addPDFHeader(doc, 'Revenue Trend', getDateRangeLabel(dateRange))
 
-  const tableData = data.revenueByMonth.map((row: any) => [
+  const tableData = (data.revenueByMonth || []).map((row: any) => [
     row.month,
-    formatCurrency(row.revenue)
+    formatCurrency(row.revenue || 0),
+    formatCurrency(row.payments || 0)
   ])
 
   autoTable(doc, {
-    head: [['Month', 'Revenue']],
+    head: [['Month', 'Revenue Generated', 'Payments Received']],
     body: tableData,
     startY: 45,
     theme: 'striped',
@@ -299,58 +340,55 @@ export function exportRevenueTrendPDF(data: any, dateRange: string): void {
 }
 
 /**
- * Export lead sources to PDF
+ * Export events trend to PDF
  */
-export function exportLeadSourcesPDF(data: any, dateRange: string): void {
+export function exportEventsTrendPDF(data: any, dateRange: string): void {
   const doc = new jsPDF()
   const timestamp = new Date().toISOString().split('T')[0]
-  const filename = `lead-sources-${dateRange}-${timestamp}.pdf`
+  const filename = `events-trend-${dateRange}-${timestamp}.pdf`
 
-  addPDFHeader(doc, 'Lead Sources', getDateRangeLabel(dateRange))
+  addPDFHeader(doc, 'Events Trend', getDateRangeLabel(dateRange))
 
-  const tableData = data.leadsBySource.map((row: any) => [
-    row.source,
-    row.count.toString()
+  const tableData = (data.eventsByMonth || []).map((row: any) => [
+    row.month,
+    (row.booked || 0).toString(),
+    (row.scheduled || 0).toString()
   ])
 
-  const total = data.leadsBySource.reduce((sum: number, row: any) => sum + row.count, 0)
-  tableData.push(['TOTAL', total.toString()])
-
   autoTable(doc, {
-    head: [['Source', 'Count']],
+    head: [['Month', 'Events Booked', 'Scheduled Event Days']],
     body: tableData,
     startY: 45,
     theme: 'striped',
     headStyles: { fillColor: [52, 125, 196] },
-    styles: { fontSize: 10 },
-    footStyles: { fillColor: [52, 125, 196], fontStyle: 'bold' }
+    styles: { fontSize: 10 }
   })
 
   downloadPDF(doc, filename)
 }
 
 /**
- * Export opportunity pipeline to PDF
+ * Export invoices by status to PDF
  */
-export function exportOpportunityPipelinePDF(data: any, dateRange: string): void {
+export function exportInvoicesByStatusPDF(data: any, dateRange: string): void {
   const doc = new jsPDF()
   const timestamp = new Date().toISOString().split('T')[0]
-  const filename = `opportunity-pipeline-${dateRange}-${timestamp}.pdf`
+  const filename = `invoices-by-status-${dateRange}-${timestamp}.pdf`
 
-  addPDFHeader(doc, 'Opportunity Pipeline', getDateRangeLabel(dateRange))
+  addPDFHeader(doc, 'Invoices by Status', getDateRangeLabel(dateRange))
 
-  const tableData = data.opportunityPipeline.map((row: any) => [
-    row.stage,
-    formatCurrency(row.value),
-    row.count.toString()
+  const tableData = (data.invoicesByStatus || []).map((row: any) => [
+    row.status,
+    (row.count || 0).toString(),
+    formatCurrency(row.amount || 0)
   ])
 
-  const totalValue = data.opportunityPipeline.reduce((sum: number, row: any) => sum + row.value, 0)
-  const totalCount = data.opportunityPipeline.reduce((sum: number, row: any) => sum + row.count, 0)
-  tableData.push(['TOTAL', formatCurrency(totalValue), totalCount.toString()])
+  const totalCount = (data.invoicesByStatus || []).reduce((sum: number, row: any) => sum + (row.count || 0), 0)
+  const totalAmount = (data.invoicesByStatus || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0)
+  tableData.push(['TOTAL', totalCount.toString(), formatCurrency(totalAmount)])
 
   autoTable(doc, {
-    head: [['Stage', 'Total Value', 'Count']],
+    head: [['Status', 'Count', 'Total Amount']],
     body: tableData,
     startY: 45,
     theme: 'striped',
@@ -378,10 +416,26 @@ export function exportCompleteDashboardPDF(data: any, dateRange: string): void {
   doc.text('Key Performance Indicators', 14, 48)
 
   const kpiData = [
-    ['Total Revenue', formatCurrency(data.dashboard.totalRevenue), `${data.dashboard.revenueChange >= 0 ? '+' : ''}${data.dashboard.revenueChange}%`],
-    ['Total Events', data.dashboard.totalEvents.toString(), `${data.dashboard.eventsChange >= 0 ? '+' : ''}${data.dashboard.eventsChange}%`],
-    ['Active Leads', data.dashboard.activeLeads.toString(), `${data.dashboard.leadsChange >= 0 ? '+' : ''}${data.dashboard.leadsChange}%`],
-    ['Conversion Rate', `${data.dashboard.conversionRate}%`, '-']
+    [
+      'Revenue Generated',
+      formatCurrency(data.dashboard?.totalRevenueGenerated || 0),
+      `${(data.dashboard?.revenueGeneratedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.revenueGeneratedChange || 0}%`
+    ],
+    [
+      'Payments Received',
+      formatCurrency(data.dashboard?.totalPaymentsReceived || 0),
+      `${(data.dashboard?.paymentsReceivedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.paymentsReceivedChange || 0}%`
+    ],
+    [
+      'Events Booked',
+      (data.dashboard?.totalEventsBooked || 0).toString(),
+      `${(data.dashboard?.eventsBookedChange || 0) >= 0 ? '+' : ''}${data.dashboard?.eventsBookedChange || 0}%`
+    ],
+    [
+      'Scheduled Events',
+      (data.dashboard?.totalScheduledEvents || 0).toString(),
+      `${(data.dashboard?.scheduledEventsChange || 0) >= 0 ? '+' : ''}${data.dashboard?.scheduledEventsChange || 0}%`
+    ]
   ]
 
   autoTable(doc, {
@@ -399,10 +453,14 @@ export function exportCompleteDashboardPDF(data: any, dateRange: string): void {
   doc.setFont('helvetica', 'bold')
   doc.text('Revenue Trend', 14, finalY + 15)
 
-  const revenueData = data.revenueByMonth.map((row: any) => [row.month, formatCurrency(row.revenue)])
+  const revenueData = (data.revenueByMonth || []).map((row: any) => [
+    row.month,
+    formatCurrency(row.revenue || 0),
+    formatCurrency(row.payments || 0)
+  ])
 
   autoTable(doc, {
-    head: [['Month', 'Revenue']],
+    head: [['Month', 'Revenue Generated', 'Payments Received']],
     body: revenueData,
     startY: finalY + 20,
     theme: 'striped',
@@ -417,23 +475,27 @@ export function exportCompleteDashboardPDF(data: any, dateRange: string): void {
     finalY = 20
   }
 
-  // Lead Sources
+  // Events Trend
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text('Lead Sources', 14, finalY + 15)
+  doc.text('Events Trend', 14, finalY + 15)
 
-  const leadData = data.leadsBySource.map((row: any) => [row.source, row.count.toString()])
+  const eventsData = (data.eventsByMonth || []).map((row: any) => [
+    row.month,
+    (row.booked || 0).toString(),
+    (row.scheduled || 0).toString()
+  ])
 
   autoTable(doc, {
-    head: [['Source', 'Count']],
-    body: leadData,
+    head: [['Month', 'Events Booked', 'Scheduled Days']],
+    body: eventsData,
     startY: finalY + 20,
     theme: 'striped',
     headStyles: { fillColor: [52, 125, 196] },
     styles: { fontSize: 9 }
   })
 
-  // Opportunity Pipeline
+  // Invoices by Status
   finalY = (doc as any).lastAutoTable.finalY || finalY + 20
   if (finalY > 220) {
     doc.addPage()
@@ -442,17 +504,17 @@ export function exportCompleteDashboardPDF(data: any, dateRange: string): void {
 
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text('Opportunity Pipeline', 14, finalY + 15)
+  doc.text('Invoices by Status', 14, finalY + 15)
 
-  const pipelineData = data.opportunityPipeline.map((row: any) => [
-    row.stage,
-    formatCurrency(row.value),
-    row.count.toString()
+  const invoiceData = (data.invoicesByStatus || []).map((row: any) => [
+    row.status,
+    (row.count || 0).toString(),
+    formatCurrency(row.amount || 0)
   ])
 
   autoTable(doc, {
-    head: [['Stage', 'Total Value', 'Count']],
-    body: pipelineData,
+    head: [['Status', 'Count', 'Total Amount']],
+    body: invoiceData,
     startY: finalY + 20,
     theme: 'striped',
     headStyles: { fillColor: [52, 125, 196] },
@@ -467,6 +529,16 @@ export function exportCompleteDashboardPDF(data: any, dateRange: string): void {
  */
 function getDateRangeLabel(range: string): string {
   const labels: Record<string, string> = {
+    'this_week': 'This Week',
+    'this_month': 'This Month',
+    'this_quarter': 'This Quarter',
+    'this_year': 'This Year',
+    'yesterday': 'Yesterday',
+    'last_week': 'Last Week',
+    'last_quarter': 'Last Quarter',
+    'last_year': 'Last Year',
+    'custom': 'Custom Range',
+    // Legacy support
     '7d': 'Last 7 Days',
     '30d': 'Last 30 Days',
     '90d': 'Last 90 Days',
