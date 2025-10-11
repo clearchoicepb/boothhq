@@ -648,9 +648,10 @@ function OpportunitiesPageContent() {
 
           {/* Filters and Search - Only show on table and card views */}
           {currentView !== 'pipeline' && (
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow mb-6">
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="w-full">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -664,72 +665,92 @@ function OpportunitiesPageContent() {
                   />
                 </div>
               </div>
-                <div className="flex gap-4">
-                  <div className="min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Filter by Stage
-                    </label>
-                    <Select
-                      value={filterStage}
-                      onChange={(e) => setFilterStage(e.target.value)}
-                    >
-                      <option value="all">All Stages</option>
-                      {(settings.opportunities?.stages || [
-                        { id: 'prospecting', name: 'Prospecting', enabled: true },
-                        { id: 'qualification', name: 'Qualification', enabled: true },
-                        { id: 'proposal', name: 'Proposal', enabled: true },
-                        { id: 'negotiation', name: 'Negotiation', enabled: true },
-                        { id: 'closed_won', name: 'Closed Won', enabled: true },
-                        { id: 'closed_lost', name: 'Closed Lost', enabled: true }
-                      ]).filter((stage: any) => stage.enabled !== false).map((stage: any) => (
-                        <option key={stage.id || stage} value={stage.id || stage}>
-                          {stage.name || stage}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  
-                  <div className="min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Filter by Date
-                    </label>
-                    <Select
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                    >
-                      <option value="all">All Time</option>
-                      <option value="today">Today</option>
-                      <option value="yesterday">Yesterday</option>
-                      <option value="last_7_days">Last 7 Days</option>
-                      <option value="last_30_days">Last 30 Days</option>
-                      <option value="last_90_days">Last 90 Days</option>
-                      <option value="last_12_months">Last 12 Months</option>
-                      <option value="current_week">Current Week</option>
-                      <option value="current_month">Current Month</option>
-                      <option value="current_quarter">Current Quarter</option>
-                      <option value="current_year">Current Year</option>
-                      <option value="previous_week">Previous Week</option>
-                      <option value="previous_month">Previous Month</option>
-                      <option value="previous_quarter">Previous Quarter</option>
-                      <option value="previous_year">Previous Year</option>
-                    </Select>
-                  </div>
-                  
-                  <div className="min-w-[180px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date Type
-                    </label>
-                    <Select
-                      value={dateType}
-                      onChange={(e) => setDateType(e.target.value as 'created' | 'closed')}
-                    >
-                      <option value="created">Created Date</option>
-                      <option value="closed">Closed Date</option>
-                    </Select>
-                  </div>
+
+              {/* Filter Dropdowns - Stack on mobile, 2 cols on tablet, 4 cols on desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Filter by Stage
+                  </label>
+                  <Select
+                    value={filterStage}
+                    onChange={(e) => setFilterStage(e.target.value)}
+                  >
+                    <option value="all">All Stages</option>
+                    {(settings.opportunities?.stages || [
+                      { id: 'prospecting', name: 'Prospecting', enabled: true },
+                      { id: 'qualification', name: 'Qualification', enabled: true },
+                      { id: 'proposal', name: 'Proposal', enabled: true },
+                      { id: 'negotiation', name: 'Negotiation', enabled: true },
+                      { id: 'closed_won', name: 'Closed Won', enabled: true },
+                      { id: 'closed_lost', name: 'Closed Lost', enabled: true }
+                    ]).filter((stage: any) => stage.enabled !== false).map((stage: any) => (
+                      <option key={stage.id || stage} value={stage.id || stage}>
+                        {stage.name || stage}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Filter by Owner
+                  </label>
+                  <Select
+                    value={filterOwner}
+                    onChange={(e) => setFilterOwner(e.target.value)}
+                  >
+                    <option value="all">All Owners</option>
+                    <option value="unassigned">Unassigned</option>
+                    {tenantUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.full_name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Filter by Date
+                  </label>
+                  <Select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="last_7_days">Last 7 Days</option>
+                    <option value="last_30_days">Last 30 Days</option>
+                    <option value="last_90_days">Last 90 Days</option>
+                    <option value="last_12_months">Last 12 Months</option>
+                    <option value="current_week">Current Week</option>
+                    <option value="current_month">Current Month</option>
+                    <option value="current_quarter">Current Quarter</option>
+                    <option value="current_year">Current Year</option>
+                    <option value="previous_week">Previous Week</option>
+                    <option value="previous_month">Previous Month</option>
+                    <option value="previous_quarter">Previous Quarter</option>
+                    <option value="previous_year">Previous Year</option>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date Type
+                  </label>
+                  <Select
+                    value={dateType}
+                    onChange={(e) => setDateType(e.target.value as 'created' | 'closed')}
+                  >
+                    <option value="created">Created Date</option>
+                    <option value="closed">Closed Date</option>
+                  </Select>
                 </div>
               </div>
             </div>
+          </div>
           )}
 
           {/* View Toggle and Closed Buckets */}
@@ -819,22 +840,137 @@ function OpportunitiesPageContent() {
 
           {/* Opportunities Content */}
           {currentView === 'table' && (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {filteredOpportunities.map((opportunity) => (
+                <div key={opportunity.id} className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
+                  {/* Header row */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-base mb-1 truncate">
+                        {opportunity.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 truncate">{opportunity.account_name || 'No Account'}</p>
+                      {opportunity.contact_name && (
+                        <p className="text-xs text-gray-500 truncate">{opportunity.contact_name}</p>
+                      )}
+                    </div>
+                    <div className="ml-3 flex-shrink-0">
+                      {/* Owner badge */}
+                      {opportunity.owner_id ? (
+                        <div
+                          className="w-10 h-10 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-sm font-semibold"
+                          title={getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
+                        >
+                          {getOwnerInitials(opportunity.owner_id, tenantUsers)}
+                        </div>
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm"
+                          title="Unassigned"
+                        >
+                          ?
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Details grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Stage:</span>
+                      <span className={`ml-2 inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                        opportunity.stage === 'prospecting' ? 'bg-blue-100 text-blue-800' :
+                        opportunity.stage === 'qualification' ? 'bg-yellow-100 text-yellow-800' :
+                        opportunity.stage === 'proposal' ? 'bg-purple-100 text-purple-800' :
+                        opportunity.stage === 'negotiation' ? 'bg-orange-100 text-orange-800' :
+                        opportunity.stage === 'closed_won' ? 'bg-green-100 text-green-800' :
+                        opportunity.stage === 'closed_lost' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {opportunity.stage}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Probability:</span>
+                      <span className="ml-2 font-semibold">{getOpportunityProbability(opportunity)}%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Value:</span>
+                      <span className="ml-2 font-semibold">${opportunity.amount?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Weighted:</span>
+                      <span className="ml-2">${Math.round((opportunity.amount || 0) * (getOpportunityProbability(opportunity) || 0) / 100).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <Link href={`/${tenantSubdomain}/opportunities/${opportunity.id}`}>
+                      <button className="text-sm text-[#347dc4] hover:text-[#2c6ba8] font-medium px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
+                        View Details
+                      </button>
+                    </Link>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedOpportunity(opportunity)
+                          setShowEmailModal(true)
+                        }}
+                        className="p-2 text-gray-600 hover:text-[#347dc4] hover:bg-gray-100 rounded-md transition-colors"
+                        title="Send Email"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedOpportunity(opportunity)
+                          setShowSMSModal(true)
+                        }}
+                        className="p-2 text-gray-600 hover:text-[#347dc4] hover:bg-gray-100 rounded-md transition-colors"
+                        title="Send SMS"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Mobile Pagination */}
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  loading={localLoading}
+                />
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-md">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opportunity Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opportunity Name</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Owner</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
                     {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Reason</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Reason</th>
                     )}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estimated Value</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Prob</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Value</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -844,21 +980,35 @@ function OpportunitiesPageContent() {
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => window.open(`/${tenantSubdomain}/opportunities/${opportunity.id}`, '_blank')}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={opportunity.name}>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 truncate max-w-xs" title={opportunity.name}>
                           {opportunity.name}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-48" title={opportunity.description || ''}>
-                        {opportunity.description || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={opportunity.account_name || ''}>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={opportunity.account_name || ''}>
                         {opportunity.account_name || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={opportunity.contact_name || ''}>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={opportunity.contact_name || ''}>
                         {opportunity.contact_name || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-2.5 text-center">
+                        {opportunity.owner_id ? (
+                          <div
+                            className="w-8 h-8 mx-auto rounded-full bg-[#347dc4] flex items-center justify-center text-white text-xs font-semibold"
+                            title={getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
+                          >
+                            {getOwnerInitials(opportunity.owner_id, tenantUsers)}
+                          </div>
+                        ) : (
+                          <div
+                            className="w-8 h-8 mx-auto rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs"
+                            title="Unassigned"
+                          >
+                            ?
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           opportunity.stage === 'prospecting' ? 'bg-blue-100 text-blue-800' :
                           opportunity.stage === 'qualification' ? 'bg-yellow-100 text-yellow-800' :
@@ -872,7 +1022,7 @@ function OpportunitiesPageContent() {
                         </span>
                       </td>
                       {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-2.5 whitespace-nowrap">
                           {opportunity.close_reason ? (
                             <div>
                               <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
@@ -893,13 +1043,13 @@ function OpportunitiesPageContent() {
                           )}
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
                         {getOpportunityProbability(opportunity)}%
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
                         ${opportunity.amount?.toLocaleString() || '0'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Link href={`/${tenantSubdomain}/opportunities/${opportunity.id}`}>
                             <button
@@ -967,6 +1117,7 @@ function OpportunitiesPageContent() {
               loading={localLoading}
             />
           </div>
+          </>
           )}
 
           {/* Pipeline View */}
@@ -1038,12 +1189,20 @@ function OpportunitiesPageContent() {
                                 draggedOpportunity?.id === opportunity.id ? 'opacity-50 scale-95 rotate-2' : ''
                               }`}
                             >
+                              {/* Owner badge */}
+                              <div
+                                className="absolute top-2 left-2 w-6 h-6 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-[10px] font-semibold shadow-sm"
+                                title={getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
+                              >
+                                {getOwnerInitials(opportunity.owner_id, tenantUsers)}
+                              </div>
+
                               {/* Drag handle indicator */}
                               <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                               </div>
-                              
-                              <div className="text-sm font-medium text-gray-900 mb-1 truncate pr-4">
+
+                              <div className="text-sm font-medium text-gray-900 mb-1 truncate pr-4 pl-6">
                                 {opportunity.name}
                               </div>
                               <div className="text-xs text-gray-600 mb-2">
