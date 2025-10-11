@@ -311,6 +311,10 @@ export async function POST(request: Request) {
         expectedCloseDate = randomDate(now, threeMonthsFromNow)
       }
 
+      // Determine event date fields (required by check_date_fields constraint)
+      const useMultiDay = Math.random() < 0.2 // 20% multi-day events
+      const eventStartDate = expectedCloseDate
+
       const oppData: any = {
         tenant_id: tenantId,
         account_id: account.id,
@@ -321,6 +325,11 @@ export async function POST(request: Request) {
         probability,
         expected_close_date: expectedCloseDate.toISOString().split('T')[0],
         description: `${random(['Photo booth rental', 'DJ services', 'Full event production', 'A/V services', 'Event coordination'])} for ${random(['corporate event', 'wedding', 'conference', 'private party', 'fundraiser'])}`,
+        event_type: random(eventTypes),
+        date_type: useMultiDay ? 'multiple' : 'single',
+        event_date: useMultiDay ? null : eventStartDate.toISOString().split('T')[0],
+        initial_date: useMultiDay ? eventStartDate.toISOString().split('T')[0] : null,
+        final_date: useMultiDay ? new Date(eventStartDate.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : null,
         created_at: createdAt.toISOString()
       }
 
