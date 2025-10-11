@@ -21,6 +21,9 @@ import { OpportunityPricing } from '@/components/opportunity-pricing'
 import { Lead } from '@/lib/supabase-client'
 import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
 import { fetchTenantUsers, getOwnerDisplayName, type TenantUser } from '@/lib/users'
+import toast from 'react-hot-toast'
+import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-utils'
+import { useSettings } from '@/lib/settings-context'
 
 interface EventDate {
   id: string
@@ -61,6 +64,7 @@ interface Opportunity {
 export default function OpportunityDetailPage() {
   const { data: session, status } = useSession()
   const { tenant, loading } = useTenant()
+  const { settings } = useSettings()
   const params = useParams()
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
@@ -288,6 +292,11 @@ export default function OpportunityDetailPage() {
   }
 
   const updateStage = async (newStage: string, closeReason?: string, closeNotes?: string) => {
+    const isClosing = newStage === 'closed_won' || newStage === 'closed_lost'
+    const toastId = isClosing
+      ? toast.loading(newStage === 'closed_won' ? 'Closing as won...' : 'Closing as lost...')
+      : toast.loading('Updating stage...')
+
     setUpdatingStage(true)
 
     try {
@@ -316,6 +325,15 @@ export default function OpportunityDetailPage() {
         // Refresh the opportunity data
         await fetchOpportunity()
 
+        // Show success toast
+        if (newStage === 'closed_won') {
+          toast.success('🎉 Opportunity won!', { id: toastId, duration: 4000 })
+        } else if (newStage === 'closed_lost') {
+          toast.success('📊 Opportunity closed', { id: toastId })
+        } else {
+          toast.success('Stage updated!', { id: toastId })
+        }
+
         // If stage changed to closed_won, prompt to convert to event
         if (newStage === 'closed_won') {
           const shouldConvert = confirm(
@@ -328,6 +346,7 @@ export default function OpportunityDetailPage() {
 
           if (shouldConvert) {
             try {
+              const convertToastId = toast.loading('Converting to event...')
               const convertResponse = await fetch(`/api/opportunities/${opportunityId}/convert-to-event`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -342,24 +361,24 @@ export default function OpportunityDetailPage() {
 
               if (convertResponse.ok) {
                 const result = await convertResponse.json()
-                alert(result.message || 'Opportunity converted to event successfully!')
+                toast.success(result.message || 'Converted to event successfully!', { id: convertToastId })
                 router.push(`/${tenantSubdomain}/events/${result.event.id}`)
               } else {
                 const error = await convertResponse.json()
-                alert(`Failed to convert: ${error.error || 'Unknown error'}`)
+                toast.error(`Failed to convert: ${error.error || 'Unknown error'}`, { id: convertToastId })
               }
             } catch (error) {
               console.error('Error converting to event:', error)
-              alert('Failed to convert opportunity to event')
+              toast.error('Failed to convert opportunity to event')
             }
           }
         }
       } else {
-        alert('Failed to update stage')
+        toast.error('Failed to update stage', { id: toastId })
       }
     } catch (error) {
       console.error('Error updating stage:', error)
-      alert('Error updating stage')
+      toast.error('Error updating stage', { id: toastId })
     } finally {
       setUpdatingStage(false)
     }
@@ -386,6 +405,7 @@ export default function OpportunityDetailPage() {
   }
 
   const handleOwnerChange = async (newOwnerId: string) => {
+    const toastId = toast.loading('Updating owner...')
     setUpdatingOwner(true)
 
     try {
@@ -403,9 +423,10 @@ export default function OpportunityDetailPage() {
 
       // Refresh opportunity data
       await fetchOpportunity()
+      toast.success('Owner updated successfully!', { id: toastId })
     } catch (error) {
       console.error('Error updating owner:', error)
-      alert('Error updating owner')
+      toast.error('Failed to update owner', { id: toastId })
     } finally {
       setUpdatingOwner(false)
     }
@@ -1093,12 +1114,17 @@ export default function OpportunityDetailPage() {
                   <label className="block text-sm font-medium text-gray-500 mb-3">Probability</label>
                   <div className="flex items-baseline">
                     <p className="text-4xl font-bold text-gray-900">
-                      {opportunity.probability || 0}
+                      {getOpportunityProbability(opportunity, settings.opportunities)}
                     </p>
                     <span className="text-2xl font-semibold text-gray-500 ml-1">%</span>
                   </div>
+                  {settings.opportunities?.autoCalculateProbability && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto-calculated from stage
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 mt-2">
-                    Weighted: ${((opportunity.amount || 0) * ((opportunity.probability || 0) / 100)).toLocaleString()}
+                    Weighted: ${getWeightedValue(opportunity, settings.opportunities).toLocaleString()}
                   </p>
                 </div>
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { useSettings } from '@/lib/settings-context';
-import { 
+import {
   ArrowLeft,
   Target,
   Settings,
@@ -15,6 +15,7 @@ import {
   Trash2,
   Edit3
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function OpportunitiesSettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
@@ -138,21 +139,45 @@ export default function OpportunitiesSettingsPage() {
   // Load settings from global context
   useEffect(() => {
     if (globalSettings.opportunities) {
-      setSettings(globalSettings.opportunities);
+      setSettings(prev => ({
+        ...prev,
+        ...globalSettings.opportunities,
+        // Ensure stages always exists with at least defaults
+        stages: globalSettings.opportunities.stages || prev.stages,
+        requiredFields: globalSettings.opportunities.requiredFields || prev.requiredFields
+      }));
     }
   }, [globalSettings, settingsLoading]);
 
   const handleSaveSettings = async () => {
     setSaving(true);
+    const toastId = toast.loading('Saving settings...');
     try {
-      await updateSettings({ 
+      await updateSettings({
         ...globalSettings,
-        opportunities: settings 
+        opportunities: settings
       });
-      alert('Settings saved successfully!');
+
+      // If auto-calculate is enabled, trigger recalculation for all opportunities
+      if (settings.autoCalculateProbability) {
+        toast.loading('Recalculating probabilities for all opportunities...', { id: toastId });
+
+        const recalcResponse = await fetch('/api/opportunities/recalculate-probabilities', {
+          method: 'POST'
+        });
+
+        if (recalcResponse.ok) {
+          const result = await recalcResponse.json();
+          toast.success(`Settings saved! ${result.message || 'Probabilities recalculated.'}`, { id: toastId });
+        } else {
+          toast.success('Settings saved! (Note: Could not recalculate probabilities)', { id: toastId });
+        }
+      } else {
+        toast.success('Settings saved successfully!', { id: toastId });
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
+      toast.error('Error saving settings. Please try again.', { id: toastId });
     } finally {
       setSaving(false);
     }
