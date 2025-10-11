@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { AppLayout } from '@/components/layout/app-layout'
 import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText } from 'lucide-react'
 
 interface Template {
@@ -178,7 +177,7 @@ export default function TemplatesSettingsPage() {
   }
 
   return (
-    <AppLayout>
+    
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white shadow">
@@ -376,6 +375,6 @@ export default function TemplatesSettingsPage() {
           </div>
         </div>
       )}
-    </AppLayout>
+    
   )
 }

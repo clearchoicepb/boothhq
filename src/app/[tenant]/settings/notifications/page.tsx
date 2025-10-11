@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AppLayout } from '@/components/layout/app-layout';
 import { useSettings } from '@/lib/settings-context';
 import { 
   ArrowLeft,
@@ -205,19 +204,19 @@ export default function NotificationsSettingsPage() {
   // Show loading state if settings are still loading
   if (settingsLoading) {
     return (
-      <AppLayout>
+      
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#347dc4] mx-auto mb-4"></div>
             <p className="text-gray-600">Loading settings...</p>
           </div>
         </div>
-      </AppLayout>
+      
     );
   }
 
   return (
-    <AppLayout>
+    
       <div className="min-h-screen bg-white">
         {/* Header */}
         <div className="border-b border-gray-200">
@@ -716,6 +715,6 @@ export default function NotificationsSettingsPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    
   );
 }

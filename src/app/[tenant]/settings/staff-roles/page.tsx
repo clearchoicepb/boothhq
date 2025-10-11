@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AppLayout } from '@/components/layout/app-layout';
 import {
   ArrowLeft,
   UserCheck,
@@ -167,14 +166,14 @@ export default function StaffRolesSettingsPage() {
 
   if (loading) {
     return (
-      <AppLayout>
+      
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#347dc4] mx-auto mb-4"></div>
             <p className="text-gray-600">Loading staff roles...</p>
           </div>
         </div>
-      </AppLayout>
+      
     );
   }
 
@@ -182,7 +181,7 @@ export default function StaffRolesSettingsPage() {
   const isAdmin = session?.user?.role === 'admin';
 
   return (
-    <AppLayout>
+    
       <div className="min-h-screen bg-white">
         {/* Header */}
         <div className="border-b border-gray-200">
@@ -503,6 +502,6 @@ export default function StaffRolesSettingsPage() {
           )}
         </div>
       </div>
-    </AppLayout>
+    
   );
 }
