@@ -20,6 +20,7 @@ import { CreateTaskModal } from '@/components/create-task-modal'
 import { OpportunityPricing } from '@/components/opportunity-pricing'
 import { Lead } from '@/lib/supabase-client'
 import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
+import { fetchTenantUsers, getOwnerDisplayName, type TenantUser } from '@/lib/users'
 
 interface EventDate {
   id: string
@@ -49,6 +50,7 @@ interface Opportunity {
   account_id: string | null
   contact_id: string | null
   lead_id: string | null
+  owner_id: string | null
   account_name: string | null
   contact_name: string | null
   event_dates?: EventDate[]
@@ -101,6 +103,10 @@ export default function OpportunityDetailPage() {
   const [pendingCloseStage, setPendingCloseStage] = useState<'closed_won' | 'closed_lost' | null>(null)
   const [previousStage, setPreviousStage] = useState<string | null>(null)
 
+  // Owner assignment state
+  const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
+  const [updatingOwner, setUpdatingOwner] = useState(false)
+
   useEffect(() => {
     if (session && tenant && opportunityId) {
       fetchOpportunity()
@@ -109,6 +115,13 @@ export default function OpportunityDetailPage() {
       fetchAccountsAndContacts()
     }
   }, [session, tenant, opportunityId])
+
+  // Fetch tenant users for owner assignment
+  useEffect(() => {
+    if (session && tenant) {
+      fetchTenantUsers().then(setTenantUsers)
+    }
+  }, [session, tenant])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -370,6 +383,32 @@ export default function OpportunityDetailPage() {
     setShowCloseModal(false)
     setPendingCloseStage(null)
     setPreviousStage(null)
+  }
+
+  const handleOwnerChange = async (newOwnerId: string) => {
+    setUpdatingOwner(true)
+
+    try {
+      const response = await fetch(`/api/opportunities/${opportunityId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_id: newOwnerId || null
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update owner')
+      }
+
+      // Refresh opportunity data
+      await fetchOpportunity()
+    } catch (error) {
+      console.error('Error updating owner:', error)
+      alert('Error updating owner')
+    } finally {
+      setUpdatingOwner(false)
+    }
   }
 
   const fetchCommunications = async () => {
@@ -795,7 +834,7 @@ export default function OpportunityDetailPage() {
                 <div className="mb-4 pb-4 border-b border-gray-200">
                   <h2 className="text-2xl font-bold text-gray-900">{opportunity.name}</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-2">Client</label>
                     {lead ? (
@@ -918,6 +957,74 @@ export default function OpportunityDetailPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Owner Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Owner</label>
+
+                    {opportunity.owner_id ? (
+                      <div className="space-y-3">
+                        {/* Avatar and name */}
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-sm font-semibold">
+                            {getOwnerDisplayName(opportunity.owner_id, tenantUsers)
+                              .split(' ')
+                              .map(n => n[0])
+                              .join('')
+                              .toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-base font-semibold text-gray-900">
+                              {getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
+                            </div>
+                            <div className="text-xs text-gray-500">Opportunity Owner</div>
+                          </div>
+                        </div>
+
+                        {/* Dropdown to change */}
+                        <select
+                          value={opportunity.owner_id || ''}
+                          onChange={(e) => handleOwnerChange(e.target.value)}
+                          disabled={updatingOwner}
+                          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4] disabled:bg-gray-100"
+                        >
+                          <option value="">Unassigned</option>
+                          {tenantUsers.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      /* Owner display when unassigned */
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-semibold">
+                            ?
+                          </div>
+                          <div>
+                            <div className="text-base font-semibold text-gray-500">Unassigned</div>
+                            <div className="text-xs text-gray-400">No owner assigned</div>
+                          </div>
+                        </div>
+
+                        <select
+                          value=""
+                          onChange={(e) => handleOwnerChange(e.target.value)}
+                          disabled={updatingOwner}
+                          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                        >
+                          <option value="">Assign owner...</option>
+                          {tenantUsers.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.full_name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
                   </div>

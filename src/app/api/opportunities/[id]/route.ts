@@ -72,10 +72,11 @@ export async function PUT(
     const allowedFields = [
       'name', 'description', 'amount', 'stage', 'probability',
       'expected_close_date', 'actual_close_date', 'account_id',
-      'contact_id', 'lead_id', 'event_type', 'date_type',
+      'contact_id', 'lead_id', 'owner_id', 'event_type', 'date_type',
       'event_date', 'initial_date', 'final_date',
       'is_converted', 'converted_at',
-      'converted_event_id', 'converted_from_opportunity_id'
+      'converted_event_id', 'converted_from_opportunity_id',
+      'close_reason', 'close_notes'
       // Not yet in schema: 'updated_by', 'created_by', 'mailing_address_*'
     ]
 
