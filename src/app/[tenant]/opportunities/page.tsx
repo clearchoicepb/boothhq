@@ -18,6 +18,9 @@ import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
 import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
 import { fetchTenantUsers, getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/users'
+import toast from 'react-hot-toast'
+import { Target } from 'lucide-react'
+import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-utils'
 
 interface OpportunityWithRelations extends Opportunity {
   account_name: string | null
@@ -298,27 +301,11 @@ function OpportunitiesPageContent() {
 
   const calculateExpectedValue = () => {
     const openOpps = opportunities.filter((opp: OpportunityWithRelations) => !['closed_won', 'closed_lost'].includes(opp.stage))
-    
-    // Check if auto-calculate probability is enabled in settings
-    const autoCalculateProbability = settings.opportunities?.autoCalculateProbability ?? true
-    const stages = settings.opportunities?.stages || []
-    
+
     const expectedValue = openOpps.reduce((sum, opp) => {
-      const amount = opp.amount || 0
-      let probability = 0
-      
-      if (autoCalculateProbability) {
-        // Use stage-based probability from settings
-        const stageSettings = stages.find((stage: any) => stage.id === opp.stage)
-        probability = stageSettings?.probability || 0
-      } else {
-        // Use individual opportunity probability
-        probability = opp.probability || 0
-      }
-      
-      return sum + (amount * probability / 100)
+      return sum + getWeightedValue(opp, settings.opportunities)
     }, 0)
-    
+
     return { qty: openOpps.length, amount: expectedValue }
   }
 
@@ -354,20 +341,6 @@ function OpportunitiesPageContent() {
     return matchesSearch && matchesStage && matchesDate
   })
 
-  // Helper function to get the correct probability for an opportunity
-  const getOpportunityProbability = (opportunity: OpportunityWithRelations) => {
-    const autoCalculateProbability = settings.opportunities?.autoCalculateProbability ?? true
-    const stages = settings.opportunities?.stages || []
-    
-    if (autoCalculateProbability) {
-      // Use stage-based probability from settings
-      const stageSettings = stages.find((stage: any) => stage.id === opportunity.stage)
-      return stageSettings?.probability || 0
-    } else {
-      // Use individual opportunity probability
-      return opportunity.probability || 0
-    }
-  }
 
   const handleViewChange = async (newView: 'table' | 'pipeline' | 'cards') => {
     setCurrentView(newView)
@@ -512,7 +485,7 @@ function OpportunitiesPageContent() {
               </div>
               {canCreate('opportunities') && (
               <Link href={`/${tenantSubdomain}/opportunities/new-sequential`}>
-                <Button className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white">
+                <Button className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white transition-all duration-200 hover:scale-105 hover:shadow-lg">
                   <Plus className="h-4 w-4 mr-2" />
                   New Opportunity
                 </Button>
@@ -843,8 +816,68 @@ function OpportunitiesPageContent() {
           <>
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
-              {filteredOpportunities.map((opportunity) => (
-                <div key={opportunity.id} className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
+              {/* Loading Skeleton - Mobile */}
+              {localLoading && (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white rounded-lg shadow-md p-4 border border-gray-200 animate-pulse">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 space-y-2">
+                          <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                        <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                      </div>
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <div className="h-8 bg-gray-200 rounded w-24"></div>
+                        <div className="flex gap-1">
+                          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* Empty State - Mobile */}
+              {!localLoading && filteredOpportunities.length === 0 && (
+                <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                    <Target className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No opportunities found
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchTerm || filterStage !== 'all' || filterOwner !== 'all'
+                      ? "Try adjusting your filters or search terms"
+                      : "Get started by creating your first opportunity"
+                    }
+                  </p>
+                  {(!searchTerm && filterStage === 'all' && filterOwner === 'all') && canCreate('opportunities') && (
+                    <Link href={`/${tenantSubdomain}/opportunities/new`}>
+                      <button className="inline-flex items-center px-4 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2d6ba8] transition-all duration-200 hover:scale-105 hover:shadow-lg">
+                        <Plus className="h-5 w-5 mr-2" />
+                        Create Opportunity
+                      </button>
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* Data - Mobile Cards */}
+              {!localLoading && filteredOpportunities.map((opportunity, index) => (
+                <div
+                  key={opportunity.id}
+                  className="bg-white rounded-lg shadow-md p-4 border border-gray-200"
+                >
                   {/* Header row */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
@@ -894,7 +927,7 @@ function OpportunitiesPageContent() {
                     </div>
                     <div>
                       <span className="text-gray-500">Probability:</span>
-                      <span className="ml-2 font-semibold">{getOpportunityProbability(opportunity)}%</span>
+                      <span className="ml-2 font-semibold">{getOpportunityProbability(opportunity, settings.opportunities)}%</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Value:</span>
@@ -902,14 +935,14 @@ function OpportunitiesPageContent() {
                     </div>
                     <div>
                       <span className="text-gray-500">Weighted:</span>
-                      <span className="ml-2">${Math.round((opportunity.amount || 0) * (getOpportunityProbability(opportunity) || 0) / 100).toLocaleString()}</span>
+                      <span className="ml-2">${getWeightedValue(opportunity, settings.opportunities).toLocaleString()}</span>
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <Link href={`/${tenantSubdomain}/opportunities/${opportunity.id}`}>
-                      <button className="text-sm text-[#347dc4] hover:text-[#2c6ba8] font-medium px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
+                      <button className="text-sm text-[#347dc4] hover:text-[#2c6ba8] font-medium px-3 py-1.5 rounded-md hover:bg-blue-50 transition-all duration-150 hover:scale-105">
                         View Details
                       </button>
                     </Link>
@@ -920,7 +953,7 @@ function OpportunitiesPageContent() {
                           setSelectedOpportunity(opportunity)
                           setShowEmailModal(true)
                         }}
-                        className="p-2 text-gray-600 hover:text-[#347dc4] hover:bg-gray-100 rounded-md transition-colors"
+                        className="p-2 text-gray-600 hover:text-[#347dc4] hover:bg-gray-100 rounded-md transition-all duration-150 hover:scale-110"
                         title="Send Email"
                       >
                         <Mail className="h-4 w-4" />
@@ -931,7 +964,7 @@ function OpportunitiesPageContent() {
                           setSelectedOpportunity(opportunity)
                           setShowSMSModal(true)
                         }}
-                        className="p-2 text-gray-600 hover:text-[#347dc4] hover:bg-gray-100 rounded-md transition-colors"
+                        className="p-2 text-gray-600 hover:text-[#347dc4] hover:bg-gray-100 rounded-md transition-all duration-150 hover:scale-110"
                         title="Send SMS"
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -974,9 +1007,74 @@ function OpportunitiesPageContent() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredOpportunities.map((opportunity) => (
-                    <tr 
-                      key={opportunity.id} 
+                  {/* Loading Skeleton - Desktop */}
+                  {localLoading && (
+                    <>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="px-4 py-4">
+                            <div className="h-4 bg-gray-200 rounded w-48"></div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="h-4 bg-gray-200 rounded w-32"></div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="h-4 bg-gray-200 rounded w-32"></div>
+                          </td>
+                          <td className="px-4 py-4 flex justify-center">
+                            <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="h-4 bg-gray-200 rounded w-16"></div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="h-4 bg-gray-200 rounded w-20"></div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Empty State - Desktop */}
+                  {!localLoading && filteredOpportunities.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12">
+                        <div className="text-center">
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                            <Target className="h-8 w-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            No opportunities found
+                          </h3>
+                          <p className="text-gray-600 mb-6">
+                            {searchTerm || filterStage !== 'all' || filterOwner !== 'all'
+                              ? "Try adjusting your filters or search terms"
+                              : "Get started by creating your first opportunity"
+                            }
+                          </p>
+                          {(!searchTerm && filterStage === 'all' && filterOwner === 'all') && canCreate('opportunities') && (
+                            <Link href={`/${tenantSubdomain}/opportunities/new`}>
+                              <button className="inline-flex items-center px-4 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2d6ba8] transition-all duration-200 hover:scale-105 hover:shadow-lg">
+                                <Plus className="h-5 w-5 mr-2" />
+                                Create Opportunity
+                              </button>
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Data - Desktop Table Rows */}
+                  {!localLoading && filteredOpportunities.map((opportunity, index) => (
+                    <tr
+                      key={opportunity.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => window.open(`/${tenantSubdomain}/opportunities/${opportunity.id}`, '_blank')}
                     >
@@ -1044,7 +1142,7 @@ function OpportunitiesPageContent() {
                         </td>
                       )}
                       <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
-                        {getOpportunityProbability(opportunity)}%
+                        {getOpportunityProbability(opportunity, settings.opportunities)}%
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
                         ${opportunity.amount?.toLocaleString() || '0'}
@@ -1178,7 +1276,7 @@ function OpportunitiesPageContent() {
                               {dragOverStage === stage ? 'Drop here' : 'No opportunities'}
                             </div>
                           )}
-                          {stageOpportunities.map((opportunity) => (
+                          {stageOpportunities.map((opportunity, oppIndex) => (
                             <div
                               key={opportunity.id}
                               draggable
@@ -1213,7 +1311,7 @@ function OpportunitiesPageContent() {
                                   ${opportunity.amount?.toLocaleString() || '0'}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  {getOpportunityProbability(opportunity)}%
+                                  {getOpportunityProbability(opportunity, settings.opportunities)}%
                                 </span>
                               </div>
                               <div className="mt-2 flex space-x-1">

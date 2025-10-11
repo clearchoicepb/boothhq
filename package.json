@@ -37,6 +37,7 @@
     "prisma": "^6.16.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-hot-toast": "^2.6.0",
     "react-image-crop": "^11.0.10",
     "recharts": "^3.2.1",
     "stripe": "^18.5.0",
