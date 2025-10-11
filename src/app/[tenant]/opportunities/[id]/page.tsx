@@ -19,6 +19,7 @@ import { TasksSection } from '@/components/tasks-section'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { OpportunityPricing } from '@/components/opportunity-pricing'
 import { Lead } from '@/lib/supabase-client'
+import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
 
 interface EventDate {
   id: string
@@ -38,6 +39,8 @@ interface Opportunity {
   amount: number | null
   expected_close_date: string | null
   actual_close_date: string | null
+  close_reason: string | null
+  close_notes: string | null
   event_type: string | null
   date_type: string | null
   event_date: string | null
@@ -92,6 +95,11 @@ export default function OpportunityDetailPage() {
   const [editContactId, setEditContactId] = useState<string>('')
   const [accounts, setAccounts] = useState<any[]>([])
   const [contacts, setContacts] = useState<any[]>([])
+
+  // Close opportunity modal state
+  const [showCloseModal, setShowCloseModal] = useState(false)
+  const [pendingCloseStage, setPendingCloseStage] = useState<'closed_won' | 'closed_lost' | null>(null)
+  const [previousStage, setPreviousStage] = useState<string | null>(null)
 
   useEffect(() => {
     if (session && tenant && opportunityId) {
@@ -254,18 +262,41 @@ export default function OpportunityDetailPage() {
   }
 
   const handleStageChange = async (newStage: string) => {
+    // If changing to closed_won or closed_lost, show the modal
+    if (newStage === 'closed_won' || newStage === 'closed_lost') {
+      setPreviousStage(opportunity?.stage || null)
+      setPendingCloseStage(newStage)
+      setShowCloseModal(true)
+      return
+    }
+
+    // For non-closed stages, update immediately
+    await updateStage(newStage)
+  }
+
+  const updateStage = async (newStage: string, closeReason?: string, closeNotes?: string) => {
     setUpdatingStage(true)
 
     try {
+      const body: any = {
+        stage: newStage,
+        actual_close_date: newStage === 'closed_won' ? new Date().toISOString().split('T')[0] : null
+      }
+
+      // Include close reason and notes if provided
+      if (closeReason !== undefined) {
+        body.close_reason = closeReason
+      }
+      if (closeNotes !== undefined) {
+        body.close_notes = closeNotes
+      }
+
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          stage: newStage,
-          actual_close_date: newStage === 'closed_won' ? new Date().toISOString().split('T')[0] : null
-        }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
@@ -319,6 +350,26 @@ export default function OpportunityDetailPage() {
     } finally {
       setUpdatingStage(false)
     }
+  }
+
+  const handleCloseOpportunityConfirm = async (data: { closeReason: string; closeNotes: string }) => {
+    if (!pendingCloseStage) return
+
+    await updateStage(pendingCloseStage, data.closeReason, data.closeNotes)
+
+    // Clean up
+    setPendingCloseStage(null)
+    setPreviousStage(null)
+  }
+
+  const handleCloseModalCancel = () => {
+    // Revert dropdown to previous stage
+    if (previousStage && opportunity) {
+      setOpportunity({ ...opportunity, stage: previousStage })
+    }
+    setShowCloseModal(false)
+    setPendingCloseStage(null)
+    setPreviousStage(null)
   }
 
   const fetchCommunications = async () => {
@@ -1577,6 +1628,18 @@ export default function OpportunityDetailPage() {
           setTasksKey(prev => prev + 1)
         }}
       />
+
+      {/* Close Opportunity Modal */}
+      {opportunity && pendingCloseStage && (
+        <CloseOpportunityModal
+          isOpen={showCloseModal}
+          onClose={handleCloseModalCancel}
+          opportunityId={opportunityId}
+          opportunityName={opportunity.name}
+          closedAs={pendingCloseStage === 'closed_won' ? 'won' : 'lost'}
+          onConfirm={handleCloseOpportunityConfirm}
+        />
+      )}
 
       {/* Communication Detail Modal */}
       {isCommunicationDetailOpen && selectedCommunication && (
