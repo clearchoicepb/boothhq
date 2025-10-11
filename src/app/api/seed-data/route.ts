@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       ...Array(14).fill('new'),
       ...Array(11).fill('contacted'),
       ...Array(9).fill('qualified'),
-      ...Array(7).fill('unqualified'),
+      ...Array(7).fill('lost'),
       ...Array(4).fill('converted')
     ]
 
@@ -189,20 +189,20 @@ export async function POST(request: Request) {
       const firstName = random(firstNames)
       const lastName = random(lastNames)
       const companyName = Math.random() > 0.3 ? random(companyNames) : null
+      const isCompany = !!companyName
 
       leadsData.push({
         tenant_id: tenantId,
+        lead_type: isCompany ? 'company' : 'personal',
         first_name: firstName,
         last_name: lastName,
         email: generateEmail(firstName, lastName, companyName || undefined),
         phone: formatPhoneNumber(),
         company: companyName,
-        title: random(['Event Coordinator', 'Marketing Manager', 'Director of Operations', 'Owner', 'VP of Sales', 'Manager']),
+        company_url: isCompany ? `www.${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : null,
         source: random(leadSources),
         status: random(leadStatuses),
-        industry: random(industries),
         notes: Math.random() > 0.5 ? `Initial inquiry about ${random(['photo booth services', 'DJ services', 'event production', 'venue rental', 'catering services'])}` : null,
-        owner_id: random(userIds),
         created_at: randomDate(sixMonthsAgo, now).toISOString()
       })
     }
