@@ -321,7 +321,6 @@ export async function POST(request: Request) {
         probability,
         expected_close_date: expectedCloseDate.toISOString().split('T')[0],
         description: `${random(['Photo booth rental', 'DJ services', 'Full event production', 'A/V services', 'Event coordination'])} for ${random(['corporate event', 'wedding', 'conference', 'private party', 'fundraiser'])}`,
-        owner_id: random(userIds),
         created_at: createdAt.toISOString()
       }
 
