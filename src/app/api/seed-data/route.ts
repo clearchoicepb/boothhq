@@ -68,28 +68,6 @@ const eventTypes = [
   "staging", "coordination", "other"
 ]
 
-const closeWonReasons = [
-  "Best pricing and service package",
-  "Strong relationship with decision maker",
-  "Superior equipment and technology",
-  "Excellent references and past work",
-  "Flexible payment terms",
-  "Quick response time and professionalism",
-  "Comprehensive service offering",
-  "Competitive advantage in market"
-]
-
-const closeLostReasons = [
-  "Competitor had lower price",
-  "Client chose in-house solution",
-  "Budget constraints",
-  "Timeline didn't match",
-  "Went with larger vendor",
-  "Project cancelled by client",
-  "Lost contact with decision maker",
-  "Requirements changed significantly"
-]
-
 // Helper functions
 const random = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
@@ -347,12 +325,8 @@ export async function POST(request: Request) {
         created_at: createdAt.toISOString()
       }
 
-      // Add close reason for closed opportunities
-      if (stage === 'closed_won') {
-        oppData.close_reason = random(closeWonReasons)
-        oppData.actual_close_date = expectedCloseDate.toISOString().split('T')[0]
-      } else if (stage === 'closed_lost') {
-        oppData.close_reason = random(closeLostReasons)
+      // Add actual close date for closed opportunities
+      if (stage === 'closed_won' || stage === 'closed_lost') {
         oppData.actual_close_date = expectedCloseDate.toISOString().split('T')[0]
       }
 
