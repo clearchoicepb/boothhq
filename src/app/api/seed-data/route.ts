@@ -350,11 +350,9 @@ export async function POST(request: Request) {
       // Add close reason for closed opportunities
       if (stage === 'closed_won') {
         oppData.close_reason = random(closeWonReasons)
-        oppData.close_notes = 'Deal successfully closed'
         oppData.actual_close_date = expectedCloseDate.toISOString().split('T')[0]
       } else if (stage === 'closed_lost') {
         oppData.close_reason = random(closeLostReasons)
-        oppData.close_notes = 'Opportunity lost to competition'
         oppData.actual_close_date = expectedCloseDate.toISOString().split('T')[0]
       }
 
@@ -377,29 +375,28 @@ export async function POST(request: Request) {
     const eventsData = []
     for (let i = 0; i < eventsToCreate; i++) {
       const opp = wonOpportunities[i]
-      const eventDate = randomDate(sixMonthsAgo, sixMonthsFromNow)
-      const isPast = eventDate < now
-      const dateType = random(['single_day', 'single_day', 'single_day', 'multi_day', 'recurring'])
+      const startDate = randomDate(sixMonthsAgo, sixMonthsFromNow)
+      const isPast = startDate < now
+      const isMultiDay = Math.random() < 0.3 // 30% chance of multi-day event
+      const endDate = isMultiDay ? new Date(startDate.getTime() + (Math.floor(Math.random() * 3) + 1) * 24 * 60 * 60 * 1000) : null
 
       let status = 'confirmed'
       if (isPast) status = random(['completed', 'completed', 'completed', 'cancelled'])
-      else status = random(['confirmed', 'confirmed', 'confirmed', 'tentative', 'tentative'])
+      else status = random(['scheduled', 'confirmed', 'confirmed', 'confirmed'])
 
       const eventData: any = {
         tenant_id: tenantId,
         opportunity_id: opp.id,
         account_id: opp.account_id,
         contact_id: opp.contact_id,
-        name: opp.name,
+        title: opp.name,
         event_type: random(eventTypes),
-        date_type: dateType,
-        event_date: dateType === 'single_day' ? eventDate.toISOString().split('T')[0] : null,
-        initial_date: dateType === 'multi_day' ? eventDate.toISOString().split('T')[0] : null,
-        final_date: dateType === 'multi_day' ? new Date(eventDate.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : null,
-        amount: opp.amount,
+        start_date: startDate.toISOString(),
+        end_date: endDate ? endDate.toISOString() : null,
+        location: `${random(['Grand Ballroom', 'Convention Center', 'Hotel Ballroom', 'Outdoor Venue', 'Private Estate', 'Corporate Office', 'Community Center'])} - ${random(cities).city}`,
         status,
         description: opp.description,
-        owner_id: opp.owner_id,
+        payment_status: random(['Unpaid', 'Deposit Paid', 'Paid in Full', 'Refunded']),
         created_at: opp.created_at
       }
 
@@ -419,7 +416,7 @@ export async function POST(request: Request) {
     const invoicesToCreate = Math.min(20, events?.length || 0)
     const invoiceStatuses = [
       ...Array(8).fill('paid'),
-      ...Array(6).fill('pending'),
+      ...Array(6).fill('sent'),
       ...Array(4).fill('overdue'),
       ...Array(2).fill('cancelled')
     ]
@@ -428,23 +425,28 @@ export async function POST(request: Request) {
     for (let i = 0; i < invoicesToCreate; i++) {
       const event = events![i]
       const status = random(invoiceStatuses)
-      const invoiceDate = new Date(event.created_at)
-      const dueDate = new Date(invoiceDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const issueDate = new Date(event.created_at)
+      const dueDate = new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+      // Generate realistic amounts
+      const subtotal = Math.floor(Math.random() * 8000 + 2000) // $2k-$10k
+      const taxAmount = Math.floor(subtotal * 0.08) // 8% tax
+      const totalAmount = subtotal + taxAmount
 
       const invoiceData: any = {
         tenant_id: tenantId,
         event_id: event.id,
         opportunity_id: event.opportunity_id,
         account_id: event.account_id,
-        invoice_number: `INV-${String(1000 + i).padStart(5, '0')}`,
-        amount: event.amount,
-        status,
-        invoice_date: invoiceDate.toISOString().split('T')[0],
+        invoice_number: `INV-${String(10000 + i).padStart(6, '0')}`,
+        issue_date: issueDate.toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
-        payment_method: status === 'paid' ? random(['credit_card', 'check', 'wire_transfer', 'cash']) : null,
-        payment_date: status === 'paid' ? randomDate(invoiceDate, dueDate).toISOString().split('T')[0] : null,
-        notes: `Invoice for ${event.name}`,
-        created_at: invoiceDate.toISOString()
+        subtotal,
+        tax_amount: taxAmount,
+        total_amount: totalAmount,
+        status,
+        notes: `Invoice for ${event.title}`,
+        created_at: issueDate.toISOString()
       }
 
       invoicesData.push(invoiceData)
@@ -464,27 +466,39 @@ export async function POST(request: Request) {
     const quotesToCreate = Math.min(12, openOpportunities.length)
     const quoteStatuses = [
       ...Array(5).fill('accepted'),
-      ...Array(5).fill('pending'),
-      ...Array(2).fill('rejected')
+      ...Array(5).fill('sent'),
+      ...Array(2).fill('declined')
     ]
 
     const quotesData = []
     for (let i = 0; i < quotesToCreate; i++) {
       const opp = openOpportunities[i]
       const status = random(quoteStatuses)
-      const quoteDate = new Date(opp.created_at)
-      const validUntil = new Date(quoteDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const issueDate = new Date(opp.created_at)
+      const validUntil = new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+      // Generate realistic amounts
+      const subtotal = opp.amount || Math.floor(Math.random() * 8000 + 2000)
+      const taxRate = 0.08 // 8%
+      const taxAmount = Math.floor(subtotal * taxRate)
+      const totalAmount = subtotal + taxAmount
 
       quotesData.push({
         tenant_id: tenantId,
         opportunity_id: opp.id,
         account_id: opp.account_id,
-        quote_number: `QUO-${String(2000 + i).padStart(5, '0')}`,
-        total_amount: opp.amount,
-        status,
+        contact_id: opp.contact_id,
+        quote_number: `QUO-${String(20000 + i).padStart(6, '0')}`,
+        title: opp.name,
+        issue_date: issueDate.toISOString().split('T')[0],
         valid_until: validUntil.toISOString().split('T')[0],
+        subtotal,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        total_amount: totalAmount,
+        status,
         notes: `Quote for ${opp.name}`,
-        created_at: quoteDate.toISOString()
+        created_at: issueDate.toISOString()
       })
     }
 
