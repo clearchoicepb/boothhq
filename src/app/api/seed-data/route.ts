@@ -218,27 +218,32 @@ export async function POST(request: Request) {
     // STEP 2: Create Accounts (45 records)
     console.log('Creating accounts...')
     const accountTypes = [...Array(27).fill('company'), ...Array(18).fill('individual')]
-    const accountStatuses = [...Array(32).fill('active'), ...Array(9).fill('inactive'), ...Array(4).fill('prospect')]
+    const accountStatuses = [...Array(32).fill('active'), ...Array(9).fill('inactive'), ...Array(4).fill('suspended')]
 
     const accountsData = []
     for (let i = 0; i < 45; i++) {
       const isCompany = random(accountTypes) === 'company'
       const location = random(cities)
+      const street = `${Math.floor(Math.random() * 9000 + 1000)} ${random(['Main', 'Oak', 'Maple', 'Cedar', 'Park', 'Washington', 'Lake', 'Hill'])} ${random(['St', 'Ave', 'Blvd', 'Dr', 'Ln'])}`
+      const zipCode = String(Math.floor(Math.random() * 90000 + 10000))
 
       accountsData.push({
         tenant_id: tenantId,
         name: isCompany ? random(companyNames) : `${random(firstNames)} ${random(lastNames)}`,
-        type: isCompany ? 'company' : 'individual',
+        account_type: isCompany ? 'company' : 'individual',
         industry: random(industries),
         phone: formatPhoneNumber(),
         email: isCompany ? `info@${random(companyNames).toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : generateEmail(random(firstNames), random(lastNames)),
         website: isCompany ? `www.${random(companyNames).toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : null,
-        address: `${Math.floor(Math.random() * 9000 + 1000)} ${random(['Main', 'Oak', 'Maple', 'Cedar', 'Park', 'Washington', 'Lake', 'Hill'])} ${random(['St', 'Ave', 'Blvd', 'Dr', 'Ln'])}`,
-        city: location.city,
-        state: location.state,
-        zip_code: String(Math.floor(Math.random() * 90000 + 10000)),
+        billing_address: {
+          street,
+          city: location.city,
+          state: location.state,
+          zip: zipCode,
+          country: 'USA'
+        },
         status: random(accountStatuses),
-        owner_id: random(userIds),
+        assigned_to: random(userIds),
         created_at: randomDate(twelveMonthsAgo, now).toISOString()
       })
     }
@@ -259,6 +264,9 @@ export async function POST(request: Request) {
       const lastName = random(lastNames)
       const hasAccount = Math.random() < 0.8 && accounts && accounts.length > 0
       const linkedAccount = hasAccount ? random(accounts) : null
+      const location = random(cities)
+      const street = `${Math.floor(Math.random() * 9000 + 1000)} ${random(['Main', 'Oak', 'Maple', 'Cedar', 'Park', 'Washington', 'Lake', 'Hill'])} ${random(['St', 'Ave', 'Blvd', 'Dr', 'Ln'])}`
+      const zipCode = String(Math.floor(Math.random() * 90000 + 10000))
 
       contactsData.push({
         tenant_id: tenantId,
@@ -267,12 +275,16 @@ export async function POST(request: Request) {
         last_name: lastName,
         email: generateEmail(firstName, lastName, linkedAccount?.name),
         phone: formatPhoneNumber(),
-        mobile: Math.random() > 0.5 ? formatPhoneNumber() : null,
-        title: random(['Event Coordinator', 'Marketing Director', 'Operations Manager', 'CEO', 'VP of Sales', 'Manager', 'Director', 'Specialist']),
-        role: random(['decision_maker', 'decision_maker', 'influencer', 'influencer', 'influencer', 'user', 'user', 'other']),
-        birthday: Math.random() > 0.7 ? randomDate(new Date('1960-01-01'), new Date('1995-12-31')).toISOString().split('T')[0] : null,
-        notes: Math.random() > 0.6 ? `${random(['Prefers email contact', 'Available afternoons', 'Decision maker for events', 'Budget approver', 'Technical contact'])}` : null,
-        owner_id: random(userIds),
+        job_title: random(['Event Coordinator', 'Marketing Director', 'Operations Manager', 'CEO', 'VP of Sales', 'Manager', 'Director', 'Specialist']),
+        department: random(['Sales', 'Marketing', 'Operations', 'Executive', 'Events', 'Customer Success']),
+        address: Math.random() > 0.3 ? {
+          street,
+          city: location.city,
+          state: location.state,
+          zip: zipCode,
+          country: 'USA'
+        } : null,
+        status: random(['active', 'active', 'active', 'active', 'inactive']),
         created_at: randomDate(twelveMonthsAgo, now).toISOString()
       })
     }
