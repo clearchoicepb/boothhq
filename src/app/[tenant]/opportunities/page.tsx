@@ -8,7 +8,7 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
-import { Search, Plus, DollarSign, Eye, Edit, Trash2, Grid, List, ThumbsUp, ThumbsDown, Mail, MessageSquare } from 'lucide-react'
+import { Search, Plus, DollarSign, Eye, Edit, Trash2, Grid, List, ThumbsUp, ThumbsDown, Mail, MessageSquare, X, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
@@ -849,25 +849,99 @@ function OpportunitiesPageContent() {
               {/* Empty State - Mobile */}
               {!localLoading && filteredOpportunities.length === 0 && (
                 <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                    <Target className="h-8 w-8 text-gray-400" />
+                  {/* Icon */}
+                  <div className={`inline-flex items-center justify-center ${searchTerm || filterStage !== 'all' || filterOwner !== 'all' ? 'w-20 h-20 bg-gray-100' : 'w-24 h-24 bg-blue-50'} rounded-full mb-6`}>
+                    {searchTerm || filterStage !== 'all' || filterOwner !== 'all' ? (
+                      <Search className="h-10 w-10 text-gray-400" />
+                    ) : (
+                      <Target className="h-12 w-12 text-blue-500" />
+                    )}
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    No opportunities found
-                  </h3>
-                  <p className="text-gray-600 mb-6">
+
+                  {/* Heading */}
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">
                     {searchTerm || filterStage !== 'all' || filterOwner !== 'all'
-                      ? "Try adjusting your filters or search terms"
-                      : "Get started by creating your first opportunity"
+                      ? 'No opportunities found'
+                      : 'No opportunities yet'
+                    }
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-gray-600 text-center max-w-md mx-auto mb-6 px-4">
+                    {searchTerm || filterStage !== 'all' || filterOwner !== 'all'
+                      ? "We couldn't find any opportunities matching your filters. Try adjusting your search or filter criteria."
+                      : "Start tracking your sales pipeline by creating your first opportunity. Connect it to an account and watch your deals progress through stages."
                     }
                   </p>
-                  {(!searchTerm && filterStage === 'all' && filterOwner === 'all') && canCreate('opportunities') && (
-                    <Link href={`/${tenantSubdomain}/opportunities/new`}>
-                      <button className="inline-flex items-center px-4 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2d6ba8] transition-all duration-200 hover:scale-105 hover:shadow-lg">
-                        <Plus className="h-5 w-5 mr-2" />
-                        Create Opportunity
-                      </button>
-                    </Link>
+
+                  {/* Active filters chips */}
+                  {(searchTerm || filterStage !== 'all' || filterOwner !== 'all') && (
+                    <div className="flex flex-wrap gap-2 justify-center mb-6 px-4">
+                      {searchTerm && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                          Search: "{searchTerm}"
+                          <button
+                            onClick={() => setSearchTerm('')}
+                            className="ml-2 hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                            aria-label="Clear search"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                      {filterStage !== 'all' && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                          Stage: {filterStage}
+                          <button
+                            onClick={() => setFilterStage('all')}
+                            className="ml-2 hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                            aria-label="Clear stage filter"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                      {filterOwner !== 'all' && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                          Owner: {getOwnerDisplayName(filterOwner, tenantUsers)}
+                          <button
+                            onClick={() => setFilterOwner('all')}
+                            className="ml-2 hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                            aria-label="Clear owner filter"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CTA Button */}
+                  {searchTerm || filterStage !== 'all' || filterOwner !== 'all' ? (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('')
+                        setFilterStage('all')
+                        setFilterOwner('all')
+                        toast('Filters cleared', { icon: '✨', duration: 2000 })
+                      }}
+                      className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                    >
+                      Clear all filters
+                    </button>
+                  ) : canCreate('opportunities') && (
+                    <>
+                      <Link href={`/${tenantSubdomain}/opportunities/new`}>
+                        <button className="inline-flex items-center px-6 py-3 bg-[#347dc4] text-white font-medium rounded-lg hover:bg-[#2d6ba8] transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-md">
+                          <Plus className="h-5 w-5 mr-2" />
+                          Create First Opportunity
+                        </button>
+                      </Link>
+                      {/* Help text */}
+                      <p className="text-sm text-gray-500 mt-6">
+                        Or import opportunities from a CSV file
+                      </p>
+                    </>
                   )}
                 </div>
               )}
@@ -876,7 +950,12 @@ function OpportunitiesPageContent() {
               {!localLoading && filteredOpportunities.map((opportunity, index) => (
                 <div
                   key={opportunity.id}
-                  className="bg-white rounded-lg shadow-md p-4 border border-gray-200"
+                  className="bg-white rounded-lg shadow-md p-4 border border-gray-200 transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                  style={{
+                    animation: 'slideInFromBottom 0.3s ease-out',
+                    animationDelay: `${index * 50}ms`,
+                    animationFillMode: 'backwards'
+                  }}
                 >
                   {/* Header row */}
                   <div className="flex items-start justify-between mb-3">
@@ -1044,27 +1123,101 @@ function OpportunitiesPageContent() {
                   {/* Empty State - Desktop */}
                   {!localLoading && filteredOpportunities.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12">
+                      <td colSpan={8} className="px-4 py-16">
                         <div className="text-center">
-                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                            <Target className="h-8 w-8 text-gray-400" />
+                          {/* Icon */}
+                          <div className={`inline-flex items-center justify-center ${searchTerm || filterStage !== 'all' || filterOwner !== 'all' ? 'w-20 h-20 bg-gray-100' : 'w-24 h-24 bg-blue-50'} rounded-full mb-6`}>
+                            {searchTerm || filterStage !== 'all' || filterOwner !== 'all' ? (
+                              <Search className="h-10 w-10 text-gray-400" />
+                            ) : (
+                              <Target className="h-12 w-12 text-blue-500" />
+                            )}
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            No opportunities found
-                          </h3>
-                          <p className="text-gray-600 mb-6">
+
+                          {/* Heading */}
+                          <h3 className="text-2xl font-semibold text-gray-900 mb-2">
                             {searchTerm || filterStage !== 'all' || filterOwner !== 'all'
-                              ? "Try adjusting your filters or search terms"
-                              : "Get started by creating your first opportunity"
+                              ? 'No opportunities found'
+                              : 'No opportunities yet'
+                            }
+                          </h3>
+
+                          {/* Description */}
+                          <p className="text-gray-600 text-center max-w-md mx-auto mb-8">
+                            {searchTerm || filterStage !== 'all' || filterOwner !== 'all'
+                              ? "We couldn't find any opportunities matching your filters. Try adjusting your search or filter criteria."
+                              : "Start tracking your sales pipeline by creating your first opportunity. Connect it to an account and watch your deals progress through stages."
                             }
                           </p>
-                          {(!searchTerm && filterStage === 'all' && filterOwner === 'all') && canCreate('opportunities') && (
-                            <Link href={`/${tenantSubdomain}/opportunities/new`}>
-                              <button className="inline-flex items-center px-4 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2d6ba8] transition-all duration-200 hover:scale-105 hover:shadow-lg">
-                                <Plus className="h-5 w-5 mr-2" />
-                                Create Opportunity
-                              </button>
-                            </Link>
+
+                          {/* Active filters chips */}
+                          {(searchTerm || filterStage !== 'all' || filterOwner !== 'all') && (
+                            <div className="flex flex-wrap gap-2 justify-center mb-6">
+                              {searchTerm && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                                  Search: "{searchTerm}"
+                                  <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="ml-2 hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                                    aria-label="Clear search"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              )}
+                              {filterStage !== 'all' && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                                  Stage: {filterStage}
+                                  <button
+                                    onClick={() => setFilterStage('all')}
+                                    className="ml-2 hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                                    aria-label="Clear stage filter"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              )}
+                              {filterOwner !== 'all' && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                                  Owner: {getOwnerDisplayName(filterOwner, tenantUsers)}
+                                  <button
+                                    onClick={() => setFilterOwner('all')}
+                                    className="ml-2 hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                                    aria-label="Clear owner filter"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* CTA Button */}
+                          {searchTerm || filterStage !== 'all' || filterOwner !== 'all' ? (
+                            <button
+                              onClick={() => {
+                                setSearchTerm('')
+                                setFilterStage('all')
+                                setFilterOwner('all')
+                                toast('Filters cleared', { icon: '✨', duration: 2000 })
+                              }}
+                              className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                            >
+                              Clear all filters
+                            </button>
+                          ) : canCreate('opportunities') && (
+                            <>
+                              <Link href={`/${tenantSubdomain}/opportunities/new`}>
+                                <button className="inline-flex items-center px-6 py-3 bg-[#347dc4] text-white font-medium rounded-lg hover:bg-[#2d6ba8] transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-md">
+                                  <Plus className="h-5 w-5 mr-2" />
+                                  Create First Opportunity
+                                </button>
+                              </Link>
+                              {/* Help text */}
+                              <p className="text-sm text-gray-500 mt-6">
+                                Or import opportunities from a CSV file
+                              </p>
+                            </>
                           )}
                         </div>
                       </td>
@@ -1075,7 +1228,7 @@ function OpportunitiesPageContent() {
                   {!localLoading && filteredOpportunities.map((opportunity, index) => (
                     <tr
                       key={opportunity.id}
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
                       onClick={() => window.open(`/${tenantSubdomain}/opportunities/${opportunity.id}`, '_blank')}
                     >
                       <td className="px-4 py-2.5 whitespace-nowrap">
