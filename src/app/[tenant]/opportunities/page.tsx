@@ -17,11 +17,13 @@ import type { Opportunity } from '@/lib/supabase-client'
 import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
 import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
+import { fetchTenantUsers, getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/users'
 
 interface OpportunityWithRelations extends Opportunity {
   account_name: string | null
   account_type: 'individual' | 'company' | null
   contact_name: string | null
+  owner_name?: string | null
 }
 
 function OpportunitiesPageContent() {
@@ -35,6 +37,8 @@ function OpportunitiesPageContent() {
   const [localLoading, setLocalLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStage, setFilterStage] = useState<string>('all')
+  const [filterOwner, setFilterOwner] = useState<string>('all')
+  const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
   const [currentView, setCurrentView] = useState<'table' | 'pipeline' | 'cards'>('table')
   const [draggedOpportunity, setDraggedOpportunity] = useState<OpportunityWithRelations | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
@@ -62,7 +66,14 @@ function OpportunitiesPageContent() {
     if (session && tenant) {
       fetchOpportunities()
     }
-  }, [session, tenant, filterStage, currentPage, currentView])
+  }, [session, tenant, filterStage, filterOwner, currentPage, currentView])
+
+  // Fetch tenant users for owner filter
+  useEffect(() => {
+    if (session && tenant) {
+      fetchTenantUsers().then(setTenantUsers)
+    }
+  }, [session, tenant])
 
   // Set view from settings
   useEffect(() => {
@@ -81,6 +92,11 @@ function OpportunitiesPageContent() {
         page: currentPage.toString(),
         limit: itemsPerPage.toString()
       })
+
+      // Add owner filter if selected
+      if (filterOwner && filterOwner !== 'all') {
+        params.append('owner_id', filterOwner)
+      }
 
       // For pipeline view, only fetch active opportunities
       if (currentView === 'pipeline') {
@@ -111,7 +127,7 @@ function OpportunitiesPageContent() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [filterStage, searchTerm, dateFilter, dateType])
+  }, [filterStage, filterOwner, searchTerm, dateFilter, dateType])
 
   // Handle page change
   const handlePageChange = (page: number) => {

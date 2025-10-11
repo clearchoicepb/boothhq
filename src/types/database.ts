@@ -189,6 +189,7 @@ export interface Database {
           account_id: string | null
           contact_id: string | null
           lead_id: string | null
+          owner_id: string | null
           name: string
           description: string | null
           amount: number | null
@@ -221,6 +222,7 @@ export interface Database {
           account_id?: string | null
           contact_id?: string | null
           lead_id?: string | null
+          owner_id?: string | null
           name: string
           description?: string | null
           amount?: number | null
@@ -253,6 +255,7 @@ export interface Database {
           account_id?: string | null
           contact_id?: string | null
           lead_id?: string | null
+          owner_id?: string | null
           name?: string
           description?: string | null
           amount?: number | null

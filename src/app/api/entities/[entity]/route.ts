@@ -27,6 +27,7 @@ export async function GET(
     const search = searchParams.get('search') || undefined
     const status = searchParams.get('status') || undefined
     const stage = searchParams.get('stage') || undefined
+    const ownerId = searchParams.get('owner_id') || undefined
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 25
     const pipelineView = searchParams.get('pipelineView') === 'true'
@@ -64,6 +65,17 @@ export async function GET(
     if (stage && stage !== 'all' && entity === 'opportunities') {
       query = query.eq('stage', stage)
       countQuery = countQuery.eq('stage', stage)
+    }
+
+    // Apply owner filter for opportunities (to both queries)
+    if (ownerId && ownerId !== 'all' && entity === 'opportunities') {
+      if (ownerId === 'unassigned') {
+        query = query.is('owner_id', null)
+        countQuery = countQuery.is('owner_id', null)
+      } else {
+        query = query.eq('owner_id', ownerId)
+        countQuery = countQuery.eq('owner_id', ownerId)
+      }
     }
 
     // For pipeline view, exclude closed opportunities
