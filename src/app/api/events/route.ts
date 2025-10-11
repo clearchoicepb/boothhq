@@ -63,18 +63,36 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // Fetch core task completion status for all events
+    // Fetch core task completion data for all events
     const eventIds = data?.map(e => e.id) || []
     let coreTasksStatus: Record<string, boolean> = {}
+    let eventTaskCompletions: Record<string, any[]> = {}
 
     if (eventIds.length > 0) {
-      const { data: coreTasksData } = await supabase
+      const { data: coreTasksData, error: tasksError } = await supabase
         .from('event_core_task_completion')
-        .select('event_id, is_completed')
+        .select('event_id, core_task_template_id, is_completed, completed_at, completed_by')
         .in('event_id', eventIds)
 
-      // Group by event_id and check if all are completed
+      console.log('=== EVENTS API DEBUG ===')
+      console.log('Event IDs queried:', eventIds.length)
+      console.log('Task completions found:', coreTasksData?.length || 0)
+      console.log('Tasks error:', tasksError)
+      if (coreTasksData && coreTasksData.length > 0) {
+        console.log('Sample task completion:', JSON.stringify(coreTasksData[0], null, 2))
+      }
+      console.log('=======================')
+
+      // Group completion data by event_id
       if (coreTasksData) {
+        coreTasksData.forEach(task => {
+          if (!eventTaskCompletions[task.event_id]) {
+            eventTaskCompletions[task.event_id] = []
+          }
+          eventTaskCompletions[task.event_id].push(task)
+        })
+
+        // Determine if event is ready (all core tasks completed)
         const grouped = coreTasksData.reduce((acc, task) => {
           if (!acc[task.event_id]) {
             acc[task.event_id] = { total: 0, completed: 0 }
@@ -86,7 +104,6 @@ export async function GET(request: NextRequest) {
           return acc
         }, {} as Record<string, { total: number; completed: number }>)
 
-        // Determine if event is ready (all core tasks completed)
         Object.keys(grouped).forEach(eventId => {
           const status = grouped[eventId]
           coreTasksStatus[eventId] = status.total > 0 && status.total === status.completed
@@ -94,13 +111,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Transform the data to include account_name, contact_name, and core_tasks_ready
+    // Transform the data to include account_name, contact_name, core_tasks_ready, and task_completions
     const transformedData = data?.map(event => ({
       ...event,
       account_name: event.accounts?.name || null,
       contact_name: event.contacts ?
         `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null,
-      core_tasks_ready: coreTasksStatus[event.id] || false
+      core_tasks_ready: coreTasksStatus[event.id] || false,
+      task_completions: eventTaskCompletions[event.id] || []
     })) || []
 
     const response = NextResponse.json(transformedData)

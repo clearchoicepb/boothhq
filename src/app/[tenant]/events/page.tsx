@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -26,6 +26,14 @@ interface EventDate {
   }
 }
 
+interface TaskCompletion {
+  event_id: string
+  core_task_template_id: string
+  is_completed: boolean
+  completed_at: string | null
+  completed_by: string | null
+}
+
 interface Event {
   id: string
   title: string
@@ -40,6 +48,15 @@ interface Event {
   event_dates?: EventDate[]
   created_at: string
   core_tasks_ready?: boolean
+  task_completions?: TaskCompletion[]
+}
+
+interface CoreTask {
+  id: string
+  tenant_id: string
+  task_name: string
+  display_order: number
+  is_active: boolean
 }
 
 export default function EventsPage() {
@@ -50,16 +67,39 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [localLoading, setLocalLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all')
-  const [filterType, setFilterType] = useState<'all' | 'wedding' | 'corporate' | 'birthday' | 'other'>('all')
+
+  // Date range filter
+  const [dateRangeFilter, setDateRangeFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
+
+  // Task filtering state
+  const [coreTasks, setCoreTasks] = useState<CoreTask[]>([])
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
+  const [taskFilter, setTaskFilter] = useState<'all' | 'incomplete'>('all')
+  const [taskDateRangeFilter, setTaskDateRangeFilter] = useState<number>(14) // days from now for incomplete task filter
 
   const fetchEvents = useCallback(async () => {
     try {
       setLocalLoading(true)
-      const response = await fetch(`/api/events?status=${filterStatus}&type=${filterType}`)
+      const response = await fetch('/api/events?status=all&type=all')
       if (response.ok) {
         const data = await response.json()
-        setEvents(data)
+
+        console.log('=== EVENTS FETCHED ===')
+        console.log('Raw API response:', data)
+        console.log('Is array?', Array.isArray(data))
+
+        // Handle both array and object structures
+        const eventsList = Array.isArray(data) ? data : (data.events || [])
+
+        console.log('Events count:', eventsList.length)
+        if (eventsList.length > 0) {
+          console.log('First event:', eventsList[0])
+          console.log('First event title:', eventsList[0].title)
+          console.log('First event task_completions:', eventsList[0].task_completions)
+        }
+        console.log('=====================')
+
+        setEvents(eventsList)
       } else {
         console.error('Failed to fetch events:', response.status, response.statusText)
         const errorData = await response.json().catch(() => ({}))
@@ -70,13 +110,41 @@ export default function EventsPage() {
     } finally {
       setLocalLoading(false)
     }
-  }, [filterStatus, filterType])
+  }, [])
+
+  const fetchCoreTaskTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/core-tasks/templates')
+      const data = await res.json()
+      console.log('=== CORE TASKS FETCHED ===')
+      console.log('Core tasks:', data.templates)
+      console.log('Core tasks count:', data.templates?.length || 0)
+      console.log('========================')
+      setCoreTasks(data.templates || [])
+    } catch (error) {
+      console.error('Error fetching core task templates:', error)
+    }
+  }, [])
 
   useEffect(() => {
     if (session && tenant) {
       fetchEvents()
+      fetchCoreTaskTemplates()
     }
-  }, [session, tenant, fetchEvents])
+  }, [session, tenant, fetchEvents, fetchCoreTaskTemplates])
+
+  // Debug: Log when both events and coreTasks are loaded
+  useEffect(() => {
+    if (events.length > 0 && coreTasks.length > 0) {
+      console.log('=== EVENTS PAGE DATA LOADED ===')
+      console.log('Events count:', events.length)
+      console.log('Core tasks count:', coreTasks.length)
+      console.log('Sample event:', events[0])
+      console.log('Sample event task_completions:', events[0].task_completions)
+      console.log('Sample core task:', coreTasks[0])
+      console.log('==============================')
+    }
+  }, [events, coreTasks])
 
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
@@ -118,12 +186,141 @@ export default function EventsPage() {
     )
   }
 
+  // Helper function to get incomplete tasks for an event
+  const getIncompleteTasks = (event: Event): string[] => {
+    const eventName = event.title || event.id || 'Unknown'
+
+    // If no core tasks defined, no tasks can be incomplete
+    if (coreTasks.length === 0) {
+      console.log(`Event ${eventName}: No coreTasks defined`)
+      return []
+    }
+
+    // If event has no task_completions array, ALL tasks are incomplete
+    if (!event.task_completions || event.task_completions.length === 0) {
+      console.log(`Event ${eventName}: No task completion records - all tasks incomplete`, {
+        coreTasksCount: coreTasks.length
+      })
+      return coreTasks.map(task => task.id)
+    }
+
+    // Get completed task IDs
+    const completedTaskIds = new Set(
+      event.task_completions
+        .filter(tc => tc.is_completed)
+        .map(tc => tc.core_task_template_id)
+    )
+
+    // Find tasks that are either not started or marked incomplete
+    const incompleteTasks = coreTasks
+      .filter(task => !completedTaskIds.has(task.id))
+      .map(task => task.id)
+
+    console.log(`Event ${eventName} incomplete tasks:`, {
+      totalCoreTasks: coreTasks.length,
+      totalCompletions: event.task_completions.length,
+      completedCount: completedTaskIds.size,
+      incompleteCount: incompleteTasks.length,
+      incompleteTaskIds: incompleteTasks
+    })
+
+    return incompleteTasks
+  }
+
+  // Helper function to check if event matches selected specific tasks
+  const matchesSelectedTasks = (event: Event): boolean => {
+    if (selectedTaskIds.length === 0) return true
+
+    const incompleteTasks = getIncompleteTasks(event)
+    return selectedTaskIds.some(taskId => incompleteTasks.includes(taskId))
+  }
+
+  // Helper function to check if event is within task date range (for incomplete task filter)
+  const isWithinTaskDateRange = (event: Event): boolean => {
+    if (!event.start_date) return false
+    const eventDate = new Date(event.start_date)
+    const now = new Date()
+    const futureDate = new Date()
+    futureDate.setDate(futureDate.getDate() + taskDateRangeFilter)
+    return eventDate >= now && eventDate <= futureDate
+  }
+
   const filteredEvents = events.filter(event => {
+    // Search filter
     const matchesSearch = (event.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (event.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (event.account_name && event.account_name.toLowerCase().includes(searchTerm.toLowerCase()))
-    return matchesSearch
+
+    if (!matchesSearch) return false
+
+    // Date range filter (upcoming/past/all)
+    if (dateRangeFilter !== 'all' && event.start_date) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const eventDate = new Date(event.start_date)
+      eventDate.setHours(0, 0, 0, 0)
+
+      if (dateRangeFilter === 'upcoming') {
+        if (eventDate < today) return false
+      } else if (dateRangeFilter === 'past') {
+        if (eventDate >= today) return false
+      }
+    }
+
+    // Task filter
+    if (taskFilter === 'incomplete') {
+      // Check if event has any incomplete tasks
+      const incompleteTasks = getIncompleteTasks(event)
+      const hasIncomplete = incompleteTasks.length > 0
+
+      // Task date range filter (only when filtering by incomplete)
+      const matchesTaskDateRange = isWithinTaskDateRange(event)
+
+      // Check specific task selection
+      const matchesSpecificTasks = matchesSelectedTasks(event)
+
+      console.log(`Filtering event ${event.title || event.id}:`, {
+        hasIncomplete,
+        incompleteTasks: incompleteTasks.length,
+        matchesTaskDateRange,
+        matchesSpecificTasks,
+        passesFilter: hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
+      })
+
+      return hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
+    }
+
+    return true
   })
+
+  // Sort chronologically by event date
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    const dateA = new Date(a.start_date || a.created_at)
+    const dateB = new Date(b.start_date || b.created_at)
+
+    // For upcoming/all: soonest first (ascending)
+    // For past: most recent first (descending)
+    if (dateRangeFilter === 'past') {
+      return dateB.getTime() - dateA.getTime() // Most recent past events first
+    } else {
+      return dateA.getTime() - dateB.getTime() // Soonest upcoming events first
+    }
+  })
+
+  console.log(`=== FILTER RESULTS ===`)
+  console.log(`Total events: ${events.length}`)
+  console.log(`Filtered events: ${sortedEvents.length}`)
+  console.log(`Date range filter: ${dateRangeFilter}`)
+  console.log(`Task filter: ${taskFilter}`)
+  console.log(`Selected task IDs count: ${selectedTaskIds.length}`)
+  console.log(`Search term: "${searchTerm}"`)
+  if (sortedEvents.length > 0) {
+    console.log(`First sorted event:`, sortedEvents[0].title || sortedEvents[0].id)
+  } else {
+    console.log(`No events passed filter - check logs above for why`)
+  }
+  console.log(`=====================`)
 
   return (
     <AppLayout>
@@ -166,7 +363,7 @@ export default function EventsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Filters and Search */}
           <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -179,77 +376,194 @@ export default function EventsPage() {
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+
+              {/* Date Range Filters */}
+              <div className="flex gap-3">
                 <button
-                  onClick={() => setFilterStatus('all')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 active:shadow-inner hover:shadow-md ${
-                    filterStatus === 'all' 
-                      ? 'bg-[#347dc4] text-white' 
+                  onClick={() => setDateRangeFilter('upcoming')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'upcoming'
+                      ? 'bg-[#347dc4] text-white shadow-md'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  All Status
+                  📅 Upcoming
                 </button>
+
                 <button
-                  onClick={() => setFilterStatus('upcoming')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 active:shadow-inner hover:shadow-md ${
-                    filterStatus === 'upcoming' 
-                      ? 'bg-[#347dc4] text-white' 
+                  onClick={() => setDateRangeFilter('past')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'past'
+                      ? 'bg-[#347dc4] text-white shadow-md'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  Upcoming
+                  📋 Past
                 </button>
+
                 <button
-                  onClick={() => setFilterStatus('completed')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 active:shadow-inner hover:shadow-md ${
-                    filterStatus === 'completed' 
-                      ? 'bg-[#347dc4] text-white' 
+                  onClick={() => setDateRangeFilter('all')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'all'
+                      ? 'bg-[#347dc4] text-white shadow-md'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  Completed
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFilterType('all')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 active:shadow-inner hover:shadow-md ${
-                    filterType === 'all' 
-                      ? 'bg-[#347dc4] text-white' 
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  All Types
-                </button>
-                <button
-                  onClick={() => setFilterType('wedding')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 active:shadow-inner hover:shadow-md ${
-                    filterType === 'wedding' 
-                      ? 'bg-[#347dc4] text-white' 
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Wedding
-                </button>
-                <button
-                  onClick={() => setFilterType('corporate')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 active:shadow-inner hover:shadow-md ${
-                    filterType === 'corporate' 
-                      ? 'bg-[#347dc4] text-white' 
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Corporate
+                  📊 All
                 </button>
               </div>
+            </div>
+
+            {/* Helper text */}
+            <p className="text-xs text-gray-500 mt-3">
+              {dateRangeFilter === 'upcoming' && 'Events scheduled for today and beyond'}
+              {dateRangeFilter === 'past' && 'Events that have already occurred'}
+              {dateRangeFilter === 'all' && 'All events regardless of date'}
+            </p>
+          </div>
+
+          {/* Task Filtering Section */}
+          <div className="bg-white p-6 rounded-lg shadow mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-[#347dc4]" />
+                <h3 className="text-lg font-semibold text-gray-900">Task Filters</h3>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Filter Mode Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setTaskFilter('all')
+                    setSelectedTaskIds([])
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 ${
+                    taskFilter === 'all'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Filter className="h-4 w-4" />
+                  All Events
+                </button>
+                <button
+                  onClick={() => setTaskFilter('incomplete')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 ${
+                    taskFilter === 'incomplete'
+                      ? 'bg-orange-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-orange-50'
+                  }`}
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  Incomplete Tasks Only
+                </button>
+              </div>
+
+              {taskFilter === 'incomplete' && (
+                <>
+                  {/* Date Range Filter */}
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-gray-700">Events within next:</label>
+                    <select
+                      value={taskDateRangeFilter}
+                      onChange={(e) => setTaskDateRangeFilter(Number(e.target.value))}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                    >
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                      <option value={30}>30 days</option>
+                      <option value={60}>60 days</option>
+                      <option value={90}>90 days</option>
+                    </select>
+                  </div>
+
+                  {/* Core Task Checkboxes */}
+                  {coreTasks.length > 0 && (
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Filter by Specific Tasks
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {coreTasks.map(task => (
+                          <label key={task.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-blue-50">
+                            <input
+                              type="checkbox"
+                              checked={selectedTaskIds.includes(task.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTaskIds([...selectedTaskIds, task.id])
+                                } else {
+                                  setSelectedTaskIds(selectedTaskIds.filter(t => t !== task.id))
+                                }
+                              }}
+                              className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
+                            />
+                            <span className="text-sm text-gray-700">{task.task_name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active Filters Display */}
+                  {selectedTaskIds.length > 0 && (
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold text-gray-700">Active Task Filters:</h4>
+                        <button
+                          onClick={() => setSelectedTaskIds([])}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedTaskIds.map(taskId => {
+                          const task = coreTasks.find(t => t.id === taskId)
+                          return task ? (
+                            <span
+                              key={taskId}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {task.task_name}
+                              <button
+                                onClick={() => setSelectedTaskIds(selectedTaskIds.filter(t => t !== taskId))}
+                                className="hover:opacity-70"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ) : null
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
           {/* Events Table */}
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">All Events</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {dateRangeFilter === 'upcoming' && '📅 Upcoming Events'}
+                  {dateRangeFilter === 'past' && '📋 Past Events'}
+                  {dateRangeFilter === 'all' && '📊 All Events'}
+                  {taskFilter === 'incomplete' && (
+                    <span className="ml-2 text-sm font-normal text-orange-600">
+                      (with incomplete tasks)
+                    </span>
+                  )}
+                </h3>
+                <div className="text-sm text-gray-600">
+                  Showing {sortedEvents.length} of {events.length} events
+                </div>
+              </div>
             </div>
             
             <div className="overflow-x-auto">
@@ -266,11 +580,25 @@ export default function EventsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredEvents.map((event) => {
+                  {sortedEvents.length === 0 && events.length > 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="text-gray-500">
+                          <p className="text-lg font-medium mb-2">No events match your filters</p>
+                          <p className="text-sm">Try adjusting your date range or search criteria</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {sortedEvents.map((event) => {
                     const eventDateCount = event.event_dates?.length || 0
                     const firstDate = event.event_dates?.[0] || null
                     const displayDate = event.start_date ? new Date(event.start_date).toLocaleDateString() : 'No date'
                     const displayLocation = firstDate?.locations?.name || event.location || 'No location'
+
+                    // Get incomplete tasks for this event
+                    const incompleteTaskIds = getIncompleteTasks(event)
+                    const incompleteCount = incompleteTaskIds.length
 
                     return (
                       <tr key={event.id} className="hover:bg-gray-50">
@@ -315,6 +643,15 @@ export default function EventsPage() {
                               <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                 Ready for Event
+                              </span>
+                            )}
+                            {incompleteCount > 0 && (
+                              <span
+                                className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800"
+                                title={`${incompleteCount} incomplete task${incompleteCount > 1 ? 's' : ''}`}
+                              >
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                {incompleteCount} Task{incompleteCount > 1 ? 's' : ''}
                               </span>
                             )}
                           </div>
