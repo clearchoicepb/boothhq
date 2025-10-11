@@ -1,277 +1,271 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/app-layout'
 import {
   BarChart3,
   TrendingUp,
-  Calendar,
   DollarSign,
-  FileText,
-  Download,
-  Filter,
-  ChevronDown,
-  Settings,
-  X
+  Target,
+  Award,
+  Calendar,
+  ChevronDown
 } from 'lucide-react'
-import {
-  exportCompleteDashboard,
-  exportDashboardSummary,
-  exportRevenueTrend,
-  exportEventsTrend,
-  exportInvoicesByStatus,
-  exportCompleteDashboardPDF,
-  exportDashboardSummaryPDF,
-  exportRevenueTrendPDF,
-  exportEventsTrendPDF,
-  exportInvoicesByStatusPDF
-} from '@/lib/csv-export'
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Cell
-} from 'recharts'
 
-type DateRange = 'this_week' | 'this_month' | 'this_quarter' | 'this_year' | 'yesterday' | 'last_week' | 'last_quarter' | 'last_year' | 'custom'
-type ReportType = 'standard' | 'sales' | 'marketing' | 'pipeline' | 'financial'
+type DateRange = '7d' | '30d' | '90d' | '180d' | '365d' | 'all'
 
-interface ReportData {
-  dashboard: {
-    totalRevenueGenerated: number // Sum of all invoices created in period
-    totalPaymentsReceived: number // Sum of all payments received in period
-    totalEventsBooked: number // Count of opportunities won in period
-    totalScheduledEvents: number // Count of event days in period
-    revenueGeneratedChange: number
-    paymentsReceivedChange: number
-    eventsBookedChange: number
-    scheduledEventsChange: number
-  }
-  revenueByMonth: Array<{ month: string; revenue: number; payments: number }>
-  eventsByMonth: Array<{ month: string; booked: number; scheduled: number }>
-  paymentsByMonth: Array<{ month: string; amount: number }>
-  invoicesByStatus: Array<{ status: string; count: number; amount: number }>
+interface KPIData {
+  totalPipeline: number
+  weightedPipeline: number
+  winRate: number
+  avgDealSize: number
 }
 
-interface ReportConfig {
-  reportType: ReportType
-  dateRange: DateRange
-  customStartDate: string
-  customEndDate: string
-  selectedKPIs: string[]
-  includeLeads: boolean
-  includeContacts: boolean
-  includeAccounts: boolean
-  includeOpportunities: boolean
-  includeEvents: boolean
-  includeInvoices: boolean
-  accountFilter: string[]
-  leadSourceFilter: string[]
-  opportunityStageFilter: string[]
+interface StageData {
+  stage: string
+  count: number
+  value: number
+}
+
+interface OwnerPerformance {
+  owner_name: string
+  deals_won: number
+  total_revenue: number
+}
+
+interface RecentWin {
+  id: string
+  name: string
+  account_name: string
+  amount: number
+  close_date: string
 }
 
 export default function ReportsPage() {
-  const params = useParams()
-  const tenantSubdomain = params.tenant as string
+  const { tenant: tenantSubdomain } = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sales' | 'leads' | 'events' | 'financial'>('dashboard')
-  const [dateRange, setDateRange] = useState<DateRange>('this_month')
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'sales')
+  const [dateRange, setDateRange] = useState<DateRange>('30d')
   const [loading, setLoading] = useState(true)
-  const [reportData, setReportData] = useState<ReportData | null>(null)
-  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
-  const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false)
-  const exportMenuRef = useRef<HTMLDivElement>(null)
+  const [showDateDropdown, setShowDateDropdown] = useState(false)
 
-  // Report Configuration State
-  const [reportConfig, setReportConfig] = useState<ReportConfig>({
-    reportType: 'standard',
-    dateRange: 'this_month',
-    customStartDate: '',
-    customEndDate: '',
-    selectedKPIs: ['totalRevenueGenerated', 'totalPaymentsReceived', 'totalEventsBooked', 'totalScheduledEvents'],
-    includeLeads: true,
-    includeContacts: true,
-    includeAccounts: true,
-    includeOpportunities: true,
-    includeEvents: true,
-    includeInvoices: true,
-    accountFilter: [],
-    leadSourceFilter: [],
-    opportunityStageFilter: []
+  // Sales Dashboard Data
+  const [kpiData, setKpiData] = useState<KPIData>({
+    totalPipeline: 0,
+    weightedPipeline: 0,
+    winRate: 0,
+    avgDealSize: 0
   })
+  const [stageData, setStageData] = useState<StageData[]>([])
+  const [ownerPerformance, setOwnerPerformance] = useState<OwnerPerformance[]>([])
+  const [recentWins, setRecentWins] = useState<RecentWin[]>([])
 
-  const availableKPIs = [
-    { id: 'totalRevenueGenerated', label: 'Total Revenue Generated', icon: DollarSign, description: 'Sum of all invoices created' },
-    { id: 'totalPaymentsReceived', label: 'Total Payments Received', icon: DollarSign, description: 'Sum of all payments received' },
-    { id: 'totalEventsBooked', label: 'Total Events Booked', icon: TrendingUp, description: 'Opportunities won' },
-    { id: 'totalScheduledEvents', label: 'Total Scheduled Events', icon: Calendar, description: 'Event days scheduled' },
-    { id: 'avgDealSize', label: 'Average Deal Size', icon: DollarSign, description: 'Average opportunity value' },
-    { id: 'activeLeads', label: 'Active Leads', icon: TrendingUp, description: 'Current active leads' },
-    { id: 'conversionRate', label: 'Conversion Rate', icon: BarChart3, description: 'Lead to opportunity %' },
-    { id: 'winRate', label: 'Win Rate', icon: TrendingUp, description: 'Opportunities won %' }
-  ]
-
-  const reportTypes = [
-    { value: 'standard', label: 'Standard Dashboard', description: 'Comprehensive overview of all metrics' },
-    { value: 'sales', label: 'Sales Performance', description: 'Focus on revenue and deals' },
-    { value: 'marketing', label: 'Marketing Analytics', description: 'Lead generation and conversion' },
-    { value: 'pipeline', label: 'Pipeline Analysis', description: 'Opportunity progression and forecasting' },
-    { value: 'financial', label: 'Financial Summary', description: 'Revenue, invoices, and financial metrics' }
-  ]
-
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'sales', label: 'Sales & Revenue', icon: DollarSign },
-    { id: 'leads', label: 'Leads & Opportunities', icon: TrendingUp },
-    { id: 'events', label: 'Events', icon: Calendar },
-    { id: 'financial', label: 'Financial', icon: FileText }
-  ]
-
-  // Close export menu when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
-        setIsExportMenuOpen(false)
-      }
+    const tab = searchParams.get('tab')
+    if (tab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (activeTab === 'sales') {
+      fetchSalesData()
+    }
+  }, [activeTab, dateRange])
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    router.push(`/${tenantSubdomain}/reports?tab=${tab}`)
+  }
+
+  const getDateRangeFilter = () => {
+    const now = new Date()
+    let startDate: Date | null = null
+
+    switch (dateRange) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        break
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        break
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        break
+      case '180d':
+        startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
+        break
+      case '365d':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+        break
+      case 'all':
+        startDate = null
+        break
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+    return startDate
+  }
 
-  const fetchReportData = async () => {
-    setLoading(true)
+  const fetchSalesData = async () => {
     try {
-      let url = `/api/reports/dashboard?range=${dateRange}`
+      setLoading(true)
+      const startDate = getDateRangeFilter()
+      const dateFilter = startDate ? `&created_at=gte.${startDate.toISOString()}` : ''
 
-      // Add custom date parameters if custom range is selected
-      if (dateRange === 'custom' && reportConfig.customStartDate && reportConfig.customEndDate) {
-        url += `&startDate=${reportConfig.customStartDate}&endDate=${reportConfig.customEndDate}`
-      }
+      // Fetch all opportunities
+      const response = await fetch(`/api/opportunities?limit=1000${dateFilter}`)
+      if (!response.ok) throw new Error('Failed to fetch opportunities')
 
-      const response = await fetch(url, {
-        credentials: 'include'
+      const opportunities = await response.json()
+
+      // Calculate KPIs
+      const openOpps = opportunities.filter((o: any) =>
+        o.stage !== 'closed_won' && o.stage !== 'closed_lost'
+      )
+      const closedOpps = opportunities.filter((o: any) =>
+        o.stage === 'closed_won' || o.stage === 'closed_lost'
+      )
+      const wonOpps = opportunities.filter((o: any) => o.stage === 'closed_won')
+
+      const totalPipeline = openOpps.reduce((sum: number, o: any) => sum + (o.amount || 0), 0)
+      const weightedPipeline = openOpps.reduce((sum: number, o: any) =>
+        sum + ((o.amount || 0) * (o.probability || 0) / 100), 0
+      )
+      const winRate = closedOpps.length > 0
+        ? Math.round((wonOpps.length / closedOpps.length) * 100)
+        : 0
+      const avgDealSize = wonOpps.length > 0
+        ? Math.round(wonOpps.reduce((sum: number, o: any) => sum + (o.amount || 0), 0) / wonOpps.length)
+        : 0
+
+      setKpiData({
+        totalPipeline,
+        weightedPipeline: Math.round(weightedPipeline),
+        winRate,
+        avgDealSize
       })
-      if (response.ok) {
-        const data = await response.json()
-        setReportData(data)
-      } else {
-        console.error('Error fetching report data:', response.status, response.statusText)
-      }
+
+      // Calculate stage breakdown
+      const stageMap = new Map<string, { count: number; value: number }>()
+      openOpps.forEach((opp: any) => {
+        const stage = opp.stage || 'unknown'
+        const existing = stageMap.get(stage) || { count: 0, value: 0 }
+        stageMap.set(stage, {
+          count: existing.count + 1,
+          value: existing.value + (opp.amount || 0)
+        })
+      })
+
+      const stageBreakdown = Array.from(stageMap.entries())
+        .map(([stage, data]) => ({
+          stage: stage.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          count: data.count,
+          value: data.value
+        }))
+        .sort((a, b) => b.value - a.value)
+
+      setStageData(stageBreakdown)
+
+      // Fetch accounts for owner names
+      const accountIds = [...new Set(opportunities.map((o: any) => o.account_id).filter(Boolean))]
+      const accountsResponse = await fetch(`/api/accounts?id=in.(${accountIds.join(',')})&limit=1000`)
+      const accounts = accountsResponse.ok ? await accountsResponse.json() : []
+
+      // Fetch users for owner names
+      const userIds = [...new Set(accounts.map((a: any) => a.assigned_to).filter(Boolean))]
+      const usersResponse = await fetch(`/api/users?id=in.(${userIds.join(',')})`)
+      const users = usersResponse.ok ? await usersResponse.json() : []
+
+      const userMap = new Map(users.map((u: any) => [u.id, `${u.first_name} ${u.last_name}`]))
+      const accountOwnerMap = new Map(accounts.map((a: any) => [a.id, a.assigned_to]))
+
+      // Calculate owner performance
+      const ownerMap = new Map<string, { deals_won: number; total_revenue: number }>()
+
+      wonOpps.forEach((opp: any) => {
+        const ownerId = accountOwnerMap.get(opp.account_id)
+        if (!ownerId) return
+
+        const ownerName = userMap.get(ownerId) || 'Unknown'
+        const existing = ownerMap.get(ownerName) || { deals_won: 0, total_revenue: 0 }
+        ownerMap.set(ownerName, {
+          deals_won: existing.deals_won + 1,
+          total_revenue: existing.total_revenue + (opp.amount || 0)
+        })
+      })
+
+      const leaderboard = Array.from(ownerMap.entries())
+        .map(([owner_name, data]) => ({
+          owner_name,
+          deals_won: data.deals_won,
+          total_revenue: data.total_revenue
+        }))
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, 5)
+
+      setOwnerPerformance(leaderboard)
+
+      // Recent wins
+      const accountMap = new Map(accounts.map((a: any) => [a.id, a.name]))
+      const wins = wonOpps
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10)
+        .map((opp: any) => ({
+          id: opp.id,
+          name: opp.name,
+          account_name: accountMap.get(opp.account_id) || 'Unknown',
+          amount: opp.amount || 0,
+          close_date: opp.expected_close_date || opp.created_at
+        }))
+
+      setRecentWins(wins)
+
     } catch (error) {
-      console.error('Error fetching report data:', error)
+      console.error('Error fetching sales data:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchReportData()
-  }, [dateRange, reportConfig.customStartDate, reportConfig.customEndDate])
-
-  const handleExport = (exportType: string, format: 'csv' | 'pdf') => {
-    if (!reportData) return
-
-    setIsExportMenuOpen(false)
-
-    if (format === 'pdf') {
-      switch (exportType) {
-        case 'complete':
-          exportCompleteDashboardPDF(reportData, dateRange)
-          break
-        case 'summary':
-          exportDashboardSummaryPDF(reportData, dateRange)
-          break
-        case 'revenue':
-          exportRevenueTrendPDF(reportData, dateRange)
-          break
-        case 'events':
-          exportEventsTrendPDF(reportData, dateRange)
-          break
-        case 'invoices':
-          exportInvoicesByStatusPDF(reportData, dateRange)
-          break
-        default:
-          exportCompleteDashboardPDF(reportData, dateRange)
-      }
-    } else {
-      switch (exportType) {
-        case 'complete':
-          exportCompleteDashboard(reportData, dateRange)
-          break
-        case 'summary':
-          exportDashboardSummary(reportData, dateRange)
-          break
-        case 'revenue':
-          exportRevenueTrend(reportData, dateRange)
-          break
-        case 'events':
-          exportEventsTrend(reportData, dateRange)
-          break
-        case 'invoices':
-          exportInvoicesByStatus(reportData, dateRange)
-          break
-        default:
-          exportCompleteDashboard(reportData, dateRange)
-      }
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
   }
 
-  const toggleKPI = (kpiId: string) => {
-    setReportConfig(prev => ({
-      ...prev,
-      selectedKPIs: prev.selectedKPIs.includes(kpiId)
-        ? prev.selectedKPIs.filter(id => id !== kpiId)
-        : [...prev.selectedKPIs, kpiId]
-    }))
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
   }
 
-  const applyConfiguration = () => {
-    // Update dateRange if custom dates are set
-    if (reportConfig.dateRange === 'custom' && reportConfig.customStartDate && reportConfig.customEndDate) {
-      setDateRange('custom')
-    } else {
-      setDateRange(reportConfig.dateRange)
-    }
-    setIsConfigPanelOpen(false)
-    fetchReportData()
-  }
+  const dateRangeOptions: { value: DateRange; label: string }[] = [
+    { value: '7d', label: 'Last 7 days' },
+    { value: '30d', label: 'Last 30 days' },
+    { value: '90d', label: 'Last 90 days' },
+    { value: '180d', label: 'Last 180 days' },
+    { value: '365d', label: 'Last 365 days' },
+    { value: 'all', label: 'All time' },
+  ]
 
-  const COLORS = ['#347dc4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
-
-  if (loading || !reportData) {
-    return (
-      <AppLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#347dc4] mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading reports...</p>
-          </div>
-        </div>
-      </AppLayout>
-    )
+  const getCurrentDateLabel = () => {
+    return dateRangeOptions.find(opt => opt.value === dateRange)?.label || 'Last 30 days'
   }
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-6 py-6">
+        <div className="border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6 py-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
@@ -279,587 +273,362 @@ export default function ReportsPage() {
                   Reports & Analytics
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
-                  Track performance and analyze business metrics
+                  Track performance and gain insights across your organization
                 </p>
               </div>
 
-              <div className="flex items-center space-x-3">
-                {/* Date Range Quick Selector */}
-                <select
-                  value={dateRange}
-                  onChange={(e) => {
-                    const newRange = e.target.value as DateRange
-                    setDateRange(newRange)
-                    setReportConfig(prev => ({ ...prev, dateRange: newRange }))
-                    // Open config panel for custom range
-                    if (newRange === 'custom') {
-                      setIsConfigPanelOpen(true)
-                    }
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
-                >
-                  <option value="this_week">This Week</option>
-                  <option value="this_month">This Month</option>
-                  <option value="this_quarter">This Quarter</option>
-                  <option value="this_year">This Year</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="last_week">Last Week</option>
-                  <option value="last_quarter">Last Quarter</option>
-                  <option value="last_year">Last Year</option>
-                  <option value="custom">Custom Range...</option>
-                </select>
-
-                {/* Configure Report Button */}
+            {activeTab === 'sales' && (
+              <div className="relative">
                 <button
-                  onClick={() => setIsConfigPanelOpen(true)}
-                  className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                  onClick={() => setShowDateDropdown(!showDateDropdown)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configure Report
+                  <Calendar className="h-4 w-4 mr-2" />
+                  {getCurrentDateLabel()}
+                  <ChevronDown className="h-4 w-4 ml-2" />
                 </button>
 
-                {/* Export Button with Dropdown */}
-                <div className="relative" ref={exportMenuRef}>
-                  <button
-                    onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                    className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                    <ChevronDown className="h-4 w-4 ml-1" />
-                  </button>
-
-                  {isExportMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                      {/* Complete Dashboard Report */}
-                      <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">Complete Dashboard Report</div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleExport('complete', 'csv')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            CSV
-                          </button>
-                          <button
-                            onClick={() => handleExport('complete', 'pdf')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-gray-200 my-1"></div>
-
-                      {/* KPI Summary Only */}
-                      <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">KPI Summary Only</div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleExport('summary', 'csv')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            CSV
-                          </button>
-                          <button
-                            onClick={() => handleExport('summary', 'pdf')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-gray-200 my-1"></div>
-
-                      {/* Revenue Trend Data */}
-                      <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">Revenue Trend Data</div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleExport('revenue', 'csv')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            CSV
-                          </button>
-                          <button
-                            onClick={() => handleExport('revenue', 'pdf')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-gray-200 my-1"></div>
-
-                      {/* Events Trend Data */}
-                      <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">Events Trend Data</div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleExport('events', 'csv')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            CSV
-                          </button>
-                          <button
-                            onClick={() => handleExport('events', 'pdf')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-gray-200 my-1"></div>
-
-                      {/* Invoices by Status Data */}
-                      <div className="px-4 py-2">
-                        <div className="text-sm font-medium text-gray-900 mb-1">Invoices by Status Data</div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleExport('invoices', 'csv')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            CSV
-                          </button>
-                          <button
-                            onClick={() => handleExport('invoices', 'pdf')}
-                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded border border-gray-300"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </div>
+                {showDateDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                    <div className="py-1">
+                      {dateRangeOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setDateRange(option.value)
+                            setShowDateDropdown(false)
+                          }}
+                          className={`block w-full text-left px-4 py-2 text-sm ${
+                            dateRange === option.value
+                              ? 'bg-gray-100 text-gray-900'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="mt-6 flex space-x-1 border-b border-gray-200">
-              {tabs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center px-4 py-3 text-sm font-medium transition-colors duration-150 border-b-2 ${
-                      activeTab === tab.id
-                        ? 'border-[#347dc4] text-[#347dc4]'
-                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {tab.label}
-                  </button>
-                )
-              })}
-            </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="px-6 py-8">
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Total Revenue Generated */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Revenue Generated</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">
-                        ${reportData.dashboard.totalRevenueGenerated.toLocaleString()}
-                      </p>
-                      <p className={`text-xs mt-2 ${reportData.dashboard.revenueGeneratedChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {reportData.dashboard.revenueGeneratedChange >= 0 ? '↑' : '↓'} {Math.abs(reportData.dashboard.revenueGeneratedChange)}% from last period
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <DollarSign className="h-6 w-6 text-green-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Total Payments Received */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Payments Received</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">
-                        ${reportData.dashboard.totalPaymentsReceived.toLocaleString()}
-                      </p>
-                      <p className={`text-xs mt-2 ${reportData.dashboard.paymentsReceivedChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {reportData.dashboard.paymentsReceivedChange >= 0 ? '↑' : '↓'} {Math.abs(reportData.dashboard.paymentsReceivedChange)}% from last period
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <DollarSign className="h-6 w-6 text-blue-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Total Events Booked */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Events Booked</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">
-                        {reportData.dashboard.totalEventsBooked}
-                      </p>
-                      <p className={`text-xs mt-2 ${reportData.dashboard.eventsBookedChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {reportData.dashboard.eventsBookedChange >= 0 ? '↑' : '↓'} {Math.abs(reportData.dashboard.eventsBookedChange)}% from last period
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-purple-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Total Scheduled Events */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Scheduled Events</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">
-                        {reportData.dashboard.totalScheduledEvents}
-                      </p>
-                      <p className={`text-xs mt-2 ${reportData.dashboard.scheduledEventsChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {reportData.dashboard.scheduledEventsChange >= 0 ? '↑' : '↓'} {Math.abs(reportData.dashboard.scheduledEventsChange)}% from last period
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-orange-600" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Revenue & Payments Chart */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Generated vs Payments Received</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={reportData.revenueByMonth}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#347dc4"
-                      fill="#347dc4"
-                      fillOpacity={0.3}
-                      name="Revenue Generated ($)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="payments"
-                      stroke="#10b981"
-                      fill="#10b981"
-                      fillOpacity={0.3}
-                      name="Payments Received ($)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Events Booked & Scheduled Chart */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Events Booked vs Scheduled</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={reportData.eventsByMonth}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="booked" fill="#8b5cf6" name="Events Booked" />
-                      <Bar dataKey="scheduled" fill="#f59e0b" name="Scheduled Event Days" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Status</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={reportData.invoicesByStatus}
-                        dataKey="amount"
-                        nameKey="status"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label
-                      >
-                        {reportData.invoicesByStatus.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'sales' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales & Revenue Reports</h3>
-              <p className="text-gray-600">Detailed sales reports coming soon...</p>
-            </div>
-          )}
-
-          {activeTab === 'leads' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Leads & Opportunities Reports</h3>
-              <p className="text-gray-600">Detailed lead reports coming soon...</p>
-            </div>
-          )}
-
-          {activeTab === 'events' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Reports</h3>
-              <p className="text-gray-600">Detailed event reports coming soon...</p>
-            </div>
-          )}
-
-          {activeTab === 'financial' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Reports</h3>
-              <p className="text-gray-600">Detailed financial reports coming soon...</p>
-            </div>
-          )}
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <nav className="flex -mb-px space-x-8">
+            <button
+              onClick={() => handleTabChange('sales')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === 'sales'
+                  ? 'border-[#347dc4] text-[#347dc4]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Sales
+            </button>
+            <button
+              onClick={() => handleTabChange('operations')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === 'operations'
+                  ? 'border-[#347dc4] text-[#347dc4]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Operations
+            </button>
+            <button
+              onClick={() => handleTabChange('financials')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === 'financials'
+                  ? 'border-[#347dc4] text-[#347dc4]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Financials
+            </button>
+          </nav>
         </div>
+      </div>
 
-        {/* Configuration Panel */}
-        {isConfigPanelOpen && (
-          <div className="fixed inset-0 z-50 overflow-hidden">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={() => setIsConfigPanelOpen(false)}
-            ></div>
-
-            {/* Panel */}
-            <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-              <div className="w-screen max-w-2xl">
-                <div className="flex h-full flex-col bg-white shadow-xl">
-                  {/* Header */}
-                  <div className="bg-[#347dc4] px-6 py-6">
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {activeTab === 'sales' && (
+          <div className="space-y-8">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#347dc4]"></div>
+              </div>
+            ) : (
+              <>
+                {/* KPI Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-semibold text-white">Configure Report</h2>
-                      <button
-                        onClick={() => setIsConfigPanelOpen(false)}
-                        className="text-white hover:text-gray-200"
-                      >
-                        <X className="h-6 w-6" />
-                      </button>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Pipeline</p>
+                        <p className="text-2xl font-semibold text-gray-900 mt-2">
+                          {formatCurrency(kpiData.totalPipeline)}
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Target className="h-6 w-6 text-blue-600" />
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm text-blue-100">
-                      Customize your report settings, KPIs, and data filters
-                    </p>
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 overflow-y-auto px-6 py-6">
-                    <div className="space-y-8">
-                      {/* Report Type */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Report Type</h3>
-                        <div className="space-y-3">
-                          {reportTypes.map((type) => (
-                            <label
-                              key={type.value}
-                              className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                                reportConfig.reportType === type.value
-                                  ? 'border-[#347dc4] bg-blue-50'
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="reportType"
-                                value={type.value}
-                                checked={reportConfig.reportType === type.value}
-                                onChange={(e) => setReportConfig(prev => ({
-                                  ...prev,
-                                  reportType: e.target.value as ReportType
-                                }))}
-                                className="mt-1 h-4 w-4 text-[#347dc4] border-gray-300 focus:ring-[#347dc4]"
-                              />
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">{type.label}</div>
-                                <div className="text-sm text-gray-500">{type.description}</div>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
+                        <p className="text-sm font-medium text-gray-600">Weighted Pipeline</p>
+                        <p className="text-2xl font-semibold text-gray-900 mt-2">
+                          {formatCurrency(kpiData.weightedPipeline)}
+                        </p>
                       </div>
+                      <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="h-6 w-6 text-green-600" />
+                      </div>
+                    </div>
+                  </div>
 
-                      {/* Date Range */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Date Range</h3>
-                        <div className="space-y-4">
-                          <select
-                            value={reportConfig.dateRange}
-                            onChange={(e) => setReportConfig(prev => ({
-                              ...prev,
-                              dateRange: e.target.value as DateRange
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
-                          >
-                            <option value="this_week">This Week</option>
-                            <option value="this_month">This Month</option>
-                            <option value="this_quarter">This Quarter</option>
-                            <option value="this_year">This Year</option>
-                            <option value="yesterday">Yesterday</option>
-                            <option value="last_week">Last Week</option>
-                            <option value="last_quarter">Last Quarter</option>
-                            <option value="last_year">Last Year</option>
-                            <option value="custom">Custom Range</option>
-                          </select>
+                        <p className="text-sm font-medium text-gray-600">Win Rate</p>
+                        <p className="text-2xl font-semibold text-gray-900 mt-2">
+                          {kpiData.winRate}%
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Award className="h-6 w-6 text-purple-600" />
+                      </div>
+                    </div>
+                  </div>
 
-                          {reportConfig.dateRange === 'custom' && (
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Start Date
-                                </label>
-                                <input
-                                  type="date"
-                                  value={reportConfig.customStartDate}
-                                  onChange={(e) => setReportConfig(prev => ({
-                                    ...prev,
-                                    customStartDate: e.target.value
-                                  }))}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                />
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Avg Deal Size</p>
+                        <p className="text-2xl font-semibold text-gray-900 mt-2">
+                          {formatCurrency(kpiData.avgDealSize)}
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <DollarSign className="h-6 w-6 text-orange-600" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Sales Funnel */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Funnel</h3>
+                    <div className="space-y-3">
+                      {stageData.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-8">No pipeline data</p>
+                      ) : (
+                        stageData.map((stage) => {
+                          const maxValue = Math.max(...stageData.map(s => s.value))
+                          const percentage = maxValue > 0 ? (stage.value / maxValue) * 100 : 0
+
+                          return (
+                            <div key={stage.stage}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700">{stage.stage}</span>
+                                <span className="text-sm text-gray-600">{formatCurrency(stage.value)}</span>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  End Date
-                                </label>
-                                <input
-                                  type="date"
-                                  value={reportConfig.customEndDate}
-                                  onChange={(e) => setReportConfig(prev => ({
-                                    ...prev,
-                                    customEndDate: e.target.value
-                                  }))}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                />
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-[#347dc4] h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">{stage.count} opportunities</p>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stage Breakdown */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Stage Breakdown</h3>
+                    <div className="space-y-3">
+                      {stageData.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-8">No pipeline data</p>
+                      ) : (
+                        stageData.map((stage) => {
+                          const totalValue = stageData.reduce((sum, s) => sum + s.value, 0)
+                          const percentage = totalValue > 0 ? Math.round((stage.value / totalValue) * 100) : 0
+
+                          return (
+                            <div key={stage.stage} className="flex items-center justify-between py-2 border-b border-gray-100">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">{stage.stage}</p>
+                                <p className="text-xs text-gray-500">{stage.count} deals</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-900">{percentage}%</p>
+                                <p className="text-xs text-gray-600">{formatCurrency(stage.value)}</p>
                               </div>
                             </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* KPI Selection */}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Key Performance Indicators</h3>
-                        <p className="text-sm text-gray-600 mb-4">Select which KPIs to display in your report</p>
-                        <div className="space-y-3">
-                          {availableKPIs.map((kpi) => {
-                            const Icon = kpi.icon
-                            return (
-                              <label
-                                key={kpi.id}
-                                className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
-                                  reportConfig.selectedKPIs.includes(kpi.id)
-                                    ? 'border-[#347dc4] bg-blue-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={reportConfig.selectedKPIs.includes(kpi.id)}
-                                  onChange={() => toggleKPI(kpi.id)}
-                                  className="h-4 w-4 mt-0.5 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
-                                />
-                                <Icon className="h-5 w-5 ml-3 mt-0.5 text-gray-600" />
-                                <div className="ml-3 flex-1">
-                                  <div className="text-sm font-medium text-gray-900">{kpi.label}</div>
-                                  <div className="text-xs text-gray-500 mt-0.5">{kpi.description}</div>
-                                </div>
-                              </label>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Data Filters */}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Include Data From</h3>
-                        <p className="text-sm text-gray-600 mb-4">Select which modules to include in the report</p>
-                        <div className="space-y-3">
-                          {[
-                            { key: 'includeLeads', label: 'Leads', icon: TrendingUp },
-                            { key: 'includeContacts', label: 'Contacts', icon: TrendingUp },
-                            { key: 'includeAccounts', label: 'Accounts', icon: FileText },
-                            { key: 'includeOpportunities', label: 'Opportunities', icon: BarChart3 },
-                            { key: 'includeEvents', label: 'Events', icon: Calendar },
-                            { key: 'includeInvoices', label: 'Invoices', icon: DollarSign }
-                          ].map((item) => {
-                            const Icon = item.icon
-                            return (
-                              <label
-                                key={item.key}
-                                className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={reportConfig[item.key as keyof ReportConfig] as boolean}
-                                  onChange={(e) => setReportConfig(prev => ({
-                                    ...prev,
-                                    [item.key]: e.target.checked
-                                  }))}
-                                  className="h-4 w-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
-                                />
-                                <Icon className="h-5 w-5 ml-3 text-gray-600" />
-                                <span className="ml-3 text-sm font-medium text-gray-900">{item.label}</span>
-                              </label>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="border-t border-gray-200 px-6 py-4">
-                    <div className="flex items-center justify-end space-x-3">
-                      <button
-                        onClick={() => setIsConfigPanelOpen(false)}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={applyConfiguration}
-                        className="px-4 py-2 bg-[#347dc4] text-white rounded-lg hover:bg-[#2d6aa8] text-sm font-medium"
-                      >
-                        Apply Configuration
-                      </button>
+                          )
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
+
+                {/* Owner Leaderboard */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Performers</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Rank
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Owner
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Deals Won
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Revenue
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {ownerPerformance.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                              No performance data available
+                            </td>
+                          </tr>
+                        ) : (
+                          ownerPerformance.map((owner, index) => (
+                            <tr key={owner.owner_name} className="hover:bg-gray-50">
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-sm font-semibold ${
+                                    index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                                    index === 1 ? 'bg-gray-100 text-gray-800' :
+                                    index === 2 ? 'bg-orange-100 text-orange-800' :
+                                    'bg-gray-50 text-gray-600'
+                                  }`}>
+                                    {index + 1}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">{owner.owner_name}</div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{owner.deals_won}</div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {formatCurrency(owner.total_revenue)}
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Recent Wins */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Wins</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Opportunity
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Account
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Close Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {recentWins.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                              No wins yet
+                            </td>
+                          </tr>
+                        ) : (
+                          recentWins.map((win) => (
+                            <tr key={win.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-4">
+                                <div className="text-sm font-medium text-gray-900">{win.name}</div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="text-sm text-gray-900">{win.account_name}</div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-sm font-semibold text-green-600">
+                                  {formatCurrency(win.amount)}
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-600">{formatDate(win.close_date)}</div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'operations' && (
+          <div className="text-center py-12">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+              <Calendar className="h-8 w-8 text-gray-400" />
             </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Operations Reports Coming Soon</h3>
+            <p className="text-sm text-gray-500">
+              Track event performance, resource utilization, and operational metrics
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'financials' && (
+          <div className="text-center py-12">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+              <DollarSign className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Financial Reports Coming Soon</h3>
+            <p className="text-sm text-gray-500">
+              Analyze revenue, invoices, quotes, and financial performance
+            </p>
           </div>
         )}
       </div>
+    </div>
     </AppLayout>
   )
 }
