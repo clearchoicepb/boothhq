@@ -10,7 +10,11 @@ import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { GlobalSearch } from '@/components/global-search'
 
-export function TopNav() {
+interface TopNavProps {
+  leftContent?: React.ReactNode
+}
+
+export function TopNav({ leftContent }: TopNavProps = {}) {
   const { data: session } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -104,6 +108,9 @@ export function TopNav() {
       {/* Navigation Menu */}
       <nav className="px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between gap-4">
+          {/* Left Content (Hamburger menu for mobile) */}
+          {leftContent}
+
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-6">
             {navigation.filter(item => !item.permission || item.permission).map((item) => {

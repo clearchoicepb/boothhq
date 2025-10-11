@@ -7,7 +7,11 @@ import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
 
-export function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void
+}
+
+export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const params = useParams()
   const pathname = usePathname()
   const tenantSubdomain = params.tenant as string
@@ -71,6 +75,7 @@ export function Sidebar() {
                 <Link
                   key={item.label}
                   href={item.href}
+                  onClick={onNavigate}
                   className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     isActive
                       ? 'bg-[#347dc4] text-white'
