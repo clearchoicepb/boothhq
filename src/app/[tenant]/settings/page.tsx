@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import toast from 'react-hot-toast';
 import {
   Settings as SettingsIcon,
   Users,
@@ -23,7 +24,9 @@ import {
   BarChart3,
   FileType,
   Plus,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 
 interface SettingsSection {
@@ -238,12 +241,91 @@ const categoryColors = {
 export default function SettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const filteredSections = selectedCategory 
+  const filteredSections = selectedCategory
     ? settingsSections.filter(section => section.category === selectedCategory)
     : settingsSections;
 
   const categories = Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>;
+
+  const handleGenerateSeedData = async () => {
+    if (!confirm('⚠️ This will create 40-50 test records across all CRM entities (Leads, Accounts, Contacts, Opportunities, Events, Invoices, Quotes).\n\nThis operation cannot be undone automatically. Continue?')) {
+      return;
+    }
+
+    setIsGenerating(true);
+    const loadingToast = toast.loading('Generating seed data...');
+
+    try {
+      const response = await fetch('/api/seed-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'yes-create-test-data' })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(
+          `Successfully created ${data.summary.total} records!\n` +
+          `Leads: ${data.summary.leads}, Accounts: ${data.summary.accounts}, ` +
+          `Contacts: ${data.summary.contacts}, Opportunities: ${data.summary.opportunities}, ` +
+          `Events: ${data.summary.events}, Invoices: ${data.summary.invoices}, Quotes: ${data.summary.quotes}`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(data.error || 'Failed to generate seed data');
+      }
+    } catch (error: any) {
+      console.error('Seed data error:', error);
+      toast.error('Failed to generate seed data: ' + error.message);
+    } finally {
+      toast.dismiss(loadingToast);
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    if (!confirm('🚨 WARNING: This will DELETE ALL DATA in your CRM!\n\nThis includes:\n- All Leads\n- All Accounts\n- All Contacts\n- All Opportunities\n- All Events\n- All Invoices\n- All Quotes\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?')) {
+      return;
+    }
+
+    // Double confirmation
+    if (!confirm('Last chance! Type YES in the next dialog to confirm deletion.')) {
+      return;
+    }
+
+    const confirmation = prompt('Type "DELETE ALL" to confirm (case-sensitive):');
+    if (confirmation !== 'DELETE ALL') {
+      toast.error('Deletion cancelled - confirmation text did not match');
+      return;
+    }
+
+    setIsDeleting(true);
+    const loadingToast = toast.loading('Deleting all data...');
+
+    try {
+      const response = await fetch('/api/seed-data', {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('All data deleted successfully', { duration: 4000 });
+      } else {
+        toast.error(data.error || 'Failed to delete data');
+      }
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete data: ' + error.message);
+    } finally {
+      toast.dismiss(loadingToast);
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -334,7 +416,7 @@ export default function SettingsPage() {
           {/* Quick Actions */}
           <div className="mt-12 border-t border-gray-200 pt-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <button className="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-150">
                 <Database className="h-4 w-4 mr-2 text-[#347dc4]" />
                 <span className="text-sm font-medium">Export Data</span>
@@ -347,10 +429,41 @@ export default function SettingsPage() {
                 <Shield className="h-4 w-4 mr-2 text-[#347dc4]" />
                 <span className="text-sm font-medium">Backup Settings</span>
               </button>
-              <button className="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-150">
-                <BarChart3 className="h-4 w-4 mr-2 text-[#347dc4]" />
-                <span className="text-sm font-medium">System Status</span>
+            </div>
+          </div>
+
+          {/* Developer Tools */}
+          <div className="mt-12 border-t border-gray-200 pt-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Developer Tools</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Tools for testing and development. Use with caution in production.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={handleGenerateSeedData}
+                disabled={isGenerating}
+                className="flex items-center justify-center px-4 py-3 border-2 border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Sparkles className="h-4 w-4 mr-2 text-green-700" />
+                <span className="text-sm font-medium text-green-900">
+                  {isGenerating ? 'Generating...' : 'Generate Test Data'}
+                </span>
               </button>
+              <button
+                onClick={handleDeleteAllData}
+                disabled={isDeleting}
+                className="flex items-center justify-center px-4 py-3 border-2 border-red-200 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="h-4 w-4 mr-2 text-red-700" />
+                <span className="text-sm font-medium text-red-900">
+                  {isDeleting ? 'Deleting...' : 'Delete All Data'}
+                </span>
+              </button>
+            </div>
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs text-yellow-800">
+                <strong>⚠️ Warning:</strong> Generate Test Data creates 40-50 realistic records across all entities (Leads, Accounts, Contacts, Opportunities, Events, Invoices, Quotes). Delete All Data removes everything permanently. Use these tools for development and testing only.
+              </p>
             </div>
           </div>
         </div>
