@@ -87,6 +87,41 @@ export async function PUT(
         return obj
       }, {} as any)
 
+    // AUTO-CALCULATE PROBABILITY based on stage if auto-calculate is enabled
+    if (filteredData.stage) {
+      // Get settings to check if auto-calculate is enabled
+      const { data: settingsData } = await supabase
+        .from('tenant_settings')
+        .select('setting_key, setting_value')
+        .eq('tenant_id', session.user.tenantId)
+        .like('setting_key', 'opportunities.%')
+
+      if (settingsData) {
+        const settings = settingsData.reduce((acc, s) => {
+          const key = s.setting_key.replace('opportunities.', '')
+          acc[key] = s.setting_value
+          return acc
+        }, {} as any)
+
+        if (settings.autoCalculateProbability === true || settings.autoCalculateProbability === 'true') {
+          // Get stages array - it's already an array in the settings!
+          const stages = settings.stages || []
+          const stageConfig = stages.find(s => s.id === filteredData.stage)
+
+          if (stageConfig) {
+            // Handle both number and string probabilities
+            const probability = typeof stageConfig.probability === 'number'
+              ? stageConfig.probability
+              : parseInt(stageConfig.probability)
+
+            if (!isNaN(probability)) {
+              filteredData.probability = probability
+            }
+          }
+        }
+      }
+    }
+
     // Transform date_type from form values to database values (handle both form and DB formats)
     let finalDateType = filteredData.date_type
     if (filteredData.date_type === 'single_day') {

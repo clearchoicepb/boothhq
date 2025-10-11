@@ -139,6 +139,42 @@ export async function POST(request: NextRequest) {
     delete cleanedOpportunityData.mailing_postal_code
     delete cleanedOpportunityData.mailing_country
 
+    // AUTO-CALCULATE INITIAL PROBABILITY based on stage if auto-calculate is enabled
+    if (cleanedOpportunityData.stage) {
+      // Get settings to check if auto-calculate is enabled
+      const { data: settingsData } = await supabase
+        .from('tenant_settings')
+        .select('setting_key, setting_value')
+        .eq('tenant_id', session.user.tenantId)
+        .like('setting_key', 'opportunities.%')
+
+      if (settingsData) {
+        const settings = settingsData.reduce((acc, s) => {
+          const key = s.setting_key.replace('opportunities.', '')
+          acc[key] = s.setting_value
+          return acc
+        }, {} as any)
+
+        if (settings.autoCalculateProbability) {
+          // Get stages array - it's already an array in the settings!
+          const stages = settings.stages || []
+
+          const stageConfig = stages.find((s: any) => s.id === cleanedOpportunityData.stage)
+          if (stageConfig) {
+            // Handle both number and string probabilities
+            const probability = typeof stageConfig.probability === 'number'
+              ? stageConfig.probability
+              : parseInt(stageConfig.probability)
+
+            if (!isNaN(probability)) {
+              cleanedOpportunityData.probability = probability
+              console.log(`Auto-calculating initial probability for stage ${cleanedOpportunityData.stage}: ${probability}%`)
+            }
+          }
+        }
+      }
+    }
+
     // Create the opportunity first
     const { data: opportunity, error: oppError } = await supabase
       .from('opportunities')
