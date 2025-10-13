@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package, Palette } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -23,6 +23,7 @@ import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
 import { EventBoothAssignments } from '@/components/event-booth-assignments'
 import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
+import { EventDesignItems } from '@/components/events/event-design-items'
 
 interface EventWithRelations extends EventType {
   account_name: string | null
@@ -772,7 +773,7 @@ export default function EventDetailPage() {
           {/* Tabs */}
           <div className="relative z-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start bg-white border-b border-gray-200 rounded-none h-auto p-0 mb-6">
+            <TabsList className="w-full justify-start bg-white border-b border-gray-200 rounded-none h-auto p-0 mb-6 flex-wrap">
               <TabsTrigger value="overview" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <FileText className="h-4 w-4 mr-2" />
                 Overview
@@ -792,6 +793,10 @@ export default function EventDetailPage() {
               <TabsTrigger value="tasks" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <ListTodo className="h-4 w-4 mr-2" />
                 Tasks
+              </TabsTrigger>
+              <TabsTrigger value="design" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
+                <Palette className="h-4 w-4 mr-2" />
+                Design
               </TabsTrigger>
               <TabsTrigger value="communications" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -820,11 +825,40 @@ export default function EventDetailPage() {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Event Information</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Event Type</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
-                      {event.event_type}
-                    </span>
+                  {/* Event Category & Type */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Event Category & Type</label>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* Category Badge with Color */}
+                      {event.event_category ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border"
+                          style={{
+                            borderColor: event.event_category.color,
+                            backgroundColor: event.event_category.color + '10'
+                          }}
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: event.event_category.color }}
+                          />
+                          <span className="font-medium text-sm" style={{ color: event.event_category.color }}>
+                            {event.event_category.name}
+                          </span>
+                        </div>
+                      ) : null}
+
+                      {/* Event Type */}
+                      {event.event_type ? (
+                        <span className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+                          {event.event_type.name}
+                        </span>
+                      ) : null}
+
+                      {/* Fallback if no category/type */}
+                      {!event.event_category && !event.event_type && (
+                        <span className="text-gray-400 italic text-sm">No category/type set</span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
@@ -1533,6 +1567,15 @@ export default function EventDetailPage() {
                 onRefresh={() => setTasksKey(prev => prev + 1)}
               />
             </div>
+          </TabsContent>
+
+          {/* Design Items Tab */}
+          <TabsContent value="design" className="mt-0">
+            <EventDesignItems
+              eventId={event.id}
+              eventDate={event.start_date || event.event_dates?.[0]?.event_date}
+              tenant={tenantSubdomain}
+            />
           </TabsContent>
 
           {/* Communications Tab */}

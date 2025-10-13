@@ -49,6 +49,18 @@ interface Event {
   created_at: string
   core_tasks_ready?: boolean
   task_completions?: TaskCompletion[]
+  event_categories?: {
+    id: string
+    name: string
+    slug: string
+    color: string
+    icon: string | null
+  }
+  event_types?: {
+    id: string
+    name: string
+    slug: string
+  }
 }
 
 interface CoreTask {
@@ -607,7 +619,32 @@ export default function EventsPage() {
                             <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.title || 'Untitled Event'}>
                               {event.title || 'Untitled Event'}
                             </div>
-                            <div className="text-sm text-gray-500 capitalize">{event.event_type || 'Other'}</div>
+                            {/* Category & Type Badges */}
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {event.event_categories ? (
+                                <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                                  style={{
+                                    borderColor: event.event_categories.color,
+                                    backgroundColor: event.event_categories.color + '20',
+                                    color: event.event_categories.color
+                                  }}
+                                >
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: event.event_categories.color }}
+                                  />
+                                  {event.event_categories.name}
+                                </div>
+                              ) : null}
+                              {event.event_types ? (
+                                <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                                  {event.event_types.name}
+                                </span>
+                              ) : null}
+                              {!event.event_categories && !event.event_types && (
+                                <span className="text-xs text-gray-400 italic">No type</span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">

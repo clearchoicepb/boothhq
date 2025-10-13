@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { LocationSelector } from '@/components/location-selector'
+import { EventCategoryTypeSelector } from '@/components/forms/event-category-type-selector'
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
 
@@ -53,6 +54,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     title: '',
     description: '',
     event_type: '',
+    event_category_id: '',
+    event_type_id: '',
     status: 'scheduled',
     date_type: 'single_day',
     mailing_address_line1: '',
@@ -79,6 +82,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         title: event.title || '',
         description: event.description || '',
         event_type: event.event_type || '',
+        event_category_id: event.event_category_id || '',
+        event_type_id: event.event_type_id || '',
         status: event.status || 'scheduled',
         date_type: event.date_type || 'single_day',
         mailing_address_line1: event.mailing_address_line1 || '',
@@ -95,6 +100,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         title: '',
         description: '',
         event_type: '',
+        event_category_id: '',
+        event_type_id: '',
         status: 'scheduled',
         date_type: 'single_day',
         mailing_address_line1: '',
@@ -137,7 +144,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     const newErrors: Record<string, string> = {}
 
     if (!formData.title.trim()) newErrors.title = 'Event title is required'
-    if (!formData.event_type) newErrors.event_type = 'Event type is required'
+    if (!formData.event_category_id) newErrors.event_category_id = 'Event category is required'
+    if (!formData.event_type_id) newErrors.event_type_id = 'Event type is required'
 
     // Validate event dates based on date_type
     if (formData.date_type === 'single_day') {
@@ -223,39 +231,27 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         )}
 
         {/* Basic Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Title *
-            </label>
-            <Input
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder="Enter event title"
-              className={errors.title ? 'border-red-500' : ''}
-            />
-            {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Type *
-            </label>
-            <Select
-              value={formData.event_type}
-              onChange={(e) => handleInputChange('event_type', e.target.value)}
-              className={errors.event_type ? 'border-red-500' : ''}
-            >
-              <option value="">Select event type</option>
-              {getEventTypeOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-            {errors.event_type && <p className="text-red-500 text-xs mt-1">{errors.event_type}</p>}
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Event Title *
+          </label>
+          <Input
+            value={formData.title}
+            onChange={(e) => handleInputChange('title', e.target.value)}
+            placeholder="Enter event title"
+            className={errors.title ? 'border-red-500' : ''}
+          />
+          {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
         </div>
+
+        {/* Event Category & Type */}
+        <EventCategoryTypeSelector
+          selectedCategoryId={formData.event_category_id}
+          selectedTypeId={formData.event_type_id}
+          onCategoryChange={(id) => handleInputChange('event_category_id', id)}
+          onTypeChange={(id) => handleInputChange('event_type_id', id)}
+          required
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

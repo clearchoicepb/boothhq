@@ -25,7 +25,9 @@ export async function GET(
         *,
         accounts!events_account_id_fkey(name),
         contacts!events_contact_id_fkey(first_name, last_name),
-        opportunities!events_opportunity_id_fkey(name)
+        opportunities!events_opportunity_id_fkey(name),
+        event_categories(id, name, slug, color, icon),
+        event_types(id, name, slug)
       `)
       .eq('id', eventId)
       .eq('tenant_id', session.user.tenantId)
@@ -40,13 +42,15 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
-    // Transform the data to include account_name, contact_name, and opportunity_name
+    // Transform the data to include account_name, contact_name, opportunity_name, and category/type info
     const transformedData = {
       ...data,
       account_name: data.accounts?.name || null,
       contact_name: data.contacts ?
         `${data.contacts.first_name} ${data.contacts.last_name}`.trim() : null,
-      opportunity_name: data.opportunities?.name || null
+      opportunity_name: data.opportunities?.name || null,
+      event_category: data.event_categories || null,
+      event_type: data.event_types || null
     }
 
     return NextResponse.json(transformedData)
