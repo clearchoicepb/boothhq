@@ -251,7 +251,7 @@ export function DesignDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Palette className="h-8 w-8 mr-3 text-purple-600" />
+            <Palette className="h-8 w-8 mr-3" style={{ color: PRIMARY_COLOR }} />
             Design Dashboard
           </h1>
           <p className="text-gray-600 mt-1">Creative workflow and deadline management</p>
@@ -265,7 +265,11 @@ export function DesignDashboard() {
         <select
           value={selectedDesigner}
           onChange={(e) => setSelectedDesigner(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+          style={{
+            '--tw-ring-color': PRIMARY_COLOR,
+            borderColor: 'rgb(209 213 219)'
+          } as React.CSSProperties}
         >
           <option value="">All Designers</option>
           {designers.map(designer => (
@@ -280,7 +284,11 @@ export function DesignDashboard() {
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+          style={{
+            '--tw-ring-color': PRIMARY_COLOR,
+            borderColor: 'rgb(209 213 219)'
+          } as React.CSSProperties}
         >
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
@@ -296,7 +304,8 @@ export function DesignDashboard() {
               setSelectedDesigner('')
               setSelectedStatus('')
             }}
-            className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+            className="text-sm font-medium hover:opacity-80 transition-opacity"
+            style={{ color: PRIMARY_COLOR }}
           >
             Clear filters
           </button>
@@ -340,7 +349,7 @@ export function DesignDashboard() {
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900 flex items-center">
-              <Palette className="h-6 w-6 mr-2 text-purple-600" />
+              <Palette className="h-6 w-6 mr-2" style={{ color: PRIMARY_COLOR }} />
               All Design Tasks by Event
             </h2>
           </div>
@@ -466,7 +475,8 @@ export function DesignDashboard() {
           </p>
           <button
             onClick={() => router.push(`/${tenant}/events`)}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="px-6 py-3 text-white rounded-lg hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: PRIMARY_COLOR }}
           >
             Go to Events
           </button>
@@ -539,7 +549,11 @@ export function DesignDashboard() {
               <select
                 value={taskStatus}
                 onChange={(e) => setTaskStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+                style={{
+                  '--tw-ring-color': PRIMARY_COLOR,
+                  borderColor: 'rgb(209 213 219)'
+                } as React.CSSProperties}
               >
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
@@ -575,7 +589,8 @@ export function DesignDashboard() {
               <button
                 onClick={saveTaskUpdates}
                 disabled={saving}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
+                className="px-4 py-2 text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center transition-opacity"
+                style={{ backgroundColor: PRIMARY_COLOR }}
               >
                 {saving ? (
                   <>
@@ -600,7 +615,6 @@ export function DesignDashboard() {
 // KPI Card Component
 function KPICard({ title, value, subtitle, icon: Icon, color }: any) {
   const colors = {
-    purple: 'bg-purple-50 text-purple-600',
     yellow: 'bg-yellow-50 text-yellow-600',
     green: 'bg-green-50 text-green-600',
     red: 'bg-red-50 text-red-600',
