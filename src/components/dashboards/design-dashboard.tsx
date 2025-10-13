@@ -11,10 +11,15 @@ import {
   Calendar,
   Filter,
   TrendingUp,
-  User
+  User,
+  X,
+  ExternalLink,
+  Save
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { Modal } from '@/components/ui/modal'
+import { Textarea } from '@/components/ui/textarea'
 
 interface DesignItem {
   id: string
@@ -89,6 +94,10 @@ export function DesignDashboard() {
   const [designers, setDesigners] = useState<any[]>([])
   const [selectedDesigner, setSelectedDesigner] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedTask, setSelectedTask] = useState<DesignItem | null>(null)
+  const [taskStatus, setTaskStatus] = useState('')
+  const [taskNotes, setTaskNotes] = useState('')
+  const [saving, setSaving] = useState(false)
 
   // Get tenant colors from settings (with fallback defaults)
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
@@ -154,6 +163,56 @@ export function DesignDashboard() {
 
   const navigateToEvent = (eventId: string) => {
     router.push(`/${tenant}/events/${eventId}`)
+  }
+
+  const openTaskModal = (task: DesignItem) => {
+    setSelectedTask(task)
+    setTaskStatus(task.status)
+    setTaskNotes('') // Could load existing notes if available
+  }
+
+  const closeTaskModal = () => {
+    setSelectedTask(null)
+    setTaskStatus('')
+    setTaskNotes('')
+  }
+
+  const saveTaskUpdates = async () => {
+    if (!selectedTask) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/events/${selectedTask.event.id}/design-items/${selectedTask.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: taskStatus,
+          notes: taskNotes || undefined
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to update task')
+
+      toast.success('Task updated successfully')
+      closeTaskModal()
+
+      // Refresh dashboard data
+      const urlParams = new URLSearchParams()
+      if (selectedDesigner) urlParams.append('designer_id', selectedDesigner)
+      if (selectedStatus) urlParams.append('status', selectedStatus)
+      const url = `/api/design/dashboard${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+
+      const res = await fetch(url)
+      if (res.ok) {
+        const dashboardData = await res.json()
+        setData(dashboardData)
+      }
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Group items by event
@@ -334,7 +393,7 @@ export function DesignDashboard() {
                           backgroundColor: bgColor,
                           color: textColor
                         }}
-                        onClick={() => navigateToEvent(eventId)}
+                        onClick={() => openTaskModal(item)}
                       >
                         <td className="px-4 py-1 whitespace-nowrap">
                           <div className="flex items-center">
@@ -412,6 +471,127 @@ export function DesignDashboard() {
             Go to Events
           </button>
         </div>
+      )}
+
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <Modal isOpen={!!selectedTask} onClose={closeTaskModal} title="Design Task Details">
+          <div className="space-y-6">
+            {/* Task Info */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Task Information</h3>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-gray-600">Task Name:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {selectedTask.item_name || selectedTask.design_item_type?.name || 'Design Item'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Event:</span>
+                  <button
+                    onClick={() => {
+                      closeTaskModal()
+                      navigateToEvent(selectedTask.event.id)
+                    }}
+                    className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
+                  >
+                    {selectedTask.event.title}
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </button>
+                </div>
+                {selectedTask.event.account && (
+                  <div>
+                    <span className="text-gray-600">Account:</span>
+                    <span className="ml-2 font-medium text-gray-900">{selectedTask.event.account.name}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-600">Design Deadline:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {new Date(selectedTask.design_deadline).toLocaleDateString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Event Date:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {new Date(getEventDate(selectedTask.event)).toLocaleDateString()}
+                  </span>
+                </div>
+                {selectedTask.assigned_designer && (
+                  <div>
+                    <span className="text-gray-600">Assigned To:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedTask.assigned_designer.first_name && selectedTask.assigned_designer.last_name
+                        ? `${selectedTask.assigned_designer.first_name} ${selectedTask.assigned_designer.last_name}`
+                        : selectedTask.assigned_designer.email}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status Update */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={taskStatus}
+                onChange={(e) => setTaskStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="awaiting_approval">Awaiting Approval</option>
+                <option value="approved">Approved</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Add Notes
+              </label>
+              <Textarea
+                value={taskNotes}
+                onChange={(e) => setTaskNotes(e.target.value)}
+                placeholder="Add any notes or updates about this task..."
+                rows={4}
+                className="w-full"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <button
+                onClick={closeTaskModal}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveTaskUpdates}
+                disabled={saving}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )
