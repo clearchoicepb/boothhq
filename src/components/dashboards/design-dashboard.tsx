@@ -10,7 +10,6 @@ import {
   Calendar,
   Filter,
   TrendingUp,
-  ArrowRight,
   User
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -63,6 +62,23 @@ interface DashboardData {
   }
 }
 
+// Helper function to determine if color is light or dark
+const getLuminance = (hex: string): number => {
+  const rgb = parseInt(hex.replace('#', ''), 16)
+  const r = (rgb >> 16) & 0xff
+  const g = (rgb >> 8) & 0xff
+  const b = (rgb >> 0) & 0xff
+  // Relative luminance formula
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return lum / 255
+}
+
+const getTextColor = (bgColor: string): string => {
+  const luminance = getLuminance(bgColor)
+  // If luminance > 0.5, use dark text, otherwise use light text
+  return luminance > 0.5 ? '#1f2937' : '#ffffff'
+}
+
 export function DesignDashboard() {
   const { tenant } = useTenant()
   const router = useRouter()
@@ -71,6 +87,10 @@ export function DesignDashboard() {
   const [designers, setDesigners] = useState<any[]>([])
   const [selectedDesigner, setSelectedDesigner] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+
+  // Define tenant colors - primary and secondary
+  const PRIMARY_COLOR = '#347dc4' // Blue
+  const SECONDARY_COLOR = '#8b5cf6' // Purple
 
   useEffect(() => {
     console.log('[DesignDashboard] useEffect triggered')
@@ -132,6 +152,19 @@ export function DesignDashboard() {
 
   const navigateToEvent = (eventId: string) => {
     router.push(`/${tenant}/events/${eventId}`)
+  }
+
+  // Group items by event
+  const groupItemsByEvent = (items: DesignItem[]) => {
+    const grouped = new Map<string, DesignItem[]>()
+    items.forEach(item => {
+      const eventId = item.event.id
+      if (!grouped.has(eventId)) {
+        grouped.set(eventId, [])
+      }
+      grouped.get(eventId)!.push(item)
+    })
+    return Array.from(grouped.entries())
   }
 
   if (loading) {
@@ -241,120 +274,123 @@ export function DesignDashboard() {
         />
       </div>
 
-      {/* Overdue Section */}
-      {data.categories.overdue.length > 0 && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-red-900 mb-4 flex items-center">
-            <AlertCircle className="h-6 w-6 mr-2" />
-            Overdue - Immediate Action Required
-          </h2>
-          <div className="space-y-3">
-            {data.categories.overdue.map(item => (
-              <DesignItemCard
-                key={item.id}
-                item={item}
-                urgency="overdue"
-                onNavigate={navigateToEvent}
-                getDaysUntil={getDaysUntil}
-                getEventDate={getEventDate}
-              />
-            ))}
+      {/* All Tasks Grouped by Event */}
+      {data.items.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Palette className="h-6 w-6 mr-2 text-purple-600" />
+              All Design Tasks by Event
+            </h2>
           </div>
-        </div>
-      )}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Task Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Event
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Account
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Deadline
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Days Until
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Designer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupItemsByEvent(data.items).map(([eventId, items], eventIndex) => {
+                  const bgColor = eventIndex % 2 === 0 ? PRIMARY_COLOR : SECONDARY_COLOR
+                  const textColor = getTextColor(bgColor)
 
-      {/* Urgent Section */}
-      {data.categories.urgent.length > 0 && (
-        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-orange-900 mb-4 flex items-center">
-            <Clock className="h-6 w-6 mr-2" />
-            Urgent - Due in 3 Days or Less
-          </h2>
-          <div className="space-y-3">
-            {data.categories.urgent.map(item => (
-              <DesignItemCard
-                key={item.id}
-                item={item}
-                urgency="urgent"
-                onNavigate={navigateToEvent}
-                getDaysUntil={getDaysUntil}
-                getEventDate={getEventDate}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+                  return items.map((item, itemIndex) => {
+                    const daysUntil = getDaysUntil(item.design_deadline)
+                    const itemName = item.item_name || item.design_item_type?.name || 'Design Item'
+                    const designerName = item.assigned_designer
+                      ? item.assigned_designer.first_name && item.assigned_designer.last_name
+                        ? `${item.assigned_designer.first_name} ${item.assigned_designer.last_name}`
+                        : item.assigned_designer.email
+                      : 'Unassigned'
 
-      {/* Due This Week */}
-      {data.categories.dueThisWeek.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <Calendar className="h-6 w-6 mr-2 text-yellow-600" />
-            Due This Week
-          </h2>
-          <div className="space-y-3">
-            {data.categories.dueThisWeek.map(item => (
-              <DesignItemCard
-                key={item.id}
-                item={item}
-                urgency="week"
-                onNavigate={navigateToEvent}
-                getDaysUntil={getDaysUntil}
-                getEventDate={getEventDate}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Upcoming */}
-      {data.categories.upcoming.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <Calendar className="h-6 w-6 mr-2 text-blue-600" />
-            Upcoming (Next 2 Weeks)
-          </h2>
-          <div className="space-y-3">
-            {data.categories.upcoming.map(item => (
-              <DesignItemCard
-                key={item.id}
-                item={item}
-                urgency="upcoming"
-                onNavigate={navigateToEvent}
-                getDaysUntil={getDaysUntil}
-                getEventDate={getEventDate}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recent Completions */}
-      {data.categories.completed.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="h-6 w-6 mr-2 text-green-600" />
-            Recent Wins
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.categories.completed.map(item => {
-              const itemName = item.item_name || item.design_item_type?.name || 'Design Item'
-              return (
-                <div
-                  key={item.id}
-                  className="p-4 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigateToEvent(item.event.id)}
-                >
-                  <div className="flex items-start mb-2">
-                    <CheckCircle className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">{itemName}</p>
-                      <p className="text-xs text-gray-600">{item.event.title}</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+                    return (
+                      <tr
+                        key={item.id}
+                        className="cursor-pointer hover:opacity-90 transition-opacity"
+                        style={{
+                          backgroundColor: bgColor,
+                          color: textColor
+                        }}
+                        onClick={() => navigateToEvent(eventId)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {daysUntil < 0 && (
+                              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                            )}
+                            {daysUntil >= 0 && daysUntil <= 3 && (
+                              <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
+                            )}
+                            <span className="font-medium">{itemName}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-medium">{item.event.title}</div>
+                          {item.event.start_date && (
+                            <div className="text-xs opacity-80">
+                              Event: {new Date(getEventDate(item.event)).toLocaleDateString()}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {item.event.account?.name || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {new Date(item.design_deadline).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {daysUntil < 0 ? (
+                              <span className="font-bold">{Math.abs(daysUntil)} days overdue</span>
+                            ) : daysUntil === 0 ? (
+                              <span className="font-bold">Due today</span>
+                            ) : daysUntil === 1 ? (
+                              <span className="font-bold">Due tomorrow</span>
+                            ) : (
+                              <span>{daysUntil} days</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <User className="h-4 w-4 mr-2 flex-shrink-0" />
+                            {designerName}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full" style={{
+                            backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
+                          }}>
+                            {item.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -403,73 +439,3 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: any) {
   )
 }
 
-// Design Item Card Component
-function DesignItemCard({ item, urgency, onNavigate, getDaysUntil, getEventDate }: any) {
-  const daysUntil = getDaysUntil(item.design_deadline)
-  const itemName = item.item_name || item.design_item_type?.name || 'Design Item'
-  const eventDate = getEventDate(item.event)
-  const designerName = item.assigned_designer
-    ? item.assigned_designer.first_name && item.assigned_designer.last_name
-      ? `${item.assigned_designer.first_name} ${item.assigned_designer.last_name}`
-      : item.assigned_designer.email
-    : 'Unassigned'
-
-  const urgencyColors = {
-    overdue: 'bg-red-100 border-red-300',
-    urgent: 'bg-orange-100 border-orange-300',
-    week: 'bg-yellow-100 border-yellow-300',
-    upcoming: 'bg-blue-100 border-blue-300'
-  }
-
-  return (
-    <div
-      className={`p-4 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-all ${urgencyColors[urgency]}`}
-      onClick={() => onNavigate(item.event.id)}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900 mb-1">{itemName}</h4>
-          <p className="text-sm text-gray-700 font-medium">{item.event.title}</p>
-          {item.event.account && (
-            <p className="text-xs text-gray-600">{item.event.account.name}</p>
-          )}
-        </div>
-        <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-gray-600 text-xs mb-1">Design Deadline</p>
-          <p className={`font-semibold ${urgency === 'overdue' ? 'text-red-700' : 'text-gray-900'}`}>
-            {urgency === 'overdue'
-              ? `${Math.abs(daysUntil)} days overdue`
-              : daysUntil === 0
-              ? 'Due today'
-              : daysUntil === 1
-              ? 'Due tomorrow'
-              : `${daysUntil} days`}
-          </p>
-          <p className="text-xs text-gray-500">
-            {new Date(item.design_deadline).toLocaleDateString()}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-gray-600 text-xs mb-1">Assigned To</p>
-          <p className="font-medium text-gray-900 flex items-center text-sm">
-            <User className="h-3 w-3 mr-1" />
-            {designerName}
-          </p>
-        </div>
-      </div>
-
-      {eventDate && (
-        <div className="mt-3 pt-3 border-t border-gray-300">
-          <p className="text-xs text-gray-600">
-            Event Date: {new Date(eventDate).toLocaleDateString()}
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
