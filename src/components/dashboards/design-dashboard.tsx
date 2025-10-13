@@ -329,25 +329,25 @@ export function DesignDashboard() {
                     return (
                       <tr
                         key={item.id}
-                        className="cursor-pointer hover:opacity-90 transition-opacity"
+                        className="cursor-pointer hover:opacity-90 transition-opacity text-sm"
                         style={{
                           backgroundColor: bgColor,
                           color: textColor
                         }}
                         onClick={() => navigateToEvent(eventId)}
                       >
-                        <td className="px-6 py-2 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap">
                           <div className="flex items-center">
                             {daysUntil < 0 && (
-                              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <AlertCircle className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             )}
                             {daysUntil >= 0 && daysUntil <= 3 && (
-                              <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <Clock className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             )}
                             <span className="font-medium">{itemName}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-2">
+                        <td className="px-4 py-1">
                           <div className="font-medium">{item.event.title}</div>
                           {item.event.start_date && (
                             <div className="text-xs opacity-80">
@@ -355,13 +355,13 @@ export function DesignDashboard() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap">
                           {item.event.account?.name || '-'}
                         </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap">
                           {new Date(item.design_deadline).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap">
                           <div className="flex items-center">
                             {daysUntil < 0 ? (
                               <span className="font-bold">{Math.abs(daysUntil)} days overdue</span>
@@ -374,14 +374,14 @@ export function DesignDashboard() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap">
                           <div className="flex items-center">
-                            <User className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <User className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             {designerName}
                           </div>
                         </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full" style={{
+                        <td className="px-4 py-1 whitespace-nowrap">
+                          <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{
                             backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
                           }}>
                             {item.status.replace('_', ' ').toUpperCase()}
