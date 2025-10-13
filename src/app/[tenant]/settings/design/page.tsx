@@ -1,0 +1,501 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import { AppLayout } from '@/components/layout/app-layout'
+import {
+  ArrowLeft,
+  Plus,
+  Edit,
+  Trash2,
+  Save,
+  Clock,
+  Truck,
+  Package
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+import Link from 'next/link'
+
+interface DesignItemType {
+  id?: string
+  name: string
+  description: string
+  type: 'digital' | 'physical'
+  default_design_days: number
+  default_production_days: number
+  default_shipping_days: number
+  client_approval_buffer_days: number
+  urgent_threshold_days: number
+  is_auto_added: boolean
+  is_active: boolean
+  display_order: number
+}
+
+export default function DesignSettingsPage() {
+  const { tenant } = useParams()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [designTypes, setDesignTypes] = useState<DesignItemType[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  const emptyType: DesignItemType = {
+    name: '',
+    description: '',
+    type: 'digital',
+    default_design_days: 7,
+    default_production_days: 0,
+    default_shipping_days: 0,
+    client_approval_buffer_days: 5,
+    urgent_threshold_days: 7,
+    is_auto_added: false,
+    is_active: true,
+    display_order: 0
+  }
+
+  const [newType, setNewType] = useState<DesignItemType>(emptyType)
+
+  useEffect(() => {
+    fetchDesignTypes()
+  }, [])
+
+  const fetchDesignTypes = async () => {
+    try {
+      const res = await fetch('/api/design/types')
+      const data = await res.json()
+      setDesignTypes(data.types || [])
+    } catch (error) {
+      console.error('Error fetching design types:', error)
+      toast.error('Failed to load design types')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveType = async (type: DesignItemType) => {
+    setSaving(true)
+    try {
+      const url = type.id ? `/api/design/types/${type.id}` : '/api/design/types'
+      const method = type.id ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(type)
+      })
+
+      if (!res.ok) throw new Error('Failed to save')
+
+      toast.success(type.id ? 'Design type updated' : 'Design type created')
+      setShowAddForm(false)
+      setEditingId(null)
+      setNewType(emptyType)
+      fetchDesignTypes()
+    } catch (error) {
+      toast.error('Failed to save design type')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteType = async (id: string) => {
+    if (!confirm('Are you sure? This will not delete existing design items, but they will become unlinked.')) return
+
+    try {
+      const res = await fetch(`/api/design/types/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+
+      toast.success('Design type deleted')
+      fetchDesignTypes()
+    } catch (error) {
+      toast.error('Failed to delete design type')
+    }
+  }
+
+  const handleToggleActive = async (type: DesignItemType) => {
+    await handleSaveType({ ...type, is_active: !type.is_active })
+  }
+
+  return (
+    <AppLayout>
+      <div className="p-6 max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <Link
+            href={`/${tenant}/settings`}
+            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to Settings
+          </Link>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Design Settings</h1>
+              <p className="text-gray-600 mt-1">
+                Configure design item types, deadlines, and workflow preferences
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="inline-flex items-center px-4 py-2 bg-[#347dc4] text-white rounded-lg hover:bg-[#2d6ba8] transition-colors"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Design Type
+            </button>
+          </div>
+        </div>
+
+        {/* Add/Edit Form */}
+        {showAddForm && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-2 border-blue-200">
+            <h3 className="text-lg font-semibold mb-4">Add New Design Type</h3>
+            <DesignTypeForm
+              type={newType}
+              onChange={setNewType}
+              onSave={() => handleSaveType(newType)}
+              onCancel={() => {
+                setShowAddForm(false)
+                setNewType(emptyType)
+              }}
+              saving={saving}
+            />
+          </div>
+        )}
+
+        {/* Design Types List */}
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold">Design Item Types</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {designTypes.length} type{designTypes.length !== 1 ? 's' : ''} configured
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#347dc4] mx-auto"></div>
+            </div>
+          ) : designTypes.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p>No design types configured yet.</p>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="mt-4 text-blue-600 hover:text-blue-800"
+              >
+                Create your first design type
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {designTypes.map(type => (
+                <div key={type.id} className={`p-6 ${!type.is_active ? 'bg-gray-50' : ''}`}>
+                  {editingId === type.id ? (
+                    <DesignTypeForm
+                      type={type}
+                      onChange={(updated) => {
+                        setDesignTypes(designTypes.map(t => t.id === type.id ? updated : t))
+                      }}
+                      onSave={() => handleSaveType(type)}
+                      onCancel={() => setEditingId(null)}
+                      saving={saving}
+                    />
+                  ) : (
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{type.name}</h3>
+
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            type.type === 'physical'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {type.type === 'physical' ? '📦 Physical' : '💻 Digital'}
+                          </span>
+
+                          {type.is_auto_added && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                              Auto-added
+                            </span>
+                          )}
+
+                          {!type.is_active && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
+
+                        {type.description && (
+                          <p className="text-sm text-gray-600 mb-3">{type.description}</p>
+                        )}
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="flex items-center text-gray-700">
+                            <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                            <div>
+                              <p className="font-medium">{type.default_design_days} days</p>
+                              <p className="text-xs text-gray-500">Design time</p>
+                            </div>
+                          </div>
+
+                          {type.type === 'physical' && (
+                            <>
+                              <div className="flex items-center text-gray-700">
+                                <Package className="h-4 w-4 mr-2 text-gray-400" />
+                                <div>
+                                  <p className="font-medium">{type.default_production_days} days</p>
+                                  <p className="text-xs text-gray-500">Production</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center text-gray-700">
+                                <Truck className="h-4 w-4 mr-2 text-gray-400" />
+                                <div>
+                                  <p className="font-medium">{type.default_shipping_days} days</p>
+                                  <p className="text-xs text-gray-500">Shipping</p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          <div className="flex items-center text-gray-700">
+                            <div>
+                              <p className="font-medium">{type.urgent_threshold_days} days</p>
+                              <p className="text-xs text-gray-500">Urgent threshold</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => handleToggleActive(type)}
+                          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                            type.is_active
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          }`}
+                        >
+                          {type.is_active ? 'Active' : 'Inactive'}
+                        </button>
+
+                        <button
+                          onClick={() => setEditingId(type.id!)}
+                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteType(type.id!)}
+                          className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Help Text */}
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-900 mb-2">How Design Types Work</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• <strong>Auto-added types</strong> are automatically added to every new event</li>
+            <li>• <strong>Physical items</strong> require production and shipping time</li>
+            <li>• <strong>Digital items</strong> only need design time</li>
+            <li>• <strong>Urgent threshold</strong> determines when items appear in urgent alerts</li>
+            <li>• Deadlines are calculated backwards from the event date</li>
+          </ul>
+        </div>
+      </div>
+    </AppLayout>
+  )
+}
+
+// Design Type Form Component
+function DesignTypeForm({
+  type,
+  onChange,
+  onSave,
+  onCancel,
+  saving
+}: {
+  type: DesignItemType
+  onChange: (type: DesignItemType) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Name *
+          </label>
+          <input
+            type="text"
+            value={type.name}
+            onChange={(e) => onChange({ ...type, name: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+            placeholder="Photo Strip Design"
+          />
+        </div>
+
+        {/* Type */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Type *
+          </label>
+          <select
+            value={type.type}
+            onChange={(e) => onChange({
+              ...type,
+              type: e.target.value as 'digital' | 'physical',
+              default_production_days: e.target.value === 'digital' ? 0 : type.default_production_days,
+              default_shipping_days: e.target.value === 'digital' ? 0 : type.default_shipping_days
+            })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+          >
+            <option value="digital">💻 Digital</option>
+            <option value="physical">📦 Physical</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Description
+        </label>
+        <textarea
+          value={type.description}
+          onChange={(e) => onChange({ ...type, description: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+          rows={2}
+          placeholder="Brief description of this design item"
+        />
+      </div>
+
+      {/* Timeline Settings */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Design Days *
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={type.default_design_days}
+            onChange={(e) => onChange({ ...type, default_design_days: parseInt(e.target.value) || 0 })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+          />
+        </div>
+
+        {type.type === 'physical' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Production Days
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={type.default_production_days}
+                onChange={(e) => onChange({ ...type, default_production_days: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Shipping Days
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={type.default_shipping_days}
+                onChange={(e) => onChange({ ...type, default_shipping_days: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              />
+            </div>
+          </>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Urgent Threshold
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={type.urgent_threshold_days}
+            onChange={(e) => onChange({ ...type, urgent_threshold_days: parseInt(e.target.value) || 0 })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+          />
+        </div>
+      </div>
+
+      {/* Toggles */}
+      <div className="flex gap-6">
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={type.is_auto_added}
+            onChange={(e) => onChange({ ...type, is_auto_added: e.target.checked })}
+            className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4] mr-2"
+          />
+          <span className="text-sm text-gray-700">Auto-add to every event</span>
+        </label>
+
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={type.is_active}
+            onChange={(e) => onChange({ ...type, is_active: e.target.checked })}
+            className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4] mr-2"
+          />
+          <span className="text-sm text-gray-700">Active</span>
+        </label>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-4 border-t border-gray-200">
+        <button
+          onClick={onSave}
+          disabled={saving || !type.name}
+          className="px-4 py-2 bg-[#347dc4] text-white rounded-lg hover:bg-[#2d6ba8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+        >
+          {saving ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={onCancel}
+          disabled={saving}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
