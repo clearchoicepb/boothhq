@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTenant } from '@/lib/tenant-context'
+import { useSettings } from '@/lib/settings-context'
 import {
   Palette,
   Clock,
@@ -82,15 +83,16 @@ const getTextColor = (bgColor: string): string => {
 export function DesignDashboard() {
   const { tenant } = useTenant()
   const router = useRouter()
+  const { getSetting } = useSettings()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
   const [designers, setDesigners] = useState<any[]>([])
   const [selectedDesigner, setSelectedDesigner] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
 
-  // Define tenant colors - primary and secondary
-  const PRIMARY_COLOR = '#347dc4' // Blue
-  const SECONDARY_COLOR = '#8b5cf6' // Purple
+  // Get tenant colors from settings (with fallback defaults)
+  const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
+  const SECONDARY_COLOR = getSetting('appearance.secondaryColor', '#8b5cf6')
 
   useEffect(() => {
     console.log('[DesignDashboard] useEffect triggered')
