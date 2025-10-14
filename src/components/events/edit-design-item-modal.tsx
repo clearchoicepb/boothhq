@@ -14,6 +14,7 @@ interface EditDesignItemModalProps {
 
 export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }: EditDesignItemModalProps) {
   const [users, setUsers] = useState([])
+  const [designStatuses, setDesignStatuses] = useState([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     status: designItem.status,
@@ -24,6 +25,7 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
 
   useEffect(() => {
     fetchUsers()
+    fetchDesignStatuses()
   }, [])
 
   const fetchUsers = async () => {
@@ -33,6 +35,16 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
       setUsers(data.users || [])
     } catch (error) {
       console.error('Error fetching users:', error)
+    }
+  }
+
+  const fetchDesignStatuses = async () => {
+    try {
+      const res = await fetch('/api/design/statuses')
+      const data = await res.json()
+      setDesignStatuses(data.statuses || [])
+    } catch (error) {
+      console.error('Error fetching design statuses:', error)
     }
   }
 
@@ -58,17 +70,10 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
     }
   }
 
-  const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'internal_review', label: 'Internal Review' },
-    { value: 'awaiting_approval', label: 'Awaiting Approval' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'needs_revision', label: 'Needs Revision' },
-    { value: 'completed', label: 'Completed' }
-  ]
-
   const itemName = designItem.item_name || designItem.design_item_type?.name || 'Design Item'
+
+  // Filter to only show active statuses
+  const activeStatuses = designStatuses.filter((status: any) => status.is_active)
 
   // Check if we're in browser (not SSR)
   if (typeof window === 'undefined') return null
@@ -97,9 +102,9 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
             >
-              {statusOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {activeStatuses.map((status: any) => (
+                <option key={status.id} value={status.slug}>
+                  {status.name}
                 </option>
               ))}
             </select>

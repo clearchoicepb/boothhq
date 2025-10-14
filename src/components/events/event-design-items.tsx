@@ -41,13 +41,25 @@ interface EventDesignItemsProps {
 
 export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItemsProps) {
   const [designItems, setDesignItems] = useState<DesignItem[]>([])
+  const [designStatuses, setDesignStatuses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<DesignItem | null>(null)
 
   useEffect(() => {
     fetchDesignItems()
+    fetchDesignStatuses()
   }, [eventId])
+
+  const fetchDesignStatuses = async () => {
+    try {
+      const res = await fetch('/api/design/statuses')
+      const data = await res.json()
+      setDesignStatuses(data.statuses || [])
+    } catch (error) {
+      console.error('Error fetching design statuses:', error)
+    }
+  }
 
   const fetchDesignItems = async () => {
     try {
@@ -116,28 +128,27 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
   }
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { label: string; color: string }> = {
-      pending: { label: 'Pending', color: 'gray' },
-      in_progress: { label: 'In Progress', color: 'blue' },
-      internal_review: { label: 'Internal Review', color: 'purple' },
-      awaiting_approval: { label: 'Awaiting Approval', color: 'yellow' },
-      approved: { label: 'Approved', color: 'green' },
-      needs_revision: { label: 'Needs Revision', color: 'orange' },
-      completed: { label: 'Completed', color: 'green' }
+    // Find status configuration from dynamic statuses
+    const statusConfig = designStatuses.find((s: any) => s.slug === status)
+    const label = statusConfig?.name || status
+    const color = statusConfig?.color || 'gray'
+
+    // Map color names to Tailwind classes
+    const colorClasses: Record<string, string> = {
+      gray: 'bg-gray-100 text-gray-800',
+      blue: 'bg-blue-100 text-blue-800',
+      purple: 'bg-purple-100 text-purple-800',
+      yellow: 'bg-yellow-100 text-yellow-800',
+      orange: 'bg-orange-100 text-orange-800',
+      green: 'bg-green-100 text-green-800',
+      red: 'bg-red-100 text-red-800'
     }
 
-    const badge = badges[status] || badges.pending
+    const colorClass = colorClasses[color] || colorClasses.gray
 
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium
-        ${badge.color === 'gray' ? 'bg-gray-100 text-gray-800' : ''}
-        ${badge.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
-        ${badge.color === 'purple' ? 'bg-purple-100 text-purple-800' : ''}
-        ${badge.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' : ''}
-        ${badge.color === 'orange' ? 'bg-orange-100 text-orange-800' : ''}
-        ${badge.color === 'green' ? 'bg-green-100 text-green-800' : ''}
-      `}>
-        {badge.label}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+        {label}
       </span>
     )
   }

@@ -96,6 +96,7 @@ export function DesignDashboard() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
   const [designers, setDesigners] = useState<any[]>([])
+  const [designStatuses, setDesignStatuses] = useState<any[]>([])
   const [selectedDesigner, setSelectedDesigner] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedTask, setSelectedTask] = useState<DesignItem | null>(null)
@@ -150,8 +151,20 @@ export function DesignDashboard() {
       }
     }
 
+    const fetchDesignStatuses = async () => {
+      console.log('[DesignDashboard] Starting fetchDesignStatuses')
+      try {
+        const res = await fetch('/api/design/statuses')
+        const responseData = await res.json()
+        setDesignStatuses(responseData.statuses || [])
+      } catch (error) {
+        console.error('[DesignDashboard] Error fetching design statuses:', error)
+      }
+    }
+
     fetchDashboardData()
     fetchDesigners()
+    fetchDesignStatuses()
   }, [selectedDesigner, selectedStatus])
 
   const getDaysUntil = (deadline: string) => {
@@ -297,11 +310,13 @@ export function DesignDashboard() {
           } as React.CSSProperties}
         >
           <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="in_progress">In Progress</option>
-          <option value="awaiting_approval">Awaiting Approval</option>
-          <option value="approved">Approved</option>
-          <option value="completed">Completed</option>
+          {designStatuses
+            .filter((status: any) => status.is_active)
+            .map((status: any) => (
+              <option key={status.id} value={status.slug}>
+                {status.name}
+              </option>
+            ))}
         </select>
 
         {(selectedDesigner || selectedStatus) && (
@@ -588,11 +603,13 @@ export function DesignDashboard() {
                   borderColor: 'rgb(209 213 219)'
                 } as React.CSSProperties}
               >
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="awaiting_approval">Awaiting Approval</option>
-                <option value="approved">Approved</option>
-                <option value="completed">Completed</option>
+                {designStatuses
+                  .filter((status: any) => status.is_active)
+                  .map((status: any) => (
+                    <option key={status.id} value={status.slug}>
+                      {status.name}
+                    </option>
+                  ))}
               </select>
             </div>
 

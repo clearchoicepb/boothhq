@@ -37,6 +37,12 @@ export default function DesignSettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
 
+  const [designStatuses, setDesignStatuses] = useState<any[]>([])
+  const [loadingStatuses, setLoadingStatuses] = useState(true)
+  const [editingStatusId, setEditingStatusId] = useState<string | null>(null)
+  const [showAddStatusForm, setShowAddStatusForm] = useState(false)
+  const [savingStatus, setSavingStatus] = useState(false)
+
   const emptyType: DesignItemType = {
     name: '',
     description: '',
@@ -53,6 +59,7 @@ export default function DesignSettingsPage() {
 
   useEffect(() => {
     fetchDesignTypes()
+    fetchDesignStatuses()
   }, [])
 
   const fetchDesignTypes = async () => {
@@ -110,6 +117,62 @@ export default function DesignSettingsPage() {
 
   const handleToggleActive = async (type: DesignItemType) => {
     await handleSaveType({ ...type, is_active: !type.is_active })
+  }
+
+  const fetchDesignStatuses = async () => {
+    try {
+      const res = await fetch('/api/design/statuses')
+      const data = await res.json()
+      setDesignStatuses(data.statuses || [])
+    } catch (error) {
+      console.error('Error fetching design statuses:', error)
+      toast.error('Failed to load design statuses')
+    } finally {
+      setLoadingStatuses(false)
+    }
+  }
+
+  const handleSaveStatus = async (status: any) => {
+    setSavingStatus(true)
+    try {
+      const url = status.id ? `/api/design/statuses/${status.id}` : '/api/design/statuses'
+      const method = status.id ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(status)
+      })
+
+      if (!res.ok) throw new Error('Failed to save')
+
+      toast.success(status.id ? 'Status updated' : 'Status created')
+      setShowAddStatusForm(false)
+      setEditingStatusId(null)
+      fetchDesignStatuses()
+    } catch (error) {
+      toast.error('Failed to save status')
+    } finally {
+      setSavingStatus(false)
+    }
+  }
+
+  const handleDeleteStatus = async (id: string) => {
+    if (!confirm('Are you sure? This may affect existing design items using this status.')) return
+
+    try {
+      const res = await fetch(`/api/design/statuses/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+
+      toast.success('Status deleted')
+      fetchDesignStatuses()
+    } catch (error) {
+      toast.error('Failed to delete status')
+    }
+  }
+
+  const handleToggleStatusActive = async (status: any) => {
+    await handleSaveStatus({ ...status, is_active: !status.is_active })
   }
 
   return (
@@ -186,7 +249,7 @@ export default function DesignSettingsPage() {
           ) : (
             <div className="divide-y divide-gray-200">
               {designTypes.map(type => (
-                <div key={type.id} className={`p-6 ${!type.is_active ? 'bg-gray-50' : ''}`}>
+                <div key={type.id} className={`p-3 ${!type.is_active ? 'bg-gray-50' : ''}`}>
                   {editingId === type.id ? (
                     <DesignTypeForm
                       type={type}
@@ -200,8 +263,8 @@ export default function DesignSettingsPage() {
                   ) : (
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{type.name}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-base font-semibold text-gray-900">{type.name}</h3>
 
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             type.type === 'physical'
@@ -225,31 +288,31 @@ export default function DesignSettingsPage() {
                         </div>
 
                         {type.description && (
-                          <p className="text-sm text-gray-600 mb-3">{type.description}</p>
+                          <p className="text-xs text-gray-600 mb-2">{type.description}</p>
                         )}
 
-                        <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-3 gap-3 text-xs">
                           <div className="flex items-center text-gray-700">
-                            <Clock className="h-4 w-4 mr-2 text-green-600" />
+                            <Clock className="h-3 w-3 mr-1.5 text-green-600" />
                             <div>
-                              <p className="font-medium">{type.due_date_days} days before</p>
-                              <p className="text-xs text-gray-500">Due date</p>
+                              <p className="font-medium">{type.due_date_days} days</p>
+                              <p className="text-[10px] text-gray-500">Due date</p>
                             </div>
                           </div>
 
                           <div className="flex items-center text-gray-700">
-                            <Clock className="h-4 w-4 mr-2 text-orange-600" />
+                            <Clock className="h-3 w-3 mr-1.5 text-orange-600" />
                             <div>
-                              <p className="font-medium">{type.urgent_threshold_days} days before</p>
-                              <p className="text-xs text-gray-500">Urgent threshold</p>
+                              <p className="font-medium">{type.urgent_threshold_days} days</p>
+                              <p className="text-[10px] text-gray-500">Urgent</p>
                             </div>
                           </div>
 
                           <div className="flex items-center text-gray-700">
-                            <Clock className="h-4 w-4 mr-2 text-red-600" />
+                            <Clock className="h-3 w-3 mr-1.5 text-red-600" />
                             <div>
-                              <p className="font-medium">{type.missed_deadline_days} days before</p>
-                              <p className="text-xs text-gray-500">Missed deadline</p>
+                              <p className="font-medium">{type.missed_deadline_days} days</p>
+                              <p className="text-[10px] text-gray-500">Missed</p>
                             </div>
                           </div>
                         </div>
@@ -258,7 +321,7 @@ export default function DesignSettingsPage() {
                       <div className="flex items-center gap-2 ml-4">
                         <button
                           onClick={() => handleToggleActive(type)}
-                          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                             type.is_active
                               ? 'bg-green-100 text-green-800 hover:bg-green-200'
                               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
@@ -269,22 +332,111 @@ export default function DesignSettingsPage() {
 
                         <button
                           onClick={() => setEditingId(type.id!)}
-                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                          className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-3.5 w-3.5" />
                         </button>
 
                         <button
                           onClick={() => handleDeleteType(type.id!)}
-                          className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                          className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Design Statuses */}
+        <div className="mt-8 bg-white rounded-lg shadow-md">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Design Statuses</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {designStatuses.length} status{designStatuses.length !== 1 ? 'es' : ''} configured
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddStatusForm(true)}
+              className="inline-flex items-center px-4 py-2 bg-[#347dc4] text-white rounded-lg hover:bg-[#2d6ba8] transition-colors"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Status
+            </button>
+          </div>
+
+          {loadingStatuses ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#347dc4] mx-auto"></div>
+            </div>
+          ) : designStatuses.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p>No statuses configured yet.</p>
+              <button
+                onClick={() => setShowAddStatusForm(true)}
+                className="mt-4 text-blue-600 hover:text-blue-800"
+              >
+                Create your first status
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {designStatuses
+                .sort((a, b) => a.display_order - b.display_order)
+                .map(status => (
+                  <div key={status.id} className={`p-3 flex items-center justify-between ${!status.is_active ? 'bg-gray-50' : ''}`}>
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={`w-3 h-3 rounded-full ${getColorClass(status.color)}`}></div>
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-900">{status.name}</h3>
+                        {!status.is_active && (
+                          <span className="text-xs text-gray-500">Inactive</span>
+                        )}
+                      </div>
+                      {status.is_default && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                          Default
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleStatusActive(status)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                          status.is_active
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        {status.is_active ? 'Active' : 'Inactive'}
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteStatus(status.id)}
+                        className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {showAddStatusForm && (
+            <div className="border-t border-gray-200 p-6 bg-gray-50">
+              <h3 className="text-lg font-semibold mb-4">Add New Status</h3>
+              <AddStatusForm
+                onSave={handleSaveStatus}
+                onCancel={() => setShowAddStatusForm(false)}
+                saving={savingStatus}
+              />
             </div>
           )}
         </div>
@@ -510,5 +662,138 @@ function DesignTypeForm({
         </button>
       </div>
     </div>
+  )
+}
+
+// Helper function to get color class
+function getColorClass(color: string) {
+  const colorMap: Record<string, string> = {
+    gray: 'bg-gray-500',
+    blue: 'bg-blue-500',
+    yellow: 'bg-yellow-500',
+    green: 'bg-green-500',
+    red: 'bg-red-500',
+    purple: 'bg-purple-500',
+    orange: 'bg-orange-500',
+  }
+  return colorMap[color] || 'bg-gray-500'
+}
+
+// Add Status Form Component
+function AddStatusForm({
+  onSave,
+  onCancel,
+  saving
+}: {
+  onSave: (status: any) => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  const [name, setName] = useState('')
+  const [color, setColor] = useState('gray')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+
+    const slug = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+    onSave({
+      name: name.trim(),
+      slug,
+      color,
+      is_active: true,
+      is_default: false,
+      display_order: 999
+    })
+  }
+
+  const colorOptions = [
+    { value: 'gray', label: 'Gray', class: 'bg-gray-500' },
+    { value: 'blue', label: 'Blue', class: 'bg-blue-500' },
+    { value: 'yellow', label: 'Yellow', class: 'bg-yellow-500' },
+    { value: 'green', label: 'Green', class: 'bg-green-500' },
+    { value: 'red', label: 'Red', class: 'bg-red-500' },
+    { value: 'purple', label: 'Purple', class: 'bg-purple-500' },
+    { value: 'orange', label: 'Orange', class: 'bg-orange-500' },
+  ]
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Status Name *
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+            placeholder="e.g., Awaiting Materials"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Color
+          </label>
+          <select
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+          >
+            {colorOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {colorOptions.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setColor(option.value)}
+            className={`w-8 h-8 rounded-full ${option.class} ${
+              color === option.value ? 'ring-2 ring-offset-2 ring-[#347dc4]' : ''
+            }`}
+            title={option.label}
+          />
+        ))}
+      </div>
+
+      <div className="flex gap-3 pt-4 border-t border-gray-200">
+        <button
+          type="submit"
+          disabled={saving || !name.trim()}
+          className="px-4 py-2 bg-[#347dc4] text-white rounded-lg hover:bg-[#2d6ba8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+        >
+          {saving ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
