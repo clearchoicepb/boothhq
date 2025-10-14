@@ -15,12 +15,14 @@ import {
   X,
   ExternalLink,
   Save,
-  Package
+  Package,
+  Paperclip
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
+import AttachmentUpload from '@/components/attachment-upload'
 
 interface DesignItem {
   id: string
@@ -100,6 +102,7 @@ export function DesignDashboard() {
   const [taskStatus, setTaskStatus] = useState('')
   const [taskNotes, setTaskNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0)
 
   // Get tenant colors from settings (with fallback defaults)
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
@@ -171,6 +174,7 @@ export function DesignDashboard() {
     setSelectedTask(task)
     setTaskStatus(task.status)
     setTaskNotes('') // Could load existing notes if available
+    setAttachmentRefreshKey(prev => prev + 1)
   }
 
   const closeTaskModal = () => {
@@ -551,16 +555,22 @@ export function DesignDashboard() {
                     {new Date(getEventDate(selectedTask.event)).toLocaleDateString()}
                   </span>
                 </div>
-                {selectedTask.assigned_designer && (
-                  <div>
-                    <span className="text-gray-600">Assigned To:</span>
-                    <span className="ml-2 font-medium text-gray-900">
-                      {selectedTask.assigned_designer.first_name && selectedTask.assigned_designer.last_name
+                <div>
+                  <span className="text-gray-600">Assigned To:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {selectedTask.assigned_designer
+                      ? selectedTask.assigned_designer.first_name && selectedTask.assigned_designer.last_name
                         ? `${selectedTask.assigned_designer.first_name} ${selectedTask.assigned_designer.last_name}`
-                        : selectedTask.assigned_designer.email}
-                    </span>
-                  </div>
-                )}
+                        : selectedTask.assigned_designer.email
+                      : 'Unassigned'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Type:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {selectedTask.design_item_type?.type === 'physical' ? '📦 Physical' : '💻 Digital'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -598,6 +608,28 @@ export function DesignDashboard() {
                 rows={4}
                 className="w-full"
               />
+            </div>
+
+            {/* Design Proof Upload */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Paperclip className="h-4 w-4 mr-2" />
+                Upload Design Proof
+              </h3>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-xs text-gray-600 mb-4">
+                  Upload design proofs, mockups, or final files. These will appear in the Files tab on the event detail page.
+                </p>
+                <AttachmentUpload
+                  key={attachmentRefreshKey}
+                  entityType="event"
+                  entityId={selectedTask.event.id}
+                  onUploadComplete={() => {
+                    toast.success('Design proof uploaded successfully')
+                    setAttachmentRefreshKey(prev => prev + 1)
+                  }}
+                />
+              </div>
             </div>
 
             {/* Actions */}
