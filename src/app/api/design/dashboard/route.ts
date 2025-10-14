@@ -47,6 +47,21 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
+    // Fetch design statuses to check which ones are completion states
+    const { data: designStatuses } = await supabase
+      .from('design_statuses')
+      .select('slug, is_completed')
+      .eq('tenant_id', session.user.tenantId)
+
+    // Create a lookup map for completion status
+    const completionStatusMap = new Map<string, boolean>()
+    designStatuses?.forEach(status => {
+      completionStatusMap.set(status.slug, status.is_completed || false)
+    })
+
+    // Helper function to check if a status represents completion
+    const isCompletedStatus = (statusSlug: string) => completionStatusMap.get(statusSlug) === true
+
     // Calculate stats with new event-based logic
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -69,7 +84,7 @@ export async function GET(request: Request) {
       // Calculate status based on days until event
       let calculated_status = 'on_time'
 
-      if (item.status === 'completed' || item.status === 'approved') {
+      if (isCompletedStatus(item.status)) {
         calculated_status = 'completed'
       } else if (daysUntilEvent <= missedDeadlineDays) {
         calculated_status = 'missed_deadline'
@@ -85,38 +100,32 @@ export async function GET(request: Request) {
     // Categorize items based on new status logic
     const missedDeadline = items.filter(item =>
       item.calculated_status === 'missed_deadline' &&
-      item.status !== 'completed' &&
-      item.status !== 'approved'
+      !isCompletedStatus(item.status)
     )
 
     const urgent = items.filter(item =>
       item.calculated_status === 'urgent' &&
-      item.status !== 'completed' &&
-      item.status !== 'approved'
+      !isCompletedStatus(item.status)
     )
 
     const dueSoon = items.filter(item =>
       item.calculated_status === 'due_soon' &&
-      item.status !== 'completed' &&
-      item.status !== 'approved'
+      !isCompletedStatus(item.status)
     )
 
     const onTime = items.filter(item =>
       item.calculated_status === 'on_time' &&
-      item.status !== 'completed' &&
-      item.status !== 'approved'
+      !isCompletedStatus(item.status)
     )
 
     const completed = items.filter(item =>
-      item.status === 'completed' ||
-      item.status === 'approved'
+      isCompletedStatus(item.status)
     )
 
     // Physical items count
     const physicalItems = items.filter(item =>
       item.design_item_type?.type === 'physical' &&
-      item.status !== 'completed' &&
-      item.status !== 'approved'
+      !isCompletedStatus(item.status)
     )
 
     // Recent completions (last 7 days)

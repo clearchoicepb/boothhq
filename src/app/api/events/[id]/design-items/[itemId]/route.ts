@@ -18,9 +18,22 @@ export async function PUT(
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
-    // If status is being updated to completed, set completed_at
-    if (body.status === 'completed' && !body.completed_at) {
-      body.completed_at = new Date().toISOString()
+    // Check if the new status is a completion status
+    let isCompletedStatus = false
+    if (body.status) {
+      const { data: statusData } = await supabase
+        .from('design_statuses')
+        .select('is_completed')
+        .eq('tenant_id', session.user.tenantId)
+        .eq('slug', body.status)
+        .single()
+
+      isCompletedStatus = statusData?.is_completed || false
+
+      // If status is being updated to a completion status, set completed_at
+      if (isCompletedStatus && !body.completed_at) {
+        body.completed_at = new Date().toISOString()
+      }
     }
 
     const { data: designItem, error } = await supabase
@@ -35,7 +48,7 @@ export async function PUT(
 
     // Update linked task if status changed
     if (designItem.task_id && body.status) {
-      const taskStatus = body.status === 'completed' ? 'completed' : 'in_progress'
+      const taskStatus = isCompletedStatus ? 'completed' : 'in_progress'
       await supabase
         .from('tasks')
         .update({ status: taskStatus })

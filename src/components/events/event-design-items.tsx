@@ -118,8 +118,14 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
     return diff
   }
 
+  // Helper to check if a status is a completion status
+  const isCompletedStatus = (statusSlug: string) => {
+    const statusConfig = designStatuses.find((s: any) => s.slug === statusSlug)
+    return statusConfig?.is_completed || false
+  }
+
   const getUrgencyColor = (daysUntil: number, status: string) => {
-    if (status === 'completed') return 'green'
+    if (isCompletedStatus(status)) return 'green'
     if (daysUntil < 0) return 'red'
     if (daysUntil <= 3) return 'red'
     if (daysUntil <= 7) return 'orange'
@@ -288,16 +294,20 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 ml-4">
-                    {/* Quick Status Update */}
-                    {item.status !== 'completed' && (
-                      <button
-                        onClick={() => handleStatusUpdate(item.id, 'completed')}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                        title="Mark Complete"
-                      >
-                        <CheckCircle className="h-5 w-5" />
-                      </button>
-                    )}
+                    {/* Quick Status Update - only show if not already in a completion status */}
+                    {!isCompletedStatus(item.status) && (() => {
+                      // Find the first available completion status
+                      const completionStatus = designStatuses.find((s: any) => s.is_completed && s.is_active)
+                      return completionStatus ? (
+                        <button
+                          onClick={() => handleStatusUpdate(item.id, completionStatus.slug)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                          title={`Mark as ${completionStatus.name}`}
+                        >
+                          <CheckCircle className="h-5 w-5" />
+                        </button>
+                      ) : null
+                    })()}
 
                     <button
                       onClick={() => setEditingItem(item)}

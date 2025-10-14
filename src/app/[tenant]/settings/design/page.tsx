@@ -175,6 +175,10 @@ export default function DesignSettingsPage() {
     await handleSaveStatus({ ...status, is_active: !status.is_active })
   }
 
+  const handleToggleStatusCompleted = async (status: any) => {
+    await handleSaveStatus({ ...status, is_completed: !status.is_completed })
+  }
+
   return (
     <AppLayout>
       <div className="p-6 max-w-6xl mx-auto">
@@ -403,6 +407,11 @@ export default function DesignSettingsPage() {
                           Default
                         </span>
                       )}
+                      {status.is_completed && (
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                          Completion Status
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -415,6 +424,18 @@ export default function DesignSettingsPage() {
                         }`}
                       >
                         {status.is_active ? 'Active' : 'Inactive'}
+                      </button>
+
+                      <button
+                        onClick={() => handleToggleStatusCompleted(status)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                          status.is_completed
+                            ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                        title={status.is_completed ? 'Mark as non-completion status' : 'Mark as completion status'}
+                      >
+                        {status.is_completed ? 'Complete' : 'Incomplete'}
                       </button>
 
                       <button
@@ -691,6 +712,7 @@ function AddStatusForm({
 }) {
   const [name, setName] = useState('')
   const [color, setColor] = useState('gray')
+  const [isCompleted, setIsCompleted] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -703,6 +725,7 @@ function AddStatusForm({
       color,
       is_active: true,
       is_default: false,
+      is_completed: isCompleted,
       display_order: 999
     })
   }
@@ -764,6 +787,22 @@ function AddStatusForm({
             title={option.label}
           />
         ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="is_completed"
+          checked={isCompleted}
+          onChange={(e) => setIsCompleted(e.target.checked)}
+          className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
+        />
+        <label htmlFor="is_completed" className="text-sm font-medium text-gray-700">
+          This is a completion status
+        </label>
+        <span className="text-xs text-gray-500 ml-1">
+          (Items with this status will be marked as complete in dashboard)
+        </span>
       </div>
 
       <div className="flex gap-3 pt-4 border-t border-gray-200">
