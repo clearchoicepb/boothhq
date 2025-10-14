@@ -14,10 +14,11 @@ COMMENT ON COLUMN design_item_types.urgent_threshold_days IS 'Days before event 
 COMMENT ON COLUMN design_item_types.missed_deadline_days IS 'Days before event when it is too late to offer (e.g., 13 days before)';
 
 -- ============================================================================
--- STEP 2: Update urgent_threshold_days default for existing records
+-- STEP 2: Update ALL existing records to have valid date configurations
 -- ============================================================================
 
--- Set reasonable defaults based on type
+-- Update ALL rows to ensure they meet the constraint requirements
+-- This ensures: due_date_days > urgent_threshold_days > missed_deadline_days
 UPDATE design_item_types SET
   due_date_days = CASE
     WHEN type = 'physical' THEN 21  -- Physical items need more lead time
@@ -30,8 +31,7 @@ UPDATE design_item_types SET
   missed_deadline_days = CASE
     WHEN type = 'physical' THEN 13
     ELSE 3
-  END
-WHERE due_date_days IS NULL OR urgent_threshold_days IS NULL OR missed_deadline_days IS NULL;
+  END;
 
 -- ============================================================================
 -- STEP 3: Add constraint to ensure proper date ordering
