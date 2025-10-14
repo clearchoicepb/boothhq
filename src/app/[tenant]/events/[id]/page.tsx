@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package, Palette } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package, Palette, Truck } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -24,6 +24,7 @@ import { ContactSelect } from '@/components/contact-select'
 import { EventBoothAssignments } from '@/components/event-booth-assignments'
 import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
 import { EventDesignItems } from '@/components/events/event-design-items'
+import { EventLogistics } from '@/components/events/event-logistics'
 
 interface EventWithRelations extends EventType {
   account_name: string | null
@@ -474,6 +475,12 @@ export default function EventDetailPage() {
   }
 
   const handleAddStaff = async () => {
+    console.log('[CLIENT-STAFF] ========== handleAddStaff called ==========')
+    console.log('[CLIENT-STAFF] Selected User ID:', selectedUserId)
+    console.log('[CLIENT-STAFF] Selected Staff Role ID:', selectedStaffRoleId)
+    console.log('[CLIENT-STAFF] Selected Date Times:', selectedDateTimes)
+    console.log('[CLIENT-STAFF] Staff Notes:', staffNotes)
+
     if (!selectedUserId) {
       alert('Please select a user')
       return
@@ -486,6 +493,7 @@ export default function EventDetailPage() {
 
     // Get the selected role to check its type
     const selectedRole = staffRoles.find(r => r.id === selectedStaffRoleId)
+    console.log('[CLIENT-STAFF] Selected Role:', selectedRole)
 
     // Validate that dates are selected for event_staff roles
     if (selectedRole?.type === 'event_staff' && selectedDateTimes.length === 0) {
@@ -495,9 +503,11 @@ export default function EventDetailPage() {
 
     try {
       const isEditing = !!editingStaffId
+      console.log('[CLIENT-STAFF] Is Editing:', isEditing)
 
       // For editing Event Staff: delete all existing assignments for this user+role, then create new ones
       if (isEditing && selectedRole?.type === 'event_staff') {
+        console.log('[CLIENT-STAFF] Deleting existing event_staff assignments...')
         const existingAssignments = staffAssignments.filter(
           s => s.user_id === selectedUserId && s.staff_role_id === selectedStaffRoleId
         )
@@ -510,6 +520,7 @@ export default function EventDetailPage() {
 
       // For Operations roles: create/update single record
       if (selectedRole?.type === 'operations') {
+        console.log('[CLIENT-STAFF] Processing OPERATIONS role...')
         const url = isEditing ? `/api/event-staff/${editingStaffId}` : '/api/event-staff'
         const method = isEditing ? 'PUT' : 'POST'
 
@@ -526,18 +537,27 @@ export default function EventDetailPage() {
           requestBody.event_date_id = null
         }
 
+        console.log('[CLIENT-STAFF] Making request:', method, url)
+        console.log('[CLIENT-STAFF] Request body:', requestBody)
+
         const response = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody),
         })
 
+        console.log('[CLIENT-STAFF] Response status:', response.status)
+        const responseData = await response.json()
+        console.log('[CLIENT-STAFF] Response data:', responseData)
+
         if (!response.ok) {
-          const errorData = await response.json()
-          alert(`Failed to ${isEditing ? 'update' : 'add'} staff: ${errorData.error || 'Unknown error'}`)
+          alert(`Failed to ${isEditing ? 'update' : 'add'} staff: ${responseData.error || 'Unknown error'}`)
           return
         }
       } else {
+        console.log('[CLIENT-STAFF] Processing EVENT_STAFF role...')
+        console.log('[CLIENT-STAFF] Will create', selectedDateTimes.length, 'assignments')
+
         // For Event Staff roles: create one record per selected date
         for (const dateTime of selectedDateTimes) {
           const requestBody = {
@@ -550,21 +570,33 @@ export default function EventDetailPage() {
             notes: staffNotes || null
           }
 
+          console.log('[CLIENT-STAFF] Making POST request for date:', dateTime.dateId)
+          console.log('[CLIENT-STAFF] Request body:', requestBody)
+
           const response = await fetch('/api/event-staff', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
           })
 
+          console.log('[CLIENT-STAFF] Response status:', response.status)
+          const responseData = await response.json()
+          console.log('[CLIENT-STAFF] Response data:', responseData)
+
           if (!response.ok) {
-            const errorData = await response.json()
-            alert(`Failed to add staff for date: ${errorData.error || 'Unknown error'}`)
+            // Check for duplicate constraint error
+            if (responseData.code === '23505' || responseData.details?.includes('already exists')) {
+              alert(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
+            } else {
+              alert(`Failed to add staff for date: ${responseData.error || 'Unknown error'}`)
+            }
             return
           }
         }
       }
 
       // Success - refresh and reset
+      console.log('[CLIENT-STAFF] Success! Refreshing staff list...')
       await fetchStaff()
       setIsAddingStaff(false)
       setEditingStaffId(null)
@@ -572,8 +604,9 @@ export default function EventDetailPage() {
       setSelectedStaffRoleId('')
       setSelectedDateTimes([])
       setStaffNotes('')
+      console.log('[CLIENT-STAFF] ========== handleAddStaff complete ==========')
     } catch (error) {
-      console.error('Error saving staff:', error)
+      console.error('[CLIENT-STAFF] ❌ Error saving staff:', error)
       alert('Error saving staff')
     }
   }
@@ -797,6 +830,10 @@ export default function EventDetailPage() {
               <TabsTrigger value="design" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <Palette className="h-4 w-4 mr-2" />
                 Design
+              </TabsTrigger>
+              <TabsTrigger value="logistics" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
+                <Truck className="h-4 w-4 mr-2" />
+                Logistics
               </TabsTrigger>
               <TabsTrigger value="communications" className="rounded-none border-b-2 border-l border-r border-transparent data-[state=active]:border-l-[#347dc4] data-[state=active]:border-r-[#347dc4] data-[state=active]:border-b-[#347dc4] data-[state=active]:bg-transparent border-l-gray-300 border-r-gray-300 px-6 py-3">
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -1574,6 +1611,14 @@ export default function EventDetailPage() {
             <EventDesignItems
               eventId={event.id}
               eventDate={event.start_date || event.event_dates?.[0]?.event_date}
+              tenant={tenantSubdomain}
+            />
+          </TabsContent>
+
+          {/* Logistics Tab */}
+          <TabsContent value="logistics" className="mt-0">
+            <EventLogistics
+              eventId={event.id}
               tenant={tenantSubdomain}
             />
           </TabsContent>
