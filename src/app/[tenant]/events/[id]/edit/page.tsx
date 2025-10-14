@@ -50,6 +50,7 @@ export default function EventEditPage() {
 
   const handleSave = async (eventData: any) => {
     try {
+      console.log('Sending event data:', eventData)
       const response = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: {
@@ -58,10 +59,14 @@ export default function EventEditPage() {
         body: JSON.stringify(eventData),
       })
 
+      const data = await response.json()
+      console.log('Response:', response.status, data)
+
       if (response.ok) {
         router.push(`/${tenantSubdomain}/events/${eventId}`)
       } else {
-        throw new Error('Failed to update event')
+        console.error('Update failed:', data)
+        throw new Error(data.error || 'Failed to update event')
       }
     } catch (error) {
       console.error('Error updating event:', error)

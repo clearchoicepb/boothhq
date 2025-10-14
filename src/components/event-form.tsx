@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
+import { LocationSelect } from '@/components/location-select'
 import type { Event, EventInsert, EventUpdate, Account, Contact, Opportunity } from '@/lib/supabase-client'
 
 interface EventFormProps {
@@ -31,6 +32,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     contact_id: null,
     opportunity_id: null
   })
+  const [locationId, setLocationId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -289,15 +291,20 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
 
           {/* Location */}
           <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
-            <Input
-              id="location"
-              type="text"
-              value={formData.location || ''}
-              onChange={(e) => handleInputChange('location', e.target.value)}
-              placeholder="Meeting room, address, or video link"
+            <LocationSelect
+              value={locationId}
+              onChange={(locId, location) => {
+                setLocationId(locId)
+                // Also set location name in the old field for backward compatibility
+                if (location) {
+                  handleInputChange('location', location.name)
+                } else {
+                  handleInputChange('location', '')
+                }
+              }}
+              label="Location"
+              placeholder="Select or create location..."
+              allowCreate={true}
             />
           </div>
 

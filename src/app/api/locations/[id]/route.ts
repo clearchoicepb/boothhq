@@ -16,7 +16,6 @@ export async function GET(
 
     const params = await context.params
     const locationId = params.id
-
     const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
@@ -31,12 +30,11 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch location' }, { status: 500 })
     }
 
-    const response = NextResponse.json(data)
-    
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
-    
-    return response
+    if (!data) {
+      return NextResponse.json({ error: 'Location not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -56,7 +54,6 @@ export async function PUT(
 
     const params = await context.params
     const locationId = params.id
-
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
@@ -93,7 +90,6 @@ export async function DELETE(
 
     const params = await context.params
     const locationId = params.id
-
     const supabase = createServerSupabaseClient()
 
     const { error } = await supabase
@@ -104,7 +100,7 @@ export async function DELETE(
 
     if (error) {
       console.error('Error deleting location:', error)
-      return NextResponse.json({ error: 'Failed to delete location', details: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to delete location' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
@@ -113,18 +109,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

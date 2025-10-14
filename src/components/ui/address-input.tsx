@@ -49,22 +49,64 @@ const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
       }
     }, [])
 
+    const parseAddressComponents = (place: any) => {
+      const addressComponents = place.address_components || []
+      const parsed: any = {
+        address_line1: '',
+        address_line2: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: 'US'
+      }
+
+      let streetNumber = ''
+      let route = ''
+
+      addressComponents.forEach((component: any) => {
+        const types = component.types || []
+
+        if (types.includes('street_number')) {
+          streetNumber = component.long_name
+        } else if (types.includes('route')) {
+          route = component.long_name
+        } else if (types.includes('locality')) {
+          parsed.city = component.long_name
+        } else if (types.includes('administrative_area_level_1')) {
+          parsed.state = component.short_name
+        } else if (types.includes('postal_code')) {
+          parsed.postal_code = component.long_name
+        } else if (types.includes('country')) {
+          parsed.country = component.short_name
+        }
+      })
+
+      // Combine street number and route
+      parsed.address_line1 = [streetNumber, route].filter(Boolean).join(' ')
+
+      return parsed
+    }
+
     const initializeAutocomplete = () => {
       if (inputRef.current && window.google) {
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ['address'],
-          fields: ['formatted_address', 'geometry', 'name', 'place_id', 'address_components']
+          types: ['establishment', 'geocode'],
+          fields: ['formatted_address', 'geometry', 'name', 'place_id', 'address_components', 'business_status', 'types']
         })
 
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current.getPlace()
           if (place.formatted_address) {
             setInputValue(place.formatted_address)
+
+            // Parse address components for structured data
+            const parsedAddress = parseAddressComponents(place)
+
             if (onChange) {
               onChange(place.formatted_address, place)
             }
             if (onAddressChange) {
-              onAddressChange(place.formatted_address, place)
+              onAddressChange(parsedAddress, place)
             }
             if (onPlaceSelect) {
               onPlaceSelect(place)
@@ -111,7 +153,7 @@ const AddressInput = forwardRef<HTMLInputElement, AddressInputProps>(
           onChange={handleInputChange}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-          placeholder="Start typing an address..."
+          placeholder="Search for venue, hotel, or address..."
           {...props}
         />
         {showSuggestions && suggestions.length > 0 && (

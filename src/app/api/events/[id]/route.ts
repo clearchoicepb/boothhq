@@ -76,9 +76,41 @@ export async function PUT(
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
+    console.log('Update event request body:', JSON.stringify(body, null, 2))
+
+    // Extract event_dates and other non-table fields for separate handling
+    const {
+      event_dates,
+      account_name,
+      contact_name,
+      opportunity_name,
+      event_category,
+      event_type: eventTypeObj,
+      accounts,
+      contacts,
+      opportunities,
+      event_categories,
+      event_types,
+      ...eventData
+    } = body
+
+    // Convert empty strings to null for UUID fields
+    const cleanedEventData = Object.entries(eventData).reduce((acc, [key, value]) => {
+      // If the value is an empty string and the field name suggests it's an ID, convert to null
+      if (value === '' && (key.includes('_id') || key === 'id')) {
+        acc[key] = null
+      } else {
+        acc[key] = value
+      }
+      return acc
+    }, {} as Record<string, any>)
+
+    console.log('Event data after filtering:', JSON.stringify(cleanedEventData, null, 2))
+
+    // Update the event
     const { data, error } = await supabase
       .from('events')
-      .update(body)
+      .update(cleanedEventData)
       .eq('id', eventId)
       .eq('tenant_id', session.user.tenantId)
       .select()
@@ -86,7 +118,43 @@ export async function PUT(
 
     if (error) {
       console.error('Error updating event:', error)
-      return NextResponse.json({ error: 'Failed to update event' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to update event', details: error }, { status: 500 })
+    }
+
+    // Handle event_dates if provided
+    if (event_dates && Array.isArray(event_dates)) {
+      // Delete existing event dates
+      await supabase
+        .from('event_dates')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('tenant_id', session.user.tenantId)
+
+      // Insert new event dates
+      if (event_dates.length > 0) {
+        const datesToInsert = event_dates
+          .filter((date: any) => date.event_date) // Only insert dates that have an event_date
+          .map((date: any) => ({
+            tenant_id: session.user.tenantId,
+            event_id: eventId,
+            event_date: date.event_date,
+            start_time: date.start_time || null,
+            end_time: date.end_time || null,
+            location_id: date.location_id || null,
+            notes: date.notes || null,
+            status: 'scheduled'
+          }))
+
+        if (datesToInsert.length > 0) {
+          const { error: datesError } = await supabase
+            .from('event_dates')
+            .insert(datesToInsert)
+
+          if (datesError) {
+            console.error('Error updating event dates:', datesError)
+          }
+        }
+      }
     }
 
     return NextResponse.json(data)
