@@ -14,7 +14,8 @@ import {
   User,
   X,
   ExternalLink,
-  Save
+  Save,
+  Package
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -52,18 +53,19 @@ interface DashboardData {
   items: DesignItem[]
   stats: {
     total: number
-    overdue: number
+    missedDeadline: number
     urgent: number
-    dueThisWeek: number
-    upcoming: number
+    dueSoon: number
+    onTime: number
     completed: number
     recentCompletions: number
+    physicalItems: number
   }
   categories: {
-    overdue: DesignItem[]
+    missedDeadline: DesignItem[]
     urgent: DesignItem[]
-    dueThisWeek: DesignItem[]
-    upcoming: DesignItem[]
+    dueSoon: DesignItem[]
+    onTime: DesignItem[]
     completed: DesignItem[]
   }
 }
@@ -313,27 +315,34 @@ export function DesignDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <KPICard
-          title="Overdue"
-          value={data.stats.overdue}
+          title="Missed Deadline"
+          value={data.stats.missedDeadline}
           icon={AlertCircle}
           color="red"
-          subtitle="Past deadline"
+          subtitle="Too late to offer"
         />
         <KPICard
           title="Urgent"
           value={data.stats.urgent}
           icon={Clock}
           color="orange"
-          subtitle="Due in ≤3 days"
+          subtitle="Needs immediate attention"
         />
         <KPICard
-          title="Due This Week"
-          value={data.stats.dueThisWeek}
+          title="Due Soon"
+          value={data.stats.dueSoon}
           icon={Calendar}
           color="yellow"
-          subtitle="Due in 4-7 days"
+          subtitle="Before due date"
+        />
+        <KPICard
+          title="Physical Items"
+          value={data.stats.physicalItems}
+          icon={Package}
+          color="purple"
+          subtitle="Vendor-dependent"
         />
         <KPICard
           title="Recent Completions"
@@ -359,6 +368,9 @@ export function DesignDashboard() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Task Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Event
@@ -394,6 +406,8 @@ export function DesignDashboard() {
                         : item.assigned_designer.email
                       : 'Unassigned'
 
+                    const isPhysical = item.design_item_type?.type === 'physical'
+
                     return (
                       <tr
                         key={item.id}
@@ -414,6 +428,15 @@ export function DesignDashboard() {
                             )}
                             <span className="font-medium">{itemName}</span>
                           </div>
+                        </td>
+                        <td className="px-4 py-1 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full" style={{
+                            backgroundColor: isPhysical
+                              ? (textColor === '#ffffff' ? 'rgba(251, 146, 60, 0.3)' : 'rgba(251, 146, 60, 0.2)')
+                              : (textColor === '#ffffff' ? 'rgba(96, 165, 250, 0.3)' : 'rgba(96, 165, 250, 0.2)')
+                          }}>
+                            {isPhysical ? '📦 Physical' : '💻 Digital'}
+                          </span>
                         </td>
                         <td className="px-4 py-1">
                           <div className="font-medium">{item.event.title}</div>
@@ -619,6 +642,7 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: any) {
     green: 'bg-green-50 text-green-600',
     red: 'bg-red-50 text-red-600',
     orange: 'bg-orange-50 text-orange-600',
+    purple: 'bg-purple-50 text-purple-600',
   }
 
   return (

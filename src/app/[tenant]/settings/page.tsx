@@ -26,7 +26,9 @@ import {
   Plus,
   CheckCircle2,
   Sparkles,
-  Trash2
+  Trash2,
+  Folder,
+  Tag
 } from 'lucide-react';
 
 interface SettingsSection {
@@ -104,6 +106,22 @@ const settingsSections: SettingsSection[] = [
     description: 'Customize checklist tasks for event readiness tracking',
     icon: CheckCircle2,
     href: '/core-tasks',
+    category: 'operations'
+  },
+  {
+    id: 'event-categories',
+    title: 'Event Categories',
+    description: 'Manage workflow categories (Social vs Corporate events)',
+    icon: Folder,
+    href: '/event-categories',
+    category: 'operations'
+  },
+  {
+    id: 'event-types',
+    title: 'Event Types',
+    description: 'Configure specific event types within categories',
+    icon: Tag,
+    href: '/event-types',
     category: 'operations'
   },
   {

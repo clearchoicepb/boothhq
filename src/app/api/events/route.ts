@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createAutoDesignItems } from '@/lib/design-helpers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
         *,
         accounts!events_account_id_fkey(name),
         contacts!events_contact_id_fkey(first_name, last_name),
+        event_categories(id, name, slug, color, icon),
+        event_types(id, name, slug, event_category_id),
         event_dates(
           id,
           event_date,
@@ -48,7 +51,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (typeFilter !== 'all') {
-      query = query.eq('event_type', typeFilter)
+      // Support both old event_type TEXT field and new event_type_id
+      // Try filtering by event_type_id first (if it's a UUID)
+      if (typeFilter.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        query = query.eq('event_type_id', typeFilter)
+      } else {
+        // Fall back to old event_type TEXT field for backward compatibility
+        query = query.eq('event_type', typeFilter)
+      }
     }
 
     const { data, error } = await query
@@ -137,61 +147,129 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.tenantId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json()
+    console.log('Creating event with body:', body)
+
+    // Destructure and validate
+    const {
+      title,
+      description,
+      event_category_id,
+      event_type_id,
+      event_type,
+      date_type,
+      start_date,
+      end_date,
+      location,
+      account_id,
+      contact_id,
+      opportunity_id,
+      status,
+      event_dates
+    } = body
+
+    // Validate required fields
+    if (!title) {
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 })
     }
 
-    const body = await request.json()
+    if (!event_dates || event_dates.length === 0) {
+      return NextResponse.json({ error: 'At least one event date is required' }, { status: 400 })
+    }
+
+    if (!event_category_id || !event_type_id) {
+      return NextResponse.json({ error: 'Event category and type are required' }, { status: 400 })
+    }
+
     const supabase = createServerSupabaseClient()
 
-    // Extract event_dates from the request body
-    const { event_dates, ...eventData } = body
+    // Build insert data with only fields that exist in the events table
+    const insertData = {
+      tenant_id: session.user.tenantId,
+      title,
+      description: description || null,
+      event_category_id,
+      event_type_id,
+      event_type: event_type || 'other',
+      date_type: date_type || 'single_day',
+      start_date: start_date || event_dates[0]?.event_date,
+      end_date: end_date || null,
+      location: location || null,
+      account_id: account_id || null,
+      contact_id: contact_id || null,
+      opportunity_id: opportunity_id || null,
+      status: status || 'scheduled'
+    }
 
-    // Create the event first
+    console.log('Inserting event with data:', insertData)
+
+    // Create the event
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .insert({
-        ...eventData,
-        tenant_id: session.user.tenantId
-      })
-      .select()
+      .insert(insertData)
+      .select(`
+        *,
+        event_categories(id, name, slug, color, icon),
+        event_types(id, name, slug)
+      `)
       .single()
 
     if (eventError) {
       console.error('Error creating event:', eventError)
-      return NextResponse.json({ error: 'Failed to create event', details: eventError.message }, { status: 500 })
+      return NextResponse.json({
+        error: 'Failed to create event',
+        details: eventError.message
+      }, { status: 500 })
     }
 
-    // Create event dates if provided
+    // Insert event_dates
     if (event_dates && event_dates.length > 0) {
-      const eventDatesData = event_dates.map((date: any) => ({
-        ...date,
+      const eventDatesInsert = event_dates.map((date: any) => ({
+        tenant_id: session.user.tenantId,
         event_id: event.id,
-        tenant_id: session.user.tenantId
+        event_date: date.event_date,
+        start_time: date.start_time || null,
+        end_time: date.end_time || null,
+        location_id: date.location_id || null,
+        notes: date.notes || null,
+        status: 'scheduled'
       }))
 
-      const { error: datesError } = await supabase
+      const { error: eventDatesError } = await supabase
         .from('event_dates')
-        .insert(eventDatesData)
+        .insert(eventDatesInsert)
 
-      if (datesError) {
-        console.error('Error creating event dates:', datesError)
+      if (eventDatesError) {
+        console.error('Error creating event dates:', eventDatesError)
+        // Don't fail the entire request, but log the error
+        // The event was created successfully, so we can still return it
+      }
+    }
+
+    // Auto-create design items for auto-added types
+    if (event.start_date && session.user.tenantId) {
+      try {
+        const designItems = await createAutoDesignItems(event.id, event.start_date, session.user.tenantId)
+        console.log(`Created ${designItems.length} auto-added design items for event ${event.id}`)
+      } catch (error) {
+        console.error('Error auto-creating design items:', error)
         // Don't fail the entire request, just log the error
       }
     }
 
-    const response = NextResponse.json(event)
-    
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-    
-    return response
-  } catch (error) {
-    console.error('Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ event }, { status: 201 })
+  } catch (error: any) {
+    console.error('Error creating event:', error)
+    return NextResponse.json({
+      error: error.message || 'Internal server error'
+    }, { status: 500 })
   }
 }
 

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       .from('event_design_items')
       .select(`
         *,
-        design_item_type:design_item_types(id, name, type),
+        design_item_type:design_item_types(id, name, type, due_date_days, urgent_threshold_days, missed_deadline_days),
         assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, first_name, last_name, email),
         event:events!inner(
           id,
@@ -47,41 +47,77 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    // Calculate stats
+    // Calculate stats with new event-based logic
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const items = designItems || []
+    const items = (designItems || []).map(item => {
+      // Get earliest event date
+      const eventDate = item.event?.event_dates?.[0]?.event_date || item.event?.start_date
+      if (!eventDate || !item.design_item_type) return { ...item, calculated_status: 'pending' }
 
-    // Categorize items
-    const overdue = items.filter(item => {
-      const deadline = new Date(item.design_deadline)
-      deadline.setHours(0, 0, 0, 0)
-      return deadline < today && item.status !== 'completed'
+      const eventDateTime = new Date(eventDate)
+      eventDateTime.setHours(0, 0, 0, 0)
+
+      const daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+      const designType = item.design_item_type
+      const dueDateDays = designType.due_date_days || 21
+      const urgentThresholdDays = designType.urgent_threshold_days || 14
+      const missedDeadlineDays = designType.missed_deadline_days || 13
+
+      // Calculate status based on days until event
+      let calculated_status = 'on_time'
+
+      if (item.status === 'completed' || item.status === 'approved') {
+        calculated_status = 'completed'
+      } else if (daysUntilEvent <= missedDeadlineDays) {
+        calculated_status = 'missed_deadline'
+      } else if (daysUntilEvent <= urgentThresholdDays) {
+        calculated_status = 'urgent'
+      } else if (daysUntilEvent <= dueDateDays) {
+        calculated_status = 'due_soon'
+      }
+
+      return { ...item, calculated_status, days_until_event: daysUntilEvent }
     })
 
-    const urgent = items.filter(item => {
-      const deadline = new Date(item.design_deadline)
-      deadline.setHours(0, 0, 0, 0)
-      const daysUntil = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      return daysUntil >= 0 && daysUntil <= 3 && item.status !== 'completed'
-    })
+    // Categorize items based on new status logic
+    const missedDeadline = items.filter(item =>
+      item.calculated_status === 'missed_deadline' &&
+      item.status !== 'completed' &&
+      item.status !== 'approved'
+    )
 
-    const dueThisWeek = items.filter(item => {
-      const deadline = new Date(item.design_deadline)
-      deadline.setHours(0, 0, 0, 0)
-      const daysUntil = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      return daysUntil > 3 && daysUntil <= 7 && item.status !== 'completed'
-    })
+    const urgent = items.filter(item =>
+      item.calculated_status === 'urgent' &&
+      item.status !== 'completed' &&
+      item.status !== 'approved'
+    )
 
-    const upcoming = items.filter(item => {
-      const deadline = new Date(item.design_deadline)
-      deadline.setHours(0, 0, 0, 0)
-      const daysUntil = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      return daysUntil > 7 && daysUntil <= 14 && item.status !== 'completed'
-    })
+    const dueSoon = items.filter(item =>
+      item.calculated_status === 'due_soon' &&
+      item.status !== 'completed' &&
+      item.status !== 'approved'
+    )
 
-    const completed = items.filter(item => item.status === 'completed')
+    const onTime = items.filter(item =>
+      item.calculated_status === 'on_time' &&
+      item.status !== 'completed' &&
+      item.status !== 'approved'
+    )
+
+    const completed = items.filter(item =>
+      item.status === 'completed' ||
+      item.status === 'approved'
+    )
+
+    // Physical items count
+    const physicalItems = items.filter(item =>
+      item.design_item_type?.type === 'physical' &&
+      item.status !== 'completed' &&
+      item.status !== 'approved'
+    )
 
     // Recent completions (last 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -94,18 +130,19 @@ export async function GET(request: Request) {
       items,
       stats: {
         total: items.length,
-        overdue: overdue.length,
+        missedDeadline: missedDeadline.length,
         urgent: urgent.length,
-        dueThisWeek: dueThisWeek.length,
-        upcoming: upcoming.length,
+        dueSoon: dueSoon.length,
+        onTime: onTime.length,
         completed: completed.length,
-        recentCompletions: recentCompletions.length
+        recentCompletions: recentCompletions.length,
+        physicalItems: physicalItems.length
       },
       categories: {
-        overdue,
+        missedDeadline,
         urgent,
-        dueThisWeek,
-        upcoming,
+        dueSoon,
+        onTime,
         completed: recentCompletions.slice(0, 10)
       }
     })

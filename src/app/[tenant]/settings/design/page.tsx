@@ -21,11 +21,9 @@ interface DesignItemType {
   name: string
   description: string
   type: 'digital' | 'physical'
-  default_design_days: number
-  default_production_days: number
-  default_shipping_days: number
-  client_approval_buffer_days: number
+  due_date_days: number
   urgent_threshold_days: number
+  missed_deadline_days: number
   is_auto_added: boolean
   is_active: boolean
   display_order: number
@@ -43,11 +41,9 @@ export default function DesignSettingsPage() {
     name: '',
     description: '',
     type: 'digital',
-    default_design_days: 7,
-    default_production_days: 0,
-    default_shipping_days: 0,
-    client_approval_buffer_days: 5,
+    due_date_days: 14,
     urgent_threshold_days: 7,
+    missed_deadline_days: 3,
     is_auto_added: false,
     is_active: true,
     display_order: 0
@@ -232,39 +228,28 @@ export default function DesignSettingsPage() {
                           <p className="text-sm text-gray-600 mb-3">{type.description}</p>
                         )}
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="grid grid-cols-3 gap-4 text-sm">
                           <div className="flex items-center text-gray-700">
-                            <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                            <Clock className="h-4 w-4 mr-2 text-green-600" />
                             <div>
-                              <p className="font-medium">{type.default_design_days} days</p>
-                              <p className="text-xs text-gray-500">Design time</p>
+                              <p className="font-medium">{type.due_date_days} days before</p>
+                              <p className="text-xs text-gray-500">Due date</p>
                             </div>
                           </div>
 
-                          {type.type === 'physical' && (
-                            <>
-                              <div className="flex items-center text-gray-700">
-                                <Package className="h-4 w-4 mr-2 text-gray-400" />
-                                <div>
-                                  <p className="font-medium">{type.default_production_days} days</p>
-                                  <p className="text-xs text-gray-500">Production</p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center text-gray-700">
-                                <Truck className="h-4 w-4 mr-2 text-gray-400" />
-                                <div>
-                                  <p className="font-medium">{type.default_shipping_days} days</p>
-                                  <p className="text-xs text-gray-500">Shipping</p>
-                                </div>
-                              </div>
-                            </>
-                          )}
+                          <div className="flex items-center text-gray-700">
+                            <Clock className="h-4 w-4 mr-2 text-orange-600" />
+                            <div>
+                              <p className="font-medium">{type.urgent_threshold_days} days before</p>
+                              <p className="text-xs text-gray-500">Urgent threshold</p>
+                            </div>
+                          </div>
 
                           <div className="flex items-center text-gray-700">
+                            <Clock className="h-4 w-4 mr-2 text-red-600" />
                             <div>
-                              <p className="font-medium">{type.urgent_threshold_days} days</p>
-                              <p className="text-xs text-gray-500">Urgent threshold</p>
+                              <p className="font-medium">{type.missed_deadline_days} days before</p>
+                              <p className="text-xs text-gray-500">Missed deadline</p>
                             </div>
                           </div>
                         </div>
@@ -309,10 +294,12 @@ export default function DesignSettingsPage() {
           <h4 className="font-semibold text-blue-900 mb-2">How Design Types Work</h4>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• <strong>Auto-added types</strong> are automatically added to every new event</li>
-            <li>• <strong>Physical items</strong> require production and shipping time</li>
-            <li>• <strong>Digital items</strong> only need design time</li>
-            <li>• <strong>Urgent threshold</strong> determines when items appear in urgent alerts</li>
-            <li>• Deadlines are calculated backwards from the event date</li>
+            <li>• <strong>Physical items</strong> typically need more lead time due to vendor production</li>
+            <li>• <strong>Digital items</strong> can usually be completed faster</li>
+            <li>• <strong>Due Date:</strong> When design must be completed by (days before event)</li>
+            <li>• <strong>Urgent Threshold:</strong> Missed due date but still possible (days before event)</li>
+            <li>• <strong>Missed Deadline:</strong> Too late to offer to client (days before event)</li>
+            <li>• All deadlines are calculated based on the event date</li>
           </ul>
         </div>
       </div>
@@ -358,12 +345,17 @@ function DesignTypeForm({
           </label>
           <select
             value={type.type}
-            onChange={(e) => onChange({
-              ...type,
-              type: e.target.value as 'digital' | 'physical',
-              default_production_days: e.target.value === 'digital' ? 0 : type.default_production_days,
-              default_shipping_days: e.target.value === 'digital' ? 0 : type.default_shipping_days
-            })}
+            onChange={(e) => {
+              const newType = e.target.value as 'digital' | 'physical'
+              onChange({
+                ...type,
+                type: newType,
+                // Set recommended defaults based on type
+                due_date_days: newType === 'physical' ? 21 : 14,
+                urgent_threshold_days: newType === 'physical' ? 14 : 7,
+                missed_deadline_days: newType === 'physical' ? 13 : 3
+              })
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
           >
             <option value="digital">💻 Digital</option>
@@ -387,62 +379,83 @@ function DesignTypeForm({
       </div>
 
       {/* Timeline Settings */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Design Days *
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={type.default_design_days}
-            onChange={(e) => onChange({ ...type, default_design_days: parseInt(e.target.value) || 0 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
-          />
+      <div>
+        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-900">
+            <strong>Event-based deadlines:</strong> All dates are calculated as days <em>before</em> the event date.
+            {type.type === 'physical'
+              ? ' Example for Backdrop (21/14/13): Due 21 days before event, Urgent from day 20-14, Missed from day 13-1.'
+              : ' Example for Digital Item (14/7/3): Due 14 days before event, Urgent from day 13-7, Missed from day 6-1.'
+            }
+          </p>
         </div>
 
-        {type.type === 'physical' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Production Days
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={type.default_production_days}
-                onChange={(e) => onChange({ ...type, default_production_days: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Due Date (days before event) *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={type.due_date_days}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1
+                onChange({ ...type, due_date_days: value })
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              placeholder="21"
+            />
+            <p className="text-xs text-gray-500 mt-1">When design must be completed</p>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Shipping Days
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={type.default_shipping_days}
-                onChange={(e) => onChange({ ...type, default_shipping_days: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
-              />
-            </div>
-          </>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Urgent Threshold (days before event) *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={type.urgent_threshold_days}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1
+                onChange({ ...type, urgent_threshold_days: value })
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              placeholder="14"
+            />
+            <p className="text-xs text-gray-500 mt-1">Missed due date, needs urgent attention</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Missed Deadline (days before event) *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={type.missed_deadline_days}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1
+                onChange({ ...type, missed_deadline_days: value })
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              placeholder="13"
+            />
+            <p className="text-xs text-gray-500 mt-1">Too late to offer to client</p>
+          </div>
+        </div>
+
+        {/* Validation Warning */}
+        {(type.due_date_days <= type.urgent_threshold_days ||
+          type.urgent_threshold_days <= type.missed_deadline_days ||
+          type.missed_deadline_days <= 0) && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-800">
+              ⚠️ Invalid configuration: Due Date must be greater than Urgent Threshold, which must be greater than Missed Deadline, and all must be positive numbers.
+            </p>
+          </div>
         )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Urgent Threshold
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={type.urgent_threshold_days}
-            onChange={(e) => onChange({ ...type, urgent_threshold_days: parseInt(e.target.value) || 0 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
-          />
-        </div>
       </div>
 
       {/* Toggles */}
@@ -472,7 +485,7 @@ function DesignTypeForm({
       <div className="flex gap-3 pt-4 border-t border-gray-200">
         <button
           onClick={onSave}
-          disabled={saving || !type.name}
+          disabled={saving || !type.name || type.due_date_days <= type.urgent_threshold_days || type.urgent_threshold_days <= type.missed_deadline_days}
           className="px-4 py-2 bg-[#347dc4] text-white rounded-lg hover:bg-[#2d6ba8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
           {saving ? (
