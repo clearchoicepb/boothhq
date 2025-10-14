@@ -32,7 +32,14 @@ export default function SignInPage() {
       } else if (result?.ok) {
         // Get the session to determine redirect
         const session = await getSession()
-        if (session?.user?.tenantSubdomain) {
+
+        // Check if user has multiple tenants
+        if (session?.user?.hasMultipleTenants) {
+          // Store password temporarily for tenant selection re-auth
+          sessionStorage.setItem('tempPassword', password)
+          sessionStorage.setItem('tempEmail', email)
+          router.push(`/auth/select-tenant?email=${encodeURIComponent(email)}`)
+        } else if (session?.user?.tenantSubdomain) {
           router.push(`/${session.user.tenantSubdomain}/dashboard`)
         } else {
           router.push('/dashboard')

@@ -8,7 +8,8 @@ export const authOptions: NextAuthOptions = {
       name: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
+        password: { label: 'Password', type: 'password' },
+        tenantId: { label: 'Tenant ID', type: 'text', optional: true }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -51,8 +52,18 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // Use the first active user (in the future, we can show a tenant selector)
-          const authenticatedUser = users[0]
+          // If tenantId is provided, use that specific tenant
+          let authenticatedUser = users[0]
+          if (credentials.tenantId) {
+            const specificUser = users.find(u => u.tenants.id === credentials.tenantId)
+            if (specificUser) {
+              authenticatedUser = specificUser
+            } else {
+              console.error('Tenant not found for user:', credentials.tenantId)
+              return null
+            }
+          }
+
           const matchedTenant = authenticatedUser.tenants
 
           // Update last login
@@ -61,12 +72,7 @@ export const authOptions: NextAuthOptions = {
             .update({ last_login: new Date().toISOString() })
             .eq('id', authenticatedUser.id)
 
-          // If user belongs to multiple tenants, log a message
-          // (Future enhancement: show tenant selector)
-          if (users.length > 1) {
-            console.log(`User ${credentials.email} belongs to ${users.length} tenants. Using first tenant: ${matchedTenant.subdomain}`)
-          }
-
+          // Return user with tenant info and flag for multiple tenants
           return {
             id: authenticatedUser.id,
             email: authenticatedUser.email,
@@ -75,7 +81,8 @@ export const authOptions: NextAuthOptions = {
             tenantId: matchedTenant.id,
             tenantName: matchedTenant.name,
             tenantSubdomain: matchedTenant.subdomain,
-            permissions: authenticatedUser.permissions || {}
+            permissions: authenticatedUser.permissions || {},
+            hasMultipleTenants: users.length > 1
           }
         } catch (error) {
           console.error('Auth error:', error)
@@ -96,6 +103,7 @@ export const authOptions: NextAuthOptions = {
         token.tenantName = user.tenantName
         token.tenantSubdomain = user.tenantSubdomain
         token.permissions = user.permissions
+        token.hasMultipleTenants = user.hasMultipleTenants
       }
       return token
     },
@@ -107,6 +115,7 @@ export const authOptions: NextAuthOptions = {
         session.user.tenantName = token.tenantName as string
         session.user.tenantSubdomain = token.tenantSubdomain as string
         session.user.permissions = token.permissions as any
+        session.user.hasMultipleTenants = token.hasMultipleTenants as boolean
       }
       return session
     }
@@ -130,6 +139,7 @@ declare module 'next-auth' {
       tenantName: string
       tenantSubdomain: string
       permissions: any
+      hasMultipleTenants?: boolean
     }
   }
 
@@ -139,6 +149,7 @@ declare module 'next-auth' {
     tenantName: string
     tenantSubdomain: string
     permissions: any
+    hasMultipleTenants?: boolean
   }
 }
 
@@ -149,5 +160,6 @@ declare module 'next-auth/jwt' {
     tenantName: string
     tenantSubdomain: string
     permissions: any
+    hasMultipleTenants?: boolean
   }
 }
