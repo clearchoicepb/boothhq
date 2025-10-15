@@ -61,13 +61,17 @@ export async function POST(request: NextRequest) {
     let opportunityId: string | null = null
     let tenantId: string | null = null
 
-    // Search contacts by phone number
-    const { data: contacts } = await supabase
+    // Search contacts by phone number - try multiple formats
+    const { data: contactsArray } = await supabase
       .from('contacts')
       .select('id, tenant_id, account_id, phone')
-      .ilike('phone', `%${normalizedFrom}%`)
-      .limit(1)
-      .single()
+
+    // Filter in JavaScript to match normalized phone numbers
+    const contacts = contactsArray?.find(c => {
+      if (!c.phone) return false
+      const normalizedDbPhone = c.phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+      return normalizedDbPhone === normalizedFrom
+    })
 
     if (contacts) {
       contactId = contacts.id
@@ -91,18 +95,22 @@ export async function POST(request: NextRequest) {
 
     // If no contact found, try leads
     if (!contactId) {
-      const { data: lead } = await supabase
+      const { data: leadsArray } = await supabase
         .from('leads')
         .select('id, tenant_id, phone')
-        .ilike('phone', `%${normalizedFrom}%`)
-        .limit(1)
-        .single()
+
+      // Filter in JavaScript to match normalized phone numbers
+      const lead = leadsArray?.find(l => {
+        if (!l.phone) return false
+        const normalizedDbPhone = l.phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+        return normalizedDbPhone === normalizedFrom
+      })
 
       if (lead) {
         leadId = lead.id
         tenantId = lead.tenant_id
 
-        // Try to find an active opportunity for this lead
+        // Try to find the most recent opportunity for this lead
         const { data: opportunity } = await supabase
           .from('opportunities')
           .select('id')
@@ -120,12 +128,16 @@ export async function POST(request: NextRequest) {
 
     // If no contact or lead found, try accounts
     if (!contactId && !leadId) {
-      const { data: account } = await supabase
+      const { data: accountsArray } = await supabase
         .from('accounts')
-        .select('id, tenant_id')
-        .ilike('phone', `%${normalizedFrom}%`)
-        .limit(1)
-        .single()
+        .select('id, tenant_id, phone')
+
+      // Filter in JavaScript to match normalized phone numbers
+      const account = accountsArray?.find(a => {
+        if (!a.phone) return false
+        const normalizedDbPhone = a.phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+        return normalizedDbPhone === normalizedFrom
+      })
 
       if (account) {
         accountId = account.id
