@@ -142,14 +142,19 @@ function OpportunitiesPageContent() {
   const handleDeleteOpportunity = async (opportunityId: string) => {
     if (confirm('Are you sure you want to delete this opportunity?')) {
       try {
-        const response = await fetch(`/api/entities/opportunities/${opportunityId}`, {
+        const response = await fetch(`/api/opportunities/${opportunityId}`, {
           method: 'DELETE'
         })
         if (response.ok) {
           setOpportunities(opportunities.filter(opportunity => opportunity.id !== opportunityId))
+          alert('Opportunity deleted successfully')
+        } else {
+          const error = await response.json()
+          alert(`Failed to delete opportunity: ${error.error || 'Unknown error'}`)
         }
       } catch (error) {
         console.error('Error deleting opportunity:', error)
+        alert('Failed to delete opportunity. Please try again.')
       }
     }
   }
