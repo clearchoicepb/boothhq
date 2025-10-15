@@ -20,8 +20,9 @@ export async function GET(
       .from('opportunities')
       .select(`
         *,
-        accounts!opportunities_account_id_fkey(name),
-        contacts!opportunities_contact_id_fkey(first_name, last_name),
+        accounts!opportunities_account_id_fkey(name, phone, email),
+        contacts!opportunities_contact_id_fkey(first_name, last_name, phone, email),
+        leads!opportunities_lead_id_fkey(first_name, last_name, phone, email),
         event_dates(*)
       `)
       .eq('id', (await params).id)

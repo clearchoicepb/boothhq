@@ -13,6 +13,7 @@ import { LeadConversionModal } from '@/components/lead-conversion-modal'
 import { LogCommunicationModal } from '@/components/log-communication-modal'
 import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
+import { SMSThread } from '@/components/sms-thread'
 import { GenerateContractModal } from '@/components/generate-contract-modal'
 import AttachmentsSection from '@/components/attachments-section'
 import { TasksSection } from '@/components/tasks-section'
@@ -81,6 +82,7 @@ export default function OpportunityDetailPage() {
   const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
+  const [showSMSThread, setShowSMSThread] = useState(false)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [communications, setCommunications] = useState<any[]>([])
@@ -1515,12 +1517,12 @@ export default function OpportunityDetailPage() {
                   Create Email
                 </Button>
                 <Button
-                  variant="outline"
+                  variant={showSMSThread ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setIsSMSModalOpen(true)}
+                  onClick={() => setShowSMSThread(!showSMSThread)}
                 >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Create SMS
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {showSMSThread ? 'Hide SMS Thread' : 'View SMS Thread'}
                 </Button>
                 <Button
                   variant="outline"
@@ -1532,7 +1534,20 @@ export default function OpportunityDetailPage() {
                 </Button>
               </div>
 
-              {communications.length === 0 ? (
+              {showSMSThread ? (
+                <SMSThread
+                  opportunityId={opportunityId}
+                  contactId={opportunity?.contact_id || undefined}
+                  accountId={opportunity?.account_id || undefined}
+                  leadId={opportunity?.lead_id || undefined}
+                  contactPhone={
+                    opportunity?.contacts?.phone ||
+                    opportunity?.leads?.phone ||
+                    opportunity?.accounts?.phone
+                  }
+                  onClose={() => setShowSMSThread(false)}
+                />
+              ) : communications.length === 0 ? (
                 <div className="p-4 bg-gray-50 rounded-md text-center">
                   <p className="text-sm text-gray-500">No communications logged yet. Use the buttons above to start communicating with the client.</p>
                 </div>
