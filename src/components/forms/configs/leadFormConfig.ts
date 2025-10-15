@@ -39,13 +39,7 @@ export const leadFormConfig: FormConfig<any> = {
       gridCols: 1
     },
     {
-      name: 'job_title',
-      type: 'text',
-      label: 'Job Title',
-      gridCols: 1
-    },
-    {
-      name: 'lead_source',
+      name: 'source',
       type: 'select',
       label: 'Lead Source',
       options: [
@@ -76,107 +70,17 @@ export const leadFormConfig: FormConfig<any> = {
       gridCols: 1
     },
     {
-      name: 'priority',
-      type: 'select',
-      label: 'Priority',
-      options: [
-        { value: 'low', label: 'Low' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'high', label: 'High' },
-        { value: 'urgent', label: 'Urgent' }
-      ],
-      gridCols: 1
-    },
-    {
-      name: 'estimated_value',
-      type: 'number',
-      label: 'Estimated Value',
-      validation: {
-        min: 0
-      },
-      gridCols: 1
-    },
-    {
-      name: 'assigned_to',
-      type: 'select',
-      label: 'Assigned To',
-      options: 'users',
-      gridCols: 1
-    },
-    // Address Information
-    {
-      name: 'address_line_1',
-      type: 'text',
-      label: 'Address Line 1',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'address_line_2',
-      type: 'text',
-      label: 'Address Line 2',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'city',
-      type: 'text',
-      label: 'City',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'state',
-      type: 'text',
-      label: 'State',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'zip_code',
-      type: 'text',
-      label: 'Zip Code',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    // Additional Information
-    {
       name: 'notes',
       type: 'textarea',
       label: 'Notes',
-      section: 'Additional Information',
       gridCols: 2
     }
   ],
-  sections: [
-    {
-      title: 'Address Information',
-      fields: [
-        'address_line_1',
-        'address_line_2',
-        'city',
-        'state',
-        'zip_code'
-      ]
-    },
-    {
-      title: 'Additional Information',
-      fields: ['notes']
-    }
-  ],
-  relatedData: [
-    {
-      key: 'users',
-      endpoint: '/api/users',
-      displayField: 'first_name',
-      valueField: 'id',
-      displayFormat: 'first_name last_name'
-    }
-  ],
+  sections: [],
+  relatedData: [],
   defaultValues: {
     status: 'new',
-    priority: 'medium',
-    lead_source: 'website'
+    source: 'website'
   }
 }
 

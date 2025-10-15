@@ -184,12 +184,33 @@ export function BaseForm<T extends Record<string, any>>({
             if (typeof field.options === 'string') {
               // Dynamic options from related data
               const relatedData = state.relatedData[field.options] || []
-              return relatedData.map((item: any) => ({
-                value: item.id,
-                label: item[field.options === 'accounts' ? 'name' : 
-                          field.options === 'contacts' ? `${item.first_name} ${item.last_name}` : 
-                          'name']
-              }))
+
+              // Find the relatedData config for this field
+              const relatedConfig = config.relatedData?.find(rd => rd.key === field.options)
+
+              return relatedData.map((item: any) => {
+                let label = ''
+
+                if (relatedConfig?.displayFormat) {
+                  // Use displayFormat if provided (e.g., 'first_name last_name')
+                  label = relatedConfig.displayFormat
+                    .split(' ')
+                    .map(fieldName => item[fieldName] || '')
+                    .filter(val => val)
+                    .join(' ')
+                } else if (relatedConfig?.displayField) {
+                  // Fall back to displayField
+                  label = item[relatedConfig.displayField] || item.name || item.id
+                } else {
+                  // Final fallback to 'name'
+                  label = item.name || item.id
+                }
+
+                return {
+                  value: item[relatedConfig?.valueField || 'id'],
+                  label: label
+                }
+              })
             }
             return field.options || []
           })()
