@@ -74,13 +74,12 @@ export async function POST(request: NextRequest) {
       accountId = contacts.account_id
       tenantId = contacts.tenant_id
 
-      // Try to find an active opportunity for this contact
+      // Try to find the most recent opportunity for this contact
       const { data: opportunity } = await supabase
         .from('opportunities')
         .select('id')
         .eq('contact_id', contactId)
         .eq('tenant_id', tenantId)
-        .in('stage', ['prospecting', 'qualification', 'proposal', 'negotiation'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
@@ -102,6 +101,20 @@ export async function POST(request: NextRequest) {
       if (lead) {
         leadId = lead.id
         tenantId = lead.tenant_id
+
+        // Try to find an active opportunity for this lead
+        const { data: opportunity } = await supabase
+          .from('opportunities')
+          .select('id')
+          .eq('lead_id', leadId)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (opportunity) {
+          opportunityId = opportunity.id
+        }
       }
     }
 
@@ -118,13 +131,12 @@ export async function POST(request: NextRequest) {
         accountId = account.id
         tenantId = account.tenant_id
 
-        // Try to find an active opportunity for this account
+        // Try to find the most recent opportunity for this account
         const { data: opportunity } = await supabase
           .from('opportunities')
           .select('id')
           .eq('account_id', accountId)
           .eq('tenant_id', tenantId)
-          .in('stage', ['prospecting', 'qualification', 'proposal', 'negotiation'])
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
@@ -134,6 +146,16 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // Log matching results
+    console.log('🔍 Matching results:', {
+      normalizedFrom,
+      tenantId,
+      contactId,
+      leadId,
+      accountId,
+      opportunityId
+    })
 
     // If we found a match, log the communication
     if (tenantId) {
@@ -164,13 +186,13 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (commError) {
-        console.error('Error logging inbound SMS:', commError)
+        console.error('❌ Error logging inbound SMS:', commError)
       } else {
-        console.log('✅ Inbound SMS logged:', communication.id)
+        console.log('✅ Inbound SMS logged:', communication.id, 'with opportunity:', opportunityId)
       }
     } else {
       // Log as unmatched communication
-      console.warn('⚠️ No matching contact or lead found for phone:', from)
+      console.warn('⚠️ No matching contact, lead, or account found for phone:', from)
 
       // Optionally, you could still log it without associations
       // or create a lead automatically
