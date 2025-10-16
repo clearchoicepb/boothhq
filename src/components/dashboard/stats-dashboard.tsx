@@ -137,7 +137,7 @@ export function StatsDashboard() {
         fetch('/api/leads'),
         fetch('/api/contacts'),
         fetch('/api/accounts'),
-        fetch('/api/opportunities')
+        fetch('/api/opportunities?include_converted=true')
       ])
 
       if (!leadsResponse.ok || !contactsResponse.ok || !accountsResponse.ok || !opportunitiesResponse.ok) {

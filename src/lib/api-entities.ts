@@ -14,7 +14,7 @@ export interface EntityConfig {
     field: string
     direction: 'asc' | 'desc'
   }
-  transformResponse?: (data: any) => any
+  transformResponse?: (data: any, searchParams?: URLSearchParams) => any
   transformRequest?: (data: any) => any
 }
 
@@ -298,15 +298,21 @@ export const entityConfigs: Record<string, EntityConfig> = {
 
       return transformed
     },
-    transformResponse: (data) => {
-      return data
-        .filter((opportunity: any) => !opportunity.is_converted) // Filter out converted opportunities
-        .map((opportunity: any) => ({
-          ...opportunity,
-          account_name: opportunity.accounts?.name || null,
-          contact_name: opportunity.contacts ?
-            `${opportunity.contacts.first_name} ${opportunity.contacts.last_name}`.trim() : null
-        }))
+    transformResponse: (data, searchParams) => {
+      // Check if we should include converted opportunities
+      const includeConverted = searchParams?.get('include_converted') === 'true'
+      
+      // Filter out converted opportunities unless explicitly requested
+      const filteredData = includeConverted 
+        ? data 
+        : data.filter((opportunity: any) => !opportunity.is_converted)
+      
+      return filteredData.map((opportunity: any) => ({
+        ...opportunity,
+        account_name: opportunity.accounts?.name || null,
+        contact_name: opportunity.contacts ?
+          `${opportunity.contacts.first_name} ${opportunity.contacts.last_name}`.trim() : null
+      }))
     }
   },
 

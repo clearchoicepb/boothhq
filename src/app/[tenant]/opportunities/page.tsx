@@ -106,6 +106,9 @@ function OpportunitiesPageContent() {
         params.append('pipelineView', 'true')
       }
 
+      // Include converted opportunities (so closed_won opportunities that were converted to events still show)
+      params.append('include_converted', 'true')
+
       const response = await fetch(`/api/entities/opportunities?${params.toString()}`)
       if (response.ok) {
         const result = await response.json()

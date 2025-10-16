@@ -78,12 +78,6 @@ export async function GET(
       }
     }
 
-    // For pipeline view, exclude closed opportunities UNLESS specifically filtering for them
-    if (pipelineView && entity === 'opportunities' && stage !== 'closed_won' && stage !== 'closed_lost') {
-      query = query.not('stage', 'in', '(closed_won,closed_lost)')
-      countQuery = countQuery.not('stage', 'in', '(closed_won,closed_lost)')
-    }
-
     // Apply ordering
     const orderBy = config.defaultOrder?.field || 'created_at'
     const orderDirection = config.defaultOrder?.direction || 'desc'
@@ -110,7 +104,7 @@ export async function GET(
 
     // Transform response if needed
     const transformedData = config.transformResponse ?
-      config.transformResponse(data) : data
+      config.transformResponse(data, searchParams) : data
 
     // Calculate pagination metadata
     const total = count || 0

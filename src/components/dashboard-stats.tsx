@@ -41,7 +41,7 @@ export function DashboardStats({ className = '' }: DashboardStatsProps) {
       // Fetch all data in parallel
       const [leadsResponse, opportunitiesResponse, eventsResponse, accountsResponse, contactsResponse] = await Promise.all([
         fetch('/api/leads'),
-        fetch('/api/opportunities?stage=all'),
+        fetch('/api/opportunities?stage=all&include_converted=true'),
         fetch('/api/events?status=all&type=all'),
         fetch('/api/accounts?filterType=all'),
         fetch('/api/contacts')
