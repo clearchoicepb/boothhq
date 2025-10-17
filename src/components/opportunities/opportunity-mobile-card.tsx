@@ -3,6 +3,7 @@ import { Mail, MessageSquare } from 'lucide-react'
 import { getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/users'
 import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-utils'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
+import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
 
 interface OpportunityMobileCardProps {
   opportunity: OpportunityWithRelations
@@ -30,17 +31,8 @@ export function OpportunityMobileCard({
   onEmailClick,
   onSMSClick
 }: OpportunityMobileCardProps) {
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case 'prospecting': return 'bg-blue-100 text-blue-800'
-      case 'qualification': return 'bg-yellow-100 text-yellow-800'
-      case 'proposal': return 'bg-purple-100 text-purple-800'
-      case 'negotiation': return 'bg-orange-100 text-orange-800'
-      case 'closed_won': return 'bg-green-100 text-green-800'
-      case 'closed_lost': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+  // Stage color and name now use centralized utility that reads from settings
+  // This ensures colors and names are consistent with user's preferences
 
   return (
     <div
@@ -81,8 +73,8 @@ export function OpportunityMobileCard({
       <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
         <div>
           <span className="text-gray-500">Stage:</span>
-          <span className={`ml-2 inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStageColor(opportunity.stage)}`}>
-            {opportunity.stage}
+          <span className={`ml-2 inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStageColor(opportunity.stage, settings)}`}>
+            {getStageName(opportunity.stage, settings)}
           </span>
         </div>
         <div>

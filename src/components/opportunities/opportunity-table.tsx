@@ -5,6 +5,7 @@ import { OpportunityEmptyState } from './opportunity-empty-state'
 import { getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/users'
 import { getOpportunityProbability } from '@/lib/opportunity-utils'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
+import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
 
 interface OpportunityTableProps {
   opportunities: OpportunityWithRelations[]
@@ -62,17 +63,8 @@ export function OpportunityTable({
   onClearOwner,
   onClearAll
 }: OpportunityTableProps) {
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case 'prospecting': return 'bg-blue-100 text-blue-800'
-      case 'qualification': return 'bg-yellow-100 text-yellow-800'
-      case 'proposal': return 'bg-purple-100 text-purple-800'
-      case 'negotiation': return 'bg-orange-100 text-orange-800'
-      case 'closed_won': return 'bg-green-100 text-green-800'
-      case 'closed_lost': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+  // Stage color and name now use centralized utility that reads from settings
+  // This ensures colors and names are consistent with user's preferences
 
   const hasFilters = searchTerm !== '' || filterStage !== 'all' || filterOwner !== 'all'
 
@@ -189,8 +181,8 @@ export function OpportunityTable({
                     )}
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStageColor(opportunity.stage)}`}>
-                      {opportunity.stage}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStageColor(opportunity.stage, settings)}`}>
+                      {getStageName(opportunity.stage, settings)}
                     </span>
                   </td>
                   {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (

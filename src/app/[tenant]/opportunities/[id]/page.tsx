@@ -25,6 +25,7 @@ import { fetchTenantUsers, getOwnerDisplayName, type TenantUser } from '@/lib/us
 import toast from 'react-hot-toast'
 import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-utils'
 import { useSettings } from '@/lib/settings-context'
+import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
 
 interface EventDate {
   id: string
@@ -570,24 +571,8 @@ export default function OpportunityDetailPage() {
     }
   }
 
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case 'prospecting':
-        return 'bg-blue-100 text-blue-800'
-      case 'qualification':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'proposal':
-        return 'bg-orange-100 text-orange-800'
-      case 'negotiation':
-        return 'bg-purple-100 text-purple-800'
-      case 'closed_won':
-        return 'bg-green-100 text-green-800'
-      case 'closed_lost':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
+  // Stage color and name now use centralized utility that reads from settings
+  // This ensures colors and names are consistent with user's preferences
 
   if (status === 'loading' || loading || localLoading) {
     return (
@@ -1136,7 +1121,7 @@ export default function OpportunityDetailPage() {
                     value={opportunity.stage}
                     onChange={(e) => handleStageChange(e.target.value)}
                     disabled={updatingStage}
-                    className={`w-full px-4 py-3 text-lg font-semibold rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-[#347dc4] ${getStageColor(opportunity.stage)}`}
+                    className={`w-full px-4 py-3 text-lg font-semibold rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-[#347dc4] ${getStageColor(opportunity.stage, settings)}`}
                   >
                     <option value="prospecting">Prospecting</option>
                     <option value="qualification">Qualification</option>
