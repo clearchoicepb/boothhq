@@ -45,26 +45,49 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     }
   }
 
+  // Deep merge utility: merges objects; arrays are replaced by source
+  const deepMerge = (base: any, update: any): any => {
+    if (Array.isArray(update)) {
+      return [...update]
+    }
+    if (update && typeof update === 'object') {
+      const result: any = Array.isArray(base) ? [] : { ...(base || {}) }
+      for (const key of Object.keys(update)) {
+        const nextVal = (update as any)[key]
+        const prevVal = base ? (base as any)[key] : undefined
+        result[key] = deepMerge(prevVal, nextVal)
+      }
+      return result
+    }
+    return update
+  }
+
   const updateSettings = async (newSettings: Record<string, any>) => {
     if (!tenant?.id) return
 
     try {
       setError(null)
-      
+      // Merge with current settings so callers can submit partial updates safely
+      const mergedSettings = deepMerge(settings, newSettings)
+
       const response = await fetch('/api/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ settings: newSettings }),
+        // Persist the merged view so server has a canonical snapshot
+        body: JSON.stringify({ settings: mergedSettings }),
       })
       
       if (!response.ok) {
         throw new Error('Failed to save settings')
       }
       
-      // Update local state
-      setSettings(newSettings)
+      // Update local state immediately for responsive UX
+      setSettings(mergedSettings)
+
+      // Optionally re-validate from server in background to ensure consistency
+      fetchSettings()
     } catch (err) {
       console.error('Error updating settings:', err)
       setError(err instanceof Error ? err.message : 'Failed to save settings')
