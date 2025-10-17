@@ -26,6 +26,10 @@ import { EventDesignItems } from '@/components/events/event-design-items'
 import { EventLogistics } from '@/components/events/event-logistics'
 import { useEventData, EventWithRelations, EventDate } from '@/hooks/useEventData'
 import { useEventReferences } from '@/hooks/useEventReferences'
+import { useEventTabs } from '@/hooks/useEventTabs'
+import { useEventModals } from '@/hooks/useEventModals'
+import { useEventEditing } from '@/hooks/useEventEditing'
+import { useEventStaff } from '@/hooks/useEventStaff'
 
 export default function EventDetailPage() {
   const { data: session, status } = useSession()
@@ -36,174 +40,138 @@ export default function EventDetailPage() {
   const tenantSubdomain = params.tenant as string
   const eventId = params.id as string
 
-  // Custom Hooks - Core Data
+  // Custom Hooks - Core Data (Batch 1)
   const eventData = useEventData(eventId, session, tenantSubdomain)
   const references = useEventReferences(session, tenantSubdomain)
 
-  // Destructure for easier access
-  const { event, eventDates, loading: localLoading, setEvent, setEventDates } = eventData
+  // Custom Hooks - State Management (Batch 2)
+  const tabs = useEventTabs(eventId, session, tenant)
+  const modals = useEventModals()
+  const editing = useEventEditing()
+  const staff = useEventStaff(eventId, session, tenant)
+
+  // Destructure for easier access - Core Data
+  const { event, eventDates, loading: localLoading } = eventData
   const { accounts, contacts, locations, paymentStatusOptions } = references
 
-  // Remaining State - Tab Management
-  const [activeTab, setActiveTab] = useState('overview')
-  const [invoices, setInvoices] = useState<any[]>([])
-  const [activities, setActivities] = useState<any[]>([])
-  const [attachments, setAttachments] = useState<any[]>([])
-  const [loadingInvoices, setLoadingInvoices] = useState(false)
-  const [loadingActivities, setLoadingActivities] = useState(false)
-  const [loadingAttachments, setLoadingAttachments] = useState(false)
-  const [communications, setCommunications] = useState<any[]>([])
-  const [communicationsPage, setCommunicationsPage] = useState(1)
+  // Destructure for easier access - Tabs
+  const {
+    activeTab,
+    setActiveTab,
+    invoices,
+    activities,
+    attachments,
+    communications,
+    loadingInvoices,
+    loadingActivities,
+    loadingAttachments,
+    communicationsPage,
+    setCommunicationsPage,
+    fetchInvoices: refetchInvoices,
+    fetchActivities: refetchActivities,
+    fetchCommunications, // Keep original name for JSX callbacks
+  } = tabs
 
-  // Remaining State - Modal Management
-  const [tasksKey, setTasksKey] = useState(0)
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
-  const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
-  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
-  const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
-  const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
-  const [selectedActivity, setSelectedActivity] = useState<any>(null)
-  const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
-  const [selectedEventDate, setSelectedEventDate] = useState<EventDate | null>(null)
-  const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
-  const [activeEventDateTab, setActiveEventDateTab] = useState(0)
+  // Destructure for easier access - Modals
+  const {
+    isTaskModalOpen,
+    tasksKey,
+    openTaskModal,
+    closeTaskModal,
+    refreshTasks,
+    isLogCommunicationModalOpen,
+    isEmailModalOpen,
+    isSMSModalOpen,
+    openLogCommunicationModal,
+    closeLogCommunicationModal,
+    openEmailModal,
+    closeEmailModal,
+    openSMSModal,
+    closeSMSModal,
+    selectedCommunication,
+    isCommunicationDetailOpen,
+    openCommunicationDetail,
+    closeCommunicationDetail,
+    selectedActivity,
+    isActivityDetailOpen,
+    openActivityDetail,
+    closeActivityDetail,
+    selectedEventDate,
+    isEventDateDetailOpen,
+    activeEventDateTab,
+    setActiveEventDateTab,
+    openEventDateDetail,
+    closeEventDateDetail,
+    setSelectedEventDate,
+  } = modals
 
-  // Remaining State - Inline Editing
-  const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
-  const [editAccountId, setEditAccountId] = useState<string>('')
-  const [editContactId, setEditContactId] = useState<string>('')
-  const [isEditingEventDate, setIsEditingEventDate] = useState(false)
-  const [editEventDateData, setEditEventDateData] = useState<Partial<EventDate>>({})
-  const [isEditingPaymentStatus, setIsEditingPaymentStatus] = useState(false)
-  const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [editedDescription, setEditedDescription] = useState<string>('')
+  // Destructure for easier access - Editing
+  const {
+    isEditingAccountContact,
+    editAccountId,
+    editContactId,
+    setEditAccountId,
+    setEditContactId,
+    startEditingAccountContact,
+    cancelEditingAccountContact,
+    finishEditingAccountContact,
+    isEditingEventDate,
+    editEventDateData,
+    setEditEventDateData,
+    startEditingEventDate,
+    cancelEditingEventDate,
+    finishEditingEventDate,
+    isEditingPaymentStatus,
+    startEditingPaymentStatus,
+    cancelEditingPaymentStatus,
+    finishEditingPaymentStatus,
+    isEditingDescription,
+    editedDescription,
+    setEditedDescription,
+    startEditingDescription,
+    cancelEditingDescription,
+    finishEditingDescription,
+  } = editing
 
-  // Remaining State - Staff Management
-  const [staffAssignments, setStaffAssignments] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [loadingStaff, setLoadingStaff] = useState(false)
-  const [isAddingStaff, setIsAddingStaff] = useState(false)
-  const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const [staffRole, setStaffRole] = useState<string>('')
-  const [staffNotes, setStaffNotes] = useState<string>('')
-  const [staffRoles, setStaffRoles] = useState<any[]>([])
-  const [selectedStaffRoleId, setSelectedStaffRoleId] = useState<string>('')
-  const [selectedDateTimes, setSelectedDateTimes] = useState<Array<{dateId: string, startTime: string, endTime: string}>>([])
-  const [operationsTeamExpanded, setOperationsTeamExpanded] = useState(true)
-  const [eventStaffExpanded, setEventStaffExpanded] = useState(true)
-  const [editingStaffId, setEditingStaffId] = useState<string | null>(null)
+  // Destructure for easier access - Staff
+  const {
+    staffAssignments,
+    users,
+    staffRoles,
+    loadingStaff,
+    isAddingStaff,
+    setIsAddingStaff,
+    selectedUserId,
+    setSelectedUserId,
+    selectedStaffRoleId,
+    setSelectedStaffRoleId,
+    staffRole,
+    setStaffRole,
+    staffNotes,
+    setStaffNotes,
+    selectedDateTimes,
+    setSelectedDateTimes,
+    resetAddStaffForm,
+    operationsTeamExpanded,
+    setOperationsTeamExpanded,
+    eventStaffExpanded,
+    setEventStaffExpanded,
+    editingStaffId,
+    setEditingStaffId,
+    fetchStaff: refetchStaff,
+    addStaff,
+    removeStaff,
+    updateStaff,
+  } = staff
 
-  // fetchEvent and fetchEventDates now provided by useEventData hook
-
-  const fetchInvoices = useCallback(async () => {
-    try {
-      setLoadingInvoices(true)
-      const response = await fetch(`/api/invoices?event_id=${eventId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setInvoices(data)
-      }
-    } catch (error) {
-      console.error('Error fetching invoices:', error)
-    } finally {
-      setLoadingInvoices(false)
-    }
-  }, [eventId])
-
-  const fetchActivities = useCallback(async () => {
-    try {
-      setLoadingActivities(true)
-      const response = await fetch(`/api/events/${eventId}/activity`)
-      if (response.ok) {
-        const data = await response.json()
-        setActivities(data)
-      }
-    } catch (error) {
-      console.error('Error fetching activities:', error)
-    } finally {
-      setLoadingActivities(false)
-    }
-  }, [eventId])
-
-  const fetchAttachments = useCallback(async () => {
-    try {
-      setLoadingAttachments(true)
-      const response = await fetch(`/api/attachments?event_id=${eventId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setAttachments(data)
-      }
-    } catch (error) {
-      console.error('Error fetching attachments:', error)
-    } finally {
-      setLoadingAttachments(false)
-    }
-  }, [eventId])
-
-  const fetchCommunications = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/communications?event_id=${eventId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setCommunications(data)
-      }
-    } catch (error) {
-      console.error('Error fetching communications:', error)
-    }
-  }, [eventId])
-
-  const fetchStaff = useCallback(async () => {
-    try {
-      setLoadingStaff(true)
-      const response = await fetch(`/api/event-staff?event_id=${eventId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setStaffAssignments(data)
-      }
-    } catch (error) {
-      console.error('Error fetching event staff:', error)
-    } finally {
-      setLoadingStaff(false)
-    }
-  }, [eventId])
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    }
-  }, [])
-
-  const fetchStaffRoles = useCallback(async () => {
-    try {
-      const response = await fetch('/api/staff-roles?active_only=true')
-      if (response.ok) {
-        const data = await response.json()
-        setStaffRoles(data)
-      }
-    } catch (error) {
-      console.error('Error fetching staff roles:', error)
-    }
-  }, [])
-
-  // fetchPaymentStatusOptions, fetchAccountsAndContacts, and fetchLocations now provided by useEventReferences hook
+  // All fetch functions now provided by custom hooks (no longer defined here)
 
   const handleStartEditAccountContact = () => {
-    setEditAccountId(event?.account_id || '')
-    setEditContactId(event?.contact_id || '')
-    setIsEditingAccountContact(true)
+    startEditingAccountContact(event?.account_id || '', event?.contact_id || '')
   }
 
   const handleCancelEditAccountContact = () => {
-    setEditAccountId('')
-    setEditContactId('')
-    setIsEditingAccountContact(false)
+    cancelEditingAccountContact()
   }
 
   const handleSaveAccountContact = async () => {
@@ -221,7 +189,7 @@ export default function EventDetailPage() {
 
       if (response.ok) {
         await eventData.fetchEvent()
-        setIsEditingAccountContact(false)
+        finishEditingAccountContact()
       } else {
         alert('Failed to update account/contact')
       }
@@ -244,7 +212,7 @@ export default function EventDetailPage() {
 
   const handleStartEditEventDate = () => {
     if (selectedEventDate) {
-      setEditEventDateData({
+      startEditingEventDate({
         event_date: selectedEventDate.event_date,
         start_time: selectedEventDate.start_time || '',
         end_time: selectedEventDate.end_time || '',
@@ -253,13 +221,11 @@ export default function EventDetailPage() {
         status: selectedEventDate.status
       })
       // Locations are already fetched by useEventReferences hook
-      setIsEditingEventDate(true)
     }
   }
 
   const handleCancelEditEventDate = () => {
-    setEditEventDateData({})
-    setIsEditingEventDate(false)
+    cancelEditingEventDate()
   }
 
   const handleSaveEventDate = async () => {
@@ -276,11 +242,9 @@ export default function EventDetailPage() {
 
       if (response.ok) {
         await eventData.fetchEventDates()
-        setIsEditingEventDate(false)
-        setEditEventDateData({})
-        // Update selected event date with new data
         const updatedEventDate = await response.json()
         setSelectedEventDate(updatedEventDate)
+        finishEditingEventDate()
       } else {
         alert('Failed to update event date')
       }
@@ -302,7 +266,7 @@ export default function EventDetailPage() {
 
       if (response.ok) {
         await eventData.fetchEvent()
-        setIsEditingPaymentStatus(false)
+        finishEditingPaymentStatus()
       } else {
         alert('Failed to update payment status')
       }
@@ -324,7 +288,7 @@ export default function EventDetailPage() {
 
       if (response.ok) {
         await eventData.fetchEvent()
-        setIsEditingDescription(false)
+        finishEditingDescription()
       } else {
         alert('Failed to update event scope/details')
       }
@@ -516,13 +480,8 @@ export default function EventDetailPage() {
 
       // Success - refresh and reset
       console.log('[CLIENT-STAFF] Success! Refreshing staff list...')
-      await fetchStaff()
-      setIsAddingStaff(false)
-      setEditingStaffId(null)
-      setSelectedUserId('')
-      setSelectedStaffRoleId('')
-      setSelectedDateTimes([])
-      setStaffNotes('')
+      await refetchStaff()
+      resetAddStaffForm()
       console.log('[CLIENT-STAFF] ========== handleAddStaff complete ==========')
     } catch (error) {
       console.error('[CLIENT-STAFF] ❌ Error saving staff:', error)
@@ -535,49 +494,16 @@ export default function EventDetailPage() {
       return
     }
 
-    try {
-      const response = await fetch(`/api/event-staff/${staffAssignmentId}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        await fetchStaff()
-      } else {
-        alert('Failed to remove staff assignment')
-      }
-    } catch (error) {
-      console.error('Error removing staff:', error)
-      alert('Error removing staff')
+    const success = await removeStaff(staffAssignmentId)
+    if (!success) {
+      alert('Failed to remove staff assignment')
     }
   }
 
-  useEffect(() => {
-    if (session && tenant && eventId) {
-      // Core data is handled by useEventData and useEventReferences hooks
-      // Only fetch staff-related data here
-      fetchStaff()
-      fetchUsers()
-      fetchStaffRoles()
-    }
-  }, [session, tenant, eventId, fetchStaff, fetchUsers, fetchStaffRoles])
-
-  useEffect(() => {
-    if (session && tenant && eventId) {
-      if (activeTab === 'invoices') {
-        fetchInvoices()
-      } else if (activeTab === 'activity') {
-        fetchActivities()
-      } else if (activeTab === 'files') {
-        fetchAttachments()
-      } else if (activeTab === 'communications') {
-        fetchCommunications()
-      } else if (activeTab === 'staffing') {
-        fetchStaff()
-        fetchUsers()
-        fetchStaffRoles()
-      }
-    }
-  }, [activeTab, session, tenant, eventId, fetchInvoices, fetchActivities, fetchAttachments, fetchCommunications, fetchStaff, fetchUsers, fetchStaffRoles])
+  // All data fetching now handled automatically by custom hooks
+  // - useEventData & useEventReferences fetch on mount
+  // - useEventTabs fetches tab-specific data when activeTab changes
+  // - useEventStaff fetches staff data on mount
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
