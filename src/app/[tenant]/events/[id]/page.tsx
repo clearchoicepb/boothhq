@@ -11,7 +11,6 @@ import { NotesSection } from '@/components/notes-section'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
-import { Event as EventType } from '@/lib/supabase-client'
 import { TasksSection } from '@/components/tasks-section'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { LogCommunicationModal } from '@/components/log-communication-modal'
@@ -25,23 +24,8 @@ import { EventBoothAssignments } from '@/components/event-booth-assignments'
 import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
 import { EventDesignItems } from '@/components/events/event-design-items'
 import { EventLogistics } from '@/components/events/event-logistics'
-
-interface EventWithRelations extends EventType {
-  account_name: string | null
-  contact_name: string | null
-  opportunity_name: string | null
-}
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  location_name: string | null
-  notes: string | null
-  status: string
-}
+import { useEventData, EventWithRelations, EventDate } from '@/hooks/useEventData'
+import { useEventReferences } from '@/hooks/useEventReferences'
 
 export default function EventDetailPage() {
   const { data: session, status } = useSession()
@@ -51,9 +35,16 @@ export default function EventDetailPage() {
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const eventId = params.id as string
-  const [event, setEvent] = useState<EventWithRelations | null>(null)
-  const [eventDates, setEventDates] = useState<EventDate[]>([])
-  const [localLoading, setLocalLoading] = useState(true)
+
+  // Custom Hooks - Core Data
+  const eventData = useEventData(eventId, session, tenantSubdomain)
+  const references = useEventReferences(session, tenantSubdomain)
+
+  // Destructure for easier access
+  const { event, eventDates, loading: localLoading, setEvent, setEventDates } = eventData
+  const { accounts, contacts, locations, paymentStatusOptions } = references
+
+  // Remaining State - Tab Management
   const [activeTab, setActiveTab] = useState('overview')
   const [invoices, setInvoices] = useState<any[]>([])
   const [activities, setActivities] = useState<any[]>([])
@@ -61,15 +52,12 @@ export default function EventDetailPage() {
   const [loadingInvoices, setLoadingInvoices] = useState(false)
   const [loadingActivities, setLoadingActivities] = useState(false)
   const [loadingAttachments, setLoadingAttachments] = useState(false)
-  const [tasksKey, setTasksKey] = useState(0)
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [communications, setCommunications] = useState<any[]>([])
   const [communicationsPage, setCommunicationsPage] = useState(1)
-  const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
-  const [editAccountId, setEditAccountId] = useState<string>('')
-  const [editContactId, setEditContactId] = useState<string>('')
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
+
+  // Remaining State - Modal Management
+  const [tasksKey, setTasksKey] = useState(0)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
@@ -80,9 +68,18 @@ export default function EventDetailPage() {
   const [selectedEventDate, setSelectedEventDate] = useState<EventDate | null>(null)
   const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
   const [activeEventDateTab, setActiveEventDateTab] = useState(0)
+
+  // Remaining State - Inline Editing
+  const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
+  const [editAccountId, setEditAccountId] = useState<string>('')
+  const [editContactId, setEditContactId] = useState<string>('')
   const [isEditingEventDate, setIsEditingEventDate] = useState(false)
   const [editEventDateData, setEditEventDateData] = useState<Partial<EventDate>>({})
-  const [locations, setLocations] = useState<any[]>([])
+  const [isEditingPaymentStatus, setIsEditingPaymentStatus] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [editedDescription, setEditedDescription] = useState<string>('')
+
+  // Remaining State - Staff Management
   const [staffAssignments, setStaffAssignments] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [loadingStaff, setLoadingStaff] = useState(false)
@@ -93,46 +90,11 @@ export default function EventDetailPage() {
   const [staffRoles, setStaffRoles] = useState<any[]>([])
   const [selectedStaffRoleId, setSelectedStaffRoleId] = useState<string>('')
   const [selectedDateTimes, setSelectedDateTimes] = useState<Array<{dateId: string, startTime: string, endTime: string}>>([])
-
-  const [paymentStatusOptions, setPaymentStatusOptions] = useState<any[]>([])
-  const [isEditingPaymentStatus, setIsEditingPaymentStatus] = useState(false)
-  const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [editedDescription, setEditedDescription] = useState<string>('')
   const [operationsTeamExpanded, setOperationsTeamExpanded] = useState(true)
   const [eventStaffExpanded, setEventStaffExpanded] = useState(true)
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null)
 
-  const fetchEvent = useCallback(async () => {
-    try {
-      setLocalLoading(true)
-      
-      const response = await fetch(`/api/events/${eventId}`)
-      
-      if (!response.ok) {
-        console.error('Error fetching event')
-        return
-      }
-
-      const data = await response.json()
-      setEvent(data)
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLocalLoading(false)
-    }
-  }, [eventId])
-
-  const fetchEventDates = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/event-dates?event_id=${eventId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setEventDates(data)
-      }
-    } catch (error) {
-      console.error('Error fetching event dates:', error)
-    }
-  }, [eventId])
+  // fetchEvent and fetchEventDates now provided by useEventData hook
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -230,38 +192,7 @@ export default function EventDetailPage() {
     }
   }, [])
 
-  const fetchPaymentStatusOptions = useCallback(async () => {
-    try {
-      const response = await fetch('/api/payment-status-options')
-      if (response.ok) {
-        const data = await response.json()
-        setPaymentStatusOptions(data)
-      }
-    } catch (error) {
-      console.error('Error fetching payment status options:', error)
-    }
-  }, [])
-
-  const fetchAccountsAndContacts = useCallback(async () => {
-    try {
-      const [accountsRes, contactsRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/contacts')
-      ])
-
-      if (accountsRes.ok) {
-        const accountsData = await accountsRes.json()
-        setAccounts(accountsData)
-      }
-
-      if (contactsRes.ok) {
-        const contactsData = await contactsRes.json()
-        setContacts(contactsData)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts and contacts:', error)
-    }
-  }, [])
+  // fetchPaymentStatusOptions, fetchAccountsAndContacts, and fetchLocations now provided by useEventReferences hook
 
   const handleStartEditAccountContact = () => {
     setEditAccountId(event?.account_id || '')
@@ -289,7 +220,7 @@ export default function EventDetailPage() {
       })
 
       if (response.ok) {
-        await fetchEvent()
+        await eventData.fetchEvent()
         setIsEditingAccountContact(false)
       } else {
         alert('Failed to update account/contact')
@@ -311,18 +242,6 @@ export default function EventDetailPage() {
     }
   }
 
-  const fetchLocations = async () => {
-    try {
-      const response = await fetch('/api/locations')
-      if (response.ok) {
-        const data = await response.json()
-        setLocations(data)
-      }
-    } catch (error) {
-      console.error('Error fetching locations:', error)
-    }
-  }
-
   const handleStartEditEventDate = () => {
     if (selectedEventDate) {
       setEditEventDateData({
@@ -333,7 +252,7 @@ export default function EventDetailPage() {
         notes: selectedEventDate.notes || '',
         status: selectedEventDate.status
       })
-      fetchLocations()
+      // Locations are already fetched by useEventReferences hook
       setIsEditingEventDate(true)
     }
   }
@@ -356,7 +275,7 @@ export default function EventDetailPage() {
       })
 
       if (response.ok) {
-        await fetchEventDates()
+        await eventData.fetchEventDates()
         setIsEditingEventDate(false)
         setEditEventDateData({})
         // Update selected event date with new data
@@ -382,7 +301,7 @@ export default function EventDetailPage() {
       })
 
       if (response.ok) {
-        await fetchEvent()
+        await eventData.fetchEvent()
         setIsEditingPaymentStatus(false)
       } else {
         alert('Failed to update payment status')
@@ -404,7 +323,7 @@ export default function EventDetailPage() {
       })
 
       if (response.ok) {
-        await fetchEvent()
+        await eventData.fetchEvent()
         setIsEditingDescription(false)
       } else {
         alert('Failed to update event scope/details')
@@ -634,15 +553,13 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     if (session && tenant && eventId) {
-      fetchEvent()
-      fetchEventDates()
-      fetchAccountsAndContacts()
+      // Core data is handled by useEventData and useEventReferences hooks
+      // Only fetch staff-related data here
       fetchStaff()
       fetchUsers()
       fetchStaffRoles()
-      fetchPaymentStatusOptions()
     }
-  }, [session, tenant, eventId, fetchEvent, fetchEventDates, fetchAccountsAndContacts, fetchStaff, fetchUsers, fetchStaffRoles, fetchPaymentStatusOptions])
+  }, [session, tenant, eventId, fetchStaff, fetchUsers, fetchStaffRoles])
 
   useEffect(() => {
     if (session && tenant && eventId) {
@@ -667,18 +584,10 @@ export default function EventDetailPage() {
       return
     }
 
-    try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete event')
-      }
-
+    const success = await eventData.deleteEvent()
+    if (success) {
       router.push(`/${tenantSubdomain}/events`)
-    } catch (error) {
-      console.error('Error deleting event:', error)
+    } else {
       alert('Failed to delete event')
     }
   }
