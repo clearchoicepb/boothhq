@@ -42,8 +42,9 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.json({ settings: settingsObject })
     
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+    // Settings are tenant-specific and need immediate updates when changed
+    // Use minimal caching to ensure changes appear immediately
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate')
     
     return response
   } catch (error) {
