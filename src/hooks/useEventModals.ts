@@ -129,15 +129,20 @@ export function useEventModals() {
   return {
     // Task modal
     isTaskModalOpen,
+    setIsTaskModalOpen,
     tasksKey,
+    setTasksKey,
     openTaskModal,
     closeTaskModal,
     refreshTasks,
 
     // Communication modals
     isLogCommunicationModalOpen,
+    setIsLogCommunicationModalOpen,
     isEmailModalOpen,
+    setIsEmailModalOpen,
     isSMSModalOpen,
+    setIsSMSModalOpen,
     openLogCommunicationModal,
     closeLogCommunicationModal,
     openEmailModal,
@@ -147,24 +152,29 @@ export function useEventModals() {
 
     // Communication detail
     selectedCommunication,
+    setSelectedCommunication,
     isCommunicationDetailOpen,
+    setIsCommunicationDetailOpen,
     openCommunicationDetail,
     closeCommunicationDetail,
 
     // Activity detail
     selectedActivity,
+    setSelectedActivity,
     isActivityDetailOpen,
+    setIsActivityDetailOpen,
     openActivityDetail,
     closeActivityDetail,
 
     // Event date detail
     selectedEventDate,
+    setSelectedEventDate,
     isEventDateDetailOpen,
+    setIsEventDateDetailOpen,
     activeEventDateTab,
     setActiveEventDateTab,
     openEventDateDetail,
     closeEventDateDetail,
-    setSelectedEventDate,
 
     // Utility
     closeAllModals,

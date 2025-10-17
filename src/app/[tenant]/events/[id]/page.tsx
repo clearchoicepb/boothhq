@@ -83,13 +83,18 @@ export default function EventDetailPage() {
   // Destructure for easier access - Modals
   const {
     isTaskModalOpen,
+    setIsTaskModalOpen,
     tasksKey,
+    setTasksKey,
     openTaskModal,
     closeTaskModal,
     refreshTasks,
     isLogCommunicationModalOpen,
+    setIsLogCommunicationModalOpen,
     isEmailModalOpen,
+    setIsEmailModalOpen,
     isSMSModalOpen,
+    setIsSMSModalOpen,
     openLogCommunicationModal,
     closeLogCommunicationModal,
     openEmailModal,
@@ -97,25 +102,31 @@ export default function EventDetailPage() {
     openSMSModal,
     closeSMSModal,
     selectedCommunication,
+    setSelectedCommunication,
     isCommunicationDetailOpen,
+    setIsCommunicationDetailOpen,
     openCommunicationDetail,
     closeCommunicationDetail,
     selectedActivity,
+    setSelectedActivity,
     isActivityDetailOpen,
+    setIsActivityDetailOpen,
     openActivityDetail,
     closeActivityDetail,
     selectedEventDate,
+    setSelectedEventDate,
     isEventDateDetailOpen,
+    setIsEventDateDetailOpen,
     activeEventDateTab,
     setActiveEventDateTab,
     openEventDateDetail,
     closeEventDateDetail,
-    setSelectedEventDate,
   } = modals
 
   // Destructure for easier access - Editing
   const {
     isEditingAccountContact,
+    setIsEditingAccountContact,
     editAccountId,
     editContactId,
     setEditAccountId,
@@ -124,16 +135,21 @@ export default function EventDetailPage() {
     cancelEditingAccountContact,
     finishEditingAccountContact,
     isEditingEventDate,
+    setIsEditingEventDate,
     editEventDateData,
     setEditEventDateData,
     startEditingEventDate,
     cancelEditingEventDate,
     finishEditingEventDate,
     isEditingPaymentStatus,
+    setIsEditingPaymentStatus,
+    editPaymentStatus,
+    setEditPaymentStatus,
     startEditingPaymentStatus,
     cancelEditingPaymentStatus,
     finishEditingPaymentStatus,
     isEditingDescription,
+    setIsEditingDescription,
     editedDescription,
     setEditedDescription,
     startEditingDescription,
@@ -504,7 +520,7 @@ export default function EventDetailPage() {
 
     const success = await removeStaff(staffAssignmentId)
     if (!success) {
-      alert('Failed to remove staff assignment')
+        alert('Failed to remove staff assignment')
     }
   }
 
@@ -760,9 +776,7 @@ export default function EventDetailPage() {
                             {new Date(eventDates[0].event_date).toLocaleDateString()}
                           </span>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(eventDates[0].status)}`}>
-                          {eventDates[0].status}
-                        </span>
+                        <EventStatusBadge status={eventDates[0].status} />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                         {eventDates[0].start_time && (
@@ -835,9 +849,7 @@ export default function EventDetailPage() {
                               })}
                             </span>
                           </div>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(eventDates[activeEventDateTab].status)}`}>
-                            {eventDates[activeEventDateTab].status}
-                          </span>
+                          <EventStatusBadge status={eventDates[activeEventDateTab].status} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
@@ -2410,9 +2422,7 @@ export default function EventDetailPage() {
                       <option value="cancelled">Cancelled</option>
                     </select>
                   ) : (
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedEventDate.status)}`}>
-                      {selectedEventDate.status}
-                    </span>
+                    <EventStatusBadge status={selectedEventDate.status} />
                   )}
                 </div>
 
@@ -2944,9 +2954,7 @@ export default function EventDetailPage() {
                       <option value="cancelled">Cancelled</option>
                     </select>
                   ) : (
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedEventDate.status)}`}>
-                      {selectedEventDate.status}
-                    </span>
+                    <EventStatusBadge status={selectedEventDate.status} />
                   )}
                 </div>
 

@@ -110,6 +110,7 @@ export function useEventEditing() {
   return {
     // Account/Contact editing
     isEditingAccountContact,
+    setIsEditingAccountContact,
     editAccountId,
     editContactId,
     setEditAccountId,
@@ -120,6 +121,7 @@ export function useEventEditing() {
 
     // Event Date editing
     isEditingEventDate,
+    setIsEditingEventDate,
     editEventDateData,
     setEditEventDateData,
     startEditingEventDate,
@@ -128,12 +130,16 @@ export function useEventEditing() {
 
     // Payment Status editing
     isEditingPaymentStatus,
+    setIsEditingPaymentStatus,
+    editPaymentStatus,
+    setEditPaymentStatus,
     startEditingPaymentStatus,
     cancelEditingPaymentStatus,
     finishEditingPaymentStatus,
 
     // Description editing
     isEditingDescription,
+    setIsEditingDescription,
     editedDescription,
     setEditedDescription,
     startEditingDescription,
