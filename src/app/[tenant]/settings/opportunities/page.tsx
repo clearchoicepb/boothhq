@@ -124,15 +124,51 @@ export default function OpportunitiesSettingsPage() {
     }));
   };
 
-  const removeStage = (stageId: string) => {
+  const removeStage = async (stageId: string) => {
+    // Minimum stages check
     if (settings.stages.length <= 2) {
-      alert('You must have at least 2 stages');
+      toast.error('You must have at least 2 stages');
       return;
     }
-    setSettings(prev => ({
-      ...prev,
-      stages: prev.stages.filter(stage => stage.id !== stageId)
-    }));
+
+    // Check if any opportunities use this stage
+    try {
+      const response = await fetch(`/api/opportunities/count-by-stage?stage=${stageId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error('Failed to check stage usage');
+        return;
+      }
+
+      // If stage is in use, prevent deletion and suggest alternatives
+      if (data.count > 0) {
+        const stageName = settings.stages.find((s: any) => s.id === stageId)?.name || stageId;
+        const shouldDisable = window.confirm(
+          `Cannot delete "${stageName}": ${data.count} ${data.count === 1 ? 'opportunity uses' : 'opportunities use'} this stage.\n\n` +
+          `Would you like to DISABLE this stage instead? (Existing opportunities will be preserved)`
+        );
+
+        if (shouldDisable) {
+          // Disable the stage instead of deleting
+          updateStage(stageId, 'enabled', false);
+          toast.success(`"${stageName}" stage disabled. Existing opportunities preserved.`);
+        }
+        return;
+      }
+
+      // Safe to delete - no opportunities use this stage
+      setSettings(prev => ({
+        ...prev,
+        stages: prev.stages.filter(stage => stage.id !== stageId)
+      }));
+      
+      const stageName = settings.stages.find((s: any) => s.id === stageId)?.name || stageId;
+      toast.success(`"${stageName}" stage deleted`);
+    } catch (error) {
+      console.error('Error checking stage usage:', error);
+      toast.error('Failed to check if stage is in use');
+    }
   };
 
   // Load settings from global context
@@ -308,10 +344,12 @@ export default function OpportunitiesSettingsPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Sales Stages</h2>
                 <button 
                   onClick={addStage}
-                  className="flex items-center px-3 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2c6ba8] transition-colors duration-150"
+                  disabled
+                  title="Custom stages coming soon - requires database update to remove CHECK constraint"
+                  className="flex items-center px-3 py-2 bg-gray-300 text-gray-500 rounded-md cursor-not-allowed opacity-60"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Stage
+                  Add Stage (Coming Soon)
                 </button>
               </div>
               <div className="space-y-3">

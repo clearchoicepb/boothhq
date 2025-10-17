@@ -26,6 +26,7 @@ import toast from 'react-hot-toast'
 import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-utils'
 import { useSettings } from '@/lib/settings-context'
 import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
+import { formatDate, getDaysUntil } from '@/lib/utils/date-utils'
 
 interface EventDate {
   id: string
@@ -782,18 +783,27 @@ export default function OpportunityDetailPage() {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            {['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won'].map((stage, index) => (
-              <div key={stage} className="flex-1">
-                <div className={`h-2 rounded-full ${
-                  opportunity.stage === stage ? 'bg-[#347dc4]' :
-                  ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won'].indexOf(opportunity.stage) > index ? 'bg-green-400' :
-                  'bg-gray-200'
-                }`}></div>
-                <p className={`text-[9px] mt-1 text-center ${opportunity.stage === stage ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>
-                  {stage === 'prospecting' ? 'Prospect' : stage === 'qualification' ? 'Qualify' : stage === 'proposal' ? 'Proposal' : stage === 'negotiation' ? 'Negotiate' : 'Won'}
-                </p>
-              </div>
-            ))}
+            {(settings.opportunities?.stages?.filter((s: any) => s.enabled !== false && s.id !== 'closed_lost') || 
+              ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won']
+            ).map((stage: any, index: number) => {
+              const stageId = typeof stage === 'string' ? stage : stage.id
+              const stageName = typeof stage === 'string' ? getStageName(stage, settings) : stage.name
+              const stagesList = settings.opportunities?.stages?.filter((s: any) => s.enabled !== false && s.id !== 'closed_lost').map((s: any) => s.id) || 
+                                 ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won']
+              
+              return (
+                <div key={stageId} className="flex-1">
+                  <div className={`h-2 rounded-full ${
+                    opportunity.stage === stageId ? 'bg-[#347dc4]' :
+                    stagesList.indexOf(opportunity.stage) > index ? 'bg-green-400' :
+                    'bg-gray-200'
+                  }`}></div>
+                  <p className={`text-[9px] mt-1 text-center ${opportunity.stage === stageId ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>
+                    {stageName.split(' ')[0]}
+                  </p>
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -1068,17 +1078,13 @@ export default function OpportunityDetailPage() {
                       <div className="flex items-center">
                         <Calendar className="h-5 w-5 text-[#347dc4] mr-2" />
                         <p className="text-2xl font-bold text-gray-900">
-                          {new Date(opportunity.event_dates[0].event_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
+                          {formatDate(opportunity.event_dates[0].event_date)}
                         </p>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
                         {(() => {
-                          const daysUntil = Math.ceil((new Date(opportunity.event_dates[0].event_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                          return daysUntil > 0 ? `${daysUntil} day${daysUntil !== 1 ? 's' : ''} away` : daysUntil === 0 ? 'Today!' : `${Math.abs(daysUntil)} day${Math.abs(daysUntil) !== 1 ? 's' : ''} ago`
+                          const daysUntil = getDaysUntil(opportunity.event_dates[0].event_date)
+                          return daysUntil && daysUntil > 0 ? `${daysUntil} day${daysUntil !== 1 ? 's' : ''} away` : daysUntil === 0 ? 'Today!' : daysUntil ? `${Math.abs(daysUntil)} day${Math.abs(daysUntil) !== 1 ? 's' : ''} ago` : ''
                         })()}
                       </p>
                       {opportunity.event_dates.length > 1 && (
@@ -1123,12 +1129,18 @@ export default function OpportunityDetailPage() {
                     disabled={updatingStage}
                     className={`w-full px-4 py-3 text-lg font-semibold rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-[#347dc4] ${getStageColor(opportunity.stage, settings)}`}
                   >
-                    <option value="prospecting">Prospecting</option>
-                    <option value="qualification">Qualification</option>
-                    <option value="proposal">Proposal</option>
-                    <option value="negotiation">Negotiation</option>
-                    <option value="closed_won">Closed Won</option>
-                    <option value="closed_lost">Closed Lost</option>
+                    {settings.opportunities?.stages?.filter((s: any) => s.enabled !== false).map((stage: any) => (
+                      <option key={stage.id} value={stage.id}>{stage.name}</option>
+                    )) || (
+                      <>
+                        <option value="prospecting">Prospecting</option>
+                        <option value="qualification">Qualification</option>
+                        <option value="proposal">Proposal</option>
+                        <option value="negotiation">Negotiation</option>
+                        <option value="closed_won">Closed Won</option>
+                        <option value="closed_lost">Closed Lost</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1155,11 +1167,7 @@ export default function OpportunityDetailPage() {
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                               >
-                                {new Date(eventDate.event_date).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
+                                {formatDate(eventDate.event_date)}
                               </button>
                             ))}
                           </nav>
@@ -1177,7 +1185,7 @@ export default function OpportunityDetailPage() {
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 text-gray-400 mr-2" />
                                 <p className="text-sm text-gray-900">
-                                  {new Date(eventDate.event_date).toLocaleDateString('en-US', {
+                                  {formatDate(eventDate.event_date, {
                                     weekday: 'short',
                                     month: 'short',
                                     day: 'numeric',
@@ -1250,13 +1258,7 @@ export default function OpportunityDetailPage() {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Expected Close Date</label>
                       <p className="text-sm text-gray-900">
-                        {opportunity.expected_close_date
-                          ? new Date(opportunity.expected_close_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })
-                          : 'Not set'}
+                        {formatDate(opportunity.expected_close_date)}
                       </p>
                     </div>
                   </div>
