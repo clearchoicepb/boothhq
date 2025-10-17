@@ -87,6 +87,7 @@ export function OpportunityFormNew({ isOpen, onClose, onSave, customer, contact 
       newErrors.event_type = 'Event type is required'
     }
 
+    // Date fields are required, but time fields (handled elsewhere) are optional
     if (formData.date_type === 'single') {
       if (!formData.event_date) {
         newErrors.event_date = 'Event date is required'

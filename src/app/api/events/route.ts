@@ -168,6 +168,7 @@ export async function POST(request: NextRequest) {
       start_date,
       end_date,
       location,
+      location_id,
       account_id,
       contact_id,
       opportunity_id,
@@ -202,6 +203,7 @@ export async function POST(request: NextRequest) {
       start_date: start_date || event_dates[0]?.event_date,
       end_date: end_date || null,
       location: location || null,
+      location_id: location_id || null, // Requires migration 20251015000000_add_location_id_to_events.sql
       account_id: account_id || null,
       contact_id: contact_id || null,
       opportunity_id: opportunity_id || null,

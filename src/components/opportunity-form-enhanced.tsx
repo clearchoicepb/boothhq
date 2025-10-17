@@ -268,8 +268,7 @@ export function OpportunityFormEnhanced({
       }
 
       if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
-      if (!eventDates[0]?.start_time) newErrors.start_time = 'Start time is required'
-      if (!eventDates[0]?.end_time) newErrors.end_time = 'End time is required'
+      // Time fields are optional
     } else if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
       // Same location types: must have at least 2 dates
       if (validDates.length < 2) {
@@ -293,8 +292,7 @@ export function OpportunityFormEnhanced({
 
       eventDates.forEach((date, index) => {
         if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        if (!date.start_time) newErrors[`start_time_${index}`] = `Start time ${index + 1} is required`
-        if (!date.end_time) newErrors[`end_time_${index}`] = `End time ${index + 1} is required`
+        // Time fields are optional
       })
     } else if (formData.date_type === 'multiple_locations') {
       // Multiple locations: must have at least 2 dates AND at least 2 different locations
@@ -312,8 +310,7 @@ export function OpportunityFormEnhanced({
 
       eventDates.forEach((date, index) => {
         if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        if (!date.start_time) newErrors[`start_time_${index}`] = `Start time ${index + 1} is required`
-        if (!date.end_time) newErrors[`end_time_${index}`] = `End time ${index + 1} is required`
+        // Time fields are optional
         if (!date.location_id) newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
       })
     }

@@ -58,6 +58,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     event_type_id: '',
     status: 'scheduled',
     date_type: 'single_day',
+    location_id: '',
     mailing_address_line1: '',
     mailing_address_line2: '',
     mailing_city: '',
@@ -86,6 +87,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_type_id: event.event_type_id || '',
         status: event.status || 'scheduled',
         date_type: event.date_type || 'single_day',
+        location_id: event.location_id || '',
         mailing_address_line1: event.mailing_address_line1 || '',
         mailing_address_line2: event.mailing_address_line2 || '',
         mailing_city: event.mailing_city || '',
@@ -104,6 +106,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_type_id: '',
         status: 'scheduled',
         date_type: 'single_day',
+        location_id: '',
         mailing_address_line1: '',
         mailing_address_line2: '',
         mailing_city: '',
@@ -147,16 +150,14 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     if (!formData.event_category_id) newErrors.event_category_id = 'Event category is required'
     if (!formData.event_type_id) newErrors.event_type_id = 'Event type is required'
 
-    // Validate event dates based on date_type
+    // Validate event dates based on date_type (dates are required, times are optional)
     if (formData.date_type === 'single_day') {
       if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
-      if (!eventDates[0]?.start_time) newErrors.start_time = 'Start time is required'
-      if (!eventDates[0]?.end_time) newErrors.end_time = 'End time is required'
+      // Time fields are optional
     } else {
       eventDates.forEach((date, index) => {
         if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        if (!date.start_time) newErrors[`start_time_${index}`] = `Start time ${index + 1} is required`
-        if (!date.end_time) newErrors[`end_time_${index}`] = `End time ${index + 1} is required`
+        // Time fields are optional
       })
     }
 
@@ -285,6 +286,21 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
               ))}
             </Select>
           </div>
+        </div>
+
+        {/* Primary Event Location */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Primary Event Location
+          </label>
+          <LocationSelector
+            selectedLocationId={formData.location_id || null}
+            onLocationChange={(locationId) => handleInputChange('location_id', locationId || '')}
+            placeholder="Select primary event location"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            This is the main location for the event. You can specify different locations for each date below.
+          </p>
         </div>
 
         {/* Event Dates */}
