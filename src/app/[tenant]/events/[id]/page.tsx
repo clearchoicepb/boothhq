@@ -30,6 +30,14 @@ import { useEventTabs } from '@/hooks/useEventTabs'
 import { useEventModals } from '@/hooks/useEventModals'
 import { useEventEditing } from '@/hooks/useEventEditing'
 import { useEventStaff } from '@/hooks/useEventStaff'
+import { EventStatusBadge } from '@/components/events/event-status-badge'
+import { EventTypeBadge } from '@/components/events/event-type-badge'
+import { PaymentStatusBadge } from '@/components/events/payment-status-badge'
+import { EventHeader } from '@/components/events/event-header'
+import { LoadingState } from '@/components/events/loading-state'
+import { EmptyState } from '@/components/events/empty-state'
+import { EventStatCard } from '@/components/events/event-stat-card'
+import { EventProgressIndicator } from '@/components/events/event-progress-indicator'
 
 export default function EventDetailPage() {
   const { data: session, status } = useSession()
@@ -518,50 +526,7 @@ export default function EventDetailPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800'
-      case 'in_progress':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case 'wedding':
-        return 'bg-pink-100 text-pink-800'
-      case 'corporate':
-        return 'bg-blue-100 text-blue-800'
-      case 'birthday':
-        return 'bg-purple-100 text-purple-800'
-      case 'anniversary':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getPaymentStatusColor = (color: string | undefined) => {
-    switch (color) {
-      case 'red':
-        return 'bg-red-100 text-red-800'
-      case 'yellow':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'green':
-        return 'bg-green-100 text-green-800'
-      case 'blue':
-        return 'bg-blue-100 text-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
+  // Color utility functions moved to components
 
   const canManageEvents = hasPermission('events', 'edit')
 
@@ -569,9 +534,7 @@ export default function EventDetailPage() {
     return (
       <AccessGuard module="events">
         <AppLayout>
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
+          <LoadingState />
         </AppLayout>
       </AccessGuard>
     )
@@ -600,36 +563,13 @@ export default function EventDetailPage() {
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Link href={`/${tenantSubdomain}/events`}>
-                  <Button variant="outline" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
-                  <p className="text-gray-600">Event Details</p>
-                </div>
-              </div>
-              {canManageEvents && (
-                <div className="flex space-x-2">
-                  <Link href={`/${tenantSubdomain}/events/${event.id}/edit`}>
-                    <Button variant="outline">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                  </Link>
-                  <Button variant="outline" className="text-red-600 hover:text-red-700" onClick={handleDelete}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+          <EventHeader
+            title={event.title}
+            tenantSubdomain={tenantSubdomain}
+            eventId={event.id}
+            canManageEvents={canManageEvents}
+            onDelete={handleDelete}
+          />
 
           {/* Core Tasks Checklist */}
           <div className="mb-4 relative z-10">
@@ -700,43 +640,14 @@ export default function EventDetailPage() {
                   {/* Event Category & Type */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-500 mb-2">Event Category & Type</label>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {/* Category Badge with Color */}
-                      {event.event_category ? (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border"
-                          style={{
-                            borderColor: event.event_category.color,
-                            backgroundColor: event.event_category.color + '10'
-                          }}
-                        >
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: event.event_category.color }}
-                          />
-                          <span className="font-medium text-sm" style={{ color: event.event_category.color }}>
-                            {event.event_category.name}
-                          </span>
-                        </div>
-                      ) : null}
-
-                      {/* Event Type */}
-                      {event.event_type ? (
-                        <span className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
-                          {event.event_type.name}
-                        </span>
-                      ) : null}
-
-                      {/* Fallback if no category/type */}
-                      {!event.event_category && !event.event_type && (
-                        <span className="text-gray-400 italic text-sm">No category/type set</span>
-                      )}
-                    </div>
+                    <EventTypeBadge 
+                      category={event.event_category} 
+                      type={event.event_type} 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                      {event.status}
-                    </span>
+                    <EventStatusBadge status={event.status} />
                   </div>
                   <div>
                     <label htmlFor="payment-status" className="block text-sm font-medium text-gray-500 mb-1">Payment Status</label>
@@ -766,14 +677,13 @@ export default function EventDetailPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          getPaymentStatusColor(paymentStatusOptions.find(opt => opt.status_name === event.payment_status)?.status_color)
-                        }`}>
-                          {event.payment_status || 'Not Set'}
-                        </span>
+                        <PaymentStatusBadge
+                          status={event.payment_status}
+                          color={paymentStatusOptions.find(opt => opt.status_name === event.payment_status)?.status_color}
+                        />
                         {canManageEvents && (
                           <button
-                            onClick={() => setIsEditingPaymentStatus(true)}
+                            onClick={() => startEditingPaymentStatus()}
                             className="p-1 text-gray-400 hover:text-[#347dc4]"
                             title="Edit payment status"
                           >
