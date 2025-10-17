@@ -143,8 +143,6 @@ export default function EventDetailPage() {
     finishEditingEventDate,
     isEditingPaymentStatus,
     setIsEditingPaymentStatus,
-    editPaymentStatus,
-    setEditPaymentStatus,
     startEditingPaymentStatus,
     cancelEditingPaymentStatus,
     finishEditingPaymentStatus,

@@ -131,8 +131,6 @@ export function useEventEditing() {
     // Payment Status editing
     isEditingPaymentStatus,
     setIsEditingPaymentStatus,
-    editPaymentStatus,
-    setEditPaymentStatus,
     startEditingPaymentStatus,
     cancelEditingPaymentStatus,
     finishEditingPaymentStatus,
