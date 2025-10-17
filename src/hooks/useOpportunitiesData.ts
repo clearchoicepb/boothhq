@@ -51,6 +51,7 @@ export function useOpportunitiesData({
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
 
   const fetchOpportunities = useCallback(async () => {
     try {
@@ -90,6 +91,9 @@ export function useOpportunitiesData({
           setOpportunities(result)
         }
       }
+      
+      // Update last fetch timestamp
+      setLastFetchTime(Date.now())
     } catch (error) {
       console.error('Error fetching opportunities:', error)
     } finally {
@@ -103,6 +107,42 @@ export function useOpportunitiesData({
       fetchOpportunities()
     }
   }, [session, tenant, fetchOpportunities])
+
+  // Auto-refresh on window focus/visibility change (for when user returns from settings)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Only refetch if:
+      // 1. Page is visible
+      // 2. User is authenticated
+      // 3. More than 3 seconds since last fetch (prevent excessive calls)
+      if (
+        !document.hidden &&
+        session &&
+        tenant &&
+        Date.now() - lastFetchTime > 3000
+      ) {
+        fetchOpportunities()
+      }
+    }
+
+    const handleWindowFocus = () => {
+      // Only refetch if more than 3 seconds since last fetch
+      if (session && tenant && Date.now() - lastFetchTime > 3000) {
+        fetchOpportunities()
+      }
+    }
+
+    // Listen for visibility changes (tab switching)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Listen for window focus (returning from another window/app)
+    window.addEventListener('focus', handleWindowFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleWindowFocus)
+    }
+  }, [session, tenant, lastFetchTime, fetchOpportunities])
 
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
