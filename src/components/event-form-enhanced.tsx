@@ -28,6 +28,12 @@ interface Contact {
   account_id: string
 }
 
+interface Opportunity {
+  id: string
+  name: string
+  account_id: string | null
+}
+
 
 interface EventDateForm {
   id?: string
@@ -60,6 +66,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     status: 'scheduled',
     date_type: 'single_day',
     converted_from_opportunity_id: opportunityId || '',
+    opportunity_id: opportunityId || '',
     account_id: account?.id || '',
     contact_id: contact?.id || ''
   })
@@ -70,6 +77,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
 
   const [accounts, setAccounts] = useState<Account[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [sharedLocationId, setSharedLocationId] = useState<string>('')
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -136,13 +145,14 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
   }, [event, isOpen, opportunityId, account, contact])
 
-  // Fetch accounts and contacts for dropdowns
+  // Fetch accounts, contacts, and opportunities for dropdowns
   useEffect(() => {
-    const fetchAccountsAndContacts = async () => {
+    const fetchData = async () => {
       try {
-        const [accountsRes, contactsRes] = await Promise.all([
+        const [accountsRes, contactsRes, opportunitiesRes] = await Promise.all([
           fetch('/api/accounts'),
-          fetch('/api/contacts')
+          fetch('/api/contacts'),
+          fetch('/api/opportunities')
         ])
         
         if (accountsRes.ok) {
@@ -154,13 +164,18 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           const contactsData = await contactsRes.json()
           setContacts(contactsData)
         }
+        
+        if (opportunitiesRes.ok) {
+          const opportunitiesData = await opportunitiesRes.json()
+          setOpportunities(opportunitiesData)
+        }
       } catch (error) {
-        console.error('Error fetching accounts/contacts:', error)
+        console.error('Error fetching data:', error)
       }
     }
     
     if (isOpen) {
-      fetchAccountsAndContacts()
+      fetchData()
     }
   }, [isOpen])
 
@@ -203,15 +218,82 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     if (!formData.event_category_id) newErrors.event_category_id = 'Event category is required'
     if (!formData.event_type_id) newErrors.event_type_id = 'Event type is required'
 
-    // Validate event dates based on date_type (dates are required, times are optional)
-    if (formData.date_type === 'single_day') {
-      if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
-      // Time fields are optional
-    } else {
-      eventDates.forEach((date, index) => {
-        if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        // Time fields are optional
-      })
+    // Get valid dates (dates that have been filled in)
+    const validDates = eventDates.filter(d => d.event_date)
+
+    // Validate based on date type
+    switch (formData.date_type) {
+      case 'single_day':
+        if (validDates.length === 0) {
+          newErrors.event_date = 'Event date is required'
+        } else if (validDates.length > 1) {
+          newErrors.event_date = 'Single day events can only have one date'
+        }
+        if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
+        break
+
+      case 'same_location_sequential':
+        if (validDates.length < 2) {
+          newErrors.event_dates = 'Sequential events must have at least 2 dates'
+        }
+        if (!sharedLocationId) {
+          newErrors.shared_location = 'Sequential same-location events require a shared location'
+        }
+        // Check dates are consecutive
+        if (validDates.length >= 2) {
+          const sortedDates = validDates
+            .map(d => new Date(d.event_date))
+            .sort((a, b) => a.getTime() - b.getTime())
+          
+          for (let i = 1; i < sortedDates.length; i++) {
+            const diff = Math.floor((sortedDates[i].getTime() - sortedDates[i-1].getTime()) / (1000 * 60 * 60 * 24))
+            if (diff !== 1) {
+              newErrors.event_dates = 'Sequential events must have consecutive dates with no gaps (e.g., Jan 1, Jan 2, Jan 3)'
+              break
+            }
+          }
+        }
+        eventDates.forEach((date, index) => {
+          if (date.event_date && !date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+        })
+        break
+
+      case 'same_location_non_sequential':
+        if (validDates.length < 2) {
+          newErrors.event_dates = 'Non-sequential events must have at least 2 dates'
+        }
+        if (!sharedLocationId) {
+          newErrors.shared_location = 'Same-location events require a shared location'
+        }
+        eventDates.forEach((date, index) => {
+          if (date.event_date && !date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+        })
+        break
+
+      case 'multiple_locations':
+        if (validDates.length < 2) {
+          newErrors.event_dates = 'Multiple location events must have at least 2 dates'
+        }
+        const uniqueLocations = new Set(validDates.map(d => d.location_id).filter(Boolean))
+        if (uniqueLocations.size < 2) {
+          newErrors.event_dates = 'Multiple location events must have at least 2 different locations'
+        }
+        eventDates.forEach((date, index) => {
+          if (date.event_date) {
+            if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+            if (!date.location_id) newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
+          }
+        })
+        break
+
+      default:
+        // For any other date type (multi_day, etc.)
+        if (validDates.length === 0) {
+          newErrors.event_date = 'At least one event date is required'
+        }
+        eventDates.forEach((date, index) => {
+          if (date.event_date && !date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+        })
     }
 
     setErrors(newErrors)
@@ -302,12 +384,40 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
               onChange={(e) => handleInputChange('contact_id', e.target.value)}
             >
               <option value="">Select a contact (optional)</option>
-              {contacts.map((con) => (
+              {(formData.account_id 
+                ? contacts.filter(c => c.account_id === formData.account_id)
+                : contacts
+              ).map((con) => (
                 <option key={con.id} value={con.id}>
                   {con.first_name} {con.last_name}
                 </option>
               ))}
             </Select>
+            {formData.account_id && contacts.filter(c => c.account_id === formData.account_id).length === 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                No contacts found for this account
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Opportunity (Optional)
+            </label>
+            <Select
+              value={formData.opportunity_id || ''}
+              onChange={(e) => handleInputChange('opportunity_id', e.target.value)}
+            >
+              <option value="">Select an opportunity (optional)</option>
+              {opportunities.map((opp) => (
+                <option key={opp.id} value={opp.id}>
+                  {opp.name}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Link this event to an opportunity
+            </p>
           </div>
 
           {opportunityId && (
@@ -396,6 +506,45 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           </div>
         </div>
 
+        {/* Shared Location for same-location events */}
+        {(formData.date_type === 'single_day' || 
+          formData.date_type === 'same_location_sequential' || 
+          formData.date_type === 'same_location_non_sequential') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Location {formData.date_type !== 'single_day' && '*'}
+            </label>
+            <LocationSelector
+              selectedLocationId={sharedLocationId || null}
+              onLocationChange={(locationId) => {
+                setSharedLocationId(locationId || '')
+                // Auto-populate all event dates with this location
+                if (locationId) {
+                  setEventDates(prev => prev.map(date => ({
+                    ...date,
+                    location_id: locationId
+                  })))
+                }
+                // Clear error when location is selected
+                if (errors.shared_location) {
+                  setErrors(prev => ({ ...prev, shared_location: '' }))
+                }
+              }}
+              placeholder={formData.date_type === 'single_day' 
+                ? "Select location (optional)" 
+                : "Select location for all dates"}
+            />
+            {errors.shared_location && (
+              <p className="text-red-500 text-xs mt-1">{errors.shared_location}</p>
+            )}
+            {formData.date_type !== 'single_day' && !errors.shared_location && (
+              <p className="text-xs text-gray-500 mt-1">
+                All event dates will use this location
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Event Dates */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -414,6 +563,12 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
               </Button>
             )}
           </div>
+
+          {errors.event_dates && (
+            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{errors.event_dates}</p>
+            </div>
+          )}
 
           {eventDates.map((date, index) => (
             <div key={index} className="border rounded-lg p-4 mb-3">
