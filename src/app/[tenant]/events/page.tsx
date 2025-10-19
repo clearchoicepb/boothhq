@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { formatDate, formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
+import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
 
 interface EventDate {
   id: string
@@ -83,7 +83,7 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
   // Date range filter
-  const [dateRangeFilter, setDateRangeFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past'>('upcoming')
 
   // Status filter
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -275,18 +275,36 @@ export default function EventsPage() {
       return false
     }
 
-    // Date range filter (upcoming/past/all)
+    // Date range filter
     if (dateRangeFilter !== 'all' && event.start_date) {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-
-      const eventDate = new Date(event.start_date)
+      const now = new Date()
+      now.setHours(0, 0, 0, 0)
+      
+      const eventDate = parseLocalDate(event.start_date)
       eventDate.setHours(0, 0, 0, 0)
 
-      if (dateRangeFilter === 'upcoming') {
-        if (eventDate < today) return false
-      } else if (dateRangeFilter === 'past') {
-        if (eventDate >= today) return false
+      switch (dateRangeFilter) {
+        case 'today':
+          if (!isDateToday(event.start_date)) return false
+          break
+        
+        case 'this_week':
+          const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+          if (eventDate < now || eventDate > weekEnd) return false
+          break
+        
+        case 'this_month':
+          if (eventDate.getMonth() !== now.getMonth() || 
+              eventDate.getFullYear() !== now.getFullYear()) return false
+          break
+        
+        case 'upcoming':
+          if (eventDate < now) return false
+          break
+        
+        case 'past':
+          if (eventDate >= now) return false
+          break
       }
     }
 
@@ -400,38 +418,71 @@ export default function EventsPage() {
               </div>
 
               {/* Date Range Filters */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setDateRangeFilter('upcoming')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'upcoming'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📅 Upcoming
-                </button>
-
-                <button
-                  onClick={() => setDateRangeFilter('past')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'past'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📋 Past
-                </button>
-
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setDateRangeFilter('all')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 active:scale-95 ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
                     dateRangeFilter === 'all'
                       ? 'bg-[#347dc4] text-white shadow-md'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   📊 All
+                </button>
+
+                <button
+                  onClick={() => setDateRangeFilter('today')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'today'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  📅 Today
+                </button>
+
+                <button
+                  onClick={() => setDateRangeFilter('this_week')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'this_week'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  📆 This Week
+                </button>
+
+                <button
+                  onClick={() => setDateRangeFilter('this_month')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'this_month'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  📅 This Month
+                </button>
+
+                <button
+                  onClick={() => setDateRangeFilter('upcoming')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'upcoming'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  🔜 Upcoming
+                </button>
+
+                <button
+                  onClick={() => setDateRangeFilter('past')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
+                    dateRangeFilter === 'past'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  📋 Past
                 </button>
               </div>
 
@@ -456,9 +507,12 @@ export default function EventsPage() {
 
             {/* Helper text */}
             <p className="text-xs text-gray-500 mt-3">
+              {dateRangeFilter === 'all' && 'All events regardless of date'}
+              {dateRangeFilter === 'today' && 'Events happening today'}
+              {dateRangeFilter === 'this_week' && 'Events in the next 7 days'}
+              {dateRangeFilter === 'this_month' && 'Events in the current month'}
               {dateRangeFilter === 'upcoming' && 'Events scheduled for today and beyond'}
               {dateRangeFilter === 'past' && 'Events that have already occurred'}
-              {dateRangeFilter === 'all' && 'All events regardless of date'}
             </p>
           </div>
 
@@ -591,9 +645,12 @@ export default function EventsPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {dateRangeFilter === 'upcoming' && '📅 Upcoming Events'}
-                  {dateRangeFilter === 'past' && '📋 Past Events'}
                   {dateRangeFilter === 'all' && '📊 All Events'}
+                  {dateRangeFilter === 'today' && '📅 Today\'s Events'}
+                  {dateRangeFilter === 'this_week' && '📆 This Week\'s Events'}
+                  {dateRangeFilter === 'this_month' && '📅 This Month\'s Events'}
+                  {dateRangeFilter === 'upcoming' && '🔜 Upcoming Events'}
+                  {dateRangeFilter === 'past' && '📋 Past Events'}
                   {taskFilter === 'incomplete' && (
                     <span className="ml-2 text-sm font-normal text-orange-600">
                       (with incomplete tasks)
