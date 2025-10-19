@@ -85,6 +85,9 @@ export default function EventsPage() {
   // Date range filter
   const [dateRangeFilter, setDateRangeFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
 
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+
   // Task filtering state
   const [coreTasks, setCoreTasks] = useState<CoreTask[]>([])
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
@@ -267,6 +270,11 @@ export default function EventsPage() {
 
     if (!matchesSearch) return false
 
+    // Status filter
+    if (statusFilter !== 'all' && event.status !== statusFilter) {
+      return false
+    }
+
     // Date range filter (upcoming/past/all)
     if (dateRangeFilter !== 'all' && event.start_date) {
       const today = new Date()
@@ -425,6 +433,24 @@ export default function EventsPage() {
                 >
                   📊 All
                 </button>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex gap-3">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent transition-all duration-150"
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="postponed">Postponed</option>
+                </select>
               </div>
             </div>
 
