@@ -10,6 +10,7 @@ import { LocationSelector } from '@/components/location-selector'
 import { EventCategoryTypeSelector } from '@/components/forms/event-category-type-selector'
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
+import { toDateInputValue } from '@/lib/utils/date-utils'
 
 interface Account {
   id: string
@@ -58,20 +59,17 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     event_type_id: '',
     status: 'scheduled',
     date_type: 'single_day',
-    location_id: '',
-    mailing_address_line1: '',
-    mailing_address_line2: '',
-    mailing_city: '',
-    mailing_state: '',
-    mailing_postal_code: '',
-    mailing_country: 'US',
-    converted_from_opportunity_id: opportunityId || ''
+    converted_from_opportunity_id: opportunityId || '',
+    account_id: account?.id || '',
+    contact_id: contact?.id || ''
   })
 
   const [eventDates, setEventDates] = useState<EventDateForm[]>([
     { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }
   ])
 
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -87,15 +85,31 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_type_id: event.event_type_id || '',
         status: event.status || 'scheduled',
         date_type: event.date_type || 'single_day',
-        location_id: event.location_id || '',
-        mailing_address_line1: event.mailing_address_line1 || '',
-        mailing_address_line2: event.mailing_address_line2 || '',
-        mailing_city: event.mailing_city || '',
-        mailing_state: event.mailing_state || '',
-        mailing_postal_code: event.mailing_postal_code || '',
-        mailing_country: event.mailing_country || 'US',
-        converted_from_opportunity_id: opportunityId || ''
+        converted_from_opportunity_id: opportunityId || '',
+        account_id: event.account_id || '',
+        contact_id: event.contact_id || ''
       })
+
+      // Load event dates if editing
+      if (event.event_dates && Array.isArray(event.event_dates) && event.event_dates.length > 0) {
+        setEventDates(event.event_dates.map((ed: any) => ({
+          id: ed.id,
+          event_date: ed.event_date || '',
+          start_time: ed.start_time || '',
+          end_time: ed.end_time || '',
+          location_id: ed.location_id || '',
+          notes: ed.notes || ''
+        })))
+      } else {
+        // Initialize with one empty date for editing events without dates
+        setEventDates([{
+          event_date: '',
+          start_time: '',
+          end_time: '',
+          location_id: '',
+          notes: ''
+        }])
+      }
     } else {
       // Reset form for new event
       setFormData({
@@ -106,18 +120,57 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_type_id: '',
         status: 'scheduled',
         date_type: 'single_day',
-        location_id: '',
-        mailing_address_line1: '',
-        mailing_address_line2: '',
-        mailing_city: '',
-        mailing_state: '',
-        mailing_postal_code: '',
-        mailing_country: 'US',
-        converted_from_opportunity_id: opportunityId || ''
+        converted_from_opportunity_id: opportunityId || '',
+        account_id: account?.id || '',
+        contact_id: contact?.id || ''
       })
+      
+      // Initialize with one empty date for new events
+      setEventDates([{
+        event_date: '',
+        start_time: '',
+        end_time: '',
+        location_id: '',
+        notes: ''
+      }])
     }
-  }, [event, isOpen])
+  }, [event, isOpen, opportunityId, account, contact])
 
+  // Fetch accounts and contacts for dropdowns
+  useEffect(() => {
+    const fetchAccountsAndContacts = async () => {
+      try {
+        const [accountsRes, contactsRes] = await Promise.all([
+          fetch('/api/accounts'),
+          fetch('/api/contacts')
+        ])
+        
+        if (accountsRes.ok) {
+          const accountsData = await accountsRes.json()
+          setAccounts(accountsData)
+        }
+        
+        if (contactsRes.ok) {
+          const contactsData = await contactsRes.json()
+          setContacts(contactsData)
+        }
+      } catch (error) {
+        console.error('Error fetching accounts/contacts:', error)
+      }
+    }
+    
+    if (isOpen) {
+      fetchAccountsAndContacts()
+    }
+  }, [isOpen])
+
+  // Auto-update date type based on number of dates
+  useEffect(() => {
+    // If user adds a second date while in single_day mode, auto-switch to multi_day
+    if (eventDates.length > 1 && formData.date_type === 'single_day') {
+      setFormData(prev => ({ ...prev, date_type: 'multi_day' }))
+    }
+  }, [eventDates.length, formData.date_type])
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -175,8 +228,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     try {
       const eventData = {
         ...formData,
-        account_id: account?.id || null,
-        contact_id: contact?.id || null,
+        account_id: formData.account_id || null,
+        contact_id: formData.contact_id || null,
         opportunity_id: opportunityId || null,
         start_date: eventDates[0]?.event_date || '',
         end_date: eventDates.length > 1 ? eventDates[eventDates.length - 1]?.event_date : eventDates[0]?.event_date || '',
@@ -222,14 +275,49 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Account/Contact Information */}
-        {(account || contact) && (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Event Information</h3>
-            {account && <p className="text-sm text-gray-600">Account: {account.name}</p>}
-            {contact && <p className="text-sm text-gray-600">Contact: {contact.first_name} {contact.last_name}</p>}
-            {opportunityId && <p className="text-sm text-gray-600">Converted from Opportunity</p>}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Account
+            </label>
+            <Select
+              value={formData.account_id || ''}
+              onChange={(e) => handleInputChange('account_id', e.target.value)}
+            >
+              <option value="">Select an account (optional)</option>
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name}
+                </option>
+              ))}
+            </Select>
           </div>
-        )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contact
+            </label>
+            <Select
+              value={formData.contact_id || ''}
+              onChange={(e) => handleInputChange('contact_id', e.target.value)}
+            >
+              <option value="">Select a contact (optional)</option>
+              {contacts.map((con) => (
+                <option key={con.id} value={con.id}>
+                  {con.first_name} {con.last_name}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {opportunityId && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                ℹ️ This event was converted from an opportunity
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Basic Information */}
         <div>
@@ -277,7 +365,22 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
             </label>
             <Select
               value={formData.date_type}
-              onChange={(e) => handleInputChange('date_type', e.target.value)}
+              onChange={(e) => {
+                const newDateType = e.target.value
+                
+                // If switching to single day and have multiple dates, confirm removal
+                if (newDateType === 'single_day' && eventDates.length > 1) {
+                  const confirmed = window.confirm(
+                    'Switching to Single Day Event will remove all dates except the first one. Continue?'
+                  )
+                  if (confirmed) {
+                    setEventDates([eventDates[0]])
+                    handleInputChange('date_type', newDateType)
+                  }
+                } else {
+                  handleInputChange('date_type', newDateType)
+                }
+              }}
             >
               {getDateTypeOptions().map(option => (
                 <option key={option.value} value={option.value}>
@@ -285,22 +388,12 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
                 </option>
               ))}
             </Select>
+            {formData.date_type === 'single_day' && eventDates.length >= 1 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Single day events can only have one date. Change to "Multi-Day Event" to add more dates.
+              </p>
+            )}
           </div>
-        </div>
-
-        {/* Primary Event Location */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Primary Event Location
-          </label>
-          <LocationSelector
-            selectedLocationId={formData.location_id || null}
-            onLocationChange={(locationId) => handleInputChange('location_id', locationId || '')}
-            placeholder="Select primary event location"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            This is the main location for the event. You can specify different locations for each date below.
-          </p>
         </div>
 
         {/* Event Dates */}
@@ -347,7 +440,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
                   </label>
                   <Input
                     type="date"
-                    value={date.event_date}
+                    value={toDateInputValue(date.event_date)}
                     onChange={(e) => handleEventDateChange(index, 'event_date', e.target.value)}
                     className={errors[`event_date_${index}`] ? 'border-red-500' : ''}
                   />
@@ -408,55 +501,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Mailing Address */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Mailing Address (Optional)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2">
-              <Input
-                value={formData.mailing_address_line1}
-                onChange={(e) => handleInputChange('mailing_address_line1', e.target.value)}
-                placeholder="Address Line 1"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Input
-                value={formData.mailing_address_line2}
-                onChange={(e) => handleInputChange('mailing_address_line2', e.target.value)}
-                placeholder="Address Line 2"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_city}
-                onChange={(e) => handleInputChange('mailing_city', e.target.value)}
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_state}
-                onChange={(e) => handleInputChange('mailing_state', e.target.value)}
-                placeholder="State"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_postal_code}
-                onChange={(e) => handleInputChange('mailing_postal_code', e.target.value)}
-                placeholder="ZIP Code"
-              />
-            </div>
-            <div>
-              <Input
-                value={formData.mailing_country}
-                onChange={(e) => handleInputChange('mailing_country', e.target.value)}
-                placeholder="Country"
-              />
-            </div>
-          </div>
         </div>
 
         {/* Description */}

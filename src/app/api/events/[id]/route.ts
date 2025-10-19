@@ -23,11 +23,21 @@ export async function GET(
       .from('events')
       .select(`
         *,
-        accounts!events_account_id_fkey(name),
-        contacts!events_contact_id_fkey(first_name, last_name),
+        accounts!events_account_id_fkey(id, name, email, phone),
+        contacts!events_contact_id_fkey(id, first_name, last_name, email, phone),
         opportunities!events_opportunity_id_fkey(name),
         event_categories(id, name, slug, color, icon),
-        event_types(id, name, slug)
+        event_types(id, name, slug),
+        event_dates(
+          id,
+          event_date,
+          start_time,
+          end_time,
+          location_id,
+          notes,
+          status,
+          locations(id, name, address_line1, city, state)
+        )
       `)
       .eq('id', eventId)
       .eq('tenant_id', session.user.tenantId)
