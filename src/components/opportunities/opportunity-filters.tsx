@@ -1,5 +1,6 @@
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Select } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import type { TenantUser } from '@/lib/users'
 
 interface OpportunityFiltersProps {
@@ -13,6 +14,9 @@ interface OpportunityFiltersProps {
   onDateFilterChange: (value: string) => void
   dateType: 'created' | 'closed'
   onDateTypeChange: (value: 'created' | 'closed') => void
+  sortBy: string
+  onSortChange: (value: string) => void
+  onClearAll: () => void
   tenantUsers: TenantUser[]
   settings: any
 }
@@ -35,9 +39,14 @@ export function OpportunityFilters({
   onDateFilterChange,
   dateType,
   onDateTypeChange,
+  sortBy,
+  onSortChange,
+  onClearAll,
   tenantUsers,
   settings
 }: OpportunityFiltersProps) {
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm !== '' || filterStage !== 'all' || filterOwner !== 'all' || dateFilter !== 'all'
   return (
     <div className="bg-white p-4 md:p-6 rounded-lg shadow mb-6">
       <div className="space-y-4">
@@ -57,8 +66,8 @@ export function OpportunityFilters({
           </div>
         </div>
 
-        {/* Filter Dropdowns - Stack on mobile, 2 cols on tablet, 4 cols on desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Filter Dropdowns - Stack on mobile, 2 cols on tablet, 5 cols on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Filter by Stage
@@ -139,7 +148,41 @@ export function OpportunityFilters({
               <option value="closed">Closed Date</option>
             </Select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sort By
+            </label>
+            <Select
+              value={sortBy}
+              onChange={(e) => onSortChange(e.target.value)}
+            >
+              <option value="close_date_asc">Close Date (Earliest)</option>
+              <option value="close_date_desc">Close Date (Latest)</option>
+              <option value="value_desc">Value (High to Low)</option>
+              <option value="value_asc">Value (Low to High)</option>
+              <option value="title_asc">Title (A-Z)</option>
+              <option value="title_desc">Title (Z-A)</option>
+              <option value="probability_desc">Probability (High to Low)</option>
+              <option value="probability_asc">Probability (Low to High)</option>
+            </Select>
+          </div>
         </div>
+
+        {/* Clear All Filters Button */}
+        {hasActiveFilters && (
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClearAll}
+              className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Clear All Filters
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

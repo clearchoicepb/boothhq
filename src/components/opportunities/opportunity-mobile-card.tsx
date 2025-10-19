@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { Mail, MessageSquare } from 'lucide-react'
+import { Mail, MessageSquare, Calendar } from 'lucide-react'
 import { getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/users'
 import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-utils'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
+import { formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
 
 interface OpportunityMobileCardProps {
   opportunity: OpportunityWithRelations
@@ -90,6 +91,26 @@ export function OpportunityMobileCard({
           <span className="ml-2">${getWeightedValue(opportunity, settings.opportunities).toLocaleString()}</span>
         </div>
       </div>
+
+      {/* Close Date */}
+      {opportunity.expected_close_date && (
+        <div className="flex items-center gap-2 text-sm mb-3 pb-3 border-b border-gray-100">
+          <Calendar className="h-4 w-4 text-gray-400" />
+          <span className="text-gray-500">Close Date:</span>
+          <span className="font-medium">{formatDateShort(opportunity.expected_close_date)}</span>
+          {getDaysUntil(opportunity.expected_close_date) !== null && 
+           getDaysUntil(opportunity.expected_close_date)! >= 0 && 
+           getDaysUntil(opportunity.expected_close_date)! <= 30 && (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+              isDateToday(opportunity.expected_close_date) 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {isDateToday(opportunity.expected_close_date) ? 'Closes Today' : `${getDaysUntil(opportunity.expected_close_date)}d`}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">

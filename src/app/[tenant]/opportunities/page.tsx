@@ -50,6 +50,7 @@ function OpportunitiesPageContent() {
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithRelations | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
+  const [sortBy, setSortBy] = useState<string>('close_date_asc')
   const itemsPerPage = 25
 
   // Close opportunity modal state
@@ -94,6 +95,34 @@ function OpportunitiesPageContent() {
     filteredOpportunities,
     clearAllFilters,
   } = useOpportunityFilters(opportunities)
+
+  // Apply sorting to filtered opportunities
+  const sortedOpportunities = [...filteredOpportunities].sort((a, b) => {
+    switch (sortBy) {
+      case 'close_date_asc':
+        if (!a.expected_close_date) return 1
+        if (!b.expected_close_date) return -1
+        return new Date(a.expected_close_date).getTime() - new Date(b.expected_close_date).getTime()
+      case 'close_date_desc':
+        if (!a.expected_close_date) return 1
+        if (!b.expected_close_date) return -1
+        return new Date(b.expected_close_date).getTime() - new Date(a.expected_close_date).getTime()
+      case 'value_desc':
+        return (b.amount || 0) - (a.amount || 0)
+      case 'value_asc':
+        return (a.amount || 0) - (b.amount || 0)
+      case 'title_asc':
+        return (a.name || '').localeCompare(b.name || '')
+      case 'title_desc':
+        return (b.name || '').localeCompare(a.name || '')
+      case 'probability_desc':
+        return (b.probability || 0) - (a.probability || 0)
+      case 'probability_asc':
+        return (a.probability || 0) - (b.probability || 0)
+      default:
+        return 0
+    }
+  })
 
   // Calculations
   const {
@@ -264,6 +293,9 @@ function OpportunitiesPageContent() {
               onDateFilterChange={setDateFilter}
               dateType={dateType}
               onDateTypeChange={setDateType}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              onClearAll={clearAllFilters}
               tenantUsers={tenantUsers}
               settings={settings}
             />
@@ -363,7 +395,7 @@ function OpportunitiesPageContent() {
               )}
 
               {/* Empty State - Mobile */}
-              {!localLoading && filteredOpportunities.length === 0 && (
+              {!localLoading && sortedOpportunities.length === 0 && (
                 <div className="bg-white rounded-lg shadow-md border border-gray-200">
                   <OpportunityEmptyState
                     hasFilters={searchTerm !== '' || filterStage !== 'all' || filterOwner !== 'all'}
@@ -382,7 +414,7 @@ function OpportunitiesPageContent() {
               )}
 
               {/* Data - Mobile Cards */}
-              {!localLoading && filteredOpportunities.map((opportunity, index) => (
+              {!localLoading && sortedOpportunities.map((opportunity, index) => (
                 <OpportunityMobileCard
                   key={opportunity.id}
                   opportunity={opportunity}
@@ -416,7 +448,7 @@ function OpportunitiesPageContent() {
 
             {/* Desktop Table View */}
             <OpportunityTable
-              opportunities={filteredOpportunities}
+              opportunities={sortedOpportunities}
               loading={localLoading}
               filterStage={filterStage}
               searchTerm={searchTerm}
@@ -451,7 +483,7 @@ function OpportunitiesPageContent() {
           {/* Pipeline View */}
           {currentView === 'pipeline' && (
             <OpportunityPipelineView
-              opportunities={filteredOpportunities}
+              opportunities={sortedOpportunities}
               settings={settings}
               tenantSubdomain={tenantSubdomain}
               tenantUsers={tenantUsers}

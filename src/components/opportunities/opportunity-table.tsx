@@ -6,6 +6,7 @@ import { getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/us
 import { getOpportunityProbability } from '@/lib/opportunity-utils'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
+import { formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
 
 interface OpportunityTableProps {
   opportunities: OpportunityWithRelations[]
@@ -86,6 +87,7 @@ export function OpportunityTable({
                 )}
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Prob</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Value</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Close Date</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
               </tr>
             </thead>
@@ -117,6 +119,9 @@ export function OpportunityTable({
                         <div className="h-4 bg-gray-200 rounded w-20"></div>
                       </td>
                       <td className="px-4 py-4">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                      </td>
+                      <td className="px-4 py-4">
                         <div className="h-8 w-8 bg-gray-200 rounded"></div>
                       </td>
                     </tr>
@@ -127,7 +132,7 @@ export function OpportunityTable({
               {/* Empty State */}
               {!loading && opportunities.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16">
+                  <td colSpan={9} className="px-4 py-16">
                     <OpportunityEmptyState
                       hasFilters={hasFilters}
                       searchTerm={searchTerm}
@@ -212,6 +217,26 @@ export function OpportunityTable({
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
                     ${opportunity.amount?.toLocaleString() || '0'}
+                  </td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
+                    {opportunity.expected_close_date ? (
+                      <div className="flex items-center gap-2">
+                        <span>{formatDateShort(opportunity.expected_close_date)}</span>
+                        {getDaysUntil(opportunity.expected_close_date) !== null && 
+                         getDaysUntil(opportunity.expected_close_date)! >= 0 && 
+                         getDaysUntil(opportunity.expected_close_date)! <= 30 && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            isDateToday(opportunity.expected_close_date) 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {isDateToday(opportunity.expected_close_date) ? 'Today' : `${getDaysUntil(opportunity.expected_close_date)}d`}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">Not set</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
