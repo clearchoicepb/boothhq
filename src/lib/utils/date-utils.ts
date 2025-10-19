@@ -211,3 +211,63 @@ export function toDateInputValue(date: Date | string | null | undefined): string
   }
 }
 
+/**
+ * Format a time string from 24-hour to 12-hour with AM/PM
+ * 
+ * @param timeString - Time string in HH:mm or HH:mm:ss format
+ * @returns Formatted time (e.g., '2:30 PM')
+ * 
+ * @example
+ * formatTime('14:30')
+ * // → '2:30 PM'
+ * 
+ * formatTime('09:15:00')
+ * // → '9:15 AM'
+ */
+export function formatTime(timeString: string | null | undefined): string {
+  if (!timeString) return ''
+  
+  try {
+    // Handle HH:mm or HH:mm:ss format
+    const [hoursStr, minutesStr] = timeString.split(':')
+    const hours = parseInt(hoursStr)
+    const minutes = minutesStr || '00'
+    
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    const hours12 = hours % 12 || 12
+    
+    return `${hours12}:${minutes} ${ampm}`
+  } catch (error) {
+    console.error('Error formatting time:', error)
+    return timeString
+  }
+}
+
+/**
+ * Format a date and time together for display
+ * 
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @param timeString - Time string in HH:mm or HH:mm:ss format
+ * @returns Formatted datetime (e.g., 'Jan 15, 2025 - 2:30 PM')
+ * 
+ * @example
+ * formatDateTime('2025-01-15', '14:30')
+ * // → 'Jan 15, 2025 - 2:30 PM'
+ * 
+ * formatDateTime('2025-01-15', null)
+ * // → 'Jan 15, 2025'
+ */
+export function formatDateTime(
+  dateString: string | null | undefined,
+  timeString: string | null | undefined
+): string {
+  const datePart = formatDate(dateString)
+  const timePart = formatTime(timeString)
+  
+  if (timePart) {
+    return `${datePart} - ${timePart}`
+  }
+  
+  return datePart
+}
+

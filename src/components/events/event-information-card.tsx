@@ -3,6 +3,7 @@ import { EventStatusBadge } from './event-status-badge'
 import { EventTypeBadge } from './event-type-badge'
 import { PaymentStatusBadge } from './payment-status-badge'
 import { EventWithRelations } from '@/hooks/useEventData'
+import { formatDate } from '@/lib/utils/date-utils'
 
 interface EventInformationCardProps {
   event: EventWithRelations
@@ -97,7 +98,7 @@ export function EventInformationCard({
           <div className="flex items-center">
             <Calendar className="h-4 w-4 text-gray-400 mr-2" />
             <span className="text-sm text-gray-900">
-              {new Date(event.start_date).toLocaleDateString()}
+              {formatDate(event.start_date)}
             </span>
           </div>
         </div>
@@ -109,7 +110,7 @@ export function EventInformationCard({
             <div className="flex items-center">
               <Calendar className="h-4 w-4 text-gray-400 mr-2" />
               <span className="text-sm text-gray-900">
-                {new Date(event.end_date).toLocaleDateString()}
+                {formatDate(event.end_date)}
               </span>
             </div>
           </div>

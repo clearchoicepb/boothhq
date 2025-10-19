@@ -1,7 +1,7 @@
 import { Calendar, Clock, MapPin } from 'lucide-react'
 import { EventStatusBadge } from './event-status-badge'
 import { EventDate } from '@/hooks/useEventData'
-import { formatDate } from '@/lib/utils/date-utils'
+import { formatDate, formatTime } from '@/lib/utils/date-utils'
 
 interface EventDatesCardProps {
   eventDates: EventDate[]
@@ -50,13 +50,13 @@ export function EventDatesCard({
             {eventDates[0].start_time && (
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-2" />
-                <span>Start: {eventDates[0].start_time}</span>
+                <span>Start: {formatTime(eventDates[0].start_time)}</span>
               </div>
             )}
             {eventDates[0].end_time && (
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-2" />
-                <span>End: {eventDates[0].end_time}</span>
+                <span>End: {formatTime(eventDates[0].end_time)}</span>
               </div>
             )}
             {eventDates[0].location_name && (
@@ -120,7 +120,7 @@ export function EventDatesCard({
                 <label className="block text-xs font-medium text-gray-500 mb-1">Start Time</label>
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-900">{eventDates[activeTab].start_time}</span>
+                  <span className="text-sm text-gray-900">{formatTime(eventDates[activeTab].start_time)}</span>
                 </div>
               </div>
             )}
@@ -129,7 +129,7 @@ export function EventDatesCard({
                 <label className="block text-xs font-medium text-gray-500 mb-1">End Time</label>
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-900">{eventDates[activeTab].end_time}</span>
+                  <span className="text-sm text-gray-900">{formatTime(eventDates[activeTab].end_time)}</span>
                 </div>
               </div>
             )}
