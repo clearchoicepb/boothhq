@@ -88,6 +88,9 @@ export default function EventsPage() {
   // Status filter
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
+  // Sort options
+  const [sortBy, setSortBy] = useState<string>('date_asc')
+
   // Task filtering state
   const [coreTasks, setCoreTasks] = useState<CoreTask[]>([])
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
@@ -334,17 +337,36 @@ export default function EventsPage() {
     return true
   })
 
-  // Sort chronologically by event date
+  // Sort events based on user selection
   const sortedEvents = [...filteredEvents].sort((a, b) => {
-    const dateA = new Date(a.start_date || a.created_at)
-    const dateB = new Date(b.start_date || b.created_at)
-
-    // For upcoming/all: soonest first (ascending)
-    // For past: most recent first (descending)
-    if (dateRangeFilter === 'past') {
-      return dateB.getTime() - dateA.getTime() // Most recent past events first
-    } else {
-      return dateA.getTime() - dateB.getTime() // Soonest upcoming events first
+    switch (sortBy) {
+      case 'date_asc':
+        // Earliest date first
+        return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
+      
+      case 'date_desc':
+        // Latest date first
+        return new Date(b.start_date || b.created_at).getTime() - new Date(a.start_date || a.created_at).getTime()
+      
+      case 'title_asc':
+        // Title A-Z
+        return (a.title || '').localeCompare(b.title || '')
+      
+      case 'title_desc':
+        // Title Z-A
+        return (b.title || '').localeCompare(a.title || '')
+      
+      case 'account_asc':
+        // Account A-Z
+        return (a.account_name || '').localeCompare(b.account_name || '')
+      
+      case 'account_desc':
+        // Account Z-A
+        return (b.account_name || '').localeCompare(a.account_name || '')
+      
+      default:
+        // Default: earliest date first
+        return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
     }
   })
 
@@ -501,6 +523,23 @@ export default function EventsPage() {
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                   <option value="postponed">Postponed</option>
+                </select>
+              </div>
+
+              {/* Sort Options */}
+              <div className="flex gap-3">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent transition-all duration-150"
+                  aria-label="Sort events"
+                >
+                  <option value="date_asc">Date (Earliest First)</option>
+                  <option value="date_desc">Date (Latest First)</option>
+                  <option value="title_asc">Title (A-Z)</option>
+                  <option value="title_desc">Title (Z-A)</option>
+                  <option value="account_asc">Account (A-Z)</option>
+                  <option value="account_desc">Account (Z-A)</option>
                 </select>
               </div>
             </div>
