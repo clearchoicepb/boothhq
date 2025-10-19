@@ -11,7 +11,7 @@ import { EventCategoryTypeSelector } from '@/components/forms/event-category-typ
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
 import { toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface Account {
   id: string
