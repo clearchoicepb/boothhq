@@ -104,20 +104,8 @@ export default function EventsPage() {
       if (response.ok) {
         const data = await response.json()
 
-        console.log('=== EVENTS FETCHED ===')
-        console.log('Raw API response:', data)
-        console.log('Is array?', Array.isArray(data))
-
         // Handle both array and object structures
         const eventsList = Array.isArray(data) ? data : (data.events || [])
-
-        console.log('Events count:', eventsList.length)
-        if (eventsList.length > 0) {
-          console.log('First event:', eventsList[0])
-          console.log('First event title:', eventsList[0].title)
-          console.log('First event task_completions:', eventsList[0].task_completions)
-        }
-        console.log('=====================')
 
         setEvents(eventsList)
       } else {
@@ -136,10 +124,6 @@ export default function EventsPage() {
     try {
       const res = await fetch('/api/core-tasks/templates')
       const data = await res.json()
-      console.log('=== CORE TASKS FETCHED ===')
-      console.log('Core tasks:', data.templates)
-      console.log('Core tasks count:', data.templates?.length || 0)
-      console.log('========================')
       setCoreTasks(data.templates || [])
     } catch (error) {
       console.error('Error fetching core task templates:', error)
@@ -153,18 +137,6 @@ export default function EventsPage() {
     }
   }, [session, tenant, fetchEvents, fetchCoreTaskTemplates])
 
-  // Debug: Log when both events and coreTasks are loaded
-  useEffect(() => {
-    if (events.length > 0 && coreTasks.length > 0) {
-      console.log('=== EVENTS PAGE DATA LOADED ===')
-      console.log('Events count:', events.length)
-      console.log('Core tasks count:', coreTasks.length)
-      console.log('Sample event:', events[0])
-      console.log('Sample event task_completions:', events[0].task_completions)
-      console.log('Sample core task:', coreTasks[0])
-      console.log('==============================')
-    }
-  }, [events, coreTasks])
 
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
@@ -208,19 +180,13 @@ export default function EventsPage() {
 
   // Helper function to get incomplete tasks for an event
   const getIncompleteTasks = (event: Event): string[] => {
-    const eventName = event.title || event.id || 'Unknown'
-
     // If no core tasks defined, no tasks can be incomplete
     if (coreTasks.length === 0) {
-      console.log(`Event ${eventName}: No coreTasks defined`)
       return []
     }
 
     // If event has no task_completions array, ALL tasks are incomplete
     if (!event.task_completions || event.task_completions.length === 0) {
-      console.log(`Event ${eventName}: No task completion records - all tasks incomplete`, {
-        coreTasksCount: coreTasks.length
-      })
       return coreTasks.map(task => task.id)
     }
 
@@ -235,14 +201,6 @@ export default function EventsPage() {
     const incompleteTasks = coreTasks
       .filter(task => !completedTaskIds.has(task.id))
       .map(task => task.id)
-
-    console.log(`Event ${eventName} incomplete tasks:`, {
-      totalCoreTasks: coreTasks.length,
-      totalCompletions: event.task_completions.length,
-      completedCount: completedTaskIds.size,
-      incompleteCount: incompleteTasks.length,
-      incompleteTaskIds: incompleteTasks
-    })
 
     return incompleteTasks
   }
@@ -323,14 +281,6 @@ export default function EventsPage() {
       // Check specific task selection
       const matchesSpecificTasks = matchesSelectedTasks(event)
 
-      console.log(`Filtering event ${event.title || event.id}:`, {
-        hasIncomplete,
-        incompleteTasks: incompleteTasks.length,
-        matchesTaskDateRange,
-        matchesSpecificTasks,
-        passesFilter: hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
-      })
-
       return hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
     }
 
@@ -369,20 +319,6 @@ export default function EventsPage() {
         return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
     }
   })
-
-  console.log(`=== FILTER RESULTS ===`)
-  console.log(`Total events: ${events.length}`)
-  console.log(`Filtered events: ${sortedEvents.length}`)
-  console.log(`Date range filter: ${dateRangeFilter}`)
-  console.log(`Task filter: ${taskFilter}`)
-  console.log(`Selected task IDs count: ${selectedTaskIds.length}`)
-  console.log(`Search term: "${searchTerm}"`)
-  if (sortedEvents.length > 0) {
-    console.log(`First sorted event:`, sortedEvents[0].title || sortedEvents[0].id)
-  } else {
-    console.log(`No events passed filter - check logs above for why`)
-  }
-  console.log(`=====================`)
 
   return (
     <AppLayout>
@@ -542,6 +478,29 @@ export default function EventsPage() {
                   <option value="account_desc">Account (Z-A)</option>
                 </select>
               </div>
+
+              {/* Clear Filters Button */}
+              {(statusFilter !== 'all' || 
+                dateRangeFilter !== 'upcoming' || 
+                searchTerm || 
+                taskFilter !== 'all' ||
+                selectedTaskIds.length > 0) && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setStatusFilter('all')
+                      setDateRangeFilter('upcoming')
+                      setSearchTerm('')
+                      setTaskFilter('all')
+                      setSelectedTaskIds([])
+                    }}
+                    className="px-4 py-2 border border-red-300 text-red-600 rounded-lg font-medium hover:bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-150 flex items-center gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Helper text */}
