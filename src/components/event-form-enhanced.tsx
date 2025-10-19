@@ -11,6 +11,7 @@ import { EventCategoryTypeSelector } from '@/components/forms/event-category-typ
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
 import { toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
+import { toast } from 'sonner'
 
 interface Account {
   id: string
@@ -308,6 +309,14 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
 
     setErrors(newErrors)
+    
+    // Show toast notification for the first error (most important one)
+    if (Object.keys(newErrors).length > 0) {
+      const firstErrorKey = Object.keys(newErrors)[0]
+      const firstErrorMessage = newErrors[firstErrorKey]
+      toast.error(firstErrorMessage)
+    }
+    
     return Object.keys(newErrors).length === 0
   }
 
@@ -332,6 +341,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
       onSave(eventData)
     } catch (error) {
       console.error('Error creating event:', error)
+      toast.error('Failed to save event. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
