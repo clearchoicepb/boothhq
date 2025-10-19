@@ -679,8 +679,8 @@ export default function EventsPage() {
             </div>
           </div>
 
-          {/* Events Table */}
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          {/* Events Table - Desktop */}
+          <div className="hidden lg:block bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -864,6 +864,180 @@ export default function EventsPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Events Cards - Mobile */}
+          <div className="lg:hidden space-y-4">
+            {/* Header for mobile */}
+            <div className="bg-white shadow rounded-lg p-4 mb-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {dateRangeFilter === 'all' && '📊 All Events'}
+                  {dateRangeFilter === 'today' && '📅 Today\'s Events'}
+                  {dateRangeFilter === 'this_week' && '📆 This Week\'s Events'}
+                  {dateRangeFilter === 'this_month' && '📅 This Month\'s Events'}
+                  {dateRangeFilter === 'upcoming' && '🔜 Upcoming Events'}
+                  {dateRangeFilter === 'past' && '📋 Past Events'}
+                </h3>
+                <div className="text-sm text-gray-600">
+                  {sortedEvents.length} of {events.length}
+                </div>
+              </div>
+            </div>
+
+            {/* Empty state for mobile */}
+            {sortedEvents.length === 0 && events.length > 0 && (
+              <div className="bg-white shadow rounded-lg p-8 text-center">
+                <p className="text-lg font-medium text-gray-900 mb-2">No events match your filters</p>
+                <p className="text-sm text-gray-600">Try adjusting your date range or search criteria</p>
+              </div>
+            )}
+
+            {/* Event cards */}
+            {sortedEvents.map((event) => {
+              const eventDateCount = event.event_dates?.length || 0
+              const firstDate = event.event_dates?.[0] || null
+              const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
+              const displayLocation = firstDate?.locations?.name || event.location || 'No location'
+              const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
+              const incompleteTaskIds = getIncompleteTasks(event)
+              const incompleteCount = incompleteTaskIds.length
+
+              return (
+                <div
+                  key={event.id}
+                  className="bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg"
+                >
+                  <div className="p-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/${tenantSubdomain}/events/${event.id}`}>
+                          <h3 className="font-semibold text-gray-900 text-base mb-1 hover:text-[#347dc4] cursor-pointer">
+                            {event.title || 'Untitled Event'}
+                          </h3>
+                        </Link>
+                        {/* Category & Type Badges */}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {event.event_categories && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                              style={{
+                                borderColor: event.event_categories.color,
+                                backgroundColor: event.event_categories.color + '20',
+                                color: event.event_categories.color
+                              }}
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: event.event_categories.color }}
+                              />
+                              {event.event_categories.name}
+                            </span>
+                          )}
+                          {event.event_types && (
+                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                              {event.event_types.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Status Badge */}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ml-2 ${
+                        event.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                        event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {event.status || 'Unknown'}
+                      </span>
+                    </div>
+
+                    {/* Details Grid */}
+                    <div className="space-y-2 mb-3">
+                      {/* Date */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <CalendarIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-gray-700">{displayDate}</span>
+                        {daysUntil !== null && daysUntil >= 0 && daysUntil <= 7 && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            isDateToday(event.start_date || '') 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {isDateToday(event.start_date || '') ? 'Today' : `${daysUntil}d`}
+                          </span>
+                        )}
+                        {eventDateCount > 1 && (
+                          <span className="text-xs text-gray-500">
+                            +{eventDateCount - 1} more
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Location */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <svg className="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-gray-700 truncate">{displayLocation}</span>
+                      </div>
+
+                      {/* Account */}
+                      {event.account_name && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <svg className="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <span className="text-gray-700 truncate">{event.account_name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Task Badges */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {event.core_tasks_ready && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Ready
+                        </span>
+                      )}
+                      {incompleteCount > 0 && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          {incompleteCount} Task{incompleteCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-3 border-t border-gray-200">
+                      <Link href={`/${tenantSubdomain}/events/${event.id}`} className="flex-1">
+                        <button className="w-full px-3 py-2 bg-[#347dc4] text-white rounded-lg text-sm font-medium hover:bg-[#2c6ba8] transition-colors flex items-center justify-center gap-2">
+                          <Eye className="h-4 w-4" />
+                          View
+                        </button>
+                      </Link>
+                      <button
+                        onClick={() => router.push(`/${tenantSubdomain}/events/${event.id}/edit`)}
+                        className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                        aria-label="Edit event"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="px-3 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
+                        aria-label="Delete event"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
