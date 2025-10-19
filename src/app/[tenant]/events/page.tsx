@@ -7,7 +7,8 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X } from 'lucide-react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { formatDate, formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
 
 interface EventDate {
   id: string
@@ -75,6 +76,7 @@ export default function EventsPage() {
   const { data: session, status } = useSession()
   const { tenant, loading } = useTenant()
   const params = useParams()
+  const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const [events, setEvents] = useState<Event[]>([])
   const [localLoading, setLocalLoading] = useState(true)
@@ -605,8 +607,9 @@ export default function EventsPage() {
                   {sortedEvents.map((event) => {
                     const eventDateCount = event.event_dates?.length || 0
                     const firstDate = event.event_dates?.[0] || null
-                    const displayDate = event.start_date ? new Date(event.start_date).toLocaleDateString() : 'No date'
+                    const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
                     const displayLocation = firstDate?.locations?.name || event.location || 'No location'
+                    const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
 
                     // Get incomplete tasks for this event
                     const incompleteTaskIds = getIncompleteTasks(event)
@@ -648,9 +651,20 @@ export default function EventsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
-                          <div>{displayDate}</div>
+                          <div className="flex items-center gap-2">
+                            <span>{displayDate}</span>
+                            {daysUntil !== null && daysUntil >= 0 && daysUntil <= 7 && (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                isDateToday(event.start_date || '') 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {isDateToday(event.start_date || '') ? 'Today' : `${daysUntil}d`}
+                              </span>
+                            )}
+                          </div>
                           {eventDateCount > 1 && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 mt-1">
                               +{eventDateCount - 1} more date{eventDateCount > 2 ? 's' : ''}
                             </div>
                           )}
@@ -707,6 +721,7 @@ export default function EventsPage() {
                               </button>
                             </Link>
                             <button
+                              onClick={() => router.push(`/${tenantSubdomain}/events/${event.id}/edit`)}
                               className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
                               aria-label="Edit event"
                             >
