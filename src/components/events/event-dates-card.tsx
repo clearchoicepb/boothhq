@@ -1,6 +1,7 @@
 import { Calendar, Clock, MapPin } from 'lucide-react'
 import { EventStatusBadge } from './event-status-badge'
 import { EventDate } from '@/hooks/useEventData'
+import { formatDate } from '@/lib/utils/date-utils'
 
 interface EventDatesCardProps {
   eventDates: EventDate[]
@@ -40,7 +41,7 @@ export function EventDatesCard({
             <div className="flex items-center">
               <Calendar className="h-4 w-4 text-gray-400 mr-2" />
               <span className="font-medium text-gray-900">
-                {new Date(eventDates[0].event_date).toLocaleDateString()}
+                {formatDate(eventDates[0].event_date)}
               </span>
             </div>
             <EventStatusBadge status={eventDates[0].status} />
@@ -102,7 +103,7 @@ export function EventDatesCard({
             <div className="flex items-center">
               <Calendar className="h-5 w-5 text-gray-400 mr-2" />
               <span className="text-lg font-semibold text-gray-900">
-                {new Date(eventDates[activeTab].event_date).toLocaleDateString('en-US', {
+                {formatDate(eventDates[activeTab].event_date, {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',

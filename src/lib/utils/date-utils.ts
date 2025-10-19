@@ -171,3 +171,43 @@ export function isDateToday(dateString: string | null | undefined): boolean {
   return daysUntil === 0
 }
 
+/**
+ * Convert a Date object to YYYY-MM-DD format for form inputs
+ * Ensures the date is formatted in local timezone without conversion
+ * 
+ * @param date - Date object or date string
+ * @returns Date string in YYYY-MM-DD format
+ * 
+ * @example
+ * toDateInputValue(new Date(2025, 0, 15))
+ * // → '2025-01-15'
+ * 
+ * toDateInputValue('2025-01-15')
+ * // → '2025-01-15'
+ */
+export function toDateInputValue(date: Date | string | null | undefined): string {
+  if (!date) return ''
+  
+  try {
+    // If it's already a string in YYYY-MM-DD format, return it
+    if (typeof date === 'string') {
+      const datePart = date.split('T')[0]
+      if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+        return datePart
+      }
+      // If it's a different string format, parse it first
+      date = parseLocalDate(date)
+    }
+    
+    // Convert Date object to YYYY-MM-DD in local timezone
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    
+    return `${year}-${month}-${day}`
+  } catch (error) {
+    console.error('Error converting date to input value:', error)
+    return ''
+  }
+}
+

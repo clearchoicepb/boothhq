@@ -47,6 +47,10 @@ import { EventActivitiesList } from '@/components/events/event-activities-list'
 import { EventCommunicationsList } from '@/components/events/event-communications-list'
 import { EventStaffList } from '@/components/events/event-staff-list'
 import { EventTabsNavigation } from '@/components/events/event-tabs-navigation'
+import { EventDateDetailModal } from '@/components/events/event-date-detail-modal'
+import { CommunicationDetailModal } from '@/components/events/communication-detail-modal'
+import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
+import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 
 export default function EventDetailPage() {
   const { data: session, status } = useSession()
@@ -768,10 +772,7 @@ export default function EventDetailPage() {
                                   return (
                                     <div key={assignment.id} className="text-xs text-gray-600">
                                       <p className="font-medium">
-                                        {eventDate ? new Date(eventDate.event_date).toLocaleDateString('en-US', {
-                                          month: 'short',
-                                          day: 'numeric'
-                                        }) : 'Unknown Date'}
+                                        {eventDate ? formatDateShort(eventDate.event_date) : 'Unknown Date'}
                                       </p>
                                       {(assignment.start_time || assignment.end_time) && (
                                         <div className="flex items-center gap-1">
@@ -1118,7 +1119,7 @@ export default function EventDetailPage() {
                             />
                             <div className="flex-1">
                               <label htmlFor={`date-${eventDate.id}`} className="block text-sm font-medium text-gray-900 cursor-pointer">
-                                {new Date(eventDate.event_date).toLocaleDateString('en-US', {
+                                {formatDate(eventDate.event_date, {
                                   weekday: 'long',
                                   month: 'long',
                                   day: 'numeric',
@@ -1249,485 +1250,43 @@ export default function EventDetailPage() {
       />
 
       {/* Communication Detail Modal */}
-      {isCommunicationDetailOpen && selectedCommunication && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Communication Details</h2>
-                <button
-                  onClick={() => {
-                    setIsCommunicationDetailOpen(false)
-                    setSelectedCommunication(null)
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="space-y-4">
-                {/* Type and Direction */}
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                    selectedCommunication.communication_type === 'email' ? 'bg-blue-100 text-blue-800' :
-                    selectedCommunication.communication_type === 'sms' ? 'bg-green-100 text-green-800' :
-                    selectedCommunication.communication_type === 'phone' ? 'bg-purple-100 text-purple-800' :
-                    selectedCommunication.communication_type === 'in_person' ? 'bg-orange-100 text-orange-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedCommunication.communication_type === 'in_person' ? 'In-Person' : selectedCommunication.communication_type.toUpperCase()}
-                  </span>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                    selectedCommunication.direction === 'inbound' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {selectedCommunication.direction === 'inbound' ? '← Inbound' : '→ Outbound'}
-                  </span>
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Date & Time</label>
-                  <p className="text-base text-gray-900">
-                    {new Date(selectedCommunication.communication_date).toLocaleString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-
-                {/* Subject */}
-                {selectedCommunication.subject && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Subject</label>
-                    <p className="text-base text-gray-900 font-medium">{selectedCommunication.subject}</p>
-                  </div>
-                )}
-
-                {/* Notes/Content */}
-                {selectedCommunication.notes && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      {selectedCommunication.communication_type === 'email' ? 'Email Content' :
-                       selectedCommunication.communication_type === 'sms' ? 'Message' :
-                       'Notes'}
-                    </label>
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedCommunication.notes}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Metadata */}
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium">Created:</span>{' '}
-                      {new Date(selectedCommunication.created_at).toLocaleDateString()}
-                    </div>
-                    {selectedCommunication.created_by_name && (
-                      <div>
-                        <span className="font-medium">Created By:</span>{' '}
-                        {selectedCommunication.created_by_name}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCommunicationDetailOpen(false)
-                    setSelectedCommunication(null)
-                  }}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CommunicationDetailModal
+        communication={selectedCommunication}
+        isOpen={isCommunicationDetailOpen}
+        onClose={() => {
+          setIsCommunicationDetailOpen(false)
+          setSelectedCommunication(null)
+        }}
+      />
 
       {/* Activity Detail Modal */}
-      {isActivityDetailOpen && selectedActivity && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  {selectedActivity.type === 'task' && <ListTodo className="h-6 w-6 text-purple-600" />}
-                  {selectedActivity.type === 'note' && <FileText className="h-6 w-6 text-orange-600" />}
-                  {selectedActivity.type === 'attachment' && <Paperclip className="h-6 w-6 text-gray-600" />}
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{selectedActivity.title}</h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {new Date(selectedActivity.date).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setIsActivityDetailOpen(false)
-                    setSelectedActivity(null)
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-4">
-                {selectedActivity.description && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">
-                      {selectedActivity.type === 'task' ? 'Description' :
-                       selectedActivity.type === 'note' ? 'Note Content' :
-                       'Details'}
-                    </label>
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedActivity.description}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Task-specific fields */}
-                {selectedActivity.type === 'task' && selectedActivity.metadata && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedActivity.metadata.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          selectedActivity.metadata.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          selectedActivity.metadata.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedActivity.metadata.status}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Priority</label>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedActivity.metadata.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                          selectedActivity.metadata.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                          selectedActivity.metadata.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedActivity.metadata.priority}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedActivity.metadata.due_date && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Due Date</label>
-                        <p className="text-sm text-gray-900">
-                          {new Date(selectedActivity.metadata.due_date).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Attachment-specific fields */}
-                {selectedActivity.type === 'attachment' && selectedActivity.metadata && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">File Name</label>
-                    <p className="text-sm text-gray-900 font-mono">{selectedActivity.metadata.file_name}</p>
-                  </div>
-                )}
-
-                {/* Note-specific fields */}
-                {selectedActivity.type === 'note' && selectedActivity.metadata && selectedActivity.metadata.content && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Full Note</label>
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedActivity.metadata.content}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsActivityDetailOpen(false)
-                    setSelectedActivity(null)
-                  }}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ActivityDetailModal
+        activity={selectedActivity}
+        isOpen={isActivityDetailOpen}
+        onClose={() => {
+          setIsActivityDetailOpen(false)
+          setSelectedActivity(null)
+        }}
+      />
 
       {/* Event Date Detail Modal */}
-      {isEventDateDetailOpen && selectedEventDate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {new Date(selectedEventDate.event_date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">Event Date Details</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!isEditingEventDate && canManageEvents && (
-                    <button
-                      onClick={handleStartEditEventDate}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Edit event date"
-                    >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setIsEventDateDetailOpen(false)
-                      setSelectedEventDate(null)
-                      setIsEditingEventDate(false)
-                      setEditEventDateData({})
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-6">
-                {/* Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Event Date</label>
-                  {isEditingEventDate ? (
-                    <input
-                      type="date"
-                      value={editEventDateData.event_date || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, event_date: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  ) : (
-                    <div className="flex items-center">
-                      <Calendar className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-base text-gray-900">
-                        {new Date(selectedEventDate.event_date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Status</label>
-                  {isEditingEventDate ? (
-                    <select
-                      value={editEventDateData.status || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, status: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  ) : (
-                    <EventStatusBadge status={selectedEventDate.status} />
-                  )}
-                </div>
-
-                {/* Time Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Start Time</label>
-                    {isEditingEventDate ? (
-                      <input
-                        type="time"
-                        value={editEventDateData.start_time || ''}
-                        onChange={(e) => setEditEventDateData({ ...editEventDateData, start_time: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    ) : selectedEventDate.start_time ? (
-                      <div className="flex items-center">
-                        <Clock className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-base text-gray-900">{selectedEventDate.start_time}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">Not set</span>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">End Time</label>
-                    {isEditingEventDate ? (
-                      <input
-                        type="time"
-                        value={editEventDateData.end_time || ''}
-                        onChange={(e) => setEditEventDateData({ ...editEventDateData, end_time: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    ) : selectedEventDate.end_time ? (
-                      <div className="flex items-center">
-                        <Clock className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-base text-gray-900">{selectedEventDate.end_time}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">Not set</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Location</label>
-                  {isEditingEventDate ? (
-                    <select
-                      value={editEventDateData.location_id || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, location_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    >
-                      <option value="">-- Select Location --</option>
-                      {locations.map(location => (
-                        <option key={location.id} value={location.id}>
-                          {location.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : selectedEventDate.location_name ? (
-                    <div className="flex items-center">
-                      <MapPin className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-base text-gray-900">{selectedEventDate.location_name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">Not set</span>
-                  )}
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Notes</label>
-                  {isEditingEventDate ? (
-                    <textarea
-                      value={editEventDateData.notes || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, notes: e.target.value })}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      placeholder="Add notes about this event date..."
-                    />
-                  ) : selectedEventDate.notes ? (
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedEventDate.notes}</p>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">No notes</span>
-                  )}
-                </div>
-
-                {/* Assigned Staff */}
-                {!isEditingEventDate && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-500 mb-3">Assigned Staff</label>
-                    {(() => {
-                      const dateStaff = staffAssignments.filter(s => s.event_date_id === selectedEventDate.id)
-                      return dateStaff.length === 0 ? (
-                        <p className="text-sm text-gray-500 italic">No staff assigned to this date</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {dateStaff.map((staff) => (
-                            <div key={staff.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                              <User className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{staff.users?.name || 'Unknown User'}</p>
-                                {staff.role && (
-                                  <p className="text-xs text-gray-600">{staff.role}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-
-                {/* Date Created/Updated */}
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium">Created:</span>{' '}
-                      {new Date(selectedEventDate.created_at || selectedEventDate.event_date).toLocaleDateString()}
-                    </div>
-                    <div>
-                      <span className="font-medium">Last Updated:</span>{' '}
-                      {new Date(selectedEventDate.updated_at || selectedEventDate.event_date).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                {isEditingEventDate ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={handleCancelEditEventDate}
-                      className="border-red-600 text-red-600 hover:bg-red-50"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSaveEventDate}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsEventDateDetailOpen(false)
-                      setSelectedEventDate(null)
-                    }}
-                  >
-                    Close
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EventDateDetailModal
+        eventDate={selectedEventDate}
+        isOpen={isEventDateDetailOpen}
+        isEditing={isEditingEventDate}
+        editEventDateData={editEventDateData}
+        locations={locations}
+        staffAssignments={staffAssignments}
+        onClose={() => {
+          setIsEventDateDetailOpen(false)
+          setSelectedEventDate(null)
+        }}
+        onStartEdit={handleStartEditEventDate}
+        onSave={handleSaveEventDate}
+        onCancel={handleCancelEditEventDate}
+        onFieldChange={(field, value) => setEditEventDateData({ ...editEventDateData, [field]: value })}
+        canEdit={canManageEvents}
+      />
 
       {/* Create Task Modal */}
       <CreateTaskModal
@@ -1781,485 +1340,43 @@ export default function EventDetailPage() {
       />
 
       {/* Communication Detail Modal */}
-      {isCommunicationDetailOpen && selectedCommunication && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Communication Details</h2>
-                <button
-                  onClick={() => {
-                    setIsCommunicationDetailOpen(false)
-                    setSelectedCommunication(null)
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="space-y-4">
-                {/* Type and Direction */}
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                    selectedCommunication.communication_type === 'email' ? 'bg-blue-100 text-blue-800' :
-                    selectedCommunication.communication_type === 'sms' ? 'bg-green-100 text-green-800' :
-                    selectedCommunication.communication_type === 'phone' ? 'bg-purple-100 text-purple-800' :
-                    selectedCommunication.communication_type === 'in_person' ? 'bg-orange-100 text-orange-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedCommunication.communication_type === 'in_person' ? 'In-Person' : selectedCommunication.communication_type.toUpperCase()}
-                  </span>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                    selectedCommunication.direction === 'inbound' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {selectedCommunication.direction === 'inbound' ? '← Inbound' : '→ Outbound'}
-                  </span>
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Date & Time</label>
-                  <p className="text-base text-gray-900">
-                    {new Date(selectedCommunication.communication_date).toLocaleString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-
-                {/* Subject */}
-                {selectedCommunication.subject && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Subject</label>
-                    <p className="text-base text-gray-900 font-medium">{selectedCommunication.subject}</p>
-                  </div>
-                )}
-
-                {/* Notes/Content */}
-                {selectedCommunication.notes && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      {selectedCommunication.communication_type === 'email' ? 'Email Content' :
-                       selectedCommunication.communication_type === 'sms' ? 'Message' :
-                       'Notes'}
-                    </label>
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedCommunication.notes}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Metadata */}
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium">Created:</span>{' '}
-                      {new Date(selectedCommunication.created_at).toLocaleDateString()}
-                    </div>
-                    {selectedCommunication.created_by_name && (
-                      <div>
-                        <span className="font-medium">Created By:</span>{' '}
-                        {selectedCommunication.created_by_name}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCommunicationDetailOpen(false)
-                    setSelectedCommunication(null)
-                  }}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CommunicationDetailModal
+        communication={selectedCommunication}
+        isOpen={isCommunicationDetailOpen}
+        onClose={() => {
+          setIsCommunicationDetailOpen(false)
+          setSelectedCommunication(null)
+        }}
+      />
 
       {/* Activity Detail Modal */}
-      {isActivityDetailOpen && selectedActivity && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  {selectedActivity.type === 'task' && <ListTodo className="h-6 w-6 text-purple-600" />}
-                  {selectedActivity.type === 'note' && <FileText className="h-6 w-6 text-orange-600" />}
-                  {selectedActivity.type === 'attachment' && <Paperclip className="h-6 w-6 text-gray-600" />}
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{selectedActivity.title}</h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {new Date(selectedActivity.date).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setIsActivityDetailOpen(false)
-                    setSelectedActivity(null)
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-4">
-                {selectedActivity.description && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">
-                      {selectedActivity.type === 'task' ? 'Description' :
-                       selectedActivity.type === 'note' ? 'Note Content' :
-                       'Details'}
-                    </label>
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedActivity.description}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Task-specific fields */}
-                {selectedActivity.type === 'task' && selectedActivity.metadata && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedActivity.metadata.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          selectedActivity.metadata.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          selectedActivity.metadata.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedActivity.metadata.status}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Priority</label>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedActivity.metadata.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                          selectedActivity.metadata.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                          selectedActivity.metadata.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedActivity.metadata.priority}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedActivity.metadata.due_date && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Due Date</label>
-                        <p className="text-sm text-gray-900">
-                          {new Date(selectedActivity.metadata.due_date).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Attachment-specific fields */}
-                {selectedActivity.type === 'attachment' && selectedActivity.metadata && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">File Name</label>
-                    <p className="text-sm text-gray-900 font-mono">{selectedActivity.metadata.file_name}</p>
-                  </div>
-                )}
-
-                {/* Note-specific fields */}
-                {selectedActivity.type === 'note' && selectedActivity.metadata && selectedActivity.metadata.content && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Full Note</label>
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedActivity.metadata.content}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsActivityDetailOpen(false)
-                    setSelectedActivity(null)
-                  }}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ActivityDetailModal
+        activity={selectedActivity}
+        isOpen={isActivityDetailOpen}
+        onClose={() => {
+          setIsActivityDetailOpen(false)
+          setSelectedActivity(null)
+        }}
+      />
 
       {/* Event Date Detail Modal */}
-      {isEventDateDetailOpen && selectedEventDate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {new Date(selectedEventDate.event_date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">Event Date Details</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!isEditingEventDate && canManageEvents && (
-                    <button
-                      onClick={handleStartEditEventDate}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Edit event date"
-                    >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setIsEventDateDetailOpen(false)
-                      setSelectedEventDate(null)
-                      setIsEditingEventDate(false)
-                      setEditEventDateData({})
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-6">
-                {/* Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Event Date</label>
-                  {isEditingEventDate ? (
-                    <input
-                      type="date"
-                      value={editEventDateData.event_date || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, event_date: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  ) : (
-                    <div className="flex items-center">
-                      <Calendar className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-base text-gray-900">
-                        {new Date(selectedEventDate.event_date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Status</label>
-                  {isEditingEventDate ? (
-                    <select
-                      value={editEventDateData.status || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, status: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  ) : (
-                    <EventStatusBadge status={selectedEventDate.status} />
-                  )}
-                </div>
-
-                {/* Time Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Start Time</label>
-                    {isEditingEventDate ? (
-                      <input
-                        type="time"
-                        value={editEventDateData.start_time || ''}
-                        onChange={(e) => setEditEventDateData({ ...editEventDateData, start_time: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    ) : selectedEventDate.start_time ? (
-                      <div className="flex items-center">
-                        <Clock className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-base text-gray-900">{selectedEventDate.start_time}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">Not set</span>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">End Time</label>
-                    {isEditingEventDate ? (
-                      <input
-                        type="time"
-                        value={editEventDateData.end_time || ''}
-                        onChange={(e) => setEditEventDateData({ ...editEventDateData, end_time: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    ) : selectedEventDate.end_time ? (
-                      <div className="flex items-center">
-                        <Clock className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-base text-gray-900">{selectedEventDate.end_time}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">Not set</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Location</label>
-                  {isEditingEventDate ? (
-                    <select
-                      value={editEventDateData.location_id || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, location_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    >
-                      <option value="">-- Select Location --</option>
-                      {locations.map(location => (
-                        <option key={location.id} value={location.id}>
-                          {location.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : selectedEventDate.location_name ? (
-                    <div className="flex items-center">
-                      <MapPin className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-base text-gray-900">{selectedEventDate.location_name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">Not set</span>
-                  )}
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">Notes</label>
-                  {isEditingEventDate ? (
-                    <textarea
-                      value={editEventDateData.notes || ''}
-                      onChange={(e) => setEditEventDateData({ ...editEventDateData, notes: e.target.value })}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      placeholder="Add notes about this event date..."
-                    />
-                  ) : selectedEventDate.notes ? (
-                    <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedEventDate.notes}</p>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">No notes</span>
-                  )}
-                </div>
-
-                {/* Assigned Staff */}
-                {!isEditingEventDate && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-500 mb-3">Assigned Staff</label>
-                    {(() => {
-                      const dateStaff = staffAssignments.filter(s => s.event_date_id === selectedEventDate.id)
-                      return dateStaff.length === 0 ? (
-                        <p className="text-sm text-gray-500 italic">No staff assigned to this date</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {dateStaff.map((staff) => (
-                            <div key={staff.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                              <User className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{staff.users?.name || 'Unknown User'}</p>
-                                {staff.role && (
-                                  <p className="text-xs text-gray-600">{staff.role}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-
-                {/* Date Created/Updated */}
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium">Created:</span>{' '}
-                      {new Date(selectedEventDate.created_at || selectedEventDate.event_date).toLocaleDateString()}
-                    </div>
-                    <div>
-                      <span className="font-medium">Last Updated:</span>{' '}
-                      {new Date(selectedEventDate.updated_at || selectedEventDate.event_date).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                {isEditingEventDate ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={handleCancelEditEventDate}
-                      className="border-red-600 text-red-600 hover:bg-red-50"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSaveEventDate}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsEventDateDetailOpen(false)
-                      setSelectedEventDate(null)
-                    }}
-                  >
-                    Close
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EventDateDetailModal
+        eventDate={selectedEventDate}
+        isOpen={isEventDateDetailOpen}
+        isEditing={isEditingEventDate}
+        editEventDateData={editEventDateData}
+        locations={locations}
+        staffAssignments={staffAssignments}
+        onClose={() => {
+          setIsEventDateDetailOpen(false)
+          setSelectedEventDate(null)
+        }}
+        onStartEdit={handleStartEditEventDate}
+        onSave={handleSaveEventDate}
+        onCancel={handleCancelEditEventDate}
+        onFieldChange={(field, value) => setEditEventDateData({ ...editEventDateData, [field]: value })}
+        canEdit={canManageEvents}
+      />
     </AccessGuard>
   )
 }
