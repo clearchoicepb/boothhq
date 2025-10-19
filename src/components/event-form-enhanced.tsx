@@ -10,7 +10,7 @@ import { LocationSelector } from '@/components/location-selector'
 import { EventCategoryTypeSelector } from '@/components/forms/event-category-type-selector'
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
-import { toDateInputValue } from '@/lib/utils/date-utils'
+import { toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
 
 interface Account {
   id: string
@@ -239,22 +239,39 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         if (!sharedLocationId) {
           newErrors.shared_location = 'Sequential same-location events require a shared location'
         }
-        // Check dates are consecutive
-        if (validDates.length >= 2) {
+        // Check dates are consecutive (no gaps allowed)
+        if (validDates.length >= 2 && !newErrors.event_dates) {
+          // Use parseLocalDate for timezone-safe parsing
           const sortedDates = validDates
-            .map(d => new Date(d.event_date))
-            .sort((a, b) => a.getTime() - b.getTime())
+            .map(d => ({
+              date: parseLocalDate(d.event_date),
+              original: d.event_date
+            }))
+            .sort((a, b) => a.date.getTime() - b.date.getTime())
+          
+          console.log('Sequential validation - sorted dates:', sortedDates.map(d => d.original))
           
           for (let i = 1; i < sortedDates.length; i++) {
-            const diff = Math.floor((sortedDates[i].getTime() - sortedDates[i-1].getTime()) / (1000 * 60 * 60 * 24))
-            if (diff !== 1) {
-              newErrors.event_dates = 'Sequential events must have consecutive dates with no gaps (e.g., Jan 1, Jan 2, Jan 3)'
+            const prevDate = sortedDates[i-1].date
+            const currDate = sortedDates[i].date
+            const diffMs = currDate.getTime() - prevDate.getTime()
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+            
+            console.log(`Gap check: ${sortedDates[i-1].original} to ${sortedDates[i].original} = ${diffDays} days`)
+            
+            if (diffDays !== 1) {
+              const prevDateStr = prevDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              const currDateStr = currDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              newErrors.event_dates = `Sequential events must have consecutive dates with no gaps. Found ${diffDays}-day gap between ${prevDateStr} and ${currDateStr}`
               break
             }
           }
         }
+        // Validate individual dates
         eventDates.forEach((date, index) => {
-          if (date.event_date && !date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+          if (date.event_date) {
+            if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+          }
         })
         break
 
@@ -265,9 +282,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         if (!sharedLocationId) {
           newErrors.shared_location = 'Same-location events require a shared location'
         }
-        eventDates.forEach((date, index) => {
-          if (date.event_date && !date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        })
         break
 
       case 'multiple_locations':
@@ -278,10 +292,10 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         if (uniqueLocations.size < 2) {
           newErrors.event_dates = 'Multiple location events must have at least 2 different locations'
         }
+        // Validate each date has a location
         eventDates.forEach((date, index) => {
-          if (date.event_date) {
-            if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-            if (!date.location_id) newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
+          if (date.event_date && !date.location_id) {
+            newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
           }
         })
         break
@@ -291,9 +305,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         if (validDates.length === 0) {
           newErrors.event_date = 'At least one event date is required'
         }
-        eventDates.forEach((date, index) => {
-          if (date.event_date && !date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        })
     }
 
     setErrors(newErrors)
