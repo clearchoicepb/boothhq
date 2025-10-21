@@ -282,21 +282,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={editingAccount ? 'Edit Account' : 'Create New Account'}>
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {editingAccount ? 'Edit Account' : 'Create New Account'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Close modal"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
           {errors.submit && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {errors.submit}
@@ -672,7 +658,6 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
             </Button>
           </div>
         </form>
-      </div>
     </Modal>
   )
 }
