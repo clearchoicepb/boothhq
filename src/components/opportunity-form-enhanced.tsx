@@ -250,59 +250,55 @@ export function OpportunityFormEnhanced({
     if (!formData.event_type) newErrors.event_type = 'Event type is required'
     if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Valid amount is required'
 
-    // Validate shared location for same_location types
-    if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
-      if (!sharedLocationId) newErrors.shared_location = 'Location is required for all dates'
-    }
-
+    // RELAXED: Dates and locations are now OPTIONAL for opportunities (early stage)
+    // Only validate date/location logic if dates are actually provided
+    
     // Get valid dates (dates that have event_date filled)
     const validDates = eventDates.filter(date => date.event_date)
 
-    // Validate event dates based on date_type
-    if (formData.date_type === 'single_day') {
-      // Single day: must have exactly 1 date
-      if (validDates.length === 0) {
-        newErrors.event_date = 'Event date is required'
-      } else if (validDates.length > 1) {
-        newErrors.event_date = 'Single day events can only have one date'
+    // Only validate if user has started entering dates
+    if (validDates.length > 0) {
+      // Validate shared location for same_location types (only if dates exist)
+      if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
+        if (!sharedLocationId) newErrors.shared_location = 'Location is required when dates are provided'
       }
 
-      if (!eventDates[0]?.event_date) newErrors.event_date = 'Event date is required'
-      // Time fields are optional
-    } else if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
-      // Same location types: must have at least 2 dates
-      if (validDates.length < 2) {
-        newErrors.event_dates = `${formData.date_type === 'same_location_sequential' ? 'Sequential' : 'Non-sequential'} events require at least 2 dates`
-      }
+      // Validate event dates based on date_type (only if dates are provided)
+      if (formData.date_type === 'single_day') {
+        // Single day: if dates provided, should only be 1
+        if (validDates.length > 1) {
+          newErrors.event_date = 'Single day events can only have one date'
+        }
+      } else if (formData.date_type === 'same_location_sequential' || formData.date_type === 'same_location_non_sequential') {
+        // Same location types: if dates provided, should have at least 2
+        if (validDates.length < 2) {
+          newErrors.event_dates = `${formData.date_type === 'same_location_sequential' ? 'Sequential' : 'Non-sequential'} events require at least 2 dates`
+        }
 
-      // For sequential dates, verify they are actually sequential (no gaps)
-      if (formData.date_type === 'same_location_sequential' && validDates.length >= 2) {
-        const sortedDates = validDates
-          .map(d => new Date(d.event_date))
-          .sort((a, b) => a.getTime() - b.getTime())
+        // For sequential dates, verify they are actually sequential (no gaps)
+        if (formData.date_type === 'same_location_sequential' && validDates.length >= 2) {
+          const sortedDates = validDates
+            .map(d => parseLocalDate(d.event_date))
+            .sort((a, b) => a.getTime() - b.getTime())
 
-        for (let i = 1; i < sortedDates.length; i++) {
-          const diffDays = Math.floor((sortedDates[i].getTime() - sortedDates[i-1].getTime()) / (1000 * 60 * 60 * 24))
-          if (diffDays !== 1) {
-            newErrors.event_dates = 'Sequential dates must be consecutive days with no gaps (e.g., Jan 1, Jan 2, Jan 3)'
-            break
+          for (let i = 1; i < sortedDates.length; i++) {
+            const diffDays = Math.round((sortedDates[i].getTime() - sortedDates[i-1].getTime()) / (1000 * 60 * 60 * 24))
+            if (diffDays !== 1) {
+              newErrors.event_dates = 'Sequential dates must be consecutive days with no gaps (e.g., Jan 1, Jan 2, Jan 3)'
+              toast.error(`Gap detected: ${diffDays} days between dates`)
+              break
+            }
           }
         }
-      }
+      } else if (formData.date_type === 'multiple_locations') {
+        // Multiple locations: if dates provided, should have at least 2 dates AND 2 different locations
+        if (validDates.length < 2) {
+          newErrors.event_dates = 'Multiple location events require at least 2 dates'
+        }
 
-      eventDates.forEach((date, index) => {
-        if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        // Time fields are optional
-      })
-    } else if (formData.date_type === 'multiple_locations') {
-      // Multiple locations: must have at least 2 dates AND at least 2 different locations
-      if (validDates.length < 2) {
-        newErrors.event_dates = 'Multiple location events require at least 2 dates'
-      }
-
-      // Check for at least 2 different locations
-      const locations = validDates.map(date => date.location_id).filter(loc => loc)
-      const uniqueLocations = new Set(locations)
+        // Check for at least 2 different locations
+        const locations = validDates.map(date => date.location_id).filter(loc => loc)
+        const uniqueLocations = new Set(locations)
 
       if (uniqueLocations.size < 2) {
         newErrors.event_dates = 'Multiple location events require at least 2 different locations'

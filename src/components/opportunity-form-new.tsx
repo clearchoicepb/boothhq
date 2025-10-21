@@ -87,18 +87,10 @@ export function OpportunityFormNew({ isOpen, onClose, onSave, customer, contact 
       newErrors.event_type = 'Event type is required'
     }
 
-    // Date fields are required, but time fields (handled elsewhere) are optional
-    if (formData.date_type === 'single') {
-      if (!formData.event_date) {
-        newErrors.event_date = 'Event date is required'
-      }
-    } else {
-      if (!formData.initial_date) {
-        newErrors.initial_date = 'Initial date is required'
-      }
-      if (!formData.final_date) {
-        newErrors.final_date = 'Final date is required'
-      }
+    // RELAXED: Date fields are now OPTIONAL for opportunities (early stage)
+    // Only validate date logic if dates are provided
+    if (formData.date_type === 'multiple') {
+      // For multi-day: if both dates provided, validate order
       if (formData.initial_date && formData.final_date && formData.initial_date > formData.final_date) {
         newErrors.final_date = 'Final date must be after initial date'
       }
