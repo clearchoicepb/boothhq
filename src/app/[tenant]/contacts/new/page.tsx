@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PhotoUpload } from '@/components/ui/photo-upload'
 import { ArrowLeft, Save, X } from 'lucide-react'
@@ -20,6 +20,7 @@ export default function NewContactPage() {
   const { tenant, loading } = useTenant()
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const tenantSubdomain = params.tenant as string
   const [localLoading, setLocalLoading] = useState(false)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -40,6 +41,17 @@ export default function NewContactPage() {
     notes: '',
     avatar_url: ''
   })
+
+  // Pre-populate account_id from URL params
+  useEffect(() => {
+    const accountIdFromUrl = searchParams.get('account_id')
+    if (accountIdFromUrl) {
+      setFormData(prev => ({
+        ...prev,
+        account_id: accountIdFromUrl
+      }))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (session && tenant) {
