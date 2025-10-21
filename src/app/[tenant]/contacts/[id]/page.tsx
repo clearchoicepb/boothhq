@@ -5,8 +5,10 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { NotesSection } from '@/components/notes-section'
-import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText, ArrowRight } from 'lucide-react'
+import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 
 interface Contact {
@@ -27,6 +29,20 @@ interface Contact {
   account_name: string | null
   created_at: string
   updated_at: string
+  // NEW: Many-to-many account relationships
+  all_accounts?: Array<{
+    id: string
+    name: string
+    account_type?: string
+    role: string
+    is_primary: boolean
+    start_date?: string
+    end_date?: string | null
+    junction_id: string
+  }>
+  active_accounts?: Array<any>
+  former_accounts?: Array<any>
+  primary_account?: any
 }
 
 export default function ContactDetailPage() {
@@ -246,21 +262,98 @@ export default function ContactDetailPage() {
               </div>
             )}
 
-            {/* Account Information */}
-            {contact.account_name && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Account</h2>
-                <div className="flex items-center">
-                  <Building2 className="h-4 w-4 text-gray-400 mr-2" />
-                  <Link 
-                    href={`/${tenantSubdomain}/accounts/${contact.account_id}`}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    {contact.account_name}
-                  </Link>
-                </div>
+            {/* Account Associations Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="h-5 w-5 text-gray-700" />
+                <h2 className="text-lg font-semibold text-gray-900">Account Associations</h2>
               </div>
-            )}
+              <p className="text-sm text-gray-500 mb-4">
+                Companies and organizations this contact works with
+              </p>
+              
+              {contact.all_accounts && contact.all_accounts.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Active Accounts */}
+                  {contact.active_accounts && contact.active_accounts.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Current Accounts</h4>
+                      <div className="space-y-2">
+                        {contact.active_accounts.map((account: any) => (
+                          <div
+                            key={account.junction_id}
+                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            onClick={() => router.push(`/${tenantSubdomain}/accounts/${account.id}`)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Building2 className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="font-medium text-gray-900">{account.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {account.role}
+                                  </Badge>
+                                  {account.is_primary && (
+                                    <Badge className="text-xs bg-blue-600">
+                                      Primary
+                                    </Badge>
+                                  )}
+                                  {account.start_date && (
+                                    <span>Since {formatDateShort(account.start_date)}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Former Accounts */}
+                  {contact.former_accounts && contact.former_accounts.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">
+                        Former Accounts
+                      </h4>
+                      <div className="space-y-2">
+                        {contact.former_accounts.map((account: any) => (
+                          <div
+                            key={account.junction_id}
+                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg opacity-60 hover:opacity-100 cursor-pointer transition-opacity"
+                            onClick={() => router.push(`/${tenantSubdomain}/accounts/${account.id}`)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Building2 className="h-5 w-5 text-gray-400" />
+                              <div>
+                                <p className="font-medium text-gray-700">{account.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                                  <Badge variant="outline" className="text-xs">
+                                    {account.role}
+                                  </Badge>
+                                  {account.start_date && account.end_date && (
+                                    <span>
+                                      {formatDateShort(account.start_date)} - {formatDateShort(account.end_date)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No account associations</p>
+                </div>
+              )}
+            </div>
 
             {/* Notes */}
             {contact.notes && (
