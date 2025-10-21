@@ -5,8 +5,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
-import { X } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { X, Plus, Trash2, CheckCircle, User } from 'lucide-react'
+import toast from 'react-hot-toast'
 import type { Account, AccountInsert, AccountUpdate } from '@/lib/supabase-client' // cspell:ignore supabase
+
+interface Contact {
+  id: string
+  first_name: string
+  last_name: string
+  email?: string
+  phone?: string
+  job_title?: string
+  company?: string
+}
 
 interface AccountFormProps {
   isOpen: boolean
@@ -33,6 +45,23 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // NEW: State for managing multiple contact relationships
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactRelationships, setContactRelationships] = useState<Array<{
+    id?: string // Junction table ID (for edits)
+    contact_id: string
+    role: string
+    is_primary: boolean
+    start_date: string
+  }>>([
+    {
+      contact_id: '',
+      role: 'Primary Contact',
+      is_primary: true,
+      start_date: new Date().toISOString().split('T')[0]
+    }
+  ])
 
   // Industry options
   const industryOptions = [
@@ -48,6 +77,25 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
     'Marketing',
     'Other'
   ]
+
+  // Fetch contacts on mount
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const response = await fetch('/api/contacts')
+        if (response.ok) {
+          const data = await response.json()
+          setContacts(data || [])
+        }
+      } catch (error) {
+        console.error('Error fetching contacts:', error)
+      }
+    }
+    
+    if (isOpen) {
+      fetchContacts()
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (editingAccount) {
@@ -66,6 +114,35 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
         employee_count: editingAccount.employee_count,
         status: editingAccount.status
       })
+      
+      // NEW: Load contact relationships if editing
+      if (editingAccount.id && isOpen) {
+        const fetchRelationships = async () => {
+          try {
+            const response = await fetch(`/api/accounts/${editingAccount.id}`)
+            const data = await response.json()
+            
+            if (data.contact_accounts && data.contact_accounts.length > 0) {
+              setContactRelationships(
+                data.contact_accounts.map((ca: any) => ({
+                  id: ca.id,
+                  contact_id: ca.contact_id,
+                  role: ca.role || 'Contact',
+                  is_primary: ca.is_primary || false,
+                  start_date: ca.start_date || new Date().toISOString().split('T')[0]
+                }))
+              )
+            } else {
+              // No junction table entries - start with empty
+              setContactRelationships([])
+            }
+          } catch (error) {
+            console.error('Error loading contact relationships:', error)
+            setContactRelationships([])
+          }
+        }
+        fetchRelationships()
+      }
     } else {
       setFormData({
         name: '',
@@ -82,6 +159,14 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
         employee_count: null,
         status: 'active'
       })
+      
+      // NEW: Reset relationships for new account
+      setContactRelationships([{
+        contact_id: '',
+        role: 'Primary Contact',
+        is_primary: true,
+        start_date: new Date().toISOString().split('T')[0]
+      }])
     }
     setErrors({})
   }, [editingAccount, isOpen])
@@ -135,13 +220,58 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
       return
     }
     
+    // NEW: Validate contact relationships (optional for accounts)
+    if (contactRelationships.length > 0) {
+      // If relationships exist, validate them
+      if (contactRelationships.some(rel => rel.contact_id && !rel.contact_id)) {
+        toast.error('Please select a contact for all relationships or remove empty ones')
+        return
+      }
+      
+      const primaryCount = contactRelationships.filter(r => r.is_primary).length
+      if (primaryCount > 1) {
+        toast.error('Only one contact can be marked as primary')
+        return
+      }
+    }
+    
     setIsSubmitting(true)
     
     try {
       await onSave(formData)
+      
+      // NEW: Save contact relationships if account was created/updated
+      // We need the account ID, which should be returned from onSave or available from editingAccount
+      const accountId = editingAccount?.id
+      
+      if (accountId && contactRelationships.length > 0) {
+        // Save all contact relationships
+        for (const rel of contactRelationships) {
+          if (rel.contact_id) {
+            const relResponse = await fetch('/api/contact-accounts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contact_id: rel.contact_id,
+                account_id: accountId,
+                role: rel.role,
+                is_primary: rel.is_primary,
+                start_date: rel.start_date
+              })
+            })
+            
+            if (!relResponse.ok) {
+              console.error('Failed to save contact relationship:', await relResponse.text())
+            }
+          }
+        }
+      }
+      
+      toast.success(editingAccount ? 'Account updated!' : 'Account created!')
       onClose()
     } catch (error) {
       console.error('Error saving account:', error)
+      toast.error('Failed to save account')
       setErrors({ submit: 'Failed to save account. Please try again.' })
     } finally {
       setIsSubmitting(false)
@@ -379,6 +509,149 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
                 <option value="prospect">Prospect</option>
               </Select>
             </div>
+          </div>
+
+          {/* Contact Associations Section */}
+          <div className="space-y-4 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Contact Associations</h3>
+                <p className="text-sm text-muted-foreground">
+                  Link contacts to this account with specific roles (optional)
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setContactRelationships([
+                    ...contactRelationships,
+                    {
+                      contact_id: '',
+                      role: 'Contact',
+                      is_primary: contactRelationships.length === 0,
+                      start_date: new Date().toISOString().split('T')[0]
+                    }
+                  ])
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </div>
+
+            {/* Contact Relationship Cards */}
+            <div className="space-y-3">
+              {contactRelationships.map((rel, index) => (
+                <Card key={index}>
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Contact Selector */}
+                      <div>
+                        <label className="text-sm font-medium">
+                          Contact
+                        </label>
+                        <select
+                          value={rel.contact_id}
+                          onChange={(e) => {
+                            const updated = [...contactRelationships]
+                            updated[index].contact_id = e.target.value
+                            setContactRelationships(updated)
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          aria-label={`Select contact for relationship ${index + 1}`}
+                        >
+                          <option value="">Select contact</option>
+                          {contacts.map((contact) => (
+                            <option key={contact.id} value={contact.id}>
+                              {contact.first_name} {contact.last_name}
+                              {contact.job_title && ` - ${contact.job_title}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Role Selector */}
+                      <div>
+                        <label className="text-sm font-medium">Role</label>
+                        <select
+                          value={rel.role}
+                          onChange={(e) => {
+                            const updated = [...contactRelationships]
+                            updated[index].role = e.target.value
+                            setContactRelationships(updated)
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          aria-label={`Select role for relationship ${index + 1}`}
+                        >
+                          <option value="Primary Contact">Primary Contact</option>
+                          <option value="Employee">Employee</option>
+                          <option value="Event Planner">Event Planner</option>
+                          <option value="Wedding Planner">Wedding Planner</option>
+                          <option value="Billing Contact">Billing Contact</option>
+                          <option value="Decision Maker">Decision Maker</option>
+                          <option value="Former Employee">Former Employee</option>
+                          <option value="Contractor">Contractor</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Primary Toggle & Remove Button */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`primary-contact-${index}`}
+                          checked={rel.is_primary}
+                          onChange={(e) => {
+                            const updated = contactRelationships.map((r, i) => ({
+                              ...r,
+                              is_primary: i === index ? e.target.checked : false
+                            }))
+                            setContactRelationships(updated)
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <label htmlFor={`primary-contact-${index}`} className="text-sm">
+                          Primary Contact
+                        </label>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setContactRelationships(
+                            contactRelationships.filter((_, i) => i !== index)
+                          )
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {rel.is_primary && (
+                      <p className="text-sm text-blue-600 flex items-center gap-1">
+                        <CheckCircle className="h-4 w-4" />
+                        This is the primary contact for this account
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {contactRelationships.length === 0 && (
+              <Card>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No contacts associated yet</p>
+                  <p className="text-sm">Click "Add Contact" to create a relationship</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Form Actions */}
