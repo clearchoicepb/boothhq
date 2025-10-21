@@ -6,8 +6,27 @@ import { Event as EventType } from '@/lib/supabase-client'
  */
 export interface EventWithRelations extends EventType {
   account_name: string | null
-  contact_name: string | null
+  contact_name: string | null // Legacy field
   opportunity_name: string | null
+  // New many-to-many contact fields
+  primary_contact?: {
+    id: string
+    first_name: string
+    last_name: string
+    email: string | null
+    phone: string | null
+    job_title: string | null
+  } | null
+  primary_contact_name?: string | null
+  event_planner?: {
+    id: string
+    first_name: string
+    last_name: string
+    email: string | null
+    phone: string | null
+    company: string | null
+  } | null
+  event_planner_name?: string | null
   event_category?: {
     name: string
     color: string

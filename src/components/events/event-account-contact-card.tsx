@@ -1,5 +1,6 @@
-import { Building2, User, Edit, Check, X, TrendingUp } from 'lucide-react'
+import { Building2, User, Edit, Check, X, TrendingUp, Users, Briefcase } from 'lucide-react'
 import Link from 'next/link'
+import { Badge } from '@/components/ui/badge'
 import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
 import { EventWithRelations } from '@/hooks/useEventData'
@@ -90,9 +91,12 @@ export function EventAccountContactCard({
           )}
         </div>
 
-        {/* Contact */}
+        {/* Primary Contact */}
         <div>
-          <label className="block text-sm font-medium text-gray-500 mb-1">Contact</label>
+          <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Primary Contact
+          </label>
           {isEditing ? (
             <ContactSelect
               value={editContactId || null}
@@ -101,7 +105,41 @@ export function EventAccountContactCard({
               placeholder="Search contacts..."
               allowCreate={false}
             />
+          ) : event.primary_contact ? (
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Link
+                  href={`/${tenantSubdomain}/contacts/${event.primary_contact.id}`}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {event.primary_contact.first_name} {event.primary_contact.last_name}
+                </Link>
+                <div className="flex items-center gap-2 mt-1">
+                  {event.primary_contact.job_title && (
+                    <Badge variant="outline" className="text-xs">
+                      {event.primary_contact.job_title}
+                    </Badge>
+                  )}
+                  {event.primary_contact.email && (
+                    <span className="text-xs text-gray-500">{event.primary_contact.email}</span>
+                  )}
+                </div>
+                {event.primary_contact.phone && (
+                  <p className="text-xs text-gray-500 mt-1">{event.primary_contact.phone}</p>
+                )}
+              </div>
+              {canEdit && (
+                <button
+                  onClick={onStartEdit}
+                  className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                  title="Edit primary contact"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           ) : event.contact_name ? (
+            // Legacy fallback for old contact_id field
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <User className="h-4 w-4 text-gray-400 mr-2" />
@@ -111,6 +149,9 @@ export function EventAccountContactCard({
                 >
                   {event.contact_name}
                 </Link>
+                <Badge variant="outline" className="ml-2 text-xs text-amber-600">
+                  Legacy
+                </Badge>
               </div>
               {canEdit && (
                 <button
@@ -124,12 +165,12 @@ export function EventAccountContactCard({
             </div>
           ) : (
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-900">-</p>
+              <p className="text-sm text-gray-500">No primary contact assigned</p>
               {canEdit && (
                 <button
                   onClick={onStartEdit}
                   className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit contact"
+                  title="Assign primary contact"
                 >
                   <Edit className="h-4 w-4" />
                 </button>
@@ -137,6 +178,48 @@ export function EventAccountContactCard({
             </div>
           )}
         </div>
+
+        {/* Event Planner */}
+        {event.event_planner && (
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Event Planner
+            </label>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Link
+                  href={`/${tenantSubdomain}/contacts/${event.event_planner.id}`}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {event.event_planner.first_name} {event.event_planner.last_name}
+                </Link>
+                <div className="flex items-center gap-2 mt-1">
+                  {event.event_planner.company && (
+                    <Badge variant="outline" className="text-xs">
+                      {event.event_planner.company}
+                    </Badge>
+                  )}
+                  {event.event_planner.email && (
+                    <span className="text-xs text-gray-500">{event.event_planner.email}</span>
+                  )}
+                </div>
+                {event.event_planner.phone && (
+                  <p className="text-xs text-gray-500 mt-1">{event.event_planner.phone}</p>
+                )}
+              </div>
+              {canEdit && (
+                <button
+                  onClick={onStartEdit}
+                  className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                  title="Edit event planner"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Related Opportunity */}
         {event.opportunity_name && (
