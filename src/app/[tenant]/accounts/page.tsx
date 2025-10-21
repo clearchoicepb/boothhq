@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { Search, Plus, Eye, Edit, Trash2, Building2, Globe, Phone, Mail } from 'lucide-react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import type { Account } from '@/lib/supabase-client' // cspell:ignore supabase
@@ -19,6 +19,7 @@ export default function AccountsPage() {
   const { tenant } = useTenant()
   const { settings, updateSettings } = useSettings()
   const params = useParams()
+  const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const { permissions } = usePermissions()
 
@@ -28,8 +29,6 @@ export default function AccountsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [itemsPerPage] = useState(10)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'list'>(
     settings?.accounts?.view || 'table'
   )
@@ -102,50 +101,11 @@ export default function AccountsPage() {
   }
 
   const handleEdit = (account: Account) => {
-    setEditingAccount(account)
-    setIsFormOpen(true)
+    router.push(`/${tenantSubdomain}/accounts/${account.id}/edit`)
   }
 
   const handleAddNew = () => {
-    setEditingAccount(null)
-    setIsFormOpen(true)
-  }
-
-  const handleFormSubmit = async (accountData: Account) => {
-    try {
-      if (editingAccount) {
-        // Update existing account
-        const response = await fetch(`/api/accounts/${editingAccount.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(accountData),
-        })
-        
-        if (response.ok) {
-          fetchAccounts()
-          setIsFormOpen(false)
-          setEditingAccount(null)
-        }
-      } else {
-        // Create new account
-        const response = await fetch('/api/accounts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(accountData),
-        })
-        
-        if (response.ok) {
-          fetchAccounts()
-          setIsFormOpen(false)
-        }
-      }
-    } catch (error) {
-      console.error('Error saving account:', error)
-    }
+    router.push(`/${tenantSubdomain}/accounts/new`)
   }
 
   const handleSearch = (e: React.FormEvent) => {
