@@ -19,7 +19,21 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('accounts')
-      .select('*')
+      .select(`
+        *,
+        contacts!contacts_account_id_fkey(id, first_name, last_name, email, phone, job_title),
+        contact_accounts(
+          id,
+          role,
+          is_primary,
+          start_date,
+          end_date,
+          notes,
+          contacts(id, first_name, last_name, email, phone, job_title, avatar_url)
+        ),
+        opportunities(id, name, stage, amount, expected_close_date),
+        events(id, title, start_date, status)
+      `)
       .eq('id', id)
       .eq('tenant_id', session.user.tenantId)
       .single()
@@ -33,7 +47,47 @@ export async function GET(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
 
-    return NextResponse.json(data)
+    // Transform the data to add helper properties
+    const transformedData = {
+      ...data,
+      // All contacts with roles (new many-to-many)
+      all_contacts: data.contact_accounts?.map((ca: any) => ({
+        ...ca.contacts,
+        role: ca.role,
+        is_primary: ca.is_primary,
+        start_date: ca.start_date,
+        end_date: ca.end_date,
+        notes: ca.notes,
+        junction_id: ca.id
+      })) || [],
+      
+      // Active contacts only (no end_date)
+      active_contacts: data.contact_accounts
+        ?.filter((ca: any) => !ca.end_date)
+        .map((ca: any) => ({
+          ...ca.contacts,
+          role: ca.role,
+          is_primary: ca.is_primary,
+          start_date: ca.start_date,
+          junction_id: ca.id
+        })) || [],
+      
+      // Primary contact (backward compatibility)
+      primary_contact: data.contact_accounts?.find((ca: any) => ca.is_primary)?.contacts || null,
+      
+      // Former contacts (has end_date)
+      former_contacts: data.contact_accounts
+        ?.filter((ca: any) => ca.end_date)
+        .map((ca: any) => ({
+          ...ca.contacts,
+          role: ca.role,
+          start_date: ca.start_date,
+          end_date: ca.end_date,
+          junction_id: ca.id
+        })) || []
+    }
+
+    return NextResponse.json(transformedData)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
