@@ -69,7 +69,9 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     converted_from_opportunity_id: opportunityId || '',
     opportunity_id: opportunityId || '',
     account_id: account?.id || '',
-    contact_id: contact?.id || ''
+    contact_id: contact?.id || '', // Keep for backward compatibility
+    primary_contact_id: contact?.id || '', // NEW: Main decision maker
+    event_planner_id: '' // NEW: External planner (optional)
   })
 
   const [eventDates, setEventDates] = useState<EventDateForm[]>([
@@ -97,7 +99,9 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         date_type: event.date_type || 'single_day',
         converted_from_opportunity_id: opportunityId || '',
         account_id: event.account_id || '',
-        contact_id: event.contact_id || ''
+        contact_id: event.contact_id || '', // Keep for backward compatibility
+        primary_contact_id: event.primary_contact_id || event.contact_id || '', // NEW: Load primary contact
+        event_planner_id: event.event_planner_id || '' // NEW: Load event planner
       })
 
       // Load event dates if editing
@@ -331,7 +335,9 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
       const eventData = {
         ...formData,
         account_id: formData.account_id || null,
-        contact_id: formData.contact_id || null,
+        contact_id: formData.primary_contact_id || formData.contact_id || null, // Backward compatibility
+        primary_contact_id: formData.primary_contact_id || null, // NEW: Main decision maker
+        event_planner_id: formData.event_planner_id || null, // NEW: External planner
         opportunity_id: opportunityId || null,
         start_date: eventDates[0]?.event_date || '',
         end_date: eventDates.length > 1 ? eventDates[eventDates.length - 1]?.event_date : eventDates[0]?.event_date || '',
@@ -398,25 +404,59 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact
+              Primary Contact <span className="text-red-500">*</span>
             </label>
             <Select
-              value={formData.contact_id || ''}
-              onChange={(e) => handleInputChange('contact_id', e.target.value)}
+              value={formData.primary_contact_id || ''}
+              onChange={(e) => {
+                handleInputChange('primary_contact_id', e.target.value)
+                handleInputChange('contact_id', e.target.value) // Backward compatibility
+              }}
+              required
             >
-              <option value="">Select a contact (optional)</option>
+              <option value="">Select primary contact</option>
               {(formData.account_id 
                 ? contacts.filter(c => c.account_id === formData.account_id)
                 : contacts
               ).map((con) => (
                 <option key={con.id} value={con.id}>
                   {con.first_name} {con.last_name}
+                  {con.job_title ? ` - ${con.job_title}` : ''}
                 </option>
               ))}
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Main decision maker for this event
+            </p>
             {formData.account_id && contacts.filter(c => c.account_id === formData.account_id).length === 0 && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-amber-600 mt-1">
                 No contacts found for this account
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Planner (Optional)
+            </label>
+            <Select
+              value={formData.event_planner_id || ''}
+              onChange={(e) => handleInputChange('event_planner_id', e.target.value)}
+            >
+              <option value="">None - or select external planner</option>
+              {contacts.map((con) => (
+                <option key={con.id} value={con.id}>
+                  {con.first_name} {con.last_name}
+                  {con.company ? ` (${con.company})` : ''}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              External coordinator (wedding planner, corporate event planner, etc.)
+            </p>
+            {formData.event_planner_id && formData.event_planner_id === formData.primary_contact_id && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <span>⚠️</span> Event planner is same as primary contact
               </p>
             )}
           </div>
