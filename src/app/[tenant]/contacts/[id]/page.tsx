@@ -272,6 +272,7 @@ export default function ContactDetailPage() {
                 Companies and organizations this contact works with
               </p>
               
+              {/* Show many-to-many relationships if they exist */}
               {contact.all_accounts && contact.all_accounts.length > 0 ? (
                 <div className="space-y-4">
                   {/* Active Accounts */}
@@ -347,10 +348,41 @@ export default function ContactDetailPage() {
                     </div>
                   )}
                 </div>
+              ) : contact.account_name ? (
+                /* Fallback: Show old single account if no many-to-many relationships exist yet */
+                <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <Building2 className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-900 mb-1">
+                        Legacy Account Link
+                      </p>
+                      <p className="text-sm text-amber-700 mb-3">
+                        This contact is linked to an account using the old system. 
+                        Edit the contact to migrate to the new many-to-many relationship system.
+                      </p>
+                      <div
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 cursor-pointer transition-colors"
+                        onClick={() => router.push(`/${tenantSubdomain}/accounts/${contact.account_id}`)}
+                      >
+                        <Building2 className="h-4 w-4 text-amber-600" />
+                        <span className="text-sm font-medium text-amber-900">
+                          {contact.account_name}
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-amber-600" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No account associations</p>
+                  <p className="text-sm mt-2">
+                    Edit this contact to add account relationships
+                  </p>
                 </div>
               )}
             </div>
