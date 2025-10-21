@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { Card, CardContent } from '@/components/ui/card'
-import { X, Plus, Trash2, CheckCircle, User } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Account, AccountInsert, AccountUpdate } from '@/lib/supabase-client' // cspell:ignore supabase
 
@@ -28,17 +28,17 @@ interface AccountFormProps {
 }
 
 export function AccountForm({ isOpen, onClose, onSave, editingAccount }: AccountFormProps) {
-  const [formData, setFormData] = useState<AccountInsert>({
+  const [formData, setFormData] = useState<Partial<AccountInsert>>({
     name: '',
     industry: null,
     website: null,
     phone: null,
     email: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    postal_code: null,
+    billing_address_line_1: null,
+    billing_address_line_2: null,
+    billing_city: null,
+    billing_state: null,
+    billing_zip_code: null,
     annual_revenue: null,
     employee_count: null,
     status: 'active'
@@ -105,11 +105,11 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
         website: editingAccount.website,
         phone: editingAccount.phone,
         email: editingAccount.email,
-        address: editingAccount.address,
-        city: editingAccount.city,
-        state: editingAccount.state,
-        country: editingAccount.country,
-        postal_code: editingAccount.postal_code,
+        billing_address_line_1: editingAccount.billing_address_line_1,
+        billing_address_line_2: editingAccount.billing_address_line_2,
+        billing_city: editingAccount.billing_city,
+        billing_state: editingAccount.billing_state,
+        billing_zip_code: editingAccount.billing_zip_code,
         annual_revenue: editingAccount.annual_revenue,
         employee_count: editingAccount.employee_count,
         status: editingAccount.status
@@ -124,7 +124,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
             
             if (data.contact_accounts && data.contact_accounts.length > 0) {
               setContactRelationships(
-                data.contact_accounts.map((ca: any) => ({
+                data.contact_accounts.map((ca: { id?: string; contact_id: string; role: string; is_primary: boolean; start_date: string }) => ({
                   id: ca.id,
                   contact_id: ca.contact_id,
                   role: ca.role || 'Contact',
@@ -150,11 +150,11 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
         website: null,
         phone: null,
         email: null,
-        address: null,
-        city: null,
-        state: null,
-        country: null,
-        postal_code: null,
+        billing_address_line_1: null,
+        billing_address_line_2: null,
+        billing_city: null,
+        billing_state: null,
+        billing_zip_code: null,
         annual_revenue: null,
         employee_count: null,
         status: 'active'
@@ -189,7 +189,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
     
-    if (!formData.name.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       newErrors.name = 'Account name is required'
     }
     
@@ -374,75 +374,75 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
             </div>
           </div>
 
-          {/* Address Information */}
+          {/* Billing Address Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Address Information</h3>
+            <h3 className="text-lg font-medium text-gray-900">Billing Address</h3>
             
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                Street Address
+              <label htmlFor="billing_address_line_1" className="block text-sm font-medium text-gray-700 mb-1">
+                Address Line 1
               </label>
               <Input
-                id="address"
+                id="billing_address_line_1"
                 type="text"
-                value={formData.address || ''}
-                onChange={(e) => handleInputChange('address', e.target.value || null)}
+                value={formData.billing_address_line_1 || ''}
+                onChange={(e) => handleInputChange('billing_address_line_1', e.target.value || null)}
                 placeholder="123 Main Street"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="billing_address_line_2" className="block text-sm font-medium text-gray-700 mb-1">
+                Address Line 2 <span className="text-gray-500">(Optional)</span>
+              </label>
+              <Input
+                id="billing_address_line_2"
+                type="text"
+                value={formData.billing_address_line_2 || ''}
+                onChange={(e) => handleInputChange('billing_address_line_2', e.target.value || null)}
+                placeholder="Suite 100"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="billing_city" className="block text-sm font-medium text-gray-700 mb-1">
                   City
                 </label>
                 <Input
-                  id="city"
+                  id="billing_city"
                   type="text"
-                  value={formData.city || ''}
-                  onChange={(e) => handleInputChange('city', e.target.value || null)}
+                  value={formData.billing_city || ''}
+                  onChange={(e) => handleInputChange('billing_city', e.target.value || null)}
                   placeholder="New York"
                 />
               </div>
 
               <div>
-                <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="billing_state" className="block text-sm font-medium text-gray-700 mb-1">
                   State
                 </label>
                 <Input
-                  id="state"
+                  id="billing_state"
                   type="text"
-                  value={formData.state || ''}
-                  onChange={(e) => handleInputChange('state', e.target.value || null)}
+                  value={formData.billing_state || ''}
+                  onChange={(e) => handleInputChange('billing_state', e.target.value || null)}
                   placeholder="NY"
                 />
               </div>
 
               <div>
-                <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-1">
-                  Postal Code
+                <label htmlFor="billing_zip_code" className="block text-sm font-medium text-gray-700 mb-1">
+                  Zip Code
                 </label>
                 <Input
-                  id="postal_code"
+                  id="billing_zip_code"
                   type="text"
-                  value={formData.postal_code || ''}
-                  onChange={(e) => handleInputChange('postal_code', e.target.value || null)}
+                  value={formData.billing_zip_code || ''}
+                  onChange={(e) => handleInputChange('billing_zip_code', e.target.value || null)}
                   placeholder="10001"
                 />
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                Country
-              </label>
-              <Input
-                id="country"
-                type="text"
-                value={formData.country || ''}
-                onChange={(e) => handleInputChange('country', e.target.value || null)}
-                placeholder="United States"
-              />
             </div>
           </div>
 
@@ -634,7 +634,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
                 <CardContent className="pt-6 text-center text-muted-foreground">
                   <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No contacts associated yet</p>
-                  <p className="text-sm">Click "Add Contact" to create a relationship</p>
+                  <p className="text-sm">Click &ldquo;Add Contact&rdquo; to create a relationship</p>
                 </CardContent>
               </Card>
             )}

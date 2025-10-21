@@ -630,14 +630,14 @@ export default function EventDetailPage() {
               />
 
               {/* Event Description */}
-              {event.description && (
+                {event.description && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Description</h2>
                   <div className="mt-6">
                     <label className="block text-sm font-medium text-gray-500 mb-1">Description</label>
                     <p className="text-sm text-gray-900">{event.description}</p>
                   </div>
-                </div>
+              </div>
               )}
 
               {/* Event Dates */}
@@ -647,8 +647,8 @@ export default function EventDetailPage() {
                 onTabChange={setActiveEventDateTab}
                 onDateClick={(date) => {
                   setSelectedEventDate(date)
-                  setIsEventDateDetailOpen(true)
-                }}
+                        setIsEventDateDetailOpen(true)
+                      }}
               />
 
               {/* Mailing Address */}
@@ -688,11 +688,11 @@ export default function EventDetailPage() {
                 onSave={handleSaveAccountContact}
                 onCancel={handleCancelEditAccountContact}
                 onAccountChange={(accountId) => {
-                  setEditAccountId(accountId || '')
-                  if (accountId !== event?.account_id) {
-                    setEditContactId('')
-                  }
-                }}
+                          setEditAccountId(accountId || '')
+                          if (accountId !== event?.account_id) {
+                            setEditContactId('')
+                          }
+                        }}
                 onContactChange={(contactId) => setEditContactId(contactId || '')}
                 canEdit={canManageEvents}
               />
@@ -918,9 +918,9 @@ export default function EventDetailPage() {
               totalPages={Math.ceil(communications.length / 10)}
               onPageChange={(page) => setCommunicationsPage(page)}
               onCommunicationClick={(comm) => {
-                setSelectedCommunication(comm)
-                setIsCommunicationDetailOpen(true)
-              }}
+                              setSelectedCommunication(comm)
+                              setIsCommunicationDetailOpen(true)
+                            }}
               onNewCommunication={() => setIsLogCommunicationModalOpen(true)}
               onEmail={() => setIsEmailModalOpen(true)}
               onSMS={() => setIsSMSModalOpen(true)}
@@ -992,15 +992,15 @@ export default function EventDetailPage() {
               isEditing={isEditingDescription}
               editedDescription={editedDescription}
               onStartEdit={() => {
-                setEditedDescription(event.description || '')
+                      setEditedDescription(event.description || '')
                 startEditingDescription()
               }}
               onDescriptionChange={setEditedDescription}
               onSave={handleSaveDescription}
               onCancel={() => {
                 cancelEditingDescription()
-                setEditedDescription('')
-              }}
+                        setEditedDescription('')
+                      }}
               canEdit={canManageEvents}
             />
           </TabsContent>
@@ -1254,9 +1254,9 @@ export default function EventDetailPage() {
         communication={selectedCommunication}
         isOpen={isCommunicationDetailOpen}
         onClose={() => {
-          setIsCommunicationDetailOpen(false)
-          setSelectedCommunication(null)
-        }}
+                    setIsCommunicationDetailOpen(false)
+                    setSelectedCommunication(null)
+                  }}
       />
 
       {/* Activity Detail Modal */}
@@ -1264,9 +1264,9 @@ export default function EventDetailPage() {
         activity={selectedActivity}
         isOpen={isActivityDetailOpen}
         onClose={() => {
-          setIsActivityDetailOpen(false)
-          setSelectedActivity(null)
-        }}
+                    setIsActivityDetailOpen(false)
+                    setSelectedActivity(null)
+                  }}
       />
 
       {/* Event Date Detail Modal */}
@@ -1278,8 +1278,8 @@ export default function EventDetailPage() {
         locations={locations}
         staffAssignments={staffAssignments}
         onClose={() => {
-          setIsEventDateDetailOpen(false)
-          setSelectedEventDate(null)
+                      setIsEventDateDetailOpen(false)
+                      setSelectedEventDate(null)
         }}
         onStartEdit={handleStartEditEventDate}
         onSave={handleSaveEventDate}
@@ -1344,9 +1344,9 @@ export default function EventDetailPage() {
         communication={selectedCommunication}
         isOpen={isCommunicationDetailOpen}
         onClose={() => {
-          setIsCommunicationDetailOpen(false)
-          setSelectedCommunication(null)
-        }}
+                    setIsCommunicationDetailOpen(false)
+                    setSelectedCommunication(null)
+                  }}
       />
 
       {/* Activity Detail Modal */}
@@ -1354,9 +1354,9 @@ export default function EventDetailPage() {
         activity={selectedActivity}
         isOpen={isActivityDetailOpen}
         onClose={() => {
-          setIsActivityDetailOpen(false)
-          setSelectedActivity(null)
-        }}
+                    setIsActivityDetailOpen(false)
+                    setSelectedActivity(null)
+                  }}
       />
 
       {/* Event Date Detail Modal */}
@@ -1368,8 +1368,8 @@ export default function EventDetailPage() {
         locations={locations}
         staffAssignments={staffAssignments}
         onClose={() => {
-          setIsEventDateDetailOpen(false)
-          setSelectedEventDate(null)
+                      setIsEventDateDetailOpen(false)
+                      setSelectedEventDate(null)
         }}
         onStartEdit={handleStartEditEventDate}
         onSave={handleSaveEventDate}

@@ -13,11 +13,16 @@ export interface Database {
           website: string | null
           phone: string | null
           email: string | null
-          address: string | null
-          city: string | null
-          state: string | null
-          country: string | null
-          postal_code: string | null
+          billing_address_line_1: string | null
+          billing_address_line_2: string | null
+          billing_city: string | null
+          billing_state: string | null
+          billing_zip_code: string | null
+          shipping_address_line_1: string | null
+          shipping_address_line_2: string | null
+          shipping_city: string | null
+          shipping_state: string | null
+          shipping_zip_code: string | null
           annual_revenue: number | null
           employee_count: number | null
           status: string
@@ -31,11 +36,16 @@ export interface Database {
           website?: string | null
           phone?: string | null
           email?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          country?: string | null
-          postal_code?: string | null
+          billing_address_line_1?: string | null
+          billing_address_line_2?: string | null
+          billing_city?: string | null
+          billing_state?: string | null
+          billing_zip_code?: string | null
+          shipping_address_line_1?: string | null
+          shipping_address_line_2?: string | null
+          shipping_city?: string | null
+          shipping_state?: string | null
+          shipping_zip_code?: string | null
           annual_revenue?: number | null
           employee_count?: number | null
           status?: string
@@ -49,11 +59,16 @@ export interface Database {
           website?: string | null
           phone?: string | null
           email?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          country?: string | null
-          postal_code?: string | null
+          billing_address_line_1?: string | null
+          billing_address_line_2?: string | null
+          billing_city?: string | null
+          billing_state?: string | null
+          billing_zip_code?: string | null
+          shipping_address_line_1?: string | null
+          shipping_address_line_2?: string | null
+          shipping_city?: string | null
+          shipping_state?: string | null
+          shipping_zip_code?: string | null
           annual_revenue?: number | null
           employee_count?: number | null
           status?: string
