@@ -5,8 +5,10 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { NotesSection } from '@/components/notes-section'
-import { ArrowLeft, Edit, Trash2, Building2, User, Phone, Mail, MapPin, Globe, FileText, Plus, Calendar, DollarSign } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Building2, User, Phone, Mail, MapPin, Globe, FileText, Plus, Calendar, DollarSign, ArrowRight, CheckCircle } from 'lucide-react'
+import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 
 interface Account {
@@ -24,6 +26,14 @@ interface Account {
   notes: string | null
   created_at: string
   updated_at: string
+  // Many-to-many contact relationships
+  all_contacts?: ContactWithRole[]
+  active_contacts?: ContactWithRole[]
+  former_contacts?: ContactWithRole[]
+  primary_contact?: Contact | null
+  // Related data
+  opportunities?: Opportunity[]
+  events?: any[]
 }
 
 interface Contact {
@@ -34,6 +44,23 @@ interface Contact {
   phone: string | null
   job_title: string | null
   relationship_to_account: string | null
+}
+
+interface ContactWithRole extends Contact {
+  role?: string | null
+  is_primary?: boolean
+  start_date?: string | null
+  end_date?: string | null
+  notes?: string | null
+  junction_id?: string
+}
+
+interface Opportunity {
+  id: string
+  name: string
+  stage: string
+  amount: number | null
+  expected_close_date: string | null
 }
 
 interface Event {
@@ -622,10 +649,10 @@ export default function AccountDetailPage() {
               )}
             </div>
 
-            {/* Affiliated Contacts */}
+            {/* Contact Associations (Many-to-Many with Roles) */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Affiliated Contacts</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Contact Associations</h2>
                 <Link href={`/${tenantSubdomain}/contacts/new?account_id=${account.id}`}>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-2" />
@@ -633,37 +660,138 @@ export default function AccountDetailPage() {
                   </Button>
                 </Link>
               </div>
-              {contacts.length === 0 ? (
-                <p className="text-gray-500 text-sm">No contacts associated with this account.</p>
-              ) : (
-                <div className="space-y-3">
-                  {contacts.map((contact) => (
-                    <div key={contact.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0 h-8 w-8">
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="h-4 w-4 text-gray-400" />
+
+              {/* Active Contacts */}
+              {account.active_contacts && account.active_contacts.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Current Contacts</h3>
+                  <div className="space-y-3">
+                    {account.active_contacts.map((contact) => (
+                      <div 
+                        key={contact.junction_id || contact.id}
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
+                        onClick={() => router.push(`/${tenantSubdomain}/contacts/${contact.id}`)}
+                      >
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <User className="h-5 w-5 text-blue-600" />
+                            </div>
                           </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {contact.first_name} {contact.last_name}
+                              </p>
+                              {contact.is_primary && (
+                                <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Primary
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1">
+                              {contact.role && (
+                                <Badge variant="outline" className="text-xs">
+                                  {contact.role}
+                                </Badge>
+                              )}
+                              {contact.job_title && (
+                                <p className="text-xs text-gray-500">{contact.job_title}</p>
+                              )}
+                            </div>
+                            {contact.start_date && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                Since {formatDateShort(contact.start_date)}
+                              </p>
+                            )}
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
                         </div>
-                        <div>
-                          <Link 
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Former Contacts */}
+              {account.former_contacts && account.former_contacts.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Former Contacts</h3>
+                  <div className="space-y-3">
+                    {account.former_contacts.map((contact) => (
+                      <div 
+                        key={contact.junction_id || contact.id}
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all cursor-pointer opacity-75"
+                        onClick={() => router.push(`/${tenantSubdomain}/contacts/${contact.id}`)}
+                      >
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                              <User className="h-5 w-5 text-gray-400" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-700 truncate">
+                              {contact.first_name} {contact.last_name}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1">
+                              {contact.role && (
+                                <Badge variant="outline" className="text-xs text-gray-500">
+                                  {contact.role}
+                                </Badge>
+                              )}
+                              {contact.job_title && (
+                                <p className="text-xs text-gray-500">{contact.job_title}</p>
+                              )}
+                            </div>
+                            {contact.start_date && contact.end_date && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                {formatDateShort(contact.start_date)} - {formatDateShort(contact.end_date)}
+                              </p>
+                            )}
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {(!account.active_contacts || account.active_contacts.length === 0) && 
+               (!account.former_contacts || account.former_contacts.length === 0) && (
+                <p className="text-gray-500 text-sm">No contacts associated with this account.</p>
+              )}
+
+              {/* Legacy Fallback (if old contacts exist but no junction table entries) */}
+              {contacts.length > 0 && 
+               (!account.all_contacts || account.all_contacts.length === 0) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-900 mb-2">
+                        Legacy Contact Links Detected
+                      </p>
+                      <p className="text-xs text-amber-700 mb-3">
+                        This account has contacts using the old system. Edit the account to migrate to the new many-to-many relationship system with roles.
+                      </p>
+                      <div className="space-y-2">
+                        {contacts.map((contact) => (
+                          <Link
+                            key={contact.id}
                             href={`/${tenantSubdomain}/contacts/${contact.id}`}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                            className="flex items-center gap-2 text-sm text-amber-800 hover:text-amber-900 hover:underline"
                           >
+                            <ArrowRight className="h-3 w-3" />
                             {contact.first_name} {contact.last_name}
                           </Link>
-                          {contact.job_title && (
-                            <p className="text-xs text-gray-500">{contact.job_title}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {contact.relationship_to_account && (
-                          <p className="text-xs text-gray-500">{contact.relationship_to_account}</p>
-                        )}
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
             </div>
