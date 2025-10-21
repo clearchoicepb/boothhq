@@ -123,6 +123,70 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 })
     }
 
+    // NEW: Handle account_id changes in contact_accounts junction table
+    if (body.account_id) {
+      // Get current primary account relationship
+      const { data: currentPrimary } = await supabase
+        .from('contact_accounts')
+        .select('*')
+        .eq('contact_id', id)
+        .eq('is_primary', true)
+        .is('end_date', null)
+        .eq('tenant_id', session.user.tenantId)
+        .maybeSingle()
+      
+      // If changing to a different account
+      if (!currentPrimary || currentPrimary.account_id !== body.account_id) {
+        // End current primary relationship (if exists)
+        if (currentPrimary) {
+          await supabase
+            .from('contact_accounts')
+            .update({
+              is_primary: false,
+              end_date: new Date().toISOString().split('T')[0]
+            })
+            .eq('id', currentPrimary.id)
+        }
+        
+        // Check if relationship with new account already exists
+        const { data: existing } = await supabase
+          .from('contact_accounts')
+          .select('*')
+          .eq('contact_id', id)
+          .eq('account_id', body.account_id)
+          .eq('tenant_id', session.user.tenantId)
+          .maybeSingle()
+        
+        if (existing) {
+          // Reactivate existing relationship
+          await supabase
+            .from('contact_accounts')
+            .update({
+              is_primary: true,
+              end_date: null
+            })
+            .eq('id', existing.id)
+        } else {
+          // Create new relationship
+          const { error: junctionError } = await supabase
+            .from('contact_accounts')
+            .insert({
+              contact_id: id,
+              account_id: body.account_id,
+              role: body.role || 'Primary Contact',
+              is_primary: true,
+              start_date: new Date().toISOString().split('T')[0],
+              tenant_id: session.user.tenantId
+            })
+          
+          if (junctionError) {
+            console.error('Failed to create contact_accounts entry:', junctionError)
+            // Don't fail the request, junction entry is supplementary
+          }
+        }
+      }
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error:', error)
