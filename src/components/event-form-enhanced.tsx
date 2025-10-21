@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
+import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-select'
 import { Modal } from '@/components/ui/modal'
 import { LocationSelector } from '@/components/location-selector'
 import { EventCategoryTypeSelector } from '@/components/forms/event-category-type-selector'
@@ -183,6 +184,61 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
       fetchData()
     }
   }, [isOpen])
+
+  // Filtered and sorted options for dropdowns
+  const accountOptions = useMemo<SearchableOption[]>(() => {
+    return accounts
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      .map(acc => ({
+        id: acc.id,
+        label: acc.name,
+        subLabel: acc.account_type || undefined
+      }))
+  }, [accounts])
+
+  const contactOptions = useMemo<SearchableOption[]>(() => {
+    if (!formData.account_id) return []
+    
+    return contacts
+      .filter(c => c.account_id === formData.account_id)
+      .sort((a, b) => {
+        const nameA = `${a.first_name || ''} ${a.last_name || ''}`
+        const nameB = `${b.first_name || ''} ${b.last_name || ''}`
+        return nameA.localeCompare(nameB)
+      })
+      .map(c => ({
+        id: c.id,
+        label: `${c.first_name} ${c.last_name}`,
+        subLabel: c.job_title || c.email || undefined
+      }))
+  }, [contacts, formData.account_id])
+
+  const eventPlannerOptions = useMemo<SearchableOption[]>(() => {
+    return contacts
+      .sort((a, b) => {
+        const nameA = `${a.first_name || ''} ${a.last_name || ''}`
+        const nameB = `${b.first_name || ''} ${b.last_name || ''}`
+        return nameA.localeCompare(nameB)
+      })
+      .map(c => ({
+        id: c.id,
+        label: `${c.first_name} ${c.last_name}`,
+        subLabel: c.company || c.job_title || undefined
+      }))
+  }, [contacts])
+
+  const opportunityOptions = useMemo<SearchableOption[]>(() => {
+    if (!formData.account_id) return []
+    
+    return opportunities
+      .filter(o => o.account_id === formData.account_id)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      .map(o => ({
+        id: o.id,
+        label: o.name,
+        subLabel: `${o.stage} - $${o.estimated_value || 0}`
+      }))
+  }, [opportunities, formData.account_id])
 
   // Auto-update date type based on number of dates
   useEffect(() => {
@@ -386,71 +442,55 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         {/* Account/Contact Information */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Account
-            </label>
-            <Select
-              value={formData.account_id || ''}
-              onChange={(e) => handleInputChange('account_id', e.target.value)}
-            >
-              <option value="">Select an account (optional)</option>
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Primary Contact <span className="text-red-500">*</span>
-            </label>
-            <Select
-              value={formData.primary_contact_id || ''}
-              onChange={(e) => {
-                handleInputChange('primary_contact_id', e.target.value)
-                handleInputChange('contact_id', e.target.value) // Backward compatibility
+            <SearchableSelect
+              label="Account"
+              placeholder="Search accounts..."
+              value={formData.account_id || null}
+              onChange={(value) => {
+                handleInputChange('account_id', value || '')
+                // Reset contact and opportunity when account changes
+                if (value !== formData.account_id) {
+                  handleInputChange('primary_contact_id', '')
+                  handleInputChange('contact_id', '')
+                  handleInputChange('opportunity_id', '')
+                }
               }}
-              required
-            >
-              <option value="">Select primary contact</option>
-              {(formData.account_id 
-                ? contacts.filter(c => c.account_id === formData.account_id)
-                : contacts
-              ).map((con) => (
-                <option key={con.id} value={con.id}>
-                  {con.first_name} {con.last_name}
-                  {con.job_title ? ` - ${con.job_title}` : ''}
-                </option>
-              ))}
-            </Select>
+              options={accountOptions}
+              emptyMessage="No accounts found"
+            />
             <p className="text-xs text-gray-500 mt-1">
-              Main decision maker for this event
+              Who is paying for this event?
             </p>
-            {formData.account_id && contacts.filter(c => c.account_id === formData.account_id).length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">
-                No contacts found for this account
-              </p>
-            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Planner (Optional)
-            </label>
-            <Select
-              value={formData.event_planner_id || ''}
-              onChange={(e) => handleInputChange('event_planner_id', e.target.value)}
-            >
-              <option value="">None - or select external planner</option>
-              {contacts.map((con) => (
-                <option key={con.id} value={con.id}>
-                  {con.first_name} {con.last_name}
-                  {con.company ? ` (${con.company})` : ''}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+              label="Primary Contact"
+              placeholder={formData.account_id ? "Search contacts..." : "Select account first"}
+              value={formData.primary_contact_id || null}
+              onChange={(value) => {
+                handleInputChange('primary_contact_id', value || '')
+                handleInputChange('contact_id', value || '') // Backward compatibility
+              }}
+              options={contactOptions}
+              emptyMessage={formData.account_id ? "No contacts for this account" : "Select an account first"}
+              required={true}
+              disabled={!formData.account_id}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Main decision maker at {accounts.find(a => a.id === formData.account_id)?.name || 'the account'}
+            </p>
+          </div>
+
+          <div>
+            <SearchableSelect
+              label="Event Planner (Optional)"
+              placeholder="Search event planners..."
+              value={formData.event_planner_id || null}
+              onChange={(value) => handleInputChange('event_planner_id', value || '')}
+              options={eventPlannerOptions}
+              emptyMessage="No event planners found"
+            />
             <p className="text-xs text-gray-500 mt-1">
               External coordinator (wedding planner, corporate event planner, etc.)
             </p>
@@ -462,20 +502,15 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Opportunity (Optional)
-            </label>
-            <Select
-              value={formData.opportunity_id || ''}
-              onChange={(e) => handleInputChange('opportunity_id', e.target.value)}
-            >
-              <option value="">Select an opportunity (optional)</option>
-              {opportunities.map((opp) => (
-                <option key={opp.id} value={opp.id}>
-                  {opp.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+              label="Opportunity (Optional)"
+              placeholder={formData.account_id ? "Search opportunities..." : "Select account first"}
+              value={formData.opportunity_id || null}
+              onChange={(value) => handleInputChange('opportunity_id', value || '')}
+              options={opportunityOptions}
+              emptyMessage={formData.account_id ? "No opportunities for this account" : "Select an account first"}
+              disabled={!formData.account_id}
+            />
             <p className="text-xs text-gray-500 mt-1">
               Link this event to an opportunity
             </p>
