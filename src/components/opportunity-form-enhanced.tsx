@@ -300,15 +300,16 @@ export function OpportunityFormEnhanced({
         const locations = validDates.map(date => date.location_id).filter(loc => loc)
         const uniqueLocations = new Set(locations)
 
-      if (uniqueLocations.size < 2) {
-        newErrors.event_dates = 'Multiple location events require at least 2 different locations'
-      }
+        if (uniqueLocations.size < 2) {
+          newErrors.event_dates = 'Multiple location events require at least 2 different locations'
+        }
 
-      eventDates.forEach((date, index) => {
-        if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
-        // Time fields are optional
-        if (!date.location_id) newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
-      })
+        eventDates.forEach((date, index) => {
+          if (!date.event_date) newErrors[`event_date_${index}`] = `Date ${index + 1} is required`
+          // Time fields are optional
+          if (!date.location_id) newErrors[`location_${index}`] = `Location for date ${index + 1} is required`
+        })
+      }
     }
 
     setErrors(newErrors)
