@@ -72,7 +72,14 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating account:', error)
-      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      console.error('Request body:', JSON.stringify(body, null, 2))
+      return NextResponse.json({ 
+        error: 'Failed to create account',
+        details: error.message,
+        hint: error.hint,
+        code: error.code
+      }, { status: 500 })
     }
 
     return NextResponse.json(data)

@@ -223,7 +223,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
     // NEW: Validate contact relationships (optional for accounts)
     if (contactRelationships.length > 0) {
       // If relationships exist, validate them
-      if (contactRelationships.some(rel => rel.contact_id && !rel.contact_id)) {
+      if (contactRelationships.some(rel => !rel.contact_id)) {
         toast.error('Please select a contact for all relationships or remove empty ones')
         return
       }
