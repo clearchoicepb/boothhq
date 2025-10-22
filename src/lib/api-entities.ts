@@ -1,3 +1,26 @@
+/**
+ * Entity Configuration System
+ * 
+ * IMPORTANT ARCHITECTURAL NOTES:
+ * 
+ * Many-to-Many Relationships:
+ * - Contacts <-> Accounts: via contact_accounts junction table
+ *   - Supports multiple accounts per contact with roles
+ *   - Tracks start_date, end_date, is_primary flag
+ * 
+ * Events Relationships:
+ * - Events have TWO contact references:
+ *   - primary_contact_id: The client (person hosting/paying)
+ *   - event_planner_id: External coordinator (optional)
+ * 
+ * Field Name Standards:
+ * - opportunities.title (NOT .name)
+ * - events.start_date (NOT .event_date)
+ * - events.title (NOT .name)
+ * 
+ * Last Updated: 2025-10-22 (Many-to-many contact refactoring)
+ */
+
 export interface EntityConfig {
   table: string
   requiredFields: string[]
@@ -45,7 +68,7 @@ export const entityConfigs: Record<string, EntityConfig> = {
     table: 'contacts',
     requiredFields: ['first_name', 'last_name'],
     searchFields: ['first_name', 'last_name', 'email', 'phone'],
-    relations: ['accounts'],
+    relations: ['accounts', 'contact_accounts'],
     permissions: {
       view: 'contacts.view',
       create: 'contacts.create',
@@ -90,7 +113,31 @@ export const entityConfigs: Record<string, EntityConfig> = {
       return data.map((contact: any) => ({
         ...contact,
         full_name: `${contact.first_name} ${contact.last_name}`.trim(),
-        account_name: contact.accounts?.name || null
+        // Many-to-many accounts via contact_accounts
+        all_accounts: contact.contact_accounts?.map((ca: any) => ({
+          id: ca.accounts?.id,
+          name: ca.accounts?.name,
+          role: ca.role,
+          is_primary: ca.is_primary,
+          start_date: ca.start_date,
+          end_date: ca.end_date,
+          junction_id: ca.id
+        })) || [],
+        // Active accounts only (no end_date)
+        active_accounts: contact.contact_accounts
+          ?.filter((ca: any) => !ca.end_date)
+          .map((ca: any) => ({
+            id: ca.accounts?.id,
+            name: ca.accounts?.name,
+            role: ca.role,
+            is_primary: ca.is_primary,
+            start_date: ca.start_date,
+            junction_id: ca.id
+          })) || [],
+        // Primary account name for backward compatibility
+        account_name: contact.contact_accounts
+          ?.find((ca: any) => ca.is_primary && !ca.end_date)?.accounts?.name || 
+          contact.accounts?.name || null
       }))
     }
   },
@@ -99,7 +146,7 @@ export const entityConfigs: Record<string, EntityConfig> = {
     table: 'accounts',
     requiredFields: ['name'],
     searchFields: ['name', 'industry', 'email', 'phone'],
-    relations: ['contacts'],
+    relations: ['contacts', 'contact_accounts'],
     permissions: {
       view: 'accounts.view',
       create: 'accounts.create',
@@ -166,7 +213,7 @@ export const entityConfigs: Record<string, EntityConfig> = {
     table: 'events',
     requiredFields: ['title', 'event_type'],
     searchFields: ['title', 'description', 'location'],
-    relations: ['accounts', 'contacts'],
+    relations: ['accounts', 'contacts', 'primary_contact', 'event_planner'],
     permissions: {
       view: 'events.view',
       create: 'events.create',
@@ -221,16 +268,29 @@ export const entityConfigs: Record<string, EntityConfig> = {
       return data.map((event: any) => ({
         ...event,
         account_name: event.accounts?.name || null,
-        contact_name: event.contacts ? 
-          `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null
+        // Primary contact (the client)
+        primary_contact_name: event.primary_contact ? 
+          `${event.primary_contact.first_name} ${event.primary_contact.last_name}`.trim() : null,
+        primary_contact_email: event.primary_contact?.email || null,
+        primary_contact_phone: event.primary_contact?.phone || null,
+        // Event planner (external coordinator)
+        event_planner_name: event.event_planner ?
+          `${event.event_planner.first_name} ${event.event_planner.last_name}`.trim() : null,
+        event_planner_company: event.event_planner?.contact_accounts
+          ?.find((ca: any) => ca.is_primary)?.accounts?.name || null,
+        // Keep generic contact_name for backward compatibility
+        contact_name: event.primary_contact ? 
+          `${event.primary_contact.first_name} ${event.primary_contact.last_name}`.trim() : 
+          event.contacts ?
+            `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null
       }))
     }
   },
 
   opportunities: {
     table: 'opportunities',
-    requiredFields: ['name', 'stage'],
-    searchFields: ['name', 'description'],
+    requiredFields: ['title', 'stage'],
+    searchFields: ['title', 'description'],
     relations: ['accounts', 'contacts'],
     permissions: {
       view: 'opportunities.view',
@@ -376,7 +436,7 @@ export const entityConfigs: Record<string, EntityConfig> = {
         account_name: invoice.accounts?.name || null,
         contact_name: invoice.contacts ? 
           `${invoice.contacts.first_name} ${invoice.contacts.last_name}`.trim() : null,
-        opportunity_name: invoice.opportunities?.name || null
+        opportunity_name: invoice.opportunities?.title || null
       }))
     }
   },
