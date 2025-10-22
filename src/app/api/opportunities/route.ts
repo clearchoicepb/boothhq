@@ -193,19 +193,28 @@ export async function POST(request: NextRequest) {
 
     // Create event dates if provided
     if (event_dates && event_dates.length > 0) {
-      const eventDatesData = event_dates.map((date: any) => ({
-        ...date,
-        opportunity_id: opportunity.id,
-        tenant_id: session.user.tenantId
-      }))
+      // Filter out empty dates and explicitly map fields (match UPDATE logic)
+      const eventDatesData = event_dates
+        .filter((date: any) => date.event_date) // Only include dates with event_date filled
+        .map((date: any) => ({
+          tenant_id: session.user.tenantId,
+          opportunity_id: opportunity.id,
+          location_id: date.location_id || null,
+          event_date: date.event_date,
+          start_time: date.start_time || null,
+          end_time: date.end_time || null,
+          notes: date.notes || null,
+        }))
 
-      const { error: datesError } = await supabase
-        .from('event_dates')
-        .insert(eventDatesData)
+      if (eventDatesData.length > 0) {
+        const { error: datesError } = await supabase
+          .from('event_dates')
+          .insert(eventDatesData)
 
-      if (datesError) {
-        console.error('Error creating event dates:', datesError)
-        // Don't fail the entire request, just log the error
+        if (datesError) {
+          console.error('Error creating event dates:', datesError)
+          // Don't fail the entire request, just log the error
+        }
       }
     }
 
