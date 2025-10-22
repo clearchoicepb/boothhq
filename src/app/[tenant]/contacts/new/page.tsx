@@ -127,8 +127,16 @@ export default function NewContactPage() {
 
       const data = await response.json()
 
-      // Redirect to the contacts list
-      router.push(`/${tenantSubdomain}/contacts`)
+      // Smart redirect based on context
+      const accountIdFromUrl = searchParams.get('account_id')
+      if (accountIdFromUrl) {
+        // If created from an account, redirect back to that account
+        router.push(`/${tenantSubdomain}/accounts/${accountIdFromUrl}`)
+      } else {
+        // If created from contacts module, redirect to the new contact detail
+        router.push(`/${tenantSubdomain}/contacts/${data.id}`)
+      }
+      router.refresh()
     } catch (error) {
       console.error('Error:', error)
       alert('Error creating contact. Please try again.')
@@ -166,7 +174,11 @@ export default function NewContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Link href={`/${tenantSubdomain}/contacts`}>
+              <Link href={
+                searchParams.get('account_id') 
+                  ? `/${tenantSubdomain}/accounts/${searchParams.get('account_id')}`
+                  : `/${tenantSubdomain}/contacts`
+              }>
                 <Button variant="outline" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
@@ -174,7 +186,11 @@ export default function NewContactPage() {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">New Contact</h1>
-                <p className="text-gray-600">Create a new customer contact</p>
+                <p className="text-gray-600">
+                  {searchParams.get('account_id') 
+                    ? 'Add a contact to this account' 
+                    : 'Create a new customer contact'}
+                </p>
               </div>
             </div>
           </div>
@@ -406,7 +422,11 @@ export default function NewContactPage() {
 
             {/* Submit Buttons */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
-              <Link href={`/${tenantSubdomain}/contacts`}>
+              <Link href={
+                searchParams.get('account_id') 
+                  ? `/${tenantSubdomain}/accounts/${searchParams.get('account_id')}`
+                  : `/${tenantSubdomain}/contacts`
+              }>
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>

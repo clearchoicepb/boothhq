@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,28 +18,47 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const accountIdFilter = searchParams.get('account_id')
 
-    let query = supabase
-      .from('contacts')
-      .select(`
-        *,
-        accounts!contacts_account_id_fkey(id, name),
-        contact_accounts(
-          id,
-          account_id,
-          role,
-          is_primary,
-          start_date,
-          end_date,
-          accounts(id, name, account_type)
-        )
-      `)
-      .eq('tenant_id', session.user.tenantId)
-
-    // Apply account filter if provided
+    // Build query differently based on whether filtering by account
+    let query
+    
     if (accountIdFilter) {
-      // Filter to contacts that have this account in contact_accounts
-      // OR have the old account_id FK (backward compatibility)
-      query = query.or(`account_id.eq.${accountIdFilter},contact_accounts.account_id.eq.${accountIdFilter}`)
+      // Use !inner join to filter contacts by active account relationship
+      query = supabase
+        .from('contacts')
+        .select(`
+          *,
+          accounts!contacts_account_id_fkey(id, name),
+          contact_accounts!inner(
+            id,
+            account_id,
+            role,
+            is_primary,
+            start_date,
+            end_date,
+            accounts(id, name, account_type)
+          )
+        `)
+        .eq('tenant_id', session.user.tenantId)
+        .eq('contact_accounts.account_id', accountIdFilter)
+        .is('contact_accounts.end_date', null) // Only active relationships
+    } else {
+      // No filter - return all contacts with all their account relationships
+      query = supabase
+        .from('contacts')
+        .select(`
+          *,
+          accounts!contacts_account_id_fkey(id, name),
+          contact_accounts(
+            id,
+            account_id,
+            role,
+            is_primary,
+            start_date,
+            end_date,
+            accounts(id, name, account_type)
+          )
+        `)
+        .eq('tenant_id', session.user.tenantId)
     }
 
     const { data, error } = await query.order('created_at', { ascending: false })
@@ -86,7 +106,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json(transformedData)
     
     // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
     
     return response
   } catch (error) {
@@ -152,10 +172,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Revalidate the contacts list page to show new contact immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    revalidatePath(`/${tenantSubdomain}/contacts`)
+
     const response = NextResponse.json(data)
 
     // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
 
     return response
   } catch (error) {

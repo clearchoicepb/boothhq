@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json(transformedData)
     
     // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
     
     return response
   } catch (error) {
@@ -208,10 +209,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Revalidate the opportunities list page to show new opportunity immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    revalidatePath(`/${tenantSubdomain}/opportunities`)
+
     const response = NextResponse.json(opportunity)
     
     // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
     
     return response
   } catch (error) {

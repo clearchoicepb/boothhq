@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { revalidatePath } from 'next/cache'
 
 export async function GET(
   request: NextRequest,
@@ -186,6 +187,10 @@ export async function PUT(
         }
       }
     }
+
+    // Revalidate the contacts list page to show updated contact immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    revalidatePath(`/${tenantSubdomain}/contacts`)
 
     return NextResponse.json(data)
   } catch (error) {

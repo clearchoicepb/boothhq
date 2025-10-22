@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,8 +35,8 @@ export async function GET(request: NextRequest) {
     }
 
     const response = NextResponse.json(data || [])
-    // Reduced cache time to 10 seconds for better UX after creates/updates
-    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
+    // Reduced cache time to 5 seconds for better UX after creates/updates
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
     return response
   } catch (error) {
     console.error('Error:', error)
@@ -81,6 +82,10 @@ export async function POST(request: NextRequest) {
         code: error.code
       }, { status: 500 })
     }
+
+    // Revalidate the accounts list page to show new account immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    revalidatePath(`/${tenantSubdomain}/accounts`)
 
     return NextResponse.json(data)
   } catch (error) {

@@ -146,7 +146,9 @@ export default function NewAccountPage() {
         <div className="max-w-4xl mx-auto px-6 py-8">
           <AccountForm
             isOpen={true}
-            onClose={() => router.push(`/${tenantSubdomain}/accounts`)}
+            onClose={() => {
+              // Don't navigate on close - handleSave will navigate to the new account
+            }}
             onSave={handleSave}
             editingAccount={prefilledData}
           />

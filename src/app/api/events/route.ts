@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { createAutoDesignItems } from '@/lib/design-helpers'
+import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json(transformedData)
     
     // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
     
     return response
   } catch (error) {
@@ -265,6 +266,10 @@ export async function POST(request: NextRequest) {
         // Don't fail the entire request, just log the error
       }
     }
+
+    // Revalidate the events list page to show new event immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    revalidatePath(`/${tenantSubdomain}/events`)
 
     return NextResponse.json({ event }, { status: 201 })
   } catch (error: any) {

@@ -46,7 +46,8 @@ export function AccountSelect({
   const fetchAccounts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/accounts')
+      // Bypass cache to ensure we get fresh data (especially for newly created accounts)
+      const response = await fetch('/api/accounts', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setAccounts(data)

@@ -51,7 +51,8 @@ export function ContactSelect({
       const url = accountId
         ? `/api/contacts?account_id=${accountId}`
         : '/api/contacts'
-      const response = await fetch(url)
+      // Bypass cache to ensure we get fresh data (especially for newly created accounts)
+      const response = await fetch(url, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setContacts(data)

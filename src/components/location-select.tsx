@@ -52,7 +52,8 @@ export function LocationSelect({
   const fetchLocations = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/locations')
+      // Bypass cache to ensure we get fresh data (especially for newly created locations)
+      const response = await fetch('/api/locations', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setLocations(data)
