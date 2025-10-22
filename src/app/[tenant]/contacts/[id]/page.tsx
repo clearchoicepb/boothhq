@@ -54,6 +54,7 @@ export default function ContactDetailPage() {
   const contactId = params.id as string
   const [contact, setContact] = useState<Contact | null>(null)
   const [localLoading, setLocalLoading] = useState(true)
+  const [showAccountSelector, setShowAccountSelector] = useState(false)
 
   useEffect(() => {
     if (session && tenant && contactId) {
@@ -79,6 +80,31 @@ export default function ContactDetailPage() {
     } finally {
       setLocalLoading(false)
     }
+  }
+
+  const handleCreateOpportunity = () => {
+    if (!contact) return
+
+    const activeAccounts = contact.active_accounts || []
+    
+    if (activeAccounts.length === 0) {
+      // No accounts - show account selector modal
+      setShowAccountSelector(true)
+    } else if (activeAccounts.length === 1) {
+      // One account - auto-assign and proceed
+      router.push(
+        `/${tenantSubdomain}/opportunities/new-sequential?contact_id=${contact.id}&account_id=${activeAccounts[0].id}`
+      )
+    } else {
+      // Multiple accounts - show selector modal
+      setShowAccountSelector(true)
+    }
+  }
+
+  const handleSelectAccount = (accountId: string) => {
+    router.push(
+      `/${tenantSubdomain}/opportunities/new-sequential?contact_id=${contact?.id}&account_id=${accountId}`
+    )
   }
 
   const getStatusColor = (status: string) => {
@@ -405,12 +431,14 @@ export default function ContactDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <Link href={`/${tenantSubdomain}/opportunities/new?contact_id=${contact.id}`} className="block">
-                  <Button className="w-full" variant="outline">
-                    <Briefcase className="h-4 w-4 mr-2" />
-                    Create Opportunity
-                  </Button>
-                </Link>
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={handleCreateOpportunity}
+                >
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Create Opportunity
+                </Button>
                 <Link href={`/${tenantSubdomain}/events/new?contact_id=${contact.id}`} className="block">
                   <Button className="w-full" variant="outline">
                     <User className="h-4 w-4 mr-2" />
@@ -447,6 +475,98 @@ export default function ContactDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Account Selector Modal */}
+      {showAccountSelector && contact && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Select Account for Opportunity</h2>
+              <button
+                onClick={() => setShowAccountSelector(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {contact.active_accounts && contact.active_accounts.length === 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    This contact has no accounts. Create or select one to continue.
+                  </p>
+                  <div className="space-y-2">
+                    <Link
+                      href={`/${tenantSubdomain}/accounts/new?contact_id=${contact.id}&return_to=opportunity`}
+                      className="block"
+                    >
+                      <Button className="w-full" variant="default">
+                        <Building2 className="h-4 w-4 mr-2" />
+                        Create New Account
+                      </Button>
+                    </Link>
+                    <Link
+                      href={`/${tenantSubdomain}/opportunities/select-account`}
+                      className="block"
+                    >
+                      <Button className="w-full" variant="outline">
+                        Select Existing Account
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Which account is this opportunity for?
+                  </p>
+                  {contact.active_accounts
+                    ?.sort((a, b) => {
+                      // Primary account first
+                      if (a.is_primary && !b.is_primary) return -1
+                      if (!a.is_primary && b.is_primary) return 1
+                      return a.name.localeCompare(b.name)
+                    })
+                    .map(account => (
+                      <button
+                        key={account.id}
+                        onClick={() => handleSelectAccount(account.id)}
+                        className="w-full p-4 flex items-center justify-between rounded-lg border-2 border-gray-200 hover:border-[#347dc4] hover:bg-blue-50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-[#347dc4]" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{account.name}</p>
+                              {account.is_primary && (
+                                <Badge variant="default" className="text-xs">Primary</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">{account.role || 'Contact'}</p>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-gray-400" />
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-b-lg border-t border-gray-200">
+              <button
+                onClick={() => setShowAccountSelector(false)}
+                className="w-full px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -108,6 +108,7 @@ export default function AccountDetailPage() {
   const [localLoading, setLocalLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showContactSelector, setShowContactSelector] = useState(false)
 
   useEffect(() => {
     if (session && tenant && accountId) {
@@ -243,6 +244,32 @@ export default function AccountDetailPage() {
       setIsDeleting(false)
       setShowDeleteConfirm(false)
     }
+  }
+
+  const handleCreateOpportunity = () => {
+    if (!account) return
+
+    const activeContacts = account.active_contacts || []
+    
+    if (activeContacts.length === 0) {
+      // No contacts - must create one or show selector
+      setShowContactSelector(true)
+    } else {
+      // Has contacts - show selector
+      setShowContactSelector(true)
+    }
+  }
+
+  const handleSelectContact = (contactId: string) => {
+    router.push(
+      `/${tenantSubdomain}/opportunities/new-sequential?account_id=${account?.id}&contact_id=${contactId}`
+    )
+  }
+
+  const handleSkipContact = () => {
+    router.push(
+      `/${tenantSubdomain}/opportunities/new-sequential?account_id=${account?.id}`
+    )
   }
 
   const getStatusColor = (status: string) => {
@@ -850,12 +877,14 @@ export default function AccountDetailPage() {
                     Add Contact
                   </Button>
                 </Link>
-                <Link href={`/${tenantSubdomain}/opportunities/new-sequential?account_id=${account.id}`} className="block">
-                  <Button className="w-full" variant="outline">
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Create Opportunity
-                  </Button>
-                </Link>
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={handleCreateOpportunity}
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Create Opportunity
+                </Button>
                 <Link href={`/${tenantSubdomain}/events/new?account_id=${account.id}`} className="block">
                   <Button className="w-full" variant="outline">
                     <Building2 className="h-4 w-4 mr-2" />
@@ -932,6 +961,111 @@ export default function AccountDetailPage() {
                   </>
                 )}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Selector Modal */}
+      {showContactSelector && account && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Select Contact for Opportunity</h2>
+              <button
+                onClick={() => setShowContactSelector(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {account.active_contacts && account.active_contacts.length === 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    This account has no contacts. Create one or continue without a contact.
+                  </p>
+                  <div className="space-y-2">
+                    <Link
+                      href={`/${tenantSubdomain}/contacts/new?account_id=${account.id}&return_to=opportunity`}
+                      className="block"
+                    >
+                      <Button className="w-full" variant="default">
+                        <User className="h-4 w-4 mr-2" />
+                        Create New Contact
+                      </Button>
+                    </Link>
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={handleSkipContact}
+                    >
+                      Continue Without Contact
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-gray-600">
+                      Who is the primary contact for this opportunity?
+                    </p>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={handleSkipContact}
+                      className="text-xs"
+                    >
+                      Skip
+                    </Button>
+                  </div>
+                  {account.active_contacts
+                    ?.sort((a, b) => {
+                      // Primary contact first
+                      if (a.is_primary && !b.is_primary) return -1
+                      if (!a.is_primary && b.is_primary) return 1
+                      return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+                    })
+                    .map(contact => (
+                      <button
+                        key={contact.id}
+                        onClick={() => handleSelectContact(contact.id)}
+                        className="w-full p-4 flex items-center justify-between rounded-lg border-2 border-gray-200 hover:border-[#347dc4] hover:bg-blue-50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <User className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">
+                                {contact.first_name} {contact.last_name}
+                              </p>
+                              {contact.is_primary && (
+                                <Badge variant="default" className="text-xs">Primary</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {contact.job_title || contact.role || 'Contact'}
+                            </p>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-gray-400" />
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-b-lg border-t border-gray-200">
+              <button
+                onClick={() => setShowContactSelector(false)}
+                className="w-full px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

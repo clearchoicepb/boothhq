@@ -34,6 +34,7 @@ import { ClosedOpportunitiesBucket } from '@/components/opportunities/closed-opp
 import { ClosedOpportunitiesPopup } from '@/components/opportunities/closed-opportunities-popup'
 import { OpportunityTable } from '@/components/opportunities/opportunity-table'
 import { OpportunityPipelineView } from '@/components/opportunities/opportunity-pipeline-view'
+import { OpportunitySourceSelector } from '@/components/opportunity-source-selector'
 
 function OpportunitiesPageContent() {
   const { data: session, status } = useSession()
@@ -50,6 +51,7 @@ function OpportunitiesPageContent() {
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithRelations | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
+  const [showSourceSelector, setShowSourceSelector] = useState(false)
   const [sortBy, setSortBy] = useState<string>('close_date_asc')
   const itemsPerPage = 25
 
@@ -233,12 +235,13 @@ function OpportunitiesPageContent() {
                 <p className="text-sm text-gray-600">Track your sales opportunities</p>
               </div>
               {canCreate('opportunities') && (
-              <Link href={`/${tenantSubdomain}/opportunities/new-sequential`}>
-                <Button className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white transition-all duration-200 hover:scale-105 hover:shadow-lg">
+                <Button 
+                  onClick={() => setShowSourceSelector(true)}
+                  className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   New Opportunity
                 </Button>
-              </Link>
               )}
             </div>
           </div>
@@ -562,6 +565,13 @@ function OpportunitiesPageContent() {
           onConfirm={handleCloseOpportunityConfirm}
         />
       )}
+
+      {/* Opportunity Source Selector Modal */}
+      <OpportunitySourceSelector
+        isOpen={showSourceSelector}
+        onClose={() => setShowSourceSelector(false)}
+        tenantSubdomain={tenantSubdomain}
+      />
     </AppLayout>
   )
 }

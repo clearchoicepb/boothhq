@@ -42,10 +42,25 @@ export default function NewOpportunitySequentialPage() {
 
   useEffect(() => {
     const accountId = searchParams.get('account_id')
-    if (accountId) {
+    const contactId = searchParams.get('contact_id')
+    const leadId = searchParams.get('lead_id')
+
+    // Priority 1: Both account_id and contact_id - skip directly to opportunity creation
+    if (accountId && contactId) {
+      fetchAccountContactAndProceed(accountId, contactId)
+    }
+    // Priority 2: Just account_id - fetch account and show contact selection
+    else if (accountId) {
       setPreSelectedAccountId(accountId)
-      // If we have an account_id, skip lead creation and go directly to opportunity creation
       fetchAccountAndProceed(accountId)
+    }
+    // Priority 3: Just contact_id - fetch contact and their accounts
+    else if (contactId) {
+      fetchContactAndProceed(contactId)
+    }
+    // Priority 4: lead_id - fetch lead and skip to opportunity creation
+    else if (leadId) {
+      fetchLeadAndProceed(leadId)
     }
   }, [searchParams])
 
@@ -81,6 +96,94 @@ export default function NewOpportunitySequentialPage() {
       }
     } catch (error) {
       console.error('Error fetching account:', error)
+    }
+  }
+
+  const fetchAccountContactAndProceed = async (accountId: string, contactId: string) => {
+    try {
+      const [accountResponse, contactResponse] = await Promise.all([
+        fetch(`/api/accounts/${accountId}`),
+        fetch(`/api/contacts/${contactId}`)
+      ])
+
+      if (accountResponse.ok && contactResponse.ok) {
+        const account = await accountResponse.json()
+        const contact = await contactResponse.json()
+
+        const customer: Customer = {
+          id: account.id,
+          name: account.name || '',
+          type: 'account',
+          email: account.email || undefined,
+          phone: account.phone || undefined,
+          company: account.account_type === 'company' ? account.name : undefined
+        }
+
+        const contactData: Contact = {
+          id: contact.id,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          email: contact.email,
+          phone: contact.phone,
+          account_id: accountId
+        }
+
+        setCreatedLead(customer)
+        setSelectedContact(contactData)
+        setStep('opportunity-creation')
+      }
+    } catch (error) {
+      console.error('Error fetching account and contact:', error)
+    }
+  }
+
+  const fetchContactAndProceed = async (contactId: string) => {
+    try {
+      const contactResponse = await fetch(`/api/contacts/${contactId}`)
+
+      if (contactResponse.ok) {
+        const contact = await contactResponse.json()
+
+        // Get contact's primary account or first active account
+        const activeAccounts = contact.active_accounts || []
+        
+        if (activeAccounts.length > 0) {
+          const primaryAccount = activeAccounts.find((a: any) => a.is_primary) || activeAccounts[0]
+          
+          // Proceed with account and contact
+          await fetchAccountContactAndProceed(primaryAccount.id, contactId)
+        } else {
+          // Contact has no account - show error or create account first
+          alert('This contact has no associated account. Please select or create an account first.')
+          router.push(`/${tenantSubdomain}/opportunities/select-account`)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching contact:', error)
+    }
+  }
+
+  const fetchLeadAndProceed = async (leadId: string) => {
+    try {
+      const leadResponse = await fetch(`/api/leads/${leadId}`)
+
+      if (leadResponse.ok) {
+        const lead = await leadResponse.json()
+
+        const customer: Customer = {
+          id: lead.id,
+          name: lead.company_name || `${lead.first_name} ${lead.last_name}`.trim(),
+          type: 'lead',
+          email: lead.email || undefined,
+          phone: lead.phone || undefined,
+          company: lead.company_name || undefined
+        }
+
+        setCreatedLead(customer)
+        setStep('opportunity-creation')
+      }
+    } catch (error) {
+      console.error('Error fetching lead:', error)
     }
   }
 
