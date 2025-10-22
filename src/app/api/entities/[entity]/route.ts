@@ -159,8 +159,11 @@ export async function POST(
     const config = getEntityConfig(entity)
     const supabase = createServerSupabaseClient()
 
+    // Extract event_dates for opportunities before transformation
+    const { event_dates, ...bodyWithoutEventDates } = body
+
     // Transform request data if transformRequest function exists
-    const transformedBody = config.transformRequest ? config.transformRequest(body) : body
+    const transformedBody = config.transformRequest ? config.transformRequest(bodyWithoutEventDates) : bodyWithoutEventDates
 
     // Validate the transformed data (isUpdate = false for POST requests)
     const validation = validateEntityData(entity, transformedBody, false)
@@ -187,6 +190,32 @@ export async function POST(
         error: `Failed to create ${entity}`,
         details: error.message 
       }, { status: 500 })
+    }
+
+    // Handle event_dates for opportunities
+    if (entity === 'opportunities' && event_dates && Array.isArray(event_dates) && event_dates.length > 0) {
+      const eventDatesData = event_dates
+        .filter((date: any) => date.event_date) // Only include dates with event_date filled
+        .map((date: any) => ({
+          tenant_id: session.user.tenantId,
+          opportunity_id: data.id,
+          location_id: date.location_id || null,
+          event_date: date.event_date,
+          start_time: date.start_time || null,
+          end_time: date.end_time || null,
+          notes: date.notes || null,
+        }))
+
+      if (eventDatesData.length > 0) {
+        const { error: datesError } = await supabase
+          .from('event_dates')
+          .insert(eventDatesData)
+
+        if (datesError) {
+          console.error('Error creating event dates:', datesError)
+          // Don't fail the entire request, just log the error
+        }
+      }
     }
 
     const response = NextResponse.json(data)
