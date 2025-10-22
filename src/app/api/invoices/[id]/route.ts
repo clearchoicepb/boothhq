@@ -24,7 +24,7 @@ export async function GET(
         *,
         accounts!invoices_account_id_fkey(name, email, phone),
         contacts!invoices_contact_id_fkey(first_name, last_name, email, phone),
-        events!invoices_event_id_fkey(name, event_date)
+        events!invoices_event_id_fkey(id, title, start_date, status)
       `)
       .eq('id', id)
       .eq('tenant_id', session.user.tenantId)
@@ -60,8 +60,8 @@ export async function GET(
       contact_name: invoice.contacts ? `${invoice.contacts.first_name} ${invoice.contacts.last_name}` : null,
       contact_email: invoice.contacts?.email || null,
       contact_phone: invoice.contacts?.phone || null,
-      event_name: invoice.events?.name || null,
-      event_date: invoice.events?.event_date || null,
+      event_name: invoice.events?.title || null,
+      event_date: invoice.events?.start_date || null,
       line_items: lineItems || []
     }
 

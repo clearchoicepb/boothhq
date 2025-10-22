@@ -106,6 +106,8 @@ export default function AccountDetailPage() {
   const [summary, setSummary] = useState<AccountSummary | null>(null)
   const [assignedUser, setAssignedUser] = useState<{id: string, first_name: string | null, last_name: string | null, email: string, role: string} | null>(null)
   const [localLoading, setLocalLoading] = useState(true)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (session && tenant && accountId) {
@@ -219,6 +221,30 @@ export default function AccountDetailPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!account) return
+    
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/accounts/${account.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete account')
+      }
+
+      // Redirect to accounts list
+      router.push(`/${tenantSubdomain}/accounts`)
+    } catch (error) {
+      console.error('Error deleting account:', error)
+      alert('Failed to delete account. It may have related records that need to be removed first.')
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -306,7 +332,11 @@ export default function AccountDetailPage() {
                   Edit
                 </Button>
               </Link>
-              <Button variant="outline" className="text-red-600 hover:text-red-700">
+              <Button 
+                variant="outline" 
+                className="text-red-600 hover:text-red-700"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </Button>
@@ -862,6 +892,50 @@ export default function AccountDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Account</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{account?.name}</strong>? This action cannot be undone.
+              {(upcomingEvents.length > 0 || previousEvents.length > 0 || upcomingInvoices.length > 0) && (
+                <span className="block mt-2 text-red-600 font-medium">
+                  Warning: This account has {upcomingEvents.length + previousEvents.length} event(s) and {upcomingInvoices.length} invoice(s) associated with it.
+                </span>
+              )}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Account
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

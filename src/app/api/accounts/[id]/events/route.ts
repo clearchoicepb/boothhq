@@ -24,12 +24,12 @@ export async function GET(
       .select('*')
       .eq('account_id', id)
       .eq('tenant_id', session.user.tenantId)
-      .order('event_date', { ascending: true })
+      .order('start_date', { ascending: true })
 
     if (type === 'upcoming') {
-      query = query.gte('event_date', new Date().toISOString().split('T')[0])
+      query = query.gte('start_date', new Date().toISOString().split('T')[0])
     } else if (type === 'previous') {
-      query = query.lt('event_date', new Date().toISOString().split('T')[0])
+      query = query.lt('start_date', new Date().toISOString().split('T')[0])
     }
 
     const { data, error } = await query

@@ -25,8 +25,29 @@ export async function GET(
         *,
         accounts!events_account_id_fkey(id, name, email, phone, account_type),
         contacts!events_contact_id_fkey(id, first_name, last_name, email, phone),
-        primary_contact:primary_contact_id(id, first_name, last_name, email, phone, job_title),
-        event_planner:event_planner_id(id, first_name, last_name, email, phone, company),
+        primary_contact:contacts!primary_contact_id(
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          job_title,
+          contact_accounts(
+            is_primary,
+            accounts(id, name)
+          )
+        ),
+        event_planner:contacts!event_planner_id(
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          contact_accounts(
+            is_primary,
+            accounts(id, name)
+          )
+        ),
         opportunities!events_opportunity_id_fkey(name),
         event_categories(id, name, slug, color, icon),
         event_types(id, name, slug),
@@ -54,6 +75,13 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
+    // Helper to get company name from contact_accounts
+    const getContactCompany = (contact: any) => {
+      if (!contact?.contact_accounts) return null
+      const primaryAccount = contact.contact_accounts.find((ca: any) => ca.is_primary)
+      return primaryAccount?.accounts?.name || contact.contact_accounts[0]?.accounts?.name || null
+    }
+
     // Transform the data to include account_name, contact_name, opportunity_name, and category/type info
     const transformedData = {
       ...data,
@@ -62,10 +90,16 @@ export async function GET(
       contact_name: data.contacts ?
         `${data.contacts.first_name} ${data.contacts.last_name}`.trim() : null,
       // New fields for primary contact and event planner
-      primary_contact: data.primary_contact || null,
+      primary_contact: data.primary_contact ? {
+        ...data.primary_contact,
+        company: getContactCompany(data.primary_contact)
+      } : null,
       primary_contact_name: data.primary_contact ?
         `${data.primary_contact.first_name} ${data.primary_contact.last_name}`.trim() : null,
-      event_planner: data.event_planner || null,
+      event_planner: data.event_planner ? {
+        ...data.event_planner,
+        company: getContactCompany(data.event_planner)
+      } : null,
       event_planner_name: data.event_planner ?
         `${data.event_planner.first_name} ${data.event_planner.last_name}`.trim() : null,
       opportunity_name: data.opportunities?.name || null,

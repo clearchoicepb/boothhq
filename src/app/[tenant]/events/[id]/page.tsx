@@ -142,8 +142,10 @@ export default function EventDetailPage() {
     setIsEditingAccountContact,
     editAccountId,
     editContactId,
+    editEventPlannerId,
     setEditAccountId,
     setEditContactId,
+    setEditEventPlannerId,
     startEditingAccountContact,
     cancelEditingAccountContact,
     finishEditingAccountContact,
@@ -202,7 +204,11 @@ export default function EventDetailPage() {
   // All fetch functions now provided by custom hooks (no longer defined here)
 
   const handleStartEditAccountContact = () => {
-    startEditingAccountContact(event?.account_id || '', event?.contact_id || '')
+    startEditingAccountContact(
+      event?.account_id || '', 
+      event?.primary_contact_id || event?.contact_id || '',
+      event?.event_planner_id || ''
+    )
   }
 
   const handleCancelEditAccountContact = () => {
@@ -218,7 +224,9 @@ export default function EventDetailPage() {
         },
         body: JSON.stringify({
           account_id: editAccountId || null,
-          contact_id: editContactId || null
+          primary_contact_id: editContactId || null,
+          contact_id: editContactId || null, // Keep for backward compatibility
+          event_planner_id: editEventPlannerId || null
         }),
       })
 
@@ -683,6 +691,7 @@ export default function EventDetailPage() {
                 isEditing={isEditingAccountContact}
                 editAccountId={editAccountId}
                 editContactId={editContactId}
+                editEventPlannerId={editEventPlannerId}
                 tenantSubdomain={tenantSubdomain}
                 onStartEdit={handleStartEditAccountContact}
                 onSave={handleSaveAccountContact}
@@ -694,6 +703,7 @@ export default function EventDetailPage() {
                           }
                         }}
                 onContactChange={(contactId) => setEditContactId(contactId || '')}
+                onEventPlannerChange={(eventPlannerId) => setEditEventPlannerId(eventPlannerId || '')}
                 canEdit={canManageEvents}
               />
 

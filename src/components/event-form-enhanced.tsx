@@ -9,6 +9,7 @@ import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-s
 import { Modal } from '@/components/ui/modal'
 import { LocationSelector } from '@/components/location-selector'
 import { EventCategoryTypeSelector } from '@/components/forms/event-category-type-selector'
+import { ContactForm } from '@/components/contact-form'
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
 import { toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
@@ -86,6 +87,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
 
   // Initialize form data when event changes
   useEffect(() => {
@@ -271,6 +273,16 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
   }
 
+  const handleContactCreated = async (newContact: Contact) => {
+    // Add the new contact to the list
+    setContacts(prev => [...prev, newContact])
+    // Set it as the event planner
+    handleInputChange('event_planner_id', newContact.id)
+    // Close the form
+    setShowContactForm(false)
+    // Show success message
+    toast.success(`Event planner ${newContact.first_name} ${newContact.last_name} created and selected!`)
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -437,6 +449,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
   if (!isOpen) return null
 
   return (
+    <>
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Account/Contact Information */}
@@ -490,6 +503,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
               onChange={(value) => handleInputChange('event_planner_id', value || '')}
               options={eventPlannerOptions}
               emptyMessage="No event planners found"
+              onCreate={() => setShowContactForm(true)}
+              createButtonLabel="Create New Event Planner"
             />
             <p className="text-xs text-gray-500 mt-1">
               External coordinator (wedding planner, corporate event planner, etc.)
@@ -779,5 +794,15 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
       </form>
 
     </Modal>
+
+    {/* Contact Form Modal for creating new event planner */}
+    {showContactForm && (
+      <ContactForm
+        isOpen={showContactForm}
+        onClose={() => setShowContactForm(false)}
+        onSubmit={handleContactCreated}
+      />
+    )}
+  </>
   )
 }

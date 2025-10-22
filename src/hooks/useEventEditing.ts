@@ -12,6 +12,7 @@ export function useEventEditing() {
   const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
   const [editAccountId, setEditAccountId] = useState<string>('')
   const [editContactId, setEditContactId] = useState<string>('')
+  const [editEventPlannerId, setEditEventPlannerId] = useState<string>('')
 
   // Event Date editing
   const [isEditingEventDate, setIsEditingEventDate] = useState(false)
@@ -27,15 +28,17 @@ export function useEventEditing() {
   /**
    * Account/Contact Editing Controls
    */
-  const startEditingAccountContact = useCallback((accountId: string, contactId: string) => {
+  const startEditingAccountContact = useCallback((accountId: string, contactId: string, eventPlannerId?: string) => {
     setEditAccountId(accountId)
     setEditContactId(contactId)
+    setEditEventPlannerId(eventPlannerId || '')
     setIsEditingAccountContact(true)
   }, [])
 
   const cancelEditingAccountContact = useCallback(() => {
     setEditAccountId('')
     setEditContactId('')
+    setEditEventPlannerId('')
     setIsEditingAccountContact(false)
   }, [])
 
@@ -100,6 +103,7 @@ export function useEventEditing() {
     setIsEditingAccountContact(false)
     setEditAccountId('')
     setEditContactId('')
+    setEditEventPlannerId('')
     setIsEditingEventDate(false)
     setEditEventDateData({})
     setIsEditingPaymentStatus(false)
@@ -113,8 +117,10 @@ export function useEventEditing() {
     setIsEditingAccountContact,
     editAccountId,
     editContactId,
+    editEventPlannerId,
     setEditAccountId,
     setEditContactId,
+    setEditEventPlannerId,
     startEditingAccountContact,
     cancelEditingAccountContact,
     finishEditingAccountContact,

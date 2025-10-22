@@ -10,12 +10,14 @@ interface EventAccountContactCardProps {
   isEditing: boolean
   editAccountId: string
   editContactId: string
+  editEventPlannerId?: string
   tenantSubdomain: string
   onStartEdit: () => void
   onSave: () => void
   onCancel: () => void
   onAccountChange: (accountId: string | null) => void
   onContactChange: (contactId: string | null) => void
+  onEventPlannerChange?: (eventPlannerId: string | null) => void
   canEdit: boolean
 }
 
@@ -27,12 +29,14 @@ export function EventAccountContactCard({
   isEditing,
   editAccountId,
   editContactId,
+  editEventPlannerId,
   tenantSubdomain,
   onStartEdit,
   onSave,
   onCancel,
   onAccountChange,
   onContactChange,
+  onEventPlannerChange,
   canEdit,
 }: EventAccountContactCardProps) {
   return (
@@ -180,12 +184,20 @@ export function EventAccountContactCard({
         </div>
 
         {/* Event Planner */}
-        {event.event_planner && (
-          <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Event Planner
-            </label>
+        <div>
+          <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+            <Briefcase className="h-4 w-4" />
+            Event Planner (Optional)
+          </label>
+          {isEditing ? (
+            <ContactSelect
+              value={editEventPlannerId || null}
+              onChange={onEventPlannerChange || (() => {})}
+              accountId={null} // Show all contacts for event planners
+              placeholder="Search event planners..."
+              allowCreate={false}
+            />
+          ) : event.event_planner ? (
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <Link
@@ -218,8 +230,21 @@ export function EventAccountContactCard({
                 </button>
               )}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">No event planner assigned</p>
+              {canEdit && (
+                <button
+                  onClick={onStartEdit}
+                  className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                  title="Assign event planner"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Related Opportunity */}
         {event.opportunity_name && (

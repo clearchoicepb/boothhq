@@ -19,13 +19,12 @@ export async function GET(
 
     // Execute all queries in parallel for better performance
     const [eventsResult, invoicesResult, contactsResult] = await Promise.all([
-      // Get total spend from events
+      // Get event count (total_cost column doesn't exist yet - invoicing not ready)
       supabase
         .from('events')
-        .select('total_cost')
+        .select('id', { count: 'exact', head: true })
         .eq('account_id', id)
-        .eq('tenant_id', session.user.tenantId)
-        .not('total_cost', 'is', null),
+        .eq('tenant_id', session.user.tenantId),
       
       // Get upcoming invoices total
       supabase
@@ -36,20 +35,21 @@ export async function GET(
         .gte('due_date', new Date().toISOString().split('T')[0])
         .eq('status', 'pending'),
       
-      // Get contact count
+      // Get contact count using junction table
       supabase
-        .from('contacts')
+        .from('contact_accounts')
         .select('*', { count: 'exact', head: true })
         .eq('account_id', id)
         .eq('tenant_id', session.user.tenantId)
+        .is('end_date', null) // Only active relationships
     ])
 
-    const { data: eventsData, error: eventsError } = eventsResult
+    const { count: eventsCount, error: eventsError } = eventsResult
     const { data: invoicesData, error: invoicesError } = invoicesResult
     const { count: contactCount, error: contactsError } = contactsResult
 
     if (eventsError) {
-      console.error('Error fetching events for spend calculation:', eventsError)
+      console.error('Error fetching events count:', eventsError)
     }
     if (invoicesError) {
       console.error('Error fetching invoices for upcoming total:', invoicesError)
@@ -59,14 +59,14 @@ export async function GET(
     }
 
     // Calculate totals
-    const totalSpend = eventsData?.reduce((sum, event) => sum + (event.total_cost || 0), 0) || 0
+    const totalSpend = 0 // Will be calculated when invoicing module is ready
     const totalUpcomingInvoices = invoicesData?.reduce((sum, invoice) => sum + (invoice.total_amount || 0), 0) || 0
 
     const summary = {
       totalSpend,
       totalUpcomingInvoices,
       contactCount: contactCount || 0,
-      totalEvents: eventsData?.length || 0
+      totalEvents: eventsCount || 0
     }
 
     return NextResponse.json(summary)
