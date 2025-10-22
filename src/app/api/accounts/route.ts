@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
     }
 
     const response = NextResponse.json(data || [])
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    // Reduced cache time to 10 seconds for better UX after creates/updates
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
     return response
   } catch (error) {
     console.error('Error:', error)

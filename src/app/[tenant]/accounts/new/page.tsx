@@ -75,7 +75,9 @@ export default function NewAccountPage() {
         }
       }
       
+      // Navigate to account detail page and force refresh to bypass cache
       router.push(`/${tenantSubdomain}/accounts/${newAccount.id}`)
+      router.refresh()
     } catch (error) {
       console.error('Error saving account:', error)
       throw error
