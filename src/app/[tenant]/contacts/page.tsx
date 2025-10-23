@@ -32,6 +32,7 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<ContactWithAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -56,11 +57,18 @@ export default function ContactsPage() {
       // Filter by search term
       let filteredData = data
       if (searchTerm) {
-        filteredData = data.filter((contact: ContactWithAccount) => 
+        filteredData = filteredData.filter((contact: ContactWithAccount) => 
           `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
           contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           contact.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           contact.account_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      }
+
+      // Filter by status
+      if (statusFilter !== 'all') {
+        filteredData = filteredData.filter((contact: ContactWithAccount) => 
+          contact.status === statusFilter
         )
       }
 
@@ -76,7 +84,7 @@ export default function ContactsPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, searchTerm, itemsPerPage])
+  }, [currentPage, searchTerm, statusFilter, itemsPerPage])
 
   useEffect(() => {
     if (session && tenant) {
@@ -217,6 +225,17 @@ export default function ContactsPage() {
               </div>
               <div className="flex gap-2">
                 <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter by status"
+                  className="w-[150px]"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </Select>
+                <Select
                   value={viewMode}
                   onChange={(e) => handleViewChange(e.target.value as 'table' | 'cards' | 'list')}
                   aria-label="Select view mode"
@@ -227,7 +246,7 @@ export default function ContactsPage() {
                 </Select>
               </div>
             </div>
-        </div>
+          </div>
 
         {/* Contacts Table */}
           {loading ? (
