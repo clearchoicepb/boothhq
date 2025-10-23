@@ -1,6 +1,4 @@
-import { useState, useMemo } from 'react'
-import type { OpportunityWithRelations } from './useOpportunitiesData'
-import { getWeightedValue } from '@/lib/opportunity-utils'
+import { useState, useEffect } from 'react'
 
 type CalculationMode = 'total' | 'expected'
 
@@ -9,70 +7,91 @@ interface CalculationStats {
   amount: number
 }
 
+interface OpportunityStats {
+  total: number
+  openCount: number
+  totalValue: number
+  expectedValue: number
+  closedWonCount: number
+  closedWonValue: number
+  closedLostCount: number
+  averageValue: number
+  averageProbability: number
+}
+
 interface UseOpportunityCalculationsReturn {
   calculationMode: CalculationMode
   setCalculationMode: React.Dispatch<React.SetStateAction<CalculationMode>>
   currentStats: CalculationStats
   openOpportunities: number
+  loading: boolean
+  fullStats: OpportunityStats | null
 }
 
 /**
- * Custom hook for calculating opportunity statistics
+ * Custom hook for calculating opportunity statistics from stats API
  * 
- * @param opportunities - Array of opportunities to calculate from
- * @param settings - Opportunity settings (for probability calculations)
- * @returns Calculation mode, statistics, and setters
+ * NOW FETCHES FROM /api/opportunities/stats (ALL opportunities)
+ * Instead of calculating from current page data only
+ * 
+ * @param filterStage - Stage filter to apply
+ * @param filterOwner - Owner filter to apply
+ * @returns Calculation mode, statistics from ALL opportunities, and setters
  */
 export function useOpportunityCalculations(
-  opportunities: OpportunityWithRelations[],
-  settings: any
+  filterStage: string,
+  filterOwner: string
 ): UseOpportunityCalculationsReturn {
   const [calculationMode, setCalculationMode] = useState<CalculationMode>('total')
+  const [fullStats, setFullStats] = useState<OpportunityStats | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Calculate total opportunities (value and count)
-  const calculateTotalOpportunities = useMemo(() => {
-    const totalQty = opportunities.length
-    const totalAmount = opportunities.reduce((sum, opp) => sum + (opp.amount || 0), 0)
-    return { qty: totalQty, amount: totalAmount }
-  }, [opportunities])
+  // Fetch stats from API (all opportunities, not just current page)
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true)
+        
+        const params = new URLSearchParams()
+        if (filterStage && filterStage !== 'all') {
+          params.append('stage', filterStage)
+        }
+        if (filterOwner && filterOwner !== 'all') {
+          params.append('owner_id', filterOwner)
+        }
 
-  // Calculate expected value (probability-weighted)
-  const calculateExpectedValue = useMemo(() => {
-    const openOpps = opportunities.filter((opp: OpportunityWithRelations) => 
-      !['closed_won', 'closed_lost'].includes(opp.stage)
-    )
-
-    const expectedValue = openOpps.reduce((sum, opp) => {
-      return sum + getWeightedValue(opp, settings.opportunities)
-    }, 0)
-
-    return { qty: openOpps.length, amount: expectedValue }
-  }, [opportunities, settings.opportunities])
-
-  // Get current calculation based on mode
-  const currentStats = useMemo(() => {
-    switch (calculationMode) {
-      case 'total':
-        return calculateTotalOpportunities
-      case 'expected':
-        return calculateExpectedValue
-      default:
-        return calculateTotalOpportunities
+        const response = await fetch(`/api/opportunities/stats?${params.toString()}`)
+        if (response.ok) {
+          const data = await response.json()
+          setFullStats(data)
+        }
+      } catch (error) {
+        console.error('Error fetching opportunity stats:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [calculationMode, calculateTotalOpportunities, calculateExpectedValue])
 
-  // Count of open opportunities (not closed)
-  const openOpportunities = useMemo(() => {
-    return opportunities.filter(opp => 
-      !['closed_won', 'closed_lost'].includes(opp.stage)
-    ).length
-  }, [opportunities])
+    fetchStats()
+  }, [filterStage, filterOwner])
+
+  // Format stats for display based on calculation mode
+  const currentStats: CalculationStats = {
+    qty: calculationMode === 'total' 
+      ? (fullStats?.total || 0)
+      : (fullStats?.openCount || 0),
+    amount: calculationMode === 'total'
+      ? (fullStats?.totalValue || 0)
+      : (fullStats?.expectedValue || 0)
+  }
 
   return {
     calculationMode,
     setCalculationMode,
     currentStats,
-    openOpportunities,
+    openOpportunities: fullStats?.openCount || 0,
+    loading,
+    fullStats
   }
 }
 

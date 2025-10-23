@@ -127,13 +127,14 @@ function OpportunitiesPageContent() {
     }
   })
 
-  // Calculations
+  // Calculations (now from stats API - shows ALL opportunities, not just current page)
   const {
     calculationMode,
     setCalculationMode,
     currentStats,
     openOpportunities,
-  } = useOpportunityCalculations(opportunities, settings)
+    loading: statsLoading,
+  } = useOpportunityCalculations(filterStage, filterOwner)
 
   // Drag and drop
   const dragAndDrop = useOpportunityDragAndDrop({
@@ -286,26 +287,36 @@ function OpportunitiesPageContent() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <OpportunityStatsCard
               icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title={calculationMode === 'total' ? 'Total Opportunities' : 'Expected Opportunities'}
-              value={currentStats.qty}
-              subtitle="On current page"
+              title={calculationMode === 'total' ? 'Total Opportunities' : 'Open Opportunities'}
+              value={statsLoading ? '...' : currentStats.qty}
+              subtitle={
+                filterStage !== 'all' || filterOwner !== 'all'
+                  ? 'Filtered total'
+                  : 'All opportunities'
+              }
             />
 
             <OpportunityStatsCard
               icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
               title={calculationMode === 'total' ? 'Total Value' : 'Expected Value'}
-              value={`$${Math.round(currentStats.amount).toLocaleString()}`}
-              subtitle="On current page"
+              value={statsLoading ? '...' : `$${Math.round(currentStats.amount).toLocaleString()}`}
+              subtitle={
+                calculationMode === 'expected'
+                  ? `Probability-weighted ${settings.opportunities?.autoCalculateProbability ? '(stage-based)' : '(manual)'}`
+                  : filterStage !== 'all' || filterOwner !== 'all'
+                    ? 'Filtered total'
+                    : 'All opportunities'
+              }
             />
 
             <OpportunityStatsCard
               icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
               title="Open Opportunities"
-              value={openOpportunities}
+              value={statsLoading ? '...' : openOpportunities}
               subtitle={
-                calculationMode === 'expected'
-                  ? `Based on probability-weighted values${settings.opportunities?.autoCalculateProbability ? ' (stage-based)' : ' (individual)'}`
-                  : 'On current page'
+                filterStage !== 'all' || filterOwner !== 'all'
+                  ? 'Filtered count'
+                  : 'Not closed won/lost'
               }
             />
           </div>
