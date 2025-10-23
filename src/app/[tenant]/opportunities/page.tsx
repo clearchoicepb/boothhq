@@ -55,9 +55,15 @@ function OpportunitiesPageContent() {
   const [showSMSModal, setShowSMSModal] = useState(false)
   const [showSourceSelector, setShowSourceSelector] = useState(false)
   const [sortBy, setSortBy] = useState<string>('close_date_asc')
-  const [itemsPerPage, setItemsPerPage] = useState<number>(
-    parseInt(localStorage.getItem('opportunities_per_page') || '50')
-  )
+  const [itemsPerPage, setItemsPerPage] = useState<number>(50)
+
+  // Load items per page preference from localStorage after mount (avoid SSR issues)
+  useEffect(() => {
+    const savedLimit = localStorage.getItem('opportunities_per_page')
+    if (savedLimit) {
+      setItemsPerPage(parseInt(savedLimit))
+    }
+  }, [])
 
   // Close opportunity modal state
   const [showCloseModal, setShowCloseModal] = useState(false)
@@ -83,7 +89,7 @@ function OpportunitiesPageContent() {
     filterOwner: 'all',
     currentView,
     currentPage: 1,
-    itemsPerPage: 25,
+    itemsPerPage: itemsPerPage,
   })
 
   // Apply client-side filters
