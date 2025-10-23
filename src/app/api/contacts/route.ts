@@ -126,6 +126,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = createServerSupabaseClient()
 
+    // Check for duplicate email (case-insensitive)
+    if (body.email && body.email.trim()) {
+      const { data: existingContact } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, email')
+        .eq('tenant_id', session.user.tenantId)
+        .ilike('email', body.email.trim())
+        .maybeSingle()
+      
+      if (existingContact) {
+        return NextResponse.json({
+          error: 'A contact with this email already exists',
+          existingContact: {
+            id: existingContact.id,
+            name: `${existingContact.first_name} ${existingContact.last_name}`,
+            email: existingContact.email
+          }
+        }, { status: 409 }) // 409 Conflict
+      }
+    }
+
     // Filter to only include valid contact fields
     const contactData = {
       tenant_id: session.user.tenantId,
@@ -141,7 +162,7 @@ export async function POST(request: NextRequest) {
       status: body.status || 'active'
     }
 
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('contacts')
       .insert(contactData)
       .select()

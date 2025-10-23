@@ -11,6 +11,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Plus, Trash2, CheckCircle, Building2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { DuplicateContactWarning } from '@/components/duplicate-contact-warning'
+import { useParams } from 'next/navigation'
 // Remove the db import - we'll use API routes instead
 import type { Contact, ContactInsert, ContactUpdate, Account } from '@/lib/supabase-client'
 
@@ -23,6 +25,9 @@ interface ContactFormProps {
 }
 
 export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAccountId }: ContactFormProps) {
+  const params = useParams()
+  const tenantSubdomain = params.tenant as string
+  
   const [formData, setFormData] = useState<ContactInsert>({
     tenant_id: '',
     first_name: '',
@@ -42,6 +47,10 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
   })
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // NEW: State for duplicate email warning
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
+  const [duplicateContact, setDuplicateContact] = useState<{id: string, name: string, email: string} | null>(null)
   
   // NEW: State for managing multiple account relationships
   const [accountRelationships, setAccountRelationships] = useState<Array<{
@@ -219,6 +228,17 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
           body: JSON.stringify(formData),
         })
         
+        // Handle duplicate email (409 Conflict)
+        if (response.status === 409) {
+          const errorData = await response.json()
+          if (errorData.existingContact) {
+            setDuplicateContact(errorData.existingContact)
+            setShowDuplicateWarning(true)
+            setLoading(false)
+            return
+          }
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to create contact')
         }
@@ -269,6 +289,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
   }
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -583,5 +604,19 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
         </div>
       </form>
     </Modal>
+
+    {/* Duplicate Contact Warning Modal */}
+    {duplicateContact && (
+      <DuplicateContactWarning
+        isOpen={showDuplicateWarning}
+        onClose={() => {
+          setShowDuplicateWarning(false)
+          setDuplicateContact(null)
+        }}
+        existingContact={duplicateContact}
+        tenantSubdomain={tenantSubdomain}
+      />
+    )}
+    </>
   )
 }
