@@ -54,7 +54,7 @@ function OpportunitiesPageContent() {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
   const [showSourceSelector, setShowSourceSelector] = useState(false)
-  const [sortBy, setSortBy] = useState<string>('close_date_asc')
+  const [sortBy, setSortBy] = useState<string>('event_date_asc')
   const [itemsPerPage, setItemsPerPage] = useState<number>(50)
 
   // Load items per page preference from localStorage after mount (avoid SSR issues)
@@ -111,14 +111,24 @@ function OpportunitiesPageContent() {
   // Apply sorting to filtered opportunities
   const sortedOpportunities = [...filteredOpportunities].sort((a, b) => {
     switch (sortBy) {
-      case 'close_date_asc':
-        if (!a.expected_close_date) return 1
-        if (!b.expected_close_date) return -1
-        return new Date(a.expected_close_date).getTime() - new Date(b.expected_close_date).getTime()
-      case 'close_date_desc':
-        if (!a.expected_close_date) return 1
-        if (!b.expected_close_date) return -1
-        return new Date(b.expected_close_date).getTime() - new Date(a.expected_close_date).getTime()
+      case 'event_date_asc':
+        const dateA = a.event_dates?.[0]?.event_date || a.event_date
+        const dateB = b.event_dates?.[0]?.event_date || b.event_date
+        if (!dateA && !dateB) return 0
+        if (!dateA) return 1
+        if (!dateB) return -1
+        return new Date(dateA).getTime() - new Date(dateB).getTime()
+      case 'event_date_desc':
+        const dateA2 = a.event_dates?.[0]?.event_date || a.event_date
+        const dateB2 = b.event_dates?.[0]?.event_date || b.event_date
+        if (!dateA2 && !dateB2) return 0
+        if (!dateA2) return 1
+        if (!dateB2) return -1
+        return new Date(dateB2).getTime() - new Date(dateA2).getTime()
+      case 'created_asc':
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      case 'created_desc':
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       case 'value_desc':
         return (b.amount || 0) - (a.amount || 0)
       case 'value_asc':

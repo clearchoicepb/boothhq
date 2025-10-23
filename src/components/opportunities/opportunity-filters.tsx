@@ -12,8 +12,8 @@ interface OpportunityFiltersProps {
   onOwnerChange: (value: string) => void
   dateFilter: string
   onDateFilterChange: (value: string) => void
-  dateType: 'created' | 'closed'
-  onDateTypeChange: (value: 'created' | 'closed') => void
+  dateType: 'created' | 'closed' | 'event'
+  onDateTypeChange: (value: 'created' | 'closed' | 'event') => void
   sortBy: string
   onSortChange: (value: string) => void
   onClearAll: () => void
@@ -142,9 +142,10 @@ export function OpportunityFilters({
             </label>
             <Select
               value={dateType}
-              onChange={(e) => onDateTypeChange(e.target.value as 'created' | 'closed')}
+              onChange={(e) => onDateTypeChange(e.target.value as 'created' | 'closed' | 'event')}
             >
-              <option value="created">Created Date</option>
+              <option value="created">Date Created</option>
+              <option value="event">Event Date</option>
               <option value="closed">Closed Date</option>
             </Select>
           </div>
@@ -157,8 +158,10 @@ export function OpportunityFilters({
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
             >
-              <option value="close_date_asc">Close Date (Earliest)</option>
-              <option value="close_date_desc">Close Date (Latest)</option>
+              <option value="event_date_asc">Event Date (Earliest)</option>
+              <option value="event_date_desc">Event Date (Latest)</option>
+              <option value="created_asc">Date Created (Oldest)</option>
+              <option value="created_desc">Date Created (Newest)</option>
               <option value="value_desc">Value (High to Low)</option>
               <option value="value_asc">Value (Low to High)</option>
               <option value="title_asc">Title (A-Z)</option>

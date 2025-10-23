@@ -16,8 +16,8 @@ interface UseOpportunityFiltersReturn {
   setFilterOwner: React.Dispatch<React.SetStateAction<string>>
   dateFilter: string
   setDateFilter: React.Dispatch<React.SetStateAction<string>>
-  dateType: 'created' | 'closed'
-  setDateType: React.Dispatch<React.SetStateAction<'created' | 'closed'>>
+  dateType: 'created' | 'closed' | 'event'
+  setDateType: React.Dispatch<React.SetStateAction<'created' | 'closed' | 'event'>>
   filteredOpportunities: OpportunityWithRelations[]
   clearAllFilters: () => void
 }
@@ -110,7 +110,7 @@ function getDateRange(filter: string): DateRange | null {
 function isOpportunityInDateRange(
   opportunity: OpportunityWithRelations, 
   filter: string, 
-  dateType: 'created' | 'closed'
+  dateType: 'created' | 'closed' | 'event'
 ): boolean {
   if (filter === 'all') return true
   
@@ -123,6 +123,10 @@ function isOpportunityInDateRange(
     opportunityDate = new Date(opportunity.created_at)
   } else if (dateType === 'closed') {
     opportunityDate = opportunity.actual_close_date ? new Date(opportunity.actual_close_date) : null
+  } else if (dateType === 'event') {
+    // Get first event date from event_dates array or fallback to event_date field
+    const firstEventDate = (opportunity as any).event_dates?.[0]?.event_date || (opportunity as any).event_date
+    opportunityDate = firstEventDate ? new Date(firstEventDate) : null
   }
   
   if (!opportunityDate) return false
@@ -143,7 +147,7 @@ export function useOpportunityFilters(
   const [filterStage, setFilterStage] = useState<string>('all')
   const [filterOwner, setFilterOwner] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<string>('all')
-  const [dateType, setDateType] = useState<'created' | 'closed'>('created')
+  const [dateType, setDateType] = useState<'created' | 'closed' | 'event'>('created')
 
   // Filter opportunities based on all filter criteria
   const filteredOpportunities = useMemo(() => {

@@ -88,7 +88,7 @@ export function OpportunityTable({
                 )}
                 <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Prob</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Value</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Close Date</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Date Created</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
               </tr>
             </thead>
@@ -202,7 +202,7 @@ export function OpportunityTable({
                     {opportunityFieldRenderers.totalValue(opportunity)}
                   </td>
                   <td className="px-4 py-2.5">
-                    {opportunityFieldRenderers.closeDate(opportunity)}
+                    {opportunityFieldRenderers.dateCreated(opportunity)}
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">

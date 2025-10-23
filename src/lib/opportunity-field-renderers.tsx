@@ -225,51 +225,55 @@ export const opportunityFieldRenderers = {
   },
 
   /**
-   * CLOSE DATE - Date with days until/overdue indicator
+   * DATE CREATED - Shows when opportunity was created
+   * Replaces close date (more relevant for long sales cycles)
    */
-  closeDate: (opportunity: Opportunity) => {
-    if (!opportunity.expected_close_date) {
-      return (
-        <div className="flex items-center gap-2 text-gray-400">
-          <Clock className="h-4 w-4" />
-          <span className="text-sm italic">Not set</span>
-        </div>
-      )
+  dateCreated: (opportunity: any) => {
+    if (!opportunity.created_at) {
+      return <span className="text-gray-400 text-sm">Unknown</span>
     }
     
-    const daysUntil = getDaysUntil(opportunity.expected_close_date)
+    const createdDate = new Date(opportunity.created_at)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const created = new Date(createdDate)
+    created.setHours(0, 0, 0, 0)
     
-    let statusColor = 'text-gray-500'
-    let statusText = ''
+    const daysAgo = Math.ceil((today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
     
-    if (daysUntil === null) {
-      // Date parsing failed
-      return <span className="text-sm">{formatDateShort(opportunity.expected_close_date)}</span>
-    }
+    let ageColor = 'text-gray-500'
+    let ageText = ''
     
-    if (daysUntil > 7) {
-      statusColor = 'text-gray-500'
-      statusText = `in ${daysUntil}d`
-    } else if (daysUntil > 0) {
-      statusColor = 'text-yellow-600'
-      statusText = `in ${daysUntil}d`
-    } else if (daysUntil === 0) {
-      statusColor = 'text-orange-600'
-      statusText = 'Today'
+    // Color code by age
+    if (daysAgo === 0) {
+      ageColor = 'text-green-600'
+      ageText = 'Today'
+    } else if (daysAgo === 1) {
+      ageColor = 'text-green-600'
+      ageText = 'Yesterday'
+    } else if (daysAgo <= 7) {
+      ageColor = 'text-green-600'
+      ageText = `${daysAgo} days ago`
+    } else if (daysAgo <= 30) {
+      ageColor = 'text-blue-600'
+      ageText = `${daysAgo} days ago`
+    } else if (daysAgo <= 90) {
+      ageColor = 'text-yellow-600'
+      ageText = `${Math.floor(daysAgo / 30)} ${Math.floor(daysAgo / 30) === 1 ? 'month' : 'months'} ago`
     } else {
-      statusColor = 'text-red-600'
-      statusText = `${Math.abs(daysUntil)}d overdue`
+      ageColor = 'text-orange-600'
+      ageText = `${Math.floor(daysAgo / 30)} months ago`
     }
     
     return (
       <div className="flex flex-col">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">{formatDateShort(opportunity.expected_close_date)}</span>
+          <span className="text-sm">{formatDateShort(opportunity.created_at)}</span>
         </div>
-        {statusText && (
-          <span className={`text-xs ml-6 ${statusColor} font-medium`}>
-            {statusText}
+        {ageText && (
+          <span className={`text-xs ml-6 ${ageColor} font-medium`}>
+            {ageText}
           </span>
         )}
       </div>
@@ -314,6 +318,23 @@ export const opportunityFieldRenderers = {
         ${amount.toFixed(0)}
       </span>
     )
+  },
+
+  /**
+   * DATE CREATED (Compact) - For pipeline/mobile
+   */
+  dateCreatedCompact: (opportunity: any) => {
+    if (!opportunity.created_at) return null
+    
+    const daysAgo = Math.ceil((Date.now() - new Date(opportunity.created_at).getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (daysAgo === 0) return <span className="text-xs text-green-600">Today</span>
+    if (daysAgo === 1) return <span className="text-xs text-green-600">Yesterday</span>
+    if (daysAgo <= 7) return <span className="text-xs text-green-600">{daysAgo}d ago</span>
+    if (daysAgo <= 30) return <span className="text-xs text-blue-600">{daysAgo}d ago</span>
+    
+    const monthsAgo = Math.floor(daysAgo / 30)
+    return <span className="text-xs text-yellow-600">{monthsAgo}mo ago</span>
   }
 }
 

@@ -88,9 +88,9 @@ export function OpportunityMobileCard({
           </div>
         </div>
         <div>
-          <span className="text-gray-500 text-xs">Close Date</span>
-          <div className="mt-1 text-sm">
-            {opportunity.expected_close_date ? formatDateShort(opportunity.expected_close_date) : 'Not set'}
+          <span className="text-gray-500 text-xs">Created</span>
+          <div className="mt-1">
+            {opportunityFieldRenderers.dateCreatedCompact(opportunity)}
           </div>
         </div>
       </div>
