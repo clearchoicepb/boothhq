@@ -344,12 +344,10 @@ export default function OpportunitiesSettingsPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Sales Stages</h2>
                 <button 
                   onClick={addStage}
-                  disabled
-                  title="Custom stages coming soon - requires database update to remove CHECK constraint"
-                  className="flex items-center px-3 py-2 bg-gray-300 text-gray-500 rounded-md cursor-not-allowed opacity-60"
+                  className="flex items-center px-3 py-2 bg-[#347dc4] text-white rounded-md hover:bg-[#2c6ba8] transition-colors"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Stage (Coming Soon)
+                  Add Stage
                 </button>
               </div>
               <div className="space-y-3">

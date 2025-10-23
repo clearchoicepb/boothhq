@@ -250,9 +250,10 @@ export const entityConfigs: Record<string, EntityConfig> = {
       },
       stage: {
         custom: (value) => {
-          const validStages = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
-          if (value && !validStages.includes(value)) {
-            return `Stage must be one of: ${validStages.join(', ')}`
+          // Stage values now defined in tenant settings (not hardcoded)
+          // Just ensure it's not empty
+          if (!value || !value.trim()) {
+            return 'Stage is required'
           }
           return null
         }
