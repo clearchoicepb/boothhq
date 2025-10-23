@@ -412,6 +412,12 @@ export default function OpportunityDetailPage() {
     const toastId = toast.loading('Updating owner...')
     setUpdatingOwner(true)
 
+    // Optimistic update - update UI immediately
+    const previousOwner = opportunity?.owner_id
+    if (opportunity) {
+      setOpportunity(prev => prev ? { ...prev, owner_id: newOwnerId || null } : null)
+    }
+
     try {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'PUT',
@@ -427,9 +433,19 @@ export default function OpportunityDetailPage() {
 
       // Refresh opportunity data
       await fetchOpportunity()
+      
+      // Invalidate dashboard cache - force refetch on next visit
+      router.refresh()
+      
       toast.success('Owner updated successfully!', { id: toastId })
     } catch (error) {
       console.error('Error updating owner:', error)
+      
+      // Rollback optimistic update
+      if (opportunity) {
+        setOpportunity(prev => prev ? { ...prev, owner_id: previousOwner } : null)
+      }
+      
       toast.error('Failed to update owner', { id: toastId })
     } finally {
       setUpdatingOwner(false)

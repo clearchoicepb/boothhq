@@ -104,8 +104,8 @@ export async function GET(request: NextRequest) {
     
     const response = NextResponse.json(stats)
     
-    // Cache for 60 seconds (stats don't change frequently)
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    // Cache for 30 seconds (balance between performance and freshness)
+    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
     
     return response
   } catch (error) {
