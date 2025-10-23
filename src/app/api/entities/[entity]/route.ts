@@ -212,12 +212,19 @@ export async function POST(
       }, { status: 400 })
     }
 
+    // Auto-assign owner for opportunities if not specified
+    const insertData = {
+      ...transformedBody,
+      tenant_id: session.user.tenantId
+    }
+    
+    if (entity === 'opportunities' && !insertData.owner_id && session.user.id) {
+      insertData.owner_id = session.user.id
+    }
+    
     const { data, error } = await supabase
       .from(config.table)
-      .insert({
-        ...transformedBody,
-        tenant_id: session.user.tenantId
-      })
+      .insert(insertData)
       .select()
       .single()
 

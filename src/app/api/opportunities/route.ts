@@ -176,6 +176,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Auto-assign owner if not specified (default to creator)
+    if (!cleanedOpportunityData.owner_id && session.user.id) {
+      cleanedOpportunityData.owner_id = session.user.id
+    }
+    
     // Create the opportunity first
     const { data: opportunity, error: oppError } = await supabase
       .from('opportunities')
