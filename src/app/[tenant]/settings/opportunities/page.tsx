@@ -12,7 +12,8 @@ import {
   ToggleRight,
   Plus,
   Trash2,
-  Edit3
+  Edit3,
+  GripVertical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -169,6 +170,35 @@ export default function OpportunitiesSettingsPage() {
       console.error('Error checking stage usage:', error);
       toast.error('Failed to check if stage is in use');
     }
+  };
+
+  // Drag and drop reordering
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    if (dragIndex === dropIndex) return;
+    
+    const newStages = [...settings.stages];
+    const [draggedStage] = newStages.splice(dragIndex, 1);
+    newStages.splice(dropIndex, 0, draggedStage);
+    
+    setSettings(prev => ({
+      ...prev,
+      stages: newStages
+    }));
+    
+    toast.success('Stage order updated. Click Save to apply changes.');
   };
 
   // Load settings from global context
@@ -351,8 +381,19 @@ export default function OpportunitiesSettingsPage() {
                 </button>
               </div>
               <div className="space-y-3">
-                {settings.stages.map((stage) => (
-                  <div key={stage.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                {settings.stages.map((stage, index) => (
+                  <div 
+                    key={stage.id} 
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm cursor-move transition-all"
+                  >
+                    {/* Drag Handle */}
+                    <GripVertical className="h-5 w-5 text-gray-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                    
+                    {/* Stage Fields */}
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div>
                         <label className="text-xs text-gray-500">Stage Name</label>
@@ -424,6 +465,9 @@ export default function OpportunitiesSettingsPage() {
                     </div>
                   </div>
                 ))}
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Tip: Drag stages to reorder them. Order affects pipeline column sequence.
+                </p>
               </div>
             </div>
 
