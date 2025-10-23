@@ -7,10 +7,11 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
-import { Plus, DollarSign, Grid, List, Download } from 'lucide-react'
+import { Plus, DollarSign, Grid, List, Download, ListFilter } from 'lucide-react'
 import Link from 'next/link'
 import { exportToCSV } from '@/lib/csv-export'
 import { useParams } from 'next/navigation'
+import { Select } from '@/components/ui/select'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { SendEmailModal } from '@/components/send-email-modal'
@@ -54,7 +55,9 @@ function OpportunitiesPageContent() {
   const [showSMSModal, setShowSMSModal] = useState(false)
   const [showSourceSelector, setShowSourceSelector] = useState(false)
   const [sortBy, setSortBy] = useState<string>('close_date_asc')
-  const itemsPerPage = 25
+  const [itemsPerPage, setItemsPerPage] = useState<number>(
+    parseInt(localStorage.getItem('opportunities_per_page') || '50')
+  )
 
   // Close opportunity modal state
   const [showCloseModal, setShowCloseModal] = useState(false)
@@ -165,6 +168,18 @@ function OpportunitiesPageContent() {
   useEffect(() => {
     setCurrentPage(1)
   }, [filterStage, filterOwner, searchTerm, dateFilter, dateType, setCurrentPage])
+
+  // Save items per page preference
+  useEffect(() => {
+    localStorage.setItem('opportunities_per_page', itemsPerPage.toString())
+    // Reset to page 1 when items per page changes
+    setCurrentPage(1)
+  }, [itemsPerPage, setCurrentPage])
+
+  // Handler for changing items per page
+  const handleItemsPerPageChange = (newLimit: number) => {
+    setItemsPerPage(newLimit)
+  }
 
   if (status === 'loading' || loading || localLoading) {
     return (
@@ -345,7 +360,28 @@ function OpportunitiesPageContent() {
           {/* View Toggle and Closed Buckets */}
           <div className="bg-white p-4 rounded-lg shadow mb-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">All Opportunities</h3>
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-medium text-gray-900">All Opportunities</h3>
+                
+                {/* Items Per Page Selector */}
+                {currentView === 'table' && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <ListFilter className="h-4 w-4" />
+                    <span>Show</span>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onChange={(e) => handleItemsPerPageChange(parseInt(e.target.value))}
+                      className="w-20 h-8 text-sm"
+                      aria-label="Items per page"
+                    >
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </Select>
+                    <span>per page</span>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-4">
                 {/* Closed Buckets - Only show in pipeline view */}
                 {currentView === 'pipeline' && (
