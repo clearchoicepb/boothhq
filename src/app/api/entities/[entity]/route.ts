@@ -41,10 +41,26 @@ export async function GET(
       .eq('tenant_id', session.user.tenantId)
 
     // Build the data query
-    let query = supabase
-      .from(config.table)
-      .select('*')
-      .eq('tenant_id', session.user.tenantId)
+    let query
+    
+    // Special handling for opportunities - include relations
+    if (entity === 'opportunities') {
+      query = supabase
+        .from(config.table)
+        .select(`
+          *,
+          accounts!opportunities_account_id_fkey(name, account_type),
+          contacts!opportunities_contact_id_fkey(first_name, last_name),
+          leads!opportunities_lead_id_fkey(first_name, last_name),
+          event_dates(event_date, start_time, end_time, location_id, notes)
+        `)
+        .eq('tenant_id', session.user.tenantId)
+    } else {
+      query = supabase
+        .from(config.table)
+        .select('*')
+        .eq('tenant_id', session.user.tenantId)
+    }
 
     // Apply search filter to both queries
     if (search && config.searchFields.length > 0) {

@@ -312,7 +312,9 @@ export const entityConfigs: Record<string, EntityConfig> = {
         account_name: opportunity.accounts?.name || null,
         account_type: opportunity.accounts?.account_type || null,
         contact_name: opportunity.contacts ?
-          `${opportunity.contacts.first_name} ${opportunity.contacts.last_name}`.trim() : null
+          `${opportunity.contacts.first_name} ${opportunity.contacts.last_name}`.trim() : null,
+        lead_name: opportunity.leads ?
+          `${opportunity.leads.first_name} ${opportunity.leads.last_name}`.trim() : null
       }))
     }
   },
