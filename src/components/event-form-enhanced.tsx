@@ -153,24 +153,18 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
   }, [event, isOpen, opportunityId, account, contact])
 
-  // Fetch accounts, contacts, and opportunities for dropdowns
+  // Fetch accounts and opportunities for dropdowns (contacts fetched separately by account)
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [accountsRes, contactsRes, opportunitiesRes] = await Promise.all([
+        const [accountsRes, opportunitiesRes] = await Promise.all([
           fetch('/api/accounts'),
-          fetch('/api/contacts'),
           fetch('/api/opportunities')
         ])
         
         if (accountsRes.ok) {
           const accountsData = await accountsRes.json()
           setAccounts(accountsData)
-        }
-        
-        if (contactsRes.ok) {
-          const contactsData = await contactsRes.json()
-          setContacts(contactsData)
         }
         
         if (opportunitiesRes.ok) {
@@ -187,6 +181,30 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
   }, [isOpen])
 
+  // Fetch contacts filtered by selected account (optimization)
+  useEffect(() => {
+    const fetchContactsForAccount = async () => {
+      if (!formData.account_id) {
+        setContacts([])
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/contacts?account_id=${formData.account_id}`)
+        if (response.ok) {
+          const contactsData = await response.json()
+          setContacts(contactsData)
+        }
+      } catch (error) {
+        console.error('Error fetching contacts for account:', error)
+      }
+    }
+
+    if (isOpen) {
+      fetchContactsForAccount()
+    }
+  }, [formData.account_id, isOpen])
+
   // Filtered and sorted options for dropdowns
   const accountOptions = useMemo<SearchableOption[]>(() => {
     return accounts
@@ -201,8 +219,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
   const contactOptions = useMemo<SearchableOption[]>(() => {
     if (!formData.account_id) return []
     
+    // Contacts already filtered by account from API, no need for client-side filter
     return contacts
-      .filter(c => c.account_id === formData.account_id)
       .sort((a, b) => {
         const nameA = `${a.first_name || ''} ${a.last_name || ''}`
         const nameB = `${b.first_name || ''} ${b.last_name || ''}`

@@ -110,19 +110,23 @@ export function OpportunityFormEnhanced({
       setLoadingAccounts(true)
       setLoadingContacts(true)
 
-      const [accountsRes, contactsRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/contacts')
-      ])
-
+      // Fetch accounts
+      const accountsRes = await fetch('/api/accounts')
       if (accountsRes.ok) {
         const accountsData = await accountsRes.json()
         setAccounts(accountsData)
       }
 
-      if (contactsRes.ok) {
-        const contactsData = await contactsRes.json()
-        setContacts(contactsData)
+      // Fetch contacts filtered by account (if account is selected)
+      if (selectedAccountId) {
+        const contactsRes = await fetch(`/api/contacts?account_id=${selectedAccountId}`)
+        if (contactsRes.ok) {
+          const contactsData = await contactsRes.json()
+          setContacts(contactsData)
+        }
+      } else {
+        // No account selected - clear contacts
+        setContacts([])
       }
     } catch (error) {
       console.error('Error fetching accounts/contacts:', error)
@@ -131,6 +135,34 @@ export function OpportunityFormEnhanced({
       setLoadingContacts(false)
     }
   }
+
+  // Refetch contacts when selected account changes
+  useEffect(() => {
+    const fetchContactsForAccount = async () => {
+      if (!selectedAccountId) {
+        setContacts([])
+        return
+      }
+
+      try {
+        setLoadingContacts(true)
+        const response = await fetch(`/api/contacts?account_id=${selectedAccountId}`)
+        if (response.ok) {
+          const contactsData = await response.json()
+          setContacts(contactsData)
+        }
+      } catch (error) {
+        console.error('Error fetching contacts for account:', error)
+      } finally {
+        setLoadingContacts(false)
+      }
+    }
+
+    // Only fetch if we're in editing mode (not creating from customer)
+    if (opportunity && !customer) {
+      fetchContactsForAccount()
+    }
+  }, [selectedAccountId, opportunity, customer])
 
   // Populate form when editing existing opportunity
   useEffect(() => {
