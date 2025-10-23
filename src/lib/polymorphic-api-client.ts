@@ -64,6 +64,15 @@ export class PolymorphicApiClient {
     
     if (!response.ok) {
       const error = await response.json()
+      
+      // Handle duplicate email (409 Conflict) - pass through for special handling
+      if (response.status === 409 && error.existingContact) {
+        const duplicateError = new Error(`A ${entity.slice(0, -1)} with this email already exists`) as any
+        duplicateError.status = 409
+        duplicateError.existingContact = error.existingContact
+        throw duplicateError
+      }
+      
       throw new Error(`Failed to create ${entity}: ${error.details || response.statusText}`)
     }
     

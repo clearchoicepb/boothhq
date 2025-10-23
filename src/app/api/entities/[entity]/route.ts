@@ -162,6 +162,27 @@ export async function POST(
     // Extract event_dates for opportunities before transformation
     const { event_dates, ...bodyWithoutEventDates } = body
 
+    // Check for duplicate email for contacts (case-insensitive)
+    if (entity === 'contacts' && body.email && body.email.trim()) {
+      const { data: existingContact } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, email')
+        .eq('tenant_id', session.user.tenantId)
+        .ilike('email', body.email.trim())
+        .maybeSingle()
+      
+      if (existingContact) {
+        return NextResponse.json({
+          error: 'A contact with this email already exists',
+          existingContact: {
+            id: existingContact.id,
+            name: `${existingContact.first_name} ${existingContact.last_name}`,
+            email: existingContact.email
+          }
+        }, { status: 409 }) // 409 Conflict
+      }
+    }
+
     // Transform request data if transformRequest function exists
     const transformedBody = config.transformRequest ? config.transformRequest(bodyWithoutEventDates) : bodyWithoutEventDates
 

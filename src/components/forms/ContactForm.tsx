@@ -1,8 +1,10 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import { useParams } from 'next/navigation'
 import { EntityForm } from './EntityForm'
 import { contactFormConfig } from './configs'
+import { DuplicateContactWarning } from '@/components/duplicate-contact-warning'
 import type { Contact } from '@/lib/supabase-client'
 
 interface ContactFormProps {
@@ -20,6 +22,13 @@ export function ContactForm({
   onSubmit,
   preSelectedAccountId
 }: ContactFormProps) {
+  const params = useParams()
+  const tenantSubdomain = params.tenant as string
+  
+  // State for duplicate email warning
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
+  const [duplicateContact, setDuplicateContact] = useState<{id: string, name: string, email: string} | null>(null)
+  
   // Prepare initial data with pre-selected account
   const initialData = contact ? {
     ...contact,
@@ -38,21 +47,44 @@ export function ContactForm({
         : await apiClient.create('contacts', data)
 
       await onSubmit(savedContact)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving contact:', error)
+      
+      // Check if this is a duplicate email error (409)
+      if (error.status === 409 && error.existingContact) {
+        setDuplicateContact(error.existingContact)
+        setShowDuplicateWarning(true)
+        return // Don't throw - modal will handle it
+      }
+      
       throw error
     }
   }
 
   return (
-    <EntityForm
-      entity="contacts"
-      initialData={initialData}
-      isOpen={isOpen}
-      onClose={onClose}
-      onSubmit={handleSubmit}
-      title={contact ? 'Edit Contact' : 'Add New Contact'}
-      submitLabel={contact ? 'Update Contact' : 'Create Contact'}
-    />
+    <>
+      <EntityForm
+        entity="contacts"
+        initialData={initialData}
+        isOpen={isOpen}
+        onClose={onClose}
+        onSubmit={handleSubmit}
+        title={contact ? 'Edit Contact' : 'Add New Contact'}
+        submitLabel={contact ? 'Update Contact' : 'Create Contact'}
+      />
+      
+      {/* Duplicate Contact Warning Modal */}
+      {duplicateContact && (
+        <DuplicateContactWarning
+          isOpen={showDuplicateWarning}
+          onClose={() => {
+            setShowDuplicateWarning(false)
+            setDuplicateContact(null)
+          }}
+          existingContact={duplicateContact}
+          tenantSubdomain={tenantSubdomain}
+        />
+      )}
+    </>
   )
 }
