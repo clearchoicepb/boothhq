@@ -7,8 +7,9 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Search, Plus, Eye, Edit, Trash2, Users, Mail, Phone, Building2 } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Users, Mail, Phone, Building2, Download } from 'lucide-react'
 import Link from 'next/link'
+import { exportToCSV } from '@/lib/csv-export'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
@@ -150,6 +151,22 @@ export default function ContactsPage() {
     }
   }
 
+  const handleExportCSV = () => {
+    const columns = [
+      { key: 'first_name', label: 'First Name' },
+      { key: 'last_name', label: 'Last Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'job_title', label: 'Job Title' },
+      { key: 'account_name', label: 'Primary Account' },
+      { key: 'status', label: 'Status' },
+      { key: 'created_at', label: 'Created Date' }
+    ]
+    
+    const filename = `contacts-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(contacts, filename, columns)
+  }
+
   if (!session || !tenant) {
     return <div>Loading...</div>
   }
@@ -164,12 +181,18 @@ export default function ContactsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
               <p className="text-gray-600">Manage your contacts and customer relationships</p>
             </div>
-            {permissions.contacts.create && (
-              <Button onClick={handleAddNew}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Contact
+            <div className="flex gap-2">
+              <Button onClick={handleExportCSV} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
-            )}
+              {permissions.contacts.create && (
+                <Button onClick={handleAddNew}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Contact
+                </Button>
+              )}
+            </div>
         </div>
 
           {/* Search and Filters */}

@@ -7,8 +7,9 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Search, Plus, Eye, Edit, Trash2, Building2, Globe, Phone, Mail } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Building2, Globe, Phone, Mail, Download } from 'lucide-react'
 import Link from 'next/link'
+import { exportToCSV } from '@/lib/csv-export'
 import { useParams, useRouter } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
@@ -131,6 +132,23 @@ export default function AccountsPage() {
     }
   }
 
+  const handleExportCSV = () => {
+    const columns = [
+      { key: 'name', label: 'Account Name' },
+      { key: 'account_type', label: 'Type' },
+      { key: 'industry', label: 'Industry' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'annual_revenue', label: 'Annual Revenue' },
+      { key: 'employee_count', label: 'Employees' },
+      { key: 'status', label: 'Status' },
+      { key: 'created_at', label: 'Created Date' }
+    ]
+    
+    const filename = `accounts-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(accounts, filename, columns)
+  }
+
   if (!session || !tenant) {
     return <div>Loading...</div>
   }
@@ -145,12 +163,18 @@ export default function AccountsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
               <p className="text-gray-600">Manage your business accounts and companies</p>
             </div>
-            {permissions.accounts.create && (
-              <Button onClick={handleAddNew}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Account
+            <div className="flex gap-2">
+              <Button onClick={handleExportCSV} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
-            )}
+              {permissions.accounts.create && (
+                <Button onClick={handleAddNew}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Account
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Search and Filters */}

@@ -7,8 +7,9 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Search, Plus, Eye, Edit, Trash2, Target, Mail, Phone, Building2 } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Target, Mail, Phone, Building2, Download } from 'lucide-react'
 import Link from 'next/link'
+import { exportToCSV } from '@/lib/csv-export'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
@@ -149,6 +150,23 @@ export default function LeadsPage() {
     }
   }
 
+  const handleExportCSV = () => {
+    const columns = [
+      { key: 'first_name', label: 'First Name' },
+      { key: 'last_name', label: 'Last Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'company', label: 'Company' },
+      { key: 'lead_type', label: 'Type' },
+      { key: 'source', label: 'Source' },
+      { key: 'status', label: 'Status' },
+      { key: 'created_at', label: 'Created Date' }
+    ]
+    
+    const filename = `leads-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(filteredLeads, filename, columns)
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new':
@@ -178,12 +196,18 @@ export default function LeadsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
               <p className="text-gray-600">Manage your sales leads and prospects</p>
             </div>
-            {permissions.leads.create && (
-              <Button onClick={handleAddNew}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Lead
+            <div className="flex gap-2">
+              <Button onClick={handleExportCSV} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
-            )}
+              {permissions.leads.create && (
+                <Button onClick={handleAddNew}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Lead
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Search and Filters */}

@@ -7,8 +7,9 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
-import { Plus, DollarSign, Grid, List } from 'lucide-react'
+import { Plus, DollarSign, Grid, List, Download } from 'lucide-react'
 import Link from 'next/link'
+import { exportToCSV } from '@/lib/csv-export'
 import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
@@ -223,6 +224,22 @@ function OpportunitiesPageContent() {
     setPendingCloseStage(null)
   }
 
+  const handleExportCSV = () => {
+    const columns = [
+      { key: 'name', label: 'Opportunity Name' },
+      { key: 'account_name', label: 'Account' },
+      { key: 'contact_name', label: 'Contact' },
+      { key: 'stage', label: 'Stage' },
+      { key: 'amount', label: 'Value' },
+      { key: 'probability', label: 'Probability (%)' },
+      { key: 'expected_close_date', label: 'Expected Close Date' },
+      { key: 'created_at', label: 'Created Date' }
+    ]
+    
+    const filename = `opportunities-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(sortedOpportunities, filename, columns)
+  }
+
   return (
     <AppLayout>
       <div className="min-h-screen bg-white">
@@ -234,15 +251,25 @@ function OpportunitiesPageContent() {
                 <h1 className="text-xl font-semibold text-gray-900">Opportunities</h1>
                 <p className="text-sm text-gray-600">Track your sales opportunities</p>
               </div>
-              {canCreate('opportunities') && (
+              <div className="flex gap-2">
                 <Button 
-                  onClick={() => setShowSourceSelector(true)}
-                  className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                  onClick={handleExportCSV}
+                  variant="outline"
+                  className="transition-all duration-200"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Opportunity
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
                 </Button>
-              )}
+                {canCreate('opportunities') && (
+                  <Button 
+                    onClick={() => setShowSourceSelector(true)}
+                    className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Opportunity
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
