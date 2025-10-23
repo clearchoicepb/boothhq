@@ -7,6 +7,7 @@ import { getOpportunityProbability } from '@/lib/opportunity-utils'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
 import { formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
+import { opportunityFieldRenderers } from '@/lib/opportunity-field-renderers'
 
 interface OpportunityTableProps {
   opportunities: OpportunityWithRelations[]
@@ -77,18 +78,18 @@ export function OpportunityTable({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opportunity Name</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Event Date</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opportunity</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                 <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Owner</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
                 {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Reason</th>
                 )}
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Prob</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Value</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Close Date</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
+                <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Prob</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Value</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Close Date</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -98,10 +99,10 @@ export function OpportunityTable({
                   {[1, 2, 3, 4, 5].map((i) => (
                     <tr key={i} className="animate-pulse">
                       <td className="px-4 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-48"></div>
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-32"></div>
+                        <div className="h-4 bg-gray-200 rounded w-48"></div>
                       </td>
                       <td className="px-4 py-4">
                         <div className="h-4 bg-gray-200 rounded w-32"></div>
@@ -119,7 +120,7 @@ export function OpportunityTable({
                         <div className="h-4 bg-gray-200 rounded w-20"></div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="h-4 bg-gray-200 rounded w-28"></div>
                       </td>
                       <td className="px-4 py-4">
                         <div className="h-8 w-8 bg-gray-200 rounded"></div>
@@ -157,38 +158,20 @@ export function OpportunityTable({
                   className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
                   onClick={() => onOpportunityClick(opportunity.id)}
                 >
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 truncate max-w-xs" title={opportunity.name}>
-                      {opportunity.name}
-                    </div>
+                  <td className="px-4 py-2.5">
+                    {opportunityFieldRenderers.eventDate(opportunity)}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={opportunity.account_name || ''}>
-                    {opportunity.account_name || 'N/A'}
+                  <td className="px-4 py-2.5">
+                    {opportunityFieldRenderers.opportunityName(opportunity)}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={opportunity.contact_name || ''}>
-                    {opportunity.contact_name || 'N/A'}
+                  <td className="px-4 py-2.5">
+                    {opportunityFieldRenderers.client(opportunity)}
                   </td>
                   <td className="px-4 py-2.5 text-center">
-                    {opportunity.owner_id ? (
-                      <div
-                        className="w-8 h-8 mx-auto rounded-full bg-[#347dc4] flex items-center justify-center text-white text-xs font-semibold"
-                        title={getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
-                      >
-                        {getOwnerInitials(opportunity.owner_id, tenantUsers)}
-                      </div>
-                    ) : (
-                      <div
-                        className="w-8 h-8 mx-auto rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs"
-                        title="Unassigned"
-                      >
-                        ?
-                      </div>
-                    )}
+                    {opportunityFieldRenderers.owner(opportunity, tenantUsers, true)}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStageColor(opportunity.stage, settings)}`}>
-                      {getStageName(opportunity.stage, settings)}
-                    </span>
+                  <td className="px-4 py-2.5">
+                    {opportunityFieldRenderers.stage(opportunity, settings)}
                   </td>
                   {(filterStage === 'closed_won' || filterStage === 'closed_lost') && (
                     <td className="px-4 py-2.5 whitespace-nowrap">
@@ -212,31 +195,14 @@ export function OpportunityTable({
                       )}
                     </td>
                   )}
-                  <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
-                    {getOpportunityProbability(opportunity, settings.opportunities)}%
+                  <td className="px-4 py-2.5 text-center">
+                    {opportunityFieldRenderers.probability(opportunity)}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
-                    ${opportunity.amount?.toLocaleString() || '0'}
+                  <td className="px-4 py-2.5 text-right">
+                    {opportunityFieldRenderers.totalValue(opportunity)}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900">
-                    {opportunity.expected_close_date ? (
-                      <div className="flex items-center gap-2">
-                        <span>{formatDateShort(opportunity.expected_close_date)}</span>
-                        {getDaysUntil(opportunity.expected_close_date) !== null && 
-                         getDaysUntil(opportunity.expected_close_date)! >= 0 && 
-                         getDaysUntil(opportunity.expected_close_date)! <= 30 && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            isDateToday(opportunity.expected_close_date) 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {isDateToday(opportunity.expected_close_date) ? 'Today' : `${getDaysUntil(opportunity.expected_close_date)}d`}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 italic">Not set</span>
-                    )}
+                  <td className="px-4 py-2.5">
+                    {opportunityFieldRenderers.closeDate(opportunity)}
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
