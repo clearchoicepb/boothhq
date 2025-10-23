@@ -65,7 +65,7 @@ entity_type TEXT NOT NULL CHECK (entity_type IN (
 ### Option 1: Run the Migration Script (Recommended)
 
 ```bash
-node apply-notes-migration-pg.js
+node scripts/migrations/apply-notes-migration-pg.js
 ```
 
 This will:

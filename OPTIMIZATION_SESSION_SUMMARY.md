@@ -372,7 +372,7 @@ Two form systems coexist:
 ### Critical (This Week):
 1. ⚡ **Apply Notes Migration** (5 mins)
    ```bash
-   node apply-notes-migration-pg.js
+   node scripts/migrations/apply-notes-migration-pg.js
    ```
    **Impact:** Enables notes for opportunities/events
 
@@ -432,7 +432,7 @@ Two form systems coexist:
 ### Manual Step Required:
 - ⏳ **Run notes migration on production DB**
   ```bash
-  node apply-notes-migration-pg.js
+  node scripts/migrations/apply-notes-migration-pg.js
   ```
   **Or manually in Supabase SQL Editor:**
   ```sql
