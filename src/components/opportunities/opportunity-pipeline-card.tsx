@@ -50,8 +50,27 @@ export function OpportunityPipelineCard({
         {createdDate || ''}
       </div>
       
+      {/* Top Right Corner: Owner Icon */}
+      <div className="absolute top-1 right-1">
+        {owner ? (
+          <div 
+            className="w-5 h-5 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-[10px] font-semibold"
+            title={`${owner.first_name} ${owner.last_name}`}
+          >
+            {owner.first_name?.[0]}{owner.last_name?.[0]}
+          </div>
+        ) : (
+          <div 
+            className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-[10px]"
+            title="Unassigned"
+          >
+            ?
+          </div>
+        )}
+      </div>
+      
       {/* LINE 1: Opportunity Name */}
-      <div className="font-medium text-sm truncate mb-1 mt-3">
+      <div className="font-medium text-sm truncate mb-1 mt-3 pr-6">
         {opportunity.name}
       </div>
       
