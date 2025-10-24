@@ -89,14 +89,18 @@ export function OpportunityPreviewModal({
                 </h2>
                 <div className="flex items-center gap-3">
                   {(() => {
-                    // Get stage name and color from settings
+                    // Get stage name and colors from settings
                     const stageConfig = settings?.opportunities?.stages?.find(
                       (s: any) => s.id === opportunity.stage
                     )
                     const stageName = stageConfig?.name || opportunity.stage?.replace(/_/g, ' ') || 'Unknown'
-                    const stageColor = stageConfig?.color || 'gray'
                     
-                    const colorMap: Record<string, string> = {
+                    // Support new backgroundColor/textColor or legacy color property
+                    const backgroundColor = stageConfig?.backgroundColor || stageConfig?.color || '#6B7280'
+                    const textColor = stageConfig?.textColor || '#FFFFFF'
+                    
+                    // Fallback for legacy named colors
+                    const legacyColorMap: Record<string, string> = {
                       blue: '#3B82F6',
                       yellow: '#EAB308',
                       purple: '#A855F7',
@@ -106,10 +110,18 @@ export function OpportunityPreviewModal({
                       gray: '#6B7280'
                     }
                     
+                    // If backgroundColor is a named color, convert to hex
+                    const finalBgColor = backgroundColor.startsWith('#') 
+                      ? backgroundColor 
+                      : legacyColorMap[backgroundColor] || '#6B7280'
+                    
                     return (
                       <span 
-                        className="inline-flex px-3 py-1 text-xs font-semibold rounded-full text-white"
-                        style={{ backgroundColor: colorMap[stageColor] || '#6B7280' }}
+                        className="inline-flex px-3 py-1 text-xs font-semibold rounded-full"
+                        style={{ 
+                          backgroundColor: finalBgColor,
+                          color: textColor
+                        }}
                       >
                         {stageName}
                       </span>
