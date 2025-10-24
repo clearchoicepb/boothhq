@@ -66,12 +66,27 @@ export function OpportunityPipelineView({
             const stageOpportunities = opportunities.filter(opp => opp.stage === stageId)
             const stageValue = stageOpportunities.reduce((sum, opp) => sum + (opp.amount || 0), 0)
             
+            // Get stage color from settings (80% opacity)
+            const getStageBackgroundColor = () => {
+              const colorMap: Record<string, string> = {
+                blue: 'rgba(59, 130, 246, 0.08)',      // Blue with 8% opacity (lighter than 80%)
+                yellow: 'rgba(234, 179, 8, 0.08)',     // Yellow
+                purple: 'rgba(168, 85, 247, 0.08)',    // Purple
+                orange: 'rgba(249, 115, 22, 0.08)',    // Orange
+                green: 'rgba(34, 197, 94, 0.08)',      // Green
+                red: 'rgba(239, 68, 68, 0.08)',        // Red
+                gray: 'rgba(107, 114, 128, 0.08)'      // Gray
+              }
+              return colorMap[stage.color] || colorMap.gray
+            }
+            
             return (
               <div 
-                key={stageId} 
-                className={`bg-gray-50 rounded-lg p-4 transition-colors duration-200 ${
-                  dragOverStage === stageId ? 'bg-blue-100 border-2 border-blue-300 border-dashed' : ''
+                key={stageId}
+                className={`rounded-lg p-4 transition-colors duration-200 ${
+                  dragOverStage === stageId ? 'border-2 border-blue-300 border-dashed' : ''
                 }`}
+                style={{ backgroundColor: getStageBackgroundColor() }}
                 onDragOver={(e) => onDragOver(e, stageId)}
                 onDragLeave={onDragLeave}
                 onDrop={(e) => onDrop(e, stageId)}
