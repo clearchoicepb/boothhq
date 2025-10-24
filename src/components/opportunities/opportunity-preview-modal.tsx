@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { X, ExternalLink, Calendar, DollarSign, User, Mail, Phone, MessageSquare, StickyNote, TrendingUp, Copy } from 'lucide-react'
+import { X, ExternalLink, Calendar, DollarSign, User, Mail, Phone, MessageSquare, StickyNote, TrendingUp, Copy, CheckSquare } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { TaskIndicator } from './task-indicator'
 import toast from 'react-hot-toast'
 
 interface OpportunityPreviewModalProps {
@@ -27,6 +28,7 @@ export function OpportunityPreviewModal({
   const [opportunity, setOpportunity] = useState<any>(null)
   const [communications, setCommunications] = useState<any[]>([])
   const [notes, setNotes] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [duplicating, setDuplicating] = useState(false)
 
@@ -39,10 +41,11 @@ export function OpportunityPreviewModal({
   const fetchOpportunityDetails = async () => {
     setLoading(true)
     try {
-      const [oppRes, commsRes, notesRes] = await Promise.all([
+      const [oppRes, commsRes, notesRes, tasksRes] = await Promise.all([
         fetch(`/api/opportunities/${opportunityId}`),
         fetch(`/api/communications?opportunity_id=${opportunityId}`),
-        fetch(`/api/notes?entityType=opportunity&entityId=${opportunityId}`)
+        fetch(`/api/notes?entityType=opportunity&entityId=${opportunityId}`),
+        fetch(`/api/tasks?entityType=opportunity&entityId=${opportunityId}`)
       ])
 
       if (oppRes.ok) {
@@ -58,6 +61,20 @@ export function OpportunityPreviewModal({
       if (notesRes.ok) {
         const notesData = await notesRes.json()
         setNotes(notesData.slice(0, 3))
+      }
+
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json()
+        // Filter to incomplete tasks only, sorted by due date
+        const incompleteTasks = tasksData
+          .filter((t: any) => t.status !== 'completed' && t.status !== 'cancelled')
+          .sort((a: any, b: any) => {
+            if (!a.due_date && !b.due_date) return 0
+            if (!a.due_date) return 1
+            if (!b.due_date) return -1
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+          })
+        setTasks(incompleteTasks)
       }
     } catch (error) {
       console.error('Failed to fetch opportunity details:', error)
@@ -273,6 +290,63 @@ export function OpportunityPreviewModal({
                         </p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tasks */}
+              {tasks.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
+                    <CheckSquare className="h-4 w-4" />
+                    Active Tasks ({tasks.length})
+                  </div>
+                  <div className="space-y-2">
+                    {tasks.map((task: any) => {
+                      // Calculate task status
+                      const now = new Date()
+                      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+                      const dueDate = task.due_date ? new Date(task.due_date) : null
+                      
+                      const isOverdue = dueDate ? dueDate < now : false
+                      const isDueSoon = dueDate ? (dueDate >= now && dueDate <= tomorrow) : false
+                      
+                      const assignedUser = task.assigned_to_user
+                      const assignedName = assignedUser 
+                        ? `${assignedUser.first_name} ${assignedUser.last_name}`
+                        : 'Unassigned'
+
+                      return (
+                        <div key={task.id} className="flex items-center gap-2 text-sm border-b border-gray-200 pb-2 last:border-0">
+                          {/* Task Indicator */}
+                          {(isDueSoon || isOverdue) && (
+                            <TaskIndicator
+                              isOverdue={isOverdue}
+                              isDueSoon={isDueSoon}
+                              className="flex-shrink-0"
+                            />
+                          )}
+                          {!(isDueSoon || isOverdue) && (
+                            <div className="w-2 flex-shrink-0" /> 
+                          )}
+                          
+                          {/* Task Title */}
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-gray-900">{task.title}</span>
+                            {task.due_date && (
+                              <span className="text-xs text-gray-500 ml-2">
+                                Due {format(new Date(task.due_date), 'MMM d')}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Assigned To */}
+                          <div className="text-xs text-gray-500 flex-shrink-0">
+                            {assignedName}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
