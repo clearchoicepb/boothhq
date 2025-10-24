@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { X, ExternalLink, Calendar, DollarSign, User, Mail, Phone, MessageSquare, StickyNote, TrendingUp } from 'lucide-react'
+import { X, ExternalLink, Calendar, DollarSign, User, Mail, Phone, MessageSquare, StickyNote, TrendingUp, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import toast from 'react-hot-toast'
 
 interface OpportunityPreviewModalProps {
   isOpen: boolean
@@ -21,10 +23,12 @@ export function OpportunityPreviewModal({
   tenantSubdomain,
   settings
 }: OpportunityPreviewModalProps) {
+  const router = useRouter()
   const [opportunity, setOpportunity] = useState<any>(null)
   const [communications, setCommunications] = useState<any[]>([])
   const [notes, setNotes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [duplicating, setDuplicating] = useState(false)
 
   useEffect(() => {
     if (isOpen && opportunityId) {
@@ -297,8 +301,39 @@ export function OpportunityPreviewModal({
                 </div>
               )}
 
-              {/* Open Opportunity Button */}
-              <div className="flex justify-end pt-4 border-t border-gray-200">
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                {/* Duplicate Button */}
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setDuplicating(true)
+                    try {
+                      const response = await fetch(`/api/opportunities/${opportunityId}/clone`, {
+                        method: 'POST'
+                      })
+
+                      if (!response.ok) throw new Error('Failed to clone')
+
+                      const { opportunity: newOpp } = await response.json()
+
+                      toast.success('Opportunity duplicated successfully')
+                      onClose()
+                      router.push(`/${tenantSubdomain}/opportunities/${newOpp.id}`)
+                    } catch (error) {
+                      toast.error('Failed to duplicate opportunity')
+                      console.error(error)
+                    } finally {
+                      setDuplicating(false)
+                    }
+                  }}
+                  disabled={duplicating}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {duplicating ? 'Duplicating...' : 'Duplicate'}
+                </Button>
+
+                {/* Open Opportunity Button */}
                 <Link href={`/${tenantSubdomain}/opportunities/${opportunityId}`}>
                   <Button className="bg-[#347dc4] hover:bg-[#2c6ba8]">
                     Open Opportunity
