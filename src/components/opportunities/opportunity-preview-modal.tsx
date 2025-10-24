@@ -154,7 +154,7 @@ export function OpportunityPreviewModal({
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-xs text-gray-500 mb-1">Date Created</div>
                   <div className="text-sm font-medium text-gray-900">
-                    {opportunity.created_at && format(new Date(opportunity.created_at + 'T00:00:00'), 'MMM d, yyyy')}
+                    {opportunity.created_at ? format(new Date(opportunity.created_at + 'T00:00:00'), 'MMM d, yyyy') : 'Not set'}
                   </div>
                 </div>
 
@@ -163,7 +163,12 @@ export function OpportunityPreviewModal({
                   <div className="text-sm font-medium text-gray-900">
                     {(() => {
                       const firstEventDate = opportunity.event_dates?.[0]?.event_date || opportunity.event_date
-                      return firstEventDate ? format(new Date(firstEventDate + 'T00:00:00'), 'MMM d, yyyy') : 'Not set'
+                      if (!firstEventDate) return 'Not set'
+                      try {
+                        return format(new Date(firstEventDate + 'T00:00:00'), 'MMM d, yyyy')
+                      } catch {
+                        return 'Invalid date'
+                      }
                     })()}
                   </div>
                 </div>
@@ -196,7 +201,15 @@ export function OpportunityPreviewModal({
                     {opportunity.event_dates.map((ed: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between text-sm">
                         <span className="font-medium text-gray-900">
-                          {format(new Date(ed.event_date + 'T00:00:00'), 'MMM d, yyyy')}
+                          {ed.event_date ? (
+                            (() => {
+                              try {
+                                return format(new Date(ed.event_date + 'T00:00:00'), 'MMM d, yyyy')
+                              } catch {
+                                return ed.event_date
+                              }
+                            })()
+                          ) : 'No date'}
                         </span>
                         {ed.start_time && (
                           <span className="text-gray-500">{ed.start_time}</span>
