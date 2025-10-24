@@ -11,6 +11,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
+import { EventsStatsCards } from '@/components/events/events-stats-cards'
 import toast from 'react-hot-toast'
 
 interface EventDate {
