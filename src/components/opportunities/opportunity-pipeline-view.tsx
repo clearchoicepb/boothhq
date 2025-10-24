@@ -58,7 +58,7 @@ export function OpportunityPipelineView({
   return (
     <div className="bg-white shadow overflow-hidden sm:rounded-md">
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {/* Pipeline Stages - Exclude closed stages */}
           {activeStages.map((stage: any) => {
             const stageId = stage.id || stage
@@ -135,6 +135,7 @@ export function OpportunityPipelineView({
           onClose={() => setPreviewOpportunity(null)}
           opportunityId={previewOpportunity}
           tenantSubdomain={tenantSubdomain}
+          settings={settings}
         />
       )}
     </div>
