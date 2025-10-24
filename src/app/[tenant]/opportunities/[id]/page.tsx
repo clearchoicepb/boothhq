@@ -6,7 +6,7 @@ import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, MoreVertical, ChevronDown, Clock, X } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, MoreVertical, ChevronDown, Clock, X, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { LeadConversionModal } from '@/components/lead-conversion-modal'
@@ -657,6 +657,30 @@ export default function OpportunityDetailPage() {
                   Edit
                 </Button>
               </Link>
+
+              <Button 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`/api/opportunities/${opportunity.id}/clone`, {
+                      method: 'POST'
+                    })
+
+                    if (!response.ok) throw new Error('Failed to clone')
+
+                    const { opportunity: newOpp } = await response.json()
+
+                    toast('Opportunity duplicated successfully', { icon: '✅' })
+                    router.push(`/${tenantSubdomain}/opportunities/${newOpp.id}`)
+                  } catch (error) {
+                    toast('Failed to duplicate opportunity', { icon: '❌' })
+                    console.error(error)
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicate
+              </Button>
 
               {/* Actions Dropdown */}
               <div className="relative" ref={actionsRef}>
