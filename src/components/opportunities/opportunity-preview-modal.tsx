@@ -65,14 +65,21 @@ export function OpportunityPreviewModal({
 
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json()
-        // Filter to incomplete tasks only, sorted by due date
+        // Filter to incomplete tasks only, sorted by due date (earliest/most urgent first)
         const incompleteTasks = tasksData
           .filter((t: any) => t.status !== 'completed' && t.status !== 'cancelled')
           .sort((a: any, b: any) => {
+            // No due dates go to bottom
             if (!a.due_date && !b.due_date) return 0
             if (!a.due_date) return 1
             if (!b.due_date) return -1
-            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+            
+            // Add timezone fix for consistent date comparison
+            const dateA = new Date(a.due_date.includes('T') ? a.due_date : a.due_date + 'T00:00:00')
+            const dateB = new Date(b.due_date.includes('T') ? b.due_date : b.due_date + 'T00:00:00')
+            
+            // Earliest date first (most urgent)
+            return dateA.getTime() - dateB.getTime()
           })
         setTasks(incompleteTasks)
       }
@@ -335,7 +342,16 @@ export function OpportunityPreviewModal({
                             <span className="font-medium text-gray-900">{task.title}</span>
                             {task.due_date && (
                               <span className="text-xs text-gray-500 ml-2">
-                                Due {format(new Date(task.due_date), 'MMM d')}
+                                Due {(() => {
+                                  try {
+                                    const dateStr = task.due_date.includes('T') 
+                                      ? task.due_date 
+                                      : task.due_date + 'T00:00:00'
+                                    return format(new Date(dateStr), 'MMM d')
+                                  } catch {
+                                    return task.due_date
+                                  }
+                                })()}
                               </span>
                             )}
                           </div>
