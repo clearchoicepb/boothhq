@@ -51,7 +51,7 @@ export function OpportunityPipelineCard({
       </div>
       
       {/* LINE 2: Event Date: XX Created Date xx */}
-      <div className="text-xs text-gray-600 mb-1">
+      <div className="text-[11px] text-gray-600 mb-1">
         Event Date: {firstEventDate ? formatDateShort(firstEventDate) : 'Not set'} Created Date {createdDate || 'Not set'}
       </div>
       

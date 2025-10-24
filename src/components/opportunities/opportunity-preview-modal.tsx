@@ -154,7 +154,17 @@ export function OpportunityPreviewModal({
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-xs text-gray-500 mb-1">Date Created</div>
                   <div className="text-sm font-medium text-gray-900">
-                    {opportunity.created_at ? format(new Date(opportunity.created_at + 'T00:00:00'), 'MMM d, yyyy') : 'Not set'}
+                    {(() => {
+                      if (!opportunity.created_at) return 'Not set'
+                      try {
+                        const dateStr = opportunity.created_at.includes('T') 
+                          ? opportunity.created_at 
+                          : opportunity.created_at + 'T00:00:00'
+                        return format(new Date(dateStr), 'MMM d, yyyy')
+                      } catch {
+                        return 'Not set'
+                      }
+                    })()}
                   </div>
                 </div>
 
@@ -165,9 +175,12 @@ export function OpportunityPreviewModal({
                       const firstEventDate = opportunity.event_dates?.[0]?.event_date || opportunity.event_date
                       if (!firstEventDate) return 'Not set'
                       try {
-                        return format(new Date(firstEventDate + 'T00:00:00'), 'MMM d, yyyy')
+                        const dateStr = firstEventDate.includes('T') 
+                          ? firstEventDate 
+                          : firstEventDate + 'T00:00:00'
+                        return format(new Date(dateStr), 'MMM d, yyyy')
                       } catch {
-                        return 'Invalid date'
+                        return 'Not set'
                       }
                     })()}
                   </div>
@@ -204,7 +217,10 @@ export function OpportunityPreviewModal({
                           {ed.event_date ? (
                             (() => {
                               try {
-                                return format(new Date(ed.event_date + 'T00:00:00'), 'MMM d, yyyy')
+                                const dateStr = ed.event_date.includes('T') 
+                                  ? ed.event_date 
+                                  : ed.event_date + 'T00:00:00'
+                                return format(new Date(dateStr), 'MMM d, yyyy')
                               } catch {
                                 return ed.event_date
                               }
