@@ -16,6 +16,7 @@ import {
   GripVertical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ColorPicker } from '@/components/ui/color-picker';
 
 export default function OpportunitiesSettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
@@ -116,7 +117,8 @@ export default function OpportunitiesSettingsPage() {
       id: `stage_${Date.now()}`,
       name: 'New Stage',
       probability: 50,
-      color: 'gray',
+      backgroundColor: '#6B7280',
+      textColor: '#FFFFFF',
       enabled: true
     };
     setSettings(prev => ({
@@ -421,23 +423,29 @@ export default function OpportunitiesSettingsPage() {
                           placeholder="0-100"
                         />
                       </div>
-                      <div>
-                        <label className="text-xs text-gray-500">Color</label>
-                        <select
-                          value={stage.color}
-                          onChange={(e) => updateStage(stage.id, 'color', e.target.value)}
-                          className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
-                          aria-label="Select stage color"
-                          title="Select stage color"
-                        >
-                          <option value="blue">Blue</option>
-                          <option value="yellow">Yellow</option>
-                          <option value="purple">Purple</option>
-                          <option value="orange">Orange</option>
-                          <option value="green">Green</option>
-                          <option value="red">Red</option>
-                          <option value="gray">Gray</option>
-                        </select>
+                      <div className="space-y-2">
+                        <ColorPicker
+                          label="Background"
+                          value={stage.backgroundColor || stage.color || '#6B7280'}
+                          onChange={(color) => updateStage(stage.id, 'backgroundColor', color)}
+                        />
+                        <ColorPicker
+                          label="Text Color"
+                          value={stage.textColor || '#FFFFFF'}
+                          onChange={(color) => updateStage(stage.id, 'textColor', color)}
+                        />
+                        <div className="mt-2">
+                          <label className="text-xs text-gray-500 block mb-1">Preview</label>
+                          <span
+                            className="inline-flex px-3 py-1 text-xs font-semibold rounded-full"
+                            style={{
+                              backgroundColor: stage.backgroundColor || stage.color || '#6B7280',
+                              color: stage.textColor || '#FFFFFF'
+                            }}
+                          >
+                            {stage.name}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <div>

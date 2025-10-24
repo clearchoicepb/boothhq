@@ -66,18 +66,32 @@ export function OpportunityPipelineView({
             const stageOpportunities = opportunities.filter(opp => opp.stage === stageId)
             const stageValue = stageOpportunities.reduce((sum, opp) => sum + (opp.amount || 0), 0)
             
-            // Get stage color from settings (80% opacity)
+            // Get stage background color from settings at 8% opacity
             const getStageBackgroundColor = () => {
-              const colorMap: Record<string, string> = {
-                blue: 'rgba(59, 130, 246, 0.08)',      // Blue with 8% opacity (lighter than 80%)
-                yellow: 'rgba(234, 179, 8, 0.08)',     // Yellow
-                purple: 'rgba(168, 85, 247, 0.08)',    // Purple
-                orange: 'rgba(249, 115, 22, 0.08)',    // Orange
-                green: 'rgba(34, 197, 94, 0.08)',      // Green
-                red: 'rgba(239, 68, 68, 0.08)',        // Red
-                gray: 'rgba(107, 114, 128, 0.08)'      // Gray
+              // Support new backgroundColor or legacy color property
+              const bgColor = stage.backgroundColor || stage.color
+              
+              if (!bgColor) return 'rgba(107, 114, 128, 0.08)'
+              
+              // If it's a hex color, convert to RGBA with 8% opacity
+              if (bgColor.startsWith('#')) {
+                const r = parseInt(bgColor.slice(1, 3), 16)
+                const g = parseInt(bgColor.slice(3, 5), 16)
+                const b = parseInt(bgColor.slice(5, 7), 16)
+                return `rgba(${r}, ${g}, ${b}, 0.08)`
               }
-              return colorMap[stage.color] || colorMap.gray
+              
+              // Fallback for legacy named colors
+              const colorMap: Record<string, string> = {
+                blue: 'rgba(59, 130, 246, 0.08)',
+                yellow: 'rgba(234, 179, 8, 0.08)',
+                purple: 'rgba(168, 85, 247, 0.08)',
+                orange: 'rgba(249, 115, 22, 0.08)',
+                green: 'rgba(34, 197, 94, 0.08)',
+                red: 'rgba(239, 68, 68, 0.08)',
+                gray: 'rgba(107, 114, 128, 0.08)'
+              }
+              return colorMap[bgColor] || 'rgba(107, 114, 128, 0.08)'
             }
             
             return (

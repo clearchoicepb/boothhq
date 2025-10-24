@@ -169,15 +169,21 @@ export const opportunityFieldRenderers = {
   stage: (opportunity: Opportunity, settings: any) => {
     // Get stage config from settings
     const stageConfigs = settings?.opportunities?.stages || []
-    const stageConfig = stageConfigs.find((s: StageConfig) => s.id === opportunity.stage)
+    const stageConfig = stageConfigs.find((s: any) => s.id === opportunity.stage)
     
     const stageName = stageConfig?.name || opportunity.stage?.replace(/_/g, ' ')
-    const stageColor = stageConfig?.color || '#6B7280'
+    
+    // Support new backgroundColor/textColor or legacy color property
+    const backgroundColor = stageConfig?.backgroundColor || stageConfig?.color || '#6B7280'
+    const textColor = stageConfig?.textColor || '#FFFFFF'
     
     return (
       <span 
-        className="inline-flex px-2 py-1 text-xs font-semibold rounded-full text-white"
-        style={{ backgroundColor: stageColor }}
+        className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+        style={{ 
+          backgroundColor: backgroundColor,
+          color: textColor
+        }}
       >
         {stageName}
       </span>
