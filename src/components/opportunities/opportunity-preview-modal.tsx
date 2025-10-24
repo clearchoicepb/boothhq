@@ -310,10 +310,21 @@ export function OpportunityPreviewModal({
                   </div>
                   <div className="space-y-2">
                     {tasks.map((task: any) => {
-                      // Calculate task status
+                      // Calculate task status with timezone fix
                       const now = new Date()
+                      now.setHours(0, 0, 0, 0) // Reset to start of today for accurate comparison
+                      
                       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-                      const dueDate = task.due_date ? new Date(task.due_date) : null
+                      
+                      // Fix timezone issue when creating due date
+                      let dueDate = null
+                      if (task.due_date) {
+                        const dateStr = task.due_date.includes('T') 
+                          ? task.due_date 
+                          : task.due_date + 'T00:00:00'
+                        dueDate = new Date(dateStr)
+                        dueDate.setHours(0, 0, 0, 0) // Reset to start of day for comparison
+                      }
                       
                       const isOverdue = dueDate ? dueDate < now : false
                       const isDueSoon = dueDate ? (dueDate >= now && dueDate <= tomorrow) : false
