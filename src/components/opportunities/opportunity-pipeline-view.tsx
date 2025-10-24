@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { OpportunityPipelineCard } from './opportunity-pipeline-card'
+import { OpportunityPreviewModal } from './opportunity-preview-modal'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 import type { TenantUser } from '@/lib/users'
 
@@ -38,6 +40,8 @@ export function OpportunityPipelineView({
   onDragEnd,
   onOpportunityClick
 }: OpportunityPipelineViewProps) {
+  const [previewOpportunity, setPreviewOpportunity] = useState<string | null>(null)
+  
   const stages = settings.opportunities?.stages || [
     { id: 'prospecting', name: 'Prospecting', enabled: true },
     { id: 'qualification', name: 'Qualification', enabled: true },
@@ -54,7 +58,7 @@ export function OpportunityPipelineView({
   return (
     <div className="bg-white shadow overflow-hidden sm:rounded-md">
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {/* Pipeline Stages - Exclude closed stages */}
           {activeStages.map((stage: any) => {
             const stageId = stage.id || stage
@@ -114,7 +118,7 @@ export function OpportunityPipelineView({
                       isDragged={draggedOpportunityId === opportunity.id}
                       onDragStart={(e) => onDragStart(e, opportunity)}
                       onDragEnd={onDragEnd}
-                      onClick={() => onOpportunityClick(opportunity.id)}
+                      onClick={() => setPreviewOpportunity(opportunity.id)}
                     />
                   ))}
                 </div>
@@ -123,6 +127,16 @@ export function OpportunityPipelineView({
           })}
         </div>
       </div>
+
+      {/* Opportunity Preview Modal */}
+      {previewOpportunity && (
+        <OpportunityPreviewModal
+          isOpen={!!previewOpportunity}
+          onClose={() => setPreviewOpportunity(null)}
+          opportunityId={previewOpportunity}
+          tenantSubdomain={tenantSubdomain}
+        />
+      )}
     </div>
   )
 }

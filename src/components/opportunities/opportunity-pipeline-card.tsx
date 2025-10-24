@@ -1,9 +1,7 @@
-import Link from 'next/link'
-import { Eye, Edit } from 'lucide-react'
-import { getOwnerDisplayName, getOwnerInitials, type TenantUser } from '@/lib/users'
-import { getOpportunityProbability } from '@/lib/opportunity-utils'
+import { Calendar, DollarSign } from 'lucide-react'
+import { formatDateShort } from '@/lib/utils/date-utils'
+import type { TenantUser } from '@/lib/users'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
-import { opportunityFieldRenderers } from '@/lib/opportunity-field-renderers'
 
 interface OpportunityPipelineCardProps {
   opportunity: OpportunityWithRelations
@@ -33,52 +31,62 @@ export function OpportunityPipelineCard({
   onDragEnd,
   onClick
 }: OpportunityPipelineCardProps) {
+  const owner = tenantUsers?.find(u => u.id === opportunity.owner_id)
+  const firstEventDate = (opportunity as any).event_dates?.[0]?.event_date || (opportunity as any).event_date
+  const createdDate = opportunity.created_at ? formatDateShort(opportunity.created_at) : null
+
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`bg-white p-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer relative group ${
-        isDragged ? 'opacity-50 scale-95 rotate-2' : ''
+      className={`bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer ${
+        isDragged ? 'opacity-50 scale-95' : ''
       }`}
     >
-      {/* Owner badge */}
-      <div className="absolute top-2 right-2">
-        {opportunityFieldRenderers.owner(opportunity, tenantUsers, true)}
-      </div>
-
-      {/* Drag handle indicator */}
-      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-      </div>
-
-      {/* Event Date */}
-      <div className="text-xs text-gray-500 mb-2">
-        {opportunityFieldRenderers.eventDateCompact(opportunity)}
-      </div>
-
-      {/* Opportunity Name */}
-      <Link href={`/${tenantSubdomain}/opportunities/${opportunity.id}`}>
-        <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2 hover:text-[#347dc4] cursor-pointer">
+      {/* LINE 1: Opportunity Name + Owner Avatar */}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="font-medium text-sm truncate flex-1">
           {opportunity.name}
+        </span>
+        
+        {owner && (
+          <div 
+            className="w-5 h-5 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
+            title={`${owner.first_name} ${owner.last_name}`}
+          >
+            {owner.first_name?.[0]}{owner.last_name?.[0]}
+          </div>
+        )}
+      </div>
+      
+      {/* LINE 2: Date Created • Event Date • Value */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        {/* Date Created */}
+        {createdDate && (
+          <span className="truncate">{createdDate}</span>
+        )}
+        
+        {createdDate && firstEventDate && <span>•</span>}
+        
+        {/* Event Date */}
+        {firstEventDate && (
+          <div className="flex items-center gap-1 truncate">
+            <Calendar className="h-3 w-3" />
+            <span>{formatDateShort(firstEventDate)}</span>
+          </div>
+        )}
+        
+        {(createdDate || firstEventDate) && <span>•</span>}
+        
+        {/* Value */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <DollarSign className="h-3 w-3" />
+          <span className="font-semibold text-green-600">
+            {opportunity.amount ? `${(opportunity.amount / 1000).toFixed(0)}k` : '0'}
+          </span>
         </div>
-      </Link>
-
-      {/* Client */}
-      <div className="mb-2">
-        {opportunityFieldRenderers.clientCompact(opportunity)}
-      </div>
-
-      {/* Stage Badge */}
-      <div className="mb-2">
-        {opportunityFieldRenderers.stage(opportunity, settings)}
-      </div>
-
-      {/* Value + Probability */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        {opportunityFieldRenderers.totalValueCompact(opportunity)}
-        {opportunityFieldRenderers.probability(opportunity)}
       </div>
     </div>
   )
