@@ -1,5 +1,6 @@
 import { Calendar, DollarSign } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils/date-utils'
+import { TaskIndicator } from './task-indicator'
 import type { TenantUser } from '@/lib/users'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 
@@ -9,6 +10,7 @@ interface OpportunityPipelineCardProps {
   tenantUsers: TenantUser[]
   settings: any
   isDragged: boolean
+  taskStatus?: { isOverdue: boolean; isDueSoon: boolean }
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onClick: () => void
@@ -27,6 +29,7 @@ export function OpportunityPipelineCard({
   tenantUsers,
   settings,
   isDragged,
+  taskStatus,
   onDragStart,
   onDragEnd,
   onClick
@@ -45,9 +48,17 @@ export function OpportunityPipelineCard({
         isDragged ? 'opacity-50 scale-95' : ''
       }`}
     >
-      {/* Top Left Corner: Date Created (extremely small, no label) */}
-      <div className="absolute top-1 left-1 text-[9px] text-gray-400">
-        {createdDate || ''}
+      {/* Top Left Corner: Date Created + Task Indicator */}
+      <div className="absolute top-1 left-1 flex items-center gap-1">
+        <div className="text-[9px] text-gray-400">
+          {createdDate || ''}
+        </div>
+        {taskStatus && (taskStatus.isDueSoon || taskStatus.isOverdue) && (
+          <TaskIndicator
+            isOverdue={taskStatus.isOverdue}
+            isDueSoon={taskStatus.isDueSoon}
+          />
+        )}
       </div>
       
       {/* Top Right Corner: Owner Icon */}

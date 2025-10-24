@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { OpportunityPipelineCard } from './opportunity-pipeline-card'
 import { OpportunityPreviewModal } from './opportunity-preview-modal'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
@@ -41,6 +41,18 @@ export function OpportunityPipelineView({
   onOpportunityClick
 }: OpportunityPipelineViewProps) {
   const [previewOpportunity, setPreviewOpportunity] = useState<string | null>(null)
+  const [taskStatus, setTaskStatus] = useState<Record<string, any>>({})
+  
+  // Fetch task status for all visible opportunities
+  useEffect(() => {
+    if (opportunities.length > 0) {
+      const ids = opportunities.map(o => o.id).join(',')
+      fetch(`/api/opportunities/tasks-status?ids=${ids}`)
+        .then(res => res.json())
+        .then(data => setTaskStatus(data.taskStatus || {}))
+        .catch(err => console.error('Failed to fetch task status:', err))
+    }
+  }, [opportunities])
   
   const stages = settings.opportunities?.stages || [
     { id: 'prospecting', name: 'Prospecting', enabled: true },
@@ -145,6 +157,7 @@ export function OpportunityPipelineView({
                       tenantUsers={tenantUsers}
                       settings={settings}
                       isDragged={draggedOpportunityId === opportunity.id}
+                      taskStatus={taskStatus[opportunity.id]}
                       onDragStart={(e) => onDragStart(e, opportunity)}
                       onDragEnd={onDragEnd}
                       onClick={() => setPreviewOpportunity(opportunity.id)}
