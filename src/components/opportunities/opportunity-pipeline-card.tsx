@@ -45,48 +45,22 @@ export function OpportunityPipelineCard({
         isDragged ? 'opacity-50 scale-95' : ''
       }`}
     >
-      {/* LINE 1: Opportunity Name + Owner Avatar */}
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="font-medium text-sm truncate flex-1">
-          {opportunity.name}
-        </span>
-        
-        {owner && (
-          <div 
-            className="w-5 h-5 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
-            title={`${owner.first_name} ${owner.last_name}`}
-          >
-            {owner.first_name?.[0]}{owner.last_name?.[0]}
-          </div>
-        )}
+      {/* LINE 1: Opportunity Name */}
+      <div className="font-medium text-sm truncate mb-1">
+        {opportunity.name}
       </div>
       
-      {/* LINE 2: Date Created • Event Date • Value */}
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        {/* Date Created */}
-        {createdDate && (
-          <span className="truncate">{createdDate}</span>
-        )}
-        
-        {createdDate && firstEventDate && <span>•</span>}
-        
-        {/* Event Date */}
-        {firstEventDate && (
-          <div className="flex items-center gap-1 truncate">
-            <Calendar className="h-3 w-3" />
-            <span>{formatDateShort(firstEventDate)}</span>
-          </div>
-        )}
-        
-        {(createdDate || firstEventDate) && <span>•</span>}
-        
-        {/* Value */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <DollarSign className="h-3 w-3" />
-          <span className="font-semibold text-green-600">
-            {opportunity.amount ? `${(opportunity.amount / 1000).toFixed(0)}k` : '0'}
-          </span>
-        </div>
+      {/* LINE 2: Event Date: XX Created Date xx */}
+      <div className="text-xs text-gray-600 mb-1">
+        Event Date: {firstEventDate ? formatDateShort(firstEventDate) : 'Not set'} Created Date {createdDate || 'Not set'}
+      </div>
+      
+      {/* LINE 3: Potential Deal Value: $XX,XXX.XX */}
+      <div className="text-xs text-gray-900 font-semibold">
+        Potential Deal Value: ${(opportunity.amount || 0).toLocaleString('en-US', { 
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}
       </div>
     </div>
   )
