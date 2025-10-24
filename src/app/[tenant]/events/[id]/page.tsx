@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package, Palette, Truck } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, MapPin, Clock, Activity, Paperclip, ListTodo, MessageSquare, CheckCircle, X, Plus, Briefcase, Users, ChevronDown, ChevronRight, Package, Palette, Truck, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { NotesSection } from '@/components/notes-section'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -816,6 +816,30 @@ export default function EventDetailPage() {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                 <div className="space-y-3">
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`/api/events/${event.id}/clone`, {
+                          method: 'POST'
+                        })
+
+                        if (!response.ok) throw new Error('Failed to clone')
+
+                        const { event: newEvent } = await response.json()
+
+                        toast('Event duplicated successfully', { icon: '✅' })
+                        router.push(`/${tenantSubdomain}/events/${newEvent.id}`)
+                      } catch (error) {
+                        toast('Failed to duplicate event', { icon: '❌' })
+                        console.error(error)
+                      }
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate Event
+                  </Button>
                   <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&account_id=${event.account_id || ''}&contact_id=${event.contact_id || ''}&returnTo=events/${event.id}`} className="block">
                     <Button className="w-full" variant="outline">
                       <DollarSign className="h-4 w-4 mr-2" />
