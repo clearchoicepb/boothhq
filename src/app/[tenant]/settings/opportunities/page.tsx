@@ -423,21 +423,23 @@ export default function OpportunitiesSettingsPage() {
                           placeholder="0-100"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <ColorPicker
-                          label="Background"
-                          value={stage.backgroundColor || stage.color || '#6B7280'}
-                          onChange={(color) => updateStage(stage.id, 'backgroundColor', color)}
-                        />
-                        <ColorPicker
-                          label="Text Color"
-                          value={stage.textColor || '#FFFFFF'}
-                          onChange={(color) => updateStage(stage.id, 'textColor', color)}
-                        />
-                        <div className="mt-2">
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <ColorPicker
+                            label="Background"
+                            value={stage.backgroundColor || stage.color || '#6B7280'}
+                            onChange={(color) => updateStage(stage.id, 'backgroundColor', color)}
+                          />
+                          <ColorPicker
+                            label="Text Color"
+                            value={stage.textColor || '#FFFFFF'}
+                            onChange={(color) => updateStage(stage.id, 'textColor', color)}
+                          />
+                        </div>
+                        <div>
                           <label className="text-xs text-gray-500 block mb-1">Preview</label>
                           <span
-                            className="inline-flex px-3 py-1 text-xs font-semibold rounded-full"
+                            className="inline-flex px-4 py-2 text-sm font-semibold rounded-full"
                             style={{
                               backgroundColor: stage.backgroundColor || stage.color || '#6B7280',
                               color: stage.textColor || '#FFFFFF'
