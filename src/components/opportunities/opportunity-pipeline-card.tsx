@@ -41,25 +41,33 @@ export function OpportunityPipelineCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer ${
+      className={`bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer relative ${
         isDragged ? 'opacity-50 scale-95' : ''
       }`}
     >
+      {/* Top Left Corner: Date Created (extremely small, no label) */}
+      <div className="absolute top-1 left-1 text-[9px] text-gray-400">
+        {createdDate || ''}
+      </div>
+      
       {/* LINE 1: Opportunity Name */}
-      <div className="font-medium text-sm truncate mb-1">
+      <div className="font-medium text-sm truncate mb-1 mt-3">
         {opportunity.name}
       </div>
       
-      {/* LINE 2: Event Date: XX Created Date xx */}
-      <div className="text-[11px] text-gray-600 mb-1">
-        Event Date: {firstEventDate ? formatDateShort(firstEventDate) : 'Not set'} Created Date {createdDate || 'Not set'}
+      {/* LINE 2: Event Date: xx/xx */}
+      <div className="text-xs text-gray-600 mb-1">
+        Event Date: {firstEventDate ? (() => {
+          const date = new Date(firstEventDate + 'T00:00:00')
+          return `${date.getMonth() + 1}/${date.getDate()}`
+        })() : 'Not set'}
       </div>
       
-      {/* LINE 3: Potential Deal Value: $XX,XXX.XX */}
+      {/* LINE 3: Deal Size: $xx,xxx */}
       <div className="text-xs text-gray-900 font-semibold">
-        Potential Deal Value: ${(opportunity.amount || 0).toLocaleString('en-US', { 
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
+        Deal Size: ${(opportunity.amount || 0).toLocaleString('en-US', { 
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
         })}
       </div>
     </div>
