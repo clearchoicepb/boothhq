@@ -382,7 +382,7 @@ export default function OpportunitiesSettingsPage() {
                   Add Stage
                 </button>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {settings.stages.map((stage, index) => (
                   <div 
                     key={stage.id} 
@@ -390,87 +390,125 @@ export default function OpportunitiesSettingsPage() {
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
-                    className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm cursor-move transition-all"
+                    className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm cursor-move transition-all"
                   >
                     {/* Drag Handle */}
-                    <GripVertical className="h-5 w-5 text-gray-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                    <GripVertical className="h-4 w-4 text-gray-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
                     
-                    {/* Stage Fields */}
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Stage Fields - Compact Grid */}
+                    <div className="flex-1 grid grid-cols-5 gap-2 items-center">
+                      {/* Column 1: Stage Name */}
                       <div>
-                        <label className="text-xs text-gray-500">Stage Name</label>
                         <input
                           type="text"
                           value={stage.name}
                           onChange={(e) => updateStage(stage.id, 'name', e.target.value)}
-                          className="text-sm font-medium text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
-                          aria-label="Stage name"
-                          title="Enter stage name"
-                          placeholder="Enter stage name"
+                          className="text-xs font-medium text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 w-full"
+                          placeholder="Stage name"
                         />
                       </div>
+                      
+                      {/* Column 2: Probability */}
                       <div>
-                        <label className="text-xs text-gray-500">Probability (%)</label>
                         <input
                           type="number"
                           min="0"
                           max="100"
                           value={stage.probability}
                           onChange={(e) => updateStage(stage.id, 'probability', parseInt(e.target.value) || 0)}
-                          className="text-sm text-gray-900 bg-transparent border border-gray-300 rounded px-2 py-1 w-full"
-                          aria-label="Probability percentage"
-                          title="Enter probability percentage"
+                          className="text-xs text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 w-full"
                           placeholder="0-100"
                         />
                       </div>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <ColorPicker
-                            label="Background"
-                            value={stage.backgroundColor || stage.color || '#6B7280'}
-                            onChange={(color) => updateStage(stage.id, 'backgroundColor', color)}
-                          />
-                          <ColorPicker
-                            label="Text Color"
-                            value={stage.textColor || '#FFFFFF'}
-                            onChange={(color) => updateStage(stage.id, 'textColor', color)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-500 block mb-1">Preview</label>
-                          <span
-                            className="inline-flex px-4 py-2 text-sm font-semibold rounded-full"
-                            style={{
-                              backgroundColor: stage.backgroundColor || stage.color || '#6B7280',
-                              color: stage.textColor || '#FFFFFF'
-                            }}
-                          >
-                            {stage.name}
-                          </span>
-                        </div>
+                      
+                      {/* Column 3: Background Color */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.createElement('input')
+                            input.type = 'color'
+                            input.value = stage.backgroundColor || stage.color || '#6B7280'
+                            input.onchange = (e: any) => updateStage(stage.id, 'backgroundColor', e.target.value)
+                            input.click()
+                          }}
+                          className="h-7 w-7 rounded border border-gray-300 cursor-pointer hover:border-gray-400 transition-colors flex-shrink-0"
+                          style={{ backgroundColor: stage.backgroundColor || stage.color || '#6B7280' }}
+                          title="Background color"
+                        />
+                        <input
+                          type="text"
+                          value={stage.backgroundColor || stage.color || '#6B7280'}
+                          onChange={(e) => {
+                            if (/^#[0-9A-F]{0,6}$/i.test(e.target.value) || e.target.value === '') {
+                              updateStage(stage.id, 'backgroundColor', e.target.value.toUpperCase())
+                            }
+                          }}
+                          className="flex-1 px-1 py-1 font-mono text-[10px] border border-gray-300 rounded"
+                          maxLength={7}
+                        />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="text-xs text-gray-500">Enabled</label>
+                      
+                      {/* Column 4: Text Color */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.createElement('input')
+                            input.type = 'color'
+                            input.value = stage.textColor || '#FFFFFF'
+                            input.onchange = (e: any) => updateStage(stage.id, 'textColor', e.target.value)
+                            input.click()
+                          }}
+                          className="h-7 w-7 rounded border border-gray-300 cursor-pointer hover:border-gray-400 transition-colors flex-shrink-0"
+                          style={{ backgroundColor: stage.textColor || '#FFFFFF' }}
+                          title="Text color"
+                        />
+                        <input
+                          type="text"
+                          value={stage.textColor || '#FFFFFF'}
+                          onChange={(e) => {
+                            if (/^#[0-9A-F]{0,6}$/i.test(e.target.value) || e.target.value === '') {
+                              updateStage(stage.id, 'textColor', e.target.value.toUpperCase())
+                            }
+                          }}
+                          className="flex-1 px-1 py-1 font-mono text-[10px] border border-gray-300 rounded"
+                          maxLength={7}
+                        />
+                      </div>
+                      
+                      {/* Column 5: Preview + Actions */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-full"
+                          style={{
+                            backgroundColor: stage.backgroundColor || stage.color || '#6B7280',
+                            color: stage.textColor || '#FFFFFF'
+                          }}
+                        >
+                          {stage.name}
+                        </span>
+                        
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={() => updateStage(stage.id, 'enabled', !stage.enabled)}
-                            className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors duration-150 ml-2"
+                            className="text-[#347dc4] hover:text-[#2c6ba8] transition-colors"
+                            title={stage.enabled ? 'Disable' : 'Enable'}
                           >
                             {stage.enabled ? (
-                              <ToggleRight className="h-6 w-6" />
+                              <ToggleRight className="h-5 w-5" />
                             ) : (
-                              <ToggleLeft className="h-6 w-6" />
+                              <ToggleLeft className="h-5 w-5" />
                             )}
                           </button>
+                          <button 
+                            onClick={() => removeStage(stage.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                            title="Remove stage"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
-                        <button 
-                          onClick={() => removeStage(stage.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors duration-150"
-                          aria-label="Remove stage"
-                          title="Remove stage"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
                     </div>
                   </div>
