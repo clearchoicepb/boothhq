@@ -5,10 +5,13 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
+import { TaskIndicator } from '@/components/opportunities/task-indicator'
+import { exportToCSV } from '@/lib/csv-export'
+import toast from 'react-hot-toast'
 
 interface EventDate {
   id: string
@@ -81,6 +84,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [localLoading, setLocalLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [taskStatus, setTaskStatus] = useState<Record<string, any>>({})
 
   // Date range filter
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past'>('upcoming')
@@ -137,6 +141,17 @@ export default function EventsPage() {
     }
   }, [session, tenant, fetchEvents, fetchCoreTaskTemplates])
 
+  // Fetch task status for task due notifications
+  useEffect(() => {
+    if (events.length > 0) {
+      const ids = events.map(e => e.id).join(',')
+      fetch(`/api/events/tasks-status?ids=${ids}`)
+        .then(res => res.json())
+        .then(data => setTaskStatus(data.taskStatus || {}))
+        .catch(err => console.error('Failed to fetch task status:', err))
+    }
+  }, [events])
+
 
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
@@ -151,6 +166,24 @@ export default function EventsPage() {
         console.error('Error deleting event:', error)
       }
     }
+  }
+
+  const handleExportCSV = () => {
+    const columns = [
+      { key: 'title', label: 'Event Title' },
+      { key: 'event_type', label: 'Event Type' },
+      { key: 'status', label: 'Status' },
+      { key: 'start_date', label: 'Start Date' },
+      { key: 'end_date', label: 'End Date' },
+      { key: 'location', label: 'Location' },
+      { key: 'contact_name', label: 'Contact' },
+      { key: 'account_name', label: 'Account' },
+      { key: 'created_at', label: 'Created Date' }
+    ]
+    
+    const filename = `events-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(sortedEvents, filename, columns)
+    toast.success(`Exported ${sortedEvents.length} events`)
   }
 
   if (status === 'loading' || loading || localLoading) {
@@ -341,6 +374,14 @@ export default function EventsPage() {
                 <p className="text-sm text-gray-600">Manage your photo booth events</p>
               </div>
               <div className="flex items-center space-x-4">
+                <Button 
+                  variant="outline" 
+                  onClick={handleExportCSV}
+                  className="border-gray-300"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
                 <Link href={`/${tenantSubdomain}/events/calendar`}>
                   <Button variant="outline" className="border-[#347dc4] text-[#347dc4] hover:bg-[#347dc4] hover:text-white">
                     <CalendarIcon className="h-4 w-4 mr-2" />
@@ -665,6 +706,7 @@ export default function EventsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
@@ -677,7 +719,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedEvents.length === 0 && events.length > 0 && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
+                      <td colSpan={8} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <p className="text-lg font-medium mb-2">No events match your filters</p>
                           <p className="text-sm">Try adjusting your date range or search criteria</p>
@@ -698,6 +740,14 @@ export default function EventsPage() {
 
                     return (
                       <tr key={event.id} className="hover:bg-gray-50">
+                        <td className="px-2 py-4 text-center w-8">
+                          {taskStatus[event.id] && (taskStatus[event.id].isDueSoon || taskStatus[event.id].isOverdue) && (
+                            <TaskIndicator
+                              isOverdue={taskStatus[event.id].isOverdue}
+                              isDueSoon={taskStatus[event.id].isDueSoon}
+                            />
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.title || 'Untitled Event'}>
