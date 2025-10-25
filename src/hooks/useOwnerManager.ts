@@ -1,9 +1,9 @@
 /**
  * Custom hook for managing opportunity owner changes using React Query mutations
- * Provides automatic loading states and error handling
+ * Provides automatic loading states, error handling, and optimistic updates
  */
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 interface UseOwnerManagerProps {
@@ -15,6 +15,8 @@ export function useOwnerManager({
   opportunityId,
   onUpdateSuccess
 }: UseOwnerManagerProps) {
+  const queryClient = useQueryClient()
+
   const mutation = useMutation({
     mutationFn: async (newOwnerId: string) => {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
@@ -31,16 +33,41 @@ export function useOwnerManager({
 
       return response.json()
     },
-    onMutate: () => {
-      return toast.loading('Updating owner...')
+    onMutate: async (newOwnerId) => {
+      const toastId = toast.loading('Updating owner...')
+
+      // Cancel outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['opportunity', opportunityId] })
+
+      // Snapshot the previous value
+      const previousOpportunity = queryClient.getQueryData(['opportunity', opportunityId])
+
+      // Optimistically update the cache
+      queryClient.setQueryData(['opportunity', opportunityId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          owner_id: newOwnerId || null
+        }
+      })
+
+      return { previousOpportunity, toastId }
     },
-    onSuccess: async (data, variables, toastId) => {
+    onSuccess: async (data, variables, context) => {
       await onUpdateSuccess()
-      toast.success('Owner updated successfully', { id: toastId as string })
+      toast.success('Owner updated successfully', { id: context.toastId as string })
     },
-    onError: (error, variables, toastId) => {
+    onError: (error, variables, context) => {
+      // Rollback to previous value on error
+      if (context?.previousOpportunity) {
+        queryClient.setQueryData(['opportunity', opportunityId], context.previousOpportunity)
+      }
       console.error('Error updating owner:', error)
-      toast.error('Failed to update owner', { id: toastId as string })
+      toast.error('Failed to update owner', { id: context?.toastId as string })
+    },
+    onSettled: () => {
+      // Refetch to ensure we're in sync with server
+      queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
     }
   })
 

@@ -1,10 +1,10 @@
 /**
  * Custom hook for managing client/account/contact inline editing using React Query mutations
- * Provides automatic loading states and error handling
+ * Provides automatic loading states, error handling, and optimistic updates
  */
 
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 interface UseClientEditorProps {
@@ -20,6 +20,7 @@ export function useClientEditor({
   initialContactId,
   onSaveSuccess
 }: UseClientEditorProps) {
+  const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [editAccountId, setEditAccountId] = useState('')
   const [editContactId, setEditContactId] = useState('')
@@ -41,14 +42,41 @@ export function useClientEditor({
 
       return response.json()
     },
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['opportunity', opportunityId] })
+
+      // Snapshot previous value
+      const previousOpportunity = queryClient.getQueryData(['opportunity', opportunityId])
+
+      // Optimistically update the cache
+      queryClient.setQueryData(['opportunity', opportunityId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          account_id: editAccountId || null,
+          contact_id: editContactId || null
+        }
+      })
+
+      return { previousOpportunity }
+    },
     onSuccess: async () => {
       setIsEditing(false)
       await onSaveSuccess()
       toast.success('Client information updated')
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousOpportunity) {
+        queryClient.setQueryData(['opportunity', opportunityId], context.previousOpportunity)
+      }
       console.error('Error updating client:', error)
       toast.error('Failed to update client information')
+    },
+    onSettled: () => {
+      // Refetch to ensure sync
+      queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
     }
   })
 

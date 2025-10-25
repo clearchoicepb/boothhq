@@ -1,9 +1,9 @@
 /**
  * Custom hook for managing opportunity stage changes using React Query mutations
- * Handles modal delegation for closed stages and provides automatic loading states
+ * Handles modal delegation for closed stages and provides optimistic updates
  */
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 interface UseStageManagerProps {
@@ -19,6 +19,8 @@ export function useStageManager({
   onUpdateSuccess,
   onShowCloseModal
 }: UseStageManagerProps) {
+  const queryClient = useQueryClient()
+
   const mutation = useMutation({
     mutationFn: async (newStage: string) => {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
@@ -33,13 +35,39 @@ export function useStageManager({
 
       return response.json()
     },
+    onMutate: async (newStage) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['opportunity', opportunityId] })
+
+      // Snapshot previous value
+      const previousOpportunity = queryClient.getQueryData(['opportunity', opportunityId])
+
+      // Optimistically update the cache
+      queryClient.setQueryData(['opportunity', opportunityId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          stage: newStage
+        }
+      })
+
+      return { previousOpportunity }
+    },
     onSuccess: async () => {
       await onUpdateSuccess()
       toast.success('Stage updated successfully')
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousOpportunity) {
+        queryClient.setQueryData(['opportunity', opportunityId], context.previousOpportunity)
+      }
       console.error('Error updating stage:', error)
       toast.error('Failed to update stage')
+    },
+    onSettled: () => {
+      // Refetch to ensure sync
+      queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
     }
   })
 
