@@ -72,7 +72,8 @@ export function useEventLogistics(eventId: string, tenant: string) {
       const response = await fetch(`/api/events/${eventId}/logistics?tenant=${tenant}`)
       if (!response.ok) throw new Error('Failed to fetch logistics')
       const data = await response.json()
-      setLogistics(data)
+      // API returns { logistics: {...} }, so unwrap it
+      setLogistics(data.logistics || data)
     } catch (error) {
       console.error('Error fetching logistics:', error)
     } finally {
