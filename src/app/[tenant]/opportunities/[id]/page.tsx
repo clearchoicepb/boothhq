@@ -903,20 +903,12 @@ export default function OpportunityDetailPage() {
               contacts={contacts}
               locations={locations}
               settings={settings}
-              updatingStage={updatingStage}
-              updatingOwner={updatingOwner}
-              isEditingAccountContact={isEditingAccountContact}
-              editAccountId={editAccountId}
-              editContactId={editContactId}
-              activeEventTab={activeEventTab}
-              setActiveEventTab={setActiveEventTab}
-              handleStageChange={handleStageChange}
-              handleOwnerChange={handleOwnerChange}
-              handleStartEditAccountContact={handleStartEditAccountContact}
-              handleSaveAccountContact={handleSaveAccountContact}
-              handleCancelEditAccountContact={handleCancelEditAccountContact}
-              setEditAccountId={setEditAccountId}
-              setEditContactId={setEditContactId}
+              onUpdate={fetchOpportunity}
+              onShowCloseModal={(stage, previousStage) => {
+                setPreviousStage(previousStage)
+                setPendingCloseStage(stage)
+                setShowCloseModal(true)
+              }}
               getOwnerDisplayName={getOwnerDisplayName}
             />
           </TabsContent>
