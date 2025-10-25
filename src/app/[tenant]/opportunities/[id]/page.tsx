@@ -897,8 +897,27 @@ export default function OpportunityDetailPage() {
             <OpportunityOverviewTab
               opportunity={opportunity}
               tenantSubdomain={tenantSubdomain}
-              ownerName={getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
+              lead={lead}
+              tenantUsers={tenantUsers}
+              accounts={accounts}
+              contacts={contacts}
               locations={locations}
+              settings={settings}
+              updatingStage={updatingStage}
+              updatingOwner={updatingOwner}
+              isEditingAccountContact={isEditingAccountContact}
+              editAccountId={editAccountId}
+              editContactId={editContactId}
+              activeEventTab={activeEventTab}
+              setActiveEventTab={setActiveEventTab}
+              handleStageChange={handleStageChange}
+              handleOwnerChange={handleOwnerChange}
+              handleStartEditAccountContact={handleStartEditAccountContact}
+              handleSaveAccountContact={handleSaveAccountContact}
+              handleCancelEditAccountContact={handleCancelEditAccountContact}
+              setEditAccountId={setEditAccountId}
+              setEditContactId={setEditContactId}
+              getOwnerDisplayName={getOwnerDisplayName}
             />
           </TabsContent>
 

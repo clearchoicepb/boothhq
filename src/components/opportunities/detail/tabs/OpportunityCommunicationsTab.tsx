@@ -26,8 +26,8 @@ interface OpportunityCommunicationsTabProps {
   leadId?: string
   contactPhone?: string
   onToggleSMSThread: () => void
-  onEmailClick: () => void
-  onLogCommunicationClick: () => void
+  onCreateEmail: () => void
+  onLogCommunication: () => void
   onCommunicationClick: (communication: Communication) => void
 }
 
@@ -40,8 +40,8 @@ export function OpportunityCommunicationsTab({
   leadId,
   contactPhone,
   onToggleSMSThread,
-  onEmailClick,
-  onLogCommunicationClick,
+  onCreateEmail,
+  onLogCommunication,
   onCommunicationClick
 }: OpportunityCommunicationsTabProps) {
   const [communicationsPage, setCommunicationsPage] = useState(1)
@@ -54,7 +54,7 @@ export function OpportunityCommunicationsTab({
         <Button
           variant="outline"
           size="sm"
-          onClick={onEmailClick}
+          onClick={onCreateEmail}
         >
           <FileText className="h-4 w-4 mr-2" />
           Create Email
@@ -70,7 +70,7 @@ export function OpportunityCommunicationsTab({
         <Button
           variant="outline"
           size="sm"
-          onClick={onLogCommunicationClick}
+          onClick={onLogCommunication}
         >
           <FileText className="h-4 w-4 mr-2" />
           Log Communication
