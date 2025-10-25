@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Opportunity } from '@/lib/supabase-client'
+import { useOpportunitiesList, useDeleteOpportunity } from './useOpportunitiesList'
 
 export interface OpportunityWithRelations extends Opportunity {
   account_name: string | null
@@ -20,20 +22,21 @@ interface UseOpportunitiesDataProps {
 
 interface UseOpportunitiesDataReturn {
   opportunities: OpportunityWithRelations[]
-  setOpportunities: React.Dispatch<React.SetStateAction<OpportunityWithRelations[]>>
+  setOpportunities: (opportunities: OpportunityWithRelations[]) => void
   loading: boolean
   totalItems: number
   totalPages: number
   currentPage: number
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>
-  fetchOpportunities: () => Promise<void>
+  fetchOpportunities: () => void
   handlePageChange: (page: number) => void
   handleDeleteOpportunity: (opportunityId: string) => Promise<void>
 }
 
 /**
  * Custom hook for managing opportunities data fetching and pagination
- * 
+ * Now powered by React Query for better caching and performance
+ *
  * @param props - Configuration for data fetching
  * @returns Opportunities data, loading state, pagination, and data management functions
  */
@@ -46,103 +49,26 @@ export function useOpportunitiesData({
   currentPage: initialPage,
   itemsPerPage = 25,
 }: UseOpportunitiesDataProps): UseOpportunitiesDataReturn {
-  const [opportunities, setOpportunities] = useState<OpportunityWithRelations[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [currentPage, setCurrentPage] = useState(initialPage)
-  const [totalItems, setTotalItems] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
 
-  const fetchOpportunities = useCallback(async () => {
-    try {
-      setLoading(true)
+  // Use React Query hook for data fetching
+  const { data, isLoading, refetch } = useOpportunitiesList({
+    stage: filterStage,
+    ownerId: filterOwner,
+    currentView,
+    page: currentPage,
+    limit: itemsPerPage,
+    enabled: Boolean(session && tenant)
+  })
 
-      // Build query params based on current view
-      const params = new URLSearchParams({
-        stage: filterStage,
-        page: currentPage.toString(),
-        limit: itemsPerPage.toString()
-      })
+  // Use mutation hook for deletion
+  const deleteMutation = useDeleteOpportunity()
 
-      // Add owner filter if selected
-      if (filterOwner && filterOwner !== 'all') {
-        params.append('owner_id', filterOwner)
-      }
-
-      // For pipeline view, only fetch active opportunities
-      if (currentView === 'pipeline') {
-        params.append('pipelineView', 'true')
-      }
-
-      // Include converted opportunities (so closed_won opportunities that were converted to events still show)
-      params.append('include_converted', 'true')
-
-      const response = await fetch(`/api/entities/opportunities?${params.toString()}`)
-      if (response.ok) {
-        const result = await response.json()
-
-        // Handle paginated response
-        if (result.data && result.pagination) {
-          setOpportunities(result.data)
-          setTotalItems(result.pagination.total)
-          setTotalPages(result.pagination.totalPages)
-        } else {
-          // Fallback for non-paginated response
-          setOpportunities(result)
-        }
-      }
-      
-      // Update last fetch timestamp
-      setLastFetchTime(Date.now())
-    } catch (error) {
-      console.error('Error fetching opportunities:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [filterStage, filterOwner, currentView, currentPage, itemsPerPage])
-
-  // Fetch opportunities when dependencies change
-  useEffect(() => {
-    if (session && tenant) {
-      fetchOpportunities()
-    }
-  }, [session, tenant, fetchOpportunities])
-
-  // Auto-refresh on window focus/visibility change (for when user returns from settings)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Only refetch if:
-      // 1. Page is visible
-      // 2. User is authenticated
-      // 3. More than 3 seconds since last fetch (prevent excessive calls)
-      if (
-        !document.hidden &&
-        session &&
-        tenant &&
-        Date.now() - lastFetchTime > 3000
-      ) {
-        fetchOpportunities()
-      }
-    }
-
-    const handleWindowFocus = () => {
-      // Only refetch if more than 3 seconds since last fetch
-      if (session && tenant && Date.now() - lastFetchTime > 3000) {
-        fetchOpportunities()
-      }
-    }
-
-    // Listen for visibility changes (tab switching)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    // Listen for window focus (returning from another window/app)
-    window.addEventListener('focus', handleWindowFocus)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleWindowFocus)
-    }
-  }, [session, tenant, lastFetchTime, fetchOpportunities])
+  // Extract data from response
+  const opportunities = data?.data ?? []
+  const totalItems = data?.pagination?.total ?? 0
+  const totalPages = data?.pagination?.totalPages ?? 0
 
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
@@ -155,27 +81,35 @@ export function useOpportunitiesData({
   const handleDeleteOpportunity = useCallback(async (opportunityId: string) => {
     if (confirm('Are you sure you want to delete this opportunity?')) {
       try {
-        const response = await fetch(`/api/opportunities/${opportunityId}`, {
-          method: 'DELETE'
-        })
-        if (response.ok) {
-          setOpportunities(prev => prev.filter(opportunity => opportunity.id !== opportunityId))
-          alert('Opportunity deleted successfully')
-        } else {
-          const error = await response.json()
-          alert(`Failed to delete opportunity: ${error.error || 'Unknown error'}`)
-        }
-      } catch (error) {
+        await deleteMutation.mutateAsync(opportunityId)
+        alert('Opportunity deleted successfully')
+      } catch (error: any) {
         console.error('Error deleting opportunity:', error)
-        alert('Failed to delete opportunity. Please try again.')
+        alert(`Failed to delete opportunity: ${error.message || 'Unknown error'}`)
       }
     }
-  }, [])
+  }, [deleteMutation])
+
+  // Manual setter for optimistic updates (used by drag-and-drop)
+  const setOpportunities = useCallback((opportunities: OpportunityWithRelations[]) => {
+    queryClient.setQueryData(
+      ['opportunities-list', { stage: filterStage, ownerId: filterOwner, currentView, page: currentPage, limit: itemsPerPage }],
+      (old: any) => {
+        if (!old) return { data: opportunities, pagination: { page: currentPage, limit: itemsPerPage, total: opportunities.length, totalPages: 1 } }
+        return { ...old, data: opportunities }
+      }
+    )
+  }, [queryClient, filterStage, filterOwner, currentView, currentPage, itemsPerPage])
+
+  // Refetch function for manual refreshes
+  const fetchOpportunities = useCallback(() => {
+    refetch()
+  }, [refetch])
 
   return {
     opportunities,
     setOpportunities,
-    loading,
+    loading: isLoading,
     totalItems,
     totalPages,
     currentPage,
