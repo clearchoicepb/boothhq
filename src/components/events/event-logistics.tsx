@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { LocationSelect } from '@/components/location-select'
 import { Button } from '@/components/ui/button'
+import { useEventLogistics } from '@/hooks/useEventLogistics'
 
 interface EventLogisticsProps {
   eventId: string
@@ -84,10 +85,11 @@ interface LogisticsData {
 }
 
 export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
-  const [logistics, setLogistics] = useState<LogisticsData | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Use custom hook for data fetching (SOLID: Dependency Inversion)
+  const { logistics, loading, refetch: fetchLogistics } = useEventLogistics(eventId, tenant)
 
   // Editing states for each field
+  // TODO: Refactor to use useFieldEditor hook for each field to eliminate duplication
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [isEditingLoadInTime, setIsEditingLoadInTime] = useState(false)
   const [isEditingVenueContact, setIsEditingVenueContact] = useState(false)
@@ -108,22 +110,6 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
   const [savingEventPlanner, setSavingEventPlanner] = useState(false)
   const [savingLocation, setSavingLocation] = useState(false)
 
-  useEffect(() => {
-    fetchLogistics()
-  }, [eventId])
-
-  const fetchLogistics = async () => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/logistics`)
-      const data = await res.json()
-      setLogistics(data.logistics || {})
-    } catch (error) {
-      console.error('Error fetching logistics:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   // Load-in notes handlers
   const handleEditNotes = () => {
     setEditedNotes(logistics?.load_in_notes || '')
@@ -140,7 +126,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
       })
 
       if (res.ok) {
-        setLogistics(prev => prev ? { ...prev, load_in_notes: editedNotes } : null)
+        await fetchLogistics() // Refetch data from hook
         setIsEditingNotes(false)
       }
     } catch (error) {
@@ -171,7 +157,6 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
       })
 
       if (res.ok) {
-        setLogistics(prev => prev ? { ...prev, load_in_time: editedLoadInTime } : null)
         setIsEditingLoadInTime(false)
         await fetchLogistics() // Refresh to get all data
       }
@@ -211,12 +196,6 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
       })
 
       if (res.ok) {
-        setLogistics(prev => prev ? {
-          ...prev,
-          venue_contact_name: editedVenueContact.name,
-          venue_contact_phone: editedVenueContact.phone,
-          venue_contact_email: editedVenueContact.email
-        } : null)
         setIsEditingVenueContact(false)
         await fetchLogistics()
       }
@@ -255,12 +234,6 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
       })
 
       if (res.ok) {
-        setLogistics(prev => prev ? {
-          ...prev,
-          event_planner_name: editedEventPlanner.name,
-          event_planner_phone: editedEventPlanner.phone,
-          event_planner_email: editedEventPlanner.email
-        } : null)
         setIsEditingEventPlanner(false)
         await fetchLogistics()
       }
