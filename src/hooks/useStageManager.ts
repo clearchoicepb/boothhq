@@ -32,7 +32,7 @@ export function useStageManager({
 
     try {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stage: newStage })
       })

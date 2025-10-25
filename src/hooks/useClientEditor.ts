@@ -40,7 +40,7 @@ export function useClientEditor({
     setIsSaving(true)
     try {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           account_id: editAccountId || null,
