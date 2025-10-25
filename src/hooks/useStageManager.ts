@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 interface UseStageManagerProps {
   opportunityId: string
   currentStage: string
-  onUpdateSuccess: () => void
+  onUpdateSuccess: () => void | Promise<void>
   onShowCloseModal?: (stage: 'closed_won' | 'closed_lost', previousStage: string) => void
 }
 
@@ -41,8 +41,8 @@ export function useStageManager({
         throw new Error('Failed to update stage')
       }
 
+      await onUpdateSuccess()
       toast.success('Stage updated successfully')
-      onUpdateSuccess()
     } catch (error) {
       console.error('Error updating stage:', error)
       toast.error('Failed to update stage')

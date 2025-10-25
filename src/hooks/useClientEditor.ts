@@ -10,7 +10,7 @@ interface UseClientEditorProps {
   opportunityId: string
   initialAccountId?: string | null
   initialContactId?: string | null
-  onSaveSuccess: () => void
+  onSaveSuccess: () => void | Promise<void>
 }
 
 export function useClientEditor({
@@ -52,9 +52,9 @@ export function useClientEditor({
         throw new Error('Failed to update opportunity')
       }
 
-      toast.success('Client information updated')
       setIsEditing(false)
-      onSaveSuccess()
+      await onSaveSuccess()
+      toast.success('Client information updated')
     } catch (error) {
       console.error('Error updating client:', error)
       toast.error('Failed to update client information')

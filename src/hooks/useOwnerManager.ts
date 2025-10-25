@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 
 interface UseOwnerManagerProps {
   opportunityId: string
-  onUpdateSuccess: () => void
+  onUpdateSuccess: () => void | Promise<void>
 }
 
 export function useOwnerManager({
@@ -34,8 +34,8 @@ export function useOwnerManager({
         throw new Error('Failed to update owner')
       }
 
+      await onUpdateSuccess()
       toast.success('Owner updated successfully', { id: toastId })
-      onUpdateSuccess()
     } catch (error) {
       console.error('Error updating owner:', error)
       toast.error('Failed to update owner', { id: toastId })

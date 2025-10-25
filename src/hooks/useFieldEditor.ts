@@ -3,7 +3,7 @@
  * Reusable for any editable field with save/cancel
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 
 interface UseFieldEditorProps<T> {
@@ -15,6 +15,13 @@ export function useFieldEditor<T>({ initialValue, onSave }: UseFieldEditorProps<
   const [isEditing, setIsEditing] = useState(false)
   const [editedValue, setEditedValue] = useState<T>(initialValue)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Sync editedValue with initialValue when data updates (but only when NOT editing)
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedValue(initialValue)
+    }
+  }, [initialValue, isEditing])
 
   const startEdit = () => {
     setEditedValue(initialValue)
