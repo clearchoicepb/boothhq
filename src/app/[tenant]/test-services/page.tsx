@@ -60,7 +60,7 @@ export default function TestServicesPage() {
             Get Stats
           </button>
           <button
-            onClick={() => runTest('Count by Stage', () => opportunitiesService.getCountByStage())}
+            onClick={() => runTest('Count by Stage (prospecting)', () => opportunitiesService.getCountByStage('prospecting'))}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             disabled={loading}
           >

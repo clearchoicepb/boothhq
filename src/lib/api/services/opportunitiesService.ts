@@ -180,8 +180,8 @@ class OpportunitiesService {
   /**
    * Get count by stage (for validation)
    */
-  async getCountByStage(): Promise<Record<string, number>> {
-    return apiClient.get<Record<string, number>>('/api/opportunities/count-by-stage')
+  async getCountByStage(stage: string): Promise<{ count: number; stage: string }> {
+    return apiClient.get<{ count: number; stage: string }>(`/api/opportunities/count-by-stage?stage=${stage}`)
   }
 }
 
