@@ -21,6 +21,7 @@ import { LocationSelect } from '@/components/location-select'
 import { Button } from '@/components/ui/button'
 import { useEventLogistics } from '@/hooks/useEventLogistics'
 import { useFieldEditor } from '@/hooks/useFieldEditor'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface EventLogisticsProps {
   eventId: string
@@ -86,8 +87,16 @@ interface LogisticsData {
 }
 
 export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
+  // React Query client for cache invalidation
+  const queryClient = useQueryClient()
+
+  // Helper to invalidate logistics data (triggers refetch)
+  const invalidateLogistics = () => {
+    queryClient.invalidateQueries({ queryKey: ['event-logistics', eventId, tenant] })
+  }
+
   // Use custom hook for data fetching (SOLID: Dependency Inversion)
-  const { logistics, loading, refetch: fetchLogistics } = useEventLogistics(eventId, tenant)
+  const { logistics, loading } = useEventLogistics(eventId, tenant)
 
   // Use field editor hooks for inline editing (SOLID: Single Responsibility)
   const notesEditor = useFieldEditor({
@@ -98,7 +107,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ load_in_notes: value })
       })
-      if (res.ok) await fetchLogistics()
+      if (res.ok) invalidateLogistics()
     }
   })
 
@@ -110,7 +119,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ load_in_time: value })
       })
-      if (res.ok) await fetchLogistics()
+      if (res.ok) invalidateLogistics()
     }
   })
 
@@ -130,7 +139,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
           venue_contact_email: value.email
         })
       })
-      if (res.ok) await fetchLogistics()
+      if (res.ok) invalidateLogistics()
     }
   })
 
@@ -150,7 +159,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
           event_planner_email: value.email
         })
       })
-      if (res.ok) await fetchLogistics()
+      if (res.ok) invalidateLogistics()
     }
   })
 
@@ -201,7 +210,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
         }
 
         // Refresh logistics data
-        await fetchLogistics()
+        invalidateLogistics()
         setIsEditingLocation(false)
       }
     } catch (error) {

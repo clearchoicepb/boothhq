@@ -1,9 +1,9 @@
 /**
- * Custom hook for fetching event logistics data
- * Encapsulates data fetching and loading state
+ * Custom hook for fetching event logistics data using React Query
+ * Provides automatic caching, background refetching, and built-in loading/error states
  */
 
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 interface LogisticsData {
   client_name?: string
@@ -63,31 +63,27 @@ interface LogisticsData {
   }>
 }
 
+async function fetchEventLogistics(eventId: string, tenant: string): Promise<LogisticsData> {
+  const response = await fetch(`/api/events/${eventId}/logistics?tenant=${tenant}`)
+  if (!response.ok) throw new Error('Failed to fetch logistics')
+  const data = await response.json()
+  // API returns { logistics: {...} }, so unwrap it
+  return data.logistics || data
+}
+
 export function useEventLogistics(eventId: string, tenant: string) {
-  const [logistics, setLogistics] = useState<LogisticsData | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const fetchLogistics = async () => {
-    try {
-      const response = await fetch(`/api/events/${eventId}/logistics?tenant=${tenant}`)
-      if (!response.ok) throw new Error('Failed to fetch logistics')
-      const data = await response.json()
-      // API returns { logistics: {...} }, so unwrap it
-      setLogistics(data.logistics || data)
-    } catch (error) {
-      console.error('Error fetching logistics:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchLogistics()
-  }, [eventId, tenant])
+  const query = useQuery({
+    queryKey: ['event-logistics', eventId, tenant],
+    queryFn: () => fetchEventLogistics(eventId, tenant),
+    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
+    enabled: Boolean(eventId && tenant), // Only fetch if we have both params
+  })
 
   return {
-    logistics,
-    loading,
-    refetch: fetchLogistics
+    logistics: query.data || null,
+    loading: query.isLoading,
+    error: query.error,
+    isRefetching: query.isRefetching,
+    refetch: query.refetch
   }
 }
