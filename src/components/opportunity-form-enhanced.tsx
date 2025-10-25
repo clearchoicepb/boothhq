@@ -77,8 +77,8 @@ export function OpportunityFormEnhanced({
     opportunity,
     customer,
     contact,
-    accountContactSelector.selectedAccountId: accountContactSelector.accountContactSelector.selectedAccountId,
-    accountContactSelector.selectedContactId: accountContactSelector.accountContactSelector.selectedContactId,
+    selectedAccountId: accountContactSelector.selectedAccountId,
+    selectedContactId: accountContactSelector.selectedContactId,
     onSave,
     onSubmit
   })
@@ -178,7 +178,7 @@ export function OpportunityFormEnhanced({
                   ))}
               </Select>
               {accountContactSelector.selectedAccountId && accountContactSelector.contacts.filter(c => c.account_id === accountContactSelector.selectedAccountId).length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">No accountContactSelector.contacts available for this account</p>
+                <p className="text-xs text-gray-500 mt-1">No contacts available for this account</p>
               )}
             </div>
           </div>
