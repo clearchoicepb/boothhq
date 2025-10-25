@@ -8,6 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, MoreVertical, ChevronDown, Clock, X, Copy } from 'lucide-react'
 import Link from 'next/link'
+import { useOpportunity } from '@/hooks/useOpportunity'
+import { useOpportunityQuotes } from '@/hooks/useOpportunityQuotes'
+import { useOpportunityActivities } from '@/hooks/useOpportunityActivities'
+import { useAccounts, useContacts } from '@/hooks/useAccountsAndContacts'
+import { useQueryClient } from '@tanstack/react-query'
 import { NotesSection } from '@/components/notes-section'
 import { LeadConversionModal } from '@/components/lead-conversion-modal'
 import { LogCommunicationModal } from '@/components/log-communication-modal'
@@ -80,8 +85,19 @@ export default function OpportunityDetailPage() {
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const opportunityId = params.id as string
-  const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
-  const [localLoading, setLocalLoading] = useState(true)
+
+  // ✨ PARALLEL QUERIES - All fetch simultaneously!
+  const queryClient = useQueryClient()
+  const { data: opportunity, isLoading: opportunityLoading } = useOpportunity(opportunityId)
+  const { data: quotes = [], isLoading: quotesLoading } = useOpportunityQuotes(opportunityId)
+  const { data: activities = [], isLoading: activitiesLoading } = useOpportunityActivities(opportunityId)
+  const { data: accounts = [] } = useAccounts()
+  const { data: contacts = [] } = useContacts()
+
+  // Aggregate loading state
+  const localLoading = opportunityLoading
+
+  // UI State (not data fetching)
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false)
   const [lead, setLead] = useState<Lead | null>(null)
   const [activeEventTab, setActiveEventTab] = useState(0)
@@ -102,17 +118,11 @@ export default function OpportunityDetailPage() {
   const actionsRef = useRef<HTMLDivElement>(null)
   const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
-  const [quotes, setQuotes] = useState<any[]>([])
-  const [quotesLoading, setQuotesLoading] = useState(false)
-  const [activities, setActivities] = useState<any[]>([])
-  const [activitiesLoading, setActivitiesLoading] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
   const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
   const [editAccountId, setEditAccountId] = useState<string>('')
   const [editContactId, setEditContactId] = useState<string>('')
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
 
   // Close opportunity modal state
   const [showCloseModal, setShowCloseModal] = useState(false)
@@ -123,21 +133,30 @@ export default function OpportunityDetailPage() {
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
   const [updatingOwner, setUpdatingOwner] = useState(false)
 
-  useEffect(() => {
-    if (session && tenant && opportunityId) {
-      fetchOpportunity()
-      fetchQuotes()
-      fetchActivities()
-      fetchAccountsAndContacts()
-    }
-  }, [session, tenant, opportunityId])
-
   // Fetch tenant users for owner assignment
   useEffect(() => {
     if (session && tenant) {
       fetchTenantUsers().then(setTenantUsers)
     }
   }, [session, tenant])
+
+  // Fetch related data when opportunity loads
+  useEffect(() => {
+    if (opportunity) {
+      // Fetch lead data if opportunity has a lead_id
+      if (opportunity.lead_id) {
+        fetchLead(opportunity.lead_id)
+      }
+
+      // Fetch locations for event_dates
+      if (opportunity.event_dates && opportunity.event_dates.length > 0) {
+        fetchLocations(opportunity.event_dates)
+      }
+
+      // Fetch communications
+      fetchCommunications()
+    }
+  }, [opportunity?.id])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -149,37 +168,9 @@ export default function OpportunityDetailPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchOpportunity = async () => {
-    try {
-      setLocalLoading(true)
-      
-      const response = await fetch(`/api/opportunities/${opportunityId}`)
-      
-      if (!response.ok) {
-        console.error('Error fetching opportunity')
-        return
-      }
-
-      const data = await response.json()
-      setOpportunity(data)
-
-      // Fetch lead data if opportunity has a lead_id
-      if (data.lead_id) {
-        fetchLead(data.lead_id)
-      }
-
-      // Fetch locations for event_dates
-      if (data.event_dates && data.event_dates.length > 0) {
-        fetchLocations(data.event_dates)
-      }
-
-      // Fetch communications
-      fetchCommunications()
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLocalLoading(false)
-    }
+  // Helper to invalidate opportunity data
+  const refreshOpportunityData = () => {
+    queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
   }
 
   const fetchLead = async (leadId: string) => {
@@ -191,36 +182,6 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching lead:', error)
-    }
-  }
-
-  const fetchQuotes = async () => {
-    try {
-      setQuotesLoading(true)
-      const response = await fetch(`/api/quotes?opportunity_id=${opportunityId}`)
-      if (response.ok) {
-        const quotesData = await response.json()
-        setQuotes(quotesData)
-      }
-    } catch (error) {
-      console.error('Error fetching quotes:', error)
-    } finally {
-      setQuotesLoading(false)
-    }
-  }
-
-  const fetchActivities = async () => {
-    try {
-      setActivitiesLoading(true)
-      const response = await fetch(`/api/opportunities/${opportunityId}/activity`)
-      if (response.ok) {
-        const activitiesData = await response.json()
-        setActivities(activitiesData)
-      }
-    } catch (error) {
-      console.error('Error fetching activities:', error)
-    } finally {
-      setActivitiesLoading(false)
     }
   }
 
@@ -272,7 +233,7 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         // Refresh the opportunity data to get updated notes
-        await fetchOpportunity()
+        refreshOpportunityData()
         // Clear editing state for this event date
         setEditingNotes(prev => {
           const newState = { ...prev }
@@ -335,7 +296,7 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         // Refresh the opportunity data
-        await fetchOpportunity()
+        refreshOpportunityData()
 
         // Show success toast
         if (newStage === 'closed_won') {
@@ -409,7 +370,7 @@ export default function OpportunityDetailPage() {
   const handleCloseModalCancel = () => {
     // Revert dropdown to previous stage
     if (previousStage && opportunity) {
-      setOpportunity({ ...opportunity, stage: previousStage })
+      queryClient.setQueryData(['opportunity', opportunityId], { ...opportunity, stage: previousStage })
     }
     setShowCloseModal(false)
     setPendingCloseStage(null)
@@ -423,7 +384,7 @@ export default function OpportunityDetailPage() {
     // Optimistic update - update UI immediately
     const previousOwner = opportunity?.owner_id
     if (opportunity) {
-      setOpportunity(prev => prev ? { ...prev, owner_id: newOwnerId || null } : null)
+      queryClient.setQueryData(['opportunity', opportunityId], { ...opportunity, owner_id: newOwnerId || null })
     }
 
     try {
@@ -440,20 +401,20 @@ export default function OpportunityDetailPage() {
       }
 
       // Refresh opportunity data
-      await fetchOpportunity()
-      
+      refreshOpportunityData()
+
       // Invalidate dashboard cache - force refetch on next visit
       router.refresh()
-      
+
       toast.success('Owner updated successfully!', { id: toastId })
     } catch (error) {
       console.error('Error updating owner:', error)
-      
+
       // Rollback optimistic update
       if (opportunity) {
-        setOpportunity(prev => prev ? { ...prev, owner_id: previousOwner } : null)
+        queryClient.setQueryData(['opportunity', opportunityId], { ...opportunity, owner_id: previousOwner })
       }
-      
+
       toast.error('Failed to update owner', { id: toastId })
     } finally {
       setUpdatingOwner(false)
@@ -469,27 +430,6 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching communications:', error)
-    }
-  }
-
-  const fetchAccountsAndContacts = async () => {
-    try {
-      const [accountsRes, contactsRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/contacts')
-      ])
-
-      if (accountsRes.ok) {
-        const accountsData = await accountsRes.json()
-        setAccounts(accountsData)
-      }
-
-      if (contactsRes.ok) {
-        const contactsData = await contactsRes.json()
-        setContacts(contactsData)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts and contacts:', error)
     }
   }
 
@@ -519,7 +459,7 @@ export default function OpportunityDetailPage() {
       })
 
       if (response.ok) {
-        await fetchOpportunity()
+        refreshOpportunityData()
         setIsEditingAccountContact(false)
       } else {
         alert('Failed to update account/contact')
@@ -547,10 +487,10 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         const result = await response.json()
-        
+
         // Refresh the opportunity data
-        await fetchOpportunity()
-        
+        refreshOpportunityData()
+
         // Show success message
         alert('Lead converted successfully!')
       } else {
@@ -903,7 +843,7 @@ export default function OpportunityDetailPage() {
               contacts={contacts}
               locations={locations}
               settings={settings}
-              onUpdate={fetchOpportunity}
+              onUpdate={refreshOpportunityData}
               onShowCloseModal={(stage, previousStage) => {
                 setPreviousStage(previousStage)
                 setPendingCloseStage(stage)
@@ -919,8 +859,8 @@ export default function OpportunityDetailPage() {
               opportunityId={opportunityId}
               currentAmount={opportunity?.amount || 0}
               onAmountUpdate={() => {
-                fetchOpportunity()
-                fetchQuotes()
+                refreshOpportunityData()
+                queryClient.invalidateQueries({ queryKey: ['opportunity-quotes', opportunityId] })
               }}
             />
           </TabsContent>
