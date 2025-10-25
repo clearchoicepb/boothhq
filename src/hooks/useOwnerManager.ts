@@ -1,9 +1,9 @@
 /**
- * Custom hook for managing opportunity owner changes
- * Encapsulates owner update logic with loading state
+ * Custom hook for managing opportunity owner changes using React Query mutations
+ * Provides automatic loading states and error handling
  */
 
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 interface UseOwnerManagerProps {
@@ -15,13 +15,8 @@ export function useOwnerManager({
   opportunityId,
   onUpdateSuccess
 }: UseOwnerManagerProps) {
-  const [isUpdating, setIsUpdating] = useState(false)
-
-  const updateOwner = async (newOwnerId: string) => {
-    const toastId = toast.loading('Updating owner...')
-    setIsUpdating(true)
-
-    try {
+  const mutation = useMutation({
+    mutationFn: async (newOwnerId: string) => {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -34,18 +29,23 @@ export function useOwnerManager({
         throw new Error('Failed to update owner')
       }
 
+      return response.json()
+    },
+    onMutate: () => {
+      return toast.loading('Updating owner...')
+    },
+    onSuccess: async (data, variables, toastId) => {
       await onUpdateSuccess()
-      toast.success('Owner updated successfully', { id: toastId })
-    } catch (error) {
+      toast.success('Owner updated successfully', { id: toastId as string })
+    },
+    onError: (error, variables, toastId) => {
       console.error('Error updating owner:', error)
-      toast.error('Failed to update owner', { id: toastId })
-    } finally {
-      setIsUpdating(false)
+      toast.error('Failed to update owner', { id: toastId as string })
     }
-  }
+  })
 
   return {
-    isUpdating,
-    updateOwner
+    isUpdating: mutation.isPending,
+    updateOwner: mutation.mutate
   }
 }

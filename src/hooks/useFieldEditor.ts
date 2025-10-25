@@ -1,9 +1,10 @@
 /**
- * Generic hook for inline field editing
- * Reusable for any editable field with save/cancel
+ * Generic hook for inline field editing using React Query mutations
+ * Reusable for any editable field with save/cancel and automatic loading states
  */
 
 import { useState, useEffect } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 interface UseFieldEditorProps<T> {
@@ -14,7 +15,19 @@ interface UseFieldEditorProps<T> {
 export function useFieldEditor<T>({ initialValue, onSave }: UseFieldEditorProps<T>) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedValue, setEditedValue] = useState<T>(initialValue)
-  const [isSaving, setIsSaving] = useState(false)
+
+  // React Query mutation for save operation
+  const mutation = useMutation({
+    mutationFn: (value: T) => onSave(value),
+    onSuccess: () => {
+      setIsEditing(false)
+      toast.success('Saved successfully')
+    },
+    onError: (error) => {
+      console.error('Error saving:', error)
+      toast.error('Failed to save changes')
+    }
+  })
 
   // Sync editedValue with initialValue when data updates (but only when NOT editing)
   useEffect(() => {
@@ -33,24 +46,14 @@ export function useFieldEditor<T>({ initialValue, onSave }: UseFieldEditorProps<
     setIsEditing(false)
   }
 
-  const saveEdit = async () => {
-    setIsSaving(true)
-    try {
-      await onSave(editedValue)
-      setIsEditing(false)
-      toast.success('Saved successfully')
-    } catch (error) {
-      console.error('Error saving:', error)
-      toast.error('Failed to save changes')
-    } finally {
-      setIsSaving(false)
-    }
+  const saveEdit = () => {
+    mutation.mutate(editedValue)
   }
 
   return {
     isEditing,
     editedValue,
-    isSaving,
+    isSaving: mutation.isPending,
     setEditedValue,
     startEdit,
     cancelEdit,

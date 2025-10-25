@@ -1,9 +1,10 @@
 /**
- * Custom hook for managing client/account/contact inline editing
- * Encapsulates editing state and save logic
+ * Custom hook for managing client/account/contact inline editing using React Query mutations
+ * Provides automatic loading states and error handling
  */
 
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 interface UseClientEditorProps {
@@ -22,23 +23,9 @@ export function useClientEditor({
   const [isEditing, setIsEditing] = useState(false)
   const [editAccountId, setEditAccountId] = useState('')
   const [editContactId, setEditContactId] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
 
-  const startEdit = () => {
-    setEditAccountId(initialAccountId || '')
-    setEditContactId(initialContactId || '')
-    setIsEditing(true)
-  }
-
-  const cancelEdit = () => {
-    setEditAccountId('')
-    setEditContactId('')
-    setIsEditing(false)
-  }
-
-  const saveEdit = async () => {
-    setIsSaving(true)
-    try {
+  const mutation = useMutation({
+    mutationFn: async () => {
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -52,22 +39,40 @@ export function useClientEditor({
         throw new Error('Failed to update opportunity')
       }
 
+      return response.json()
+    },
+    onSuccess: async () => {
       setIsEditing(false)
       await onSaveSuccess()
       toast.success('Client information updated')
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error updating client:', error)
       toast.error('Failed to update client information')
-    } finally {
-      setIsSaving(false)
     }
+  })
+
+  const startEdit = () => {
+    setEditAccountId(initialAccountId || '')
+    setEditContactId(initialContactId || '')
+    setIsEditing(true)
+  }
+
+  const cancelEdit = () => {
+    setEditAccountId('')
+    setEditContactId('')
+    setIsEditing(false)
+  }
+
+  const saveEdit = () => {
+    mutation.mutate()
   }
 
   return {
     isEditing,
     editAccountId,
     editContactId,
-    isSaving,
+    isSaving: mutation.isPending,
     setEditAccountId,
     setEditContactId,
     startEdit,
