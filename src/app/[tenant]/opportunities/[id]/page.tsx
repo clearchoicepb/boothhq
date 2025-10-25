@@ -17,6 +17,7 @@ import { SMSThread } from '@/components/sms-thread'
 import { GenerateContractModal } from '@/components/generate-contract-modal'
 import AttachmentsSection from '@/components/attachments-section'
 import { TasksSection } from '@/components/tasks-section'
+import { OpportunityAttachmentsTab } from '@/components/opportunities/detail/tabs/OpportunityAttachmentsTab'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { OpportunityPricing } from '@/components/opportunity-pricing'
 import { Lead } from '@/lib/supabase-client'
@@ -1521,12 +1522,7 @@ export default function OpportunityDetailPage() {
 
           {/* Files Tab */}
           <TabsContent value="files" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <AttachmentsSection
-                entityType="opportunity"
-                entityId={opportunity.id}
-              />
-            </div>
+            <OpportunityAttachmentsTab opportunityId={opportunity.id} />
           </TabsContent>
 
           {/* Communications Tab */}
