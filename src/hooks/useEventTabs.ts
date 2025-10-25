@@ -1,154 +1,56 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import { useEventInvoices } from './useEventInvoices'
+import { useEventActivities } from './useEventActivities'
+import { useEventAttachments } from './useEventAttachments'
+import { useEventCommunications } from './useEventCommunications'
 
 /**
  * Custom hook for managing event tab navigation and tab-specific data loading
- * 
+ * Now powered by React Query for automatic caching and parallel queries
+ *
  * @param eventId - The ID of the event
- * @param session - The user session object
- * @param tenant - The tenant object
+ * @param session - The user session object (now optional)
+ * @param tenant - The tenant object (now optional)
  * @returns Tab state, data, and functions
  */
 export function useEventTabs(
   eventId: string,
-  session: any,
-  tenant: any
+  session?: any,
+  tenant?: any
 ) {
   // Tab state
   const [activeTab, setActiveTab] = useState('overview')
 
-  // Tab-specific data
-  const [invoices, setInvoices] = useState<any[]>([])
-  const [activities, setActivities] = useState<any[]>([])
-  const [attachments, setAttachments] = useState<any[]>([])
-  const [communications, setCommunications] = useState<any[]>([])
-
-  // Loading states
-  const [loadingInvoices, setLoadingInvoices] = useState(false)
-  const [loadingActivities, setLoadingActivities] = useState(false)
-  const [loadingAttachments, setLoadingAttachments] = useState(false)
-
   // Pagination
   const [communicationsPage, setCommunicationsPage] = useState(1)
 
-  /**
-   * Fetch invoices for the event
-   */
-  const fetchInvoices = useCallback(async () => {
-    try {
-      setLoadingInvoices(true)
-      const response = await fetch(`/api/invoices?event_id=${eventId}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoices')
-      }
-      
-      const data = await response.json()
-      setInvoices(data)
-    } catch (error) {
-      console.error('Error fetching invoices:', error)
-    } finally {
-      setLoadingInvoices(false)
-    }
-  }, [eventId])
-
-  /**
-   * Fetch activities for the event
-   */
-  const fetchActivities = useCallback(async () => {
-    try {
-      setLoadingActivities(true)
-      const response = await fetch(`/api/events/${eventId}/activity`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch activities')
-      }
-      
-      const data = await response.json()
-      setActivities(data)
-    } catch (error) {
-      console.error('Error fetching activities:', error)
-    } finally {
-      setLoadingActivities(false)
-    }
-  }, [eventId])
-
-  /**
-   * Fetch attachments for the event
-   */
-  const fetchAttachments = useCallback(async () => {
-    try {
-      setLoadingAttachments(true)
-      const response = await fetch(`/api/attachments?entity_type=event&entity_id=${eventId}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch attachments')
-      }
-      
-      const data = await response.json()
-      setAttachments(data)
-    } catch (error) {
-      console.error('Error fetching attachments:', error)
-    } finally {
-      setLoadingAttachments(false)
-    }
-  }, [eventId])
-
-  /**
-   * Fetch communications for the event
-   */
-  const fetchCommunications = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/communications?event_id=${eventId}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch communications')
-      }
-      
-      const data = await response.json()
-      setCommunications(data)
-    } catch (error) {
-      console.error('Error fetching communications:', error)
-    }
-  }, [eventId])
+  // Use React Query hooks - data loads automatically based on enabled state
+  const invoicesQuery = useEventInvoices(eventId)
+  const activitiesQuery = useEventActivities(eventId)
+  const attachmentsQuery = useEventAttachments(eventId)
+  const communicationsQuery = useEventCommunications(eventId, communicationsPage)
 
   /**
    * Refetch data for the current active tab
    */
   const refetchActiveTab = useCallback(() => {
     if (activeTab === 'invoices') {
-      fetchInvoices()
+      invoicesQuery.refetch()
     } else if (activeTab === 'activity') {
-      fetchActivities()
+      activitiesQuery.refetch()
     } else if (activeTab === 'files') {
-      fetchAttachments()
+      attachmentsQuery.refetch()
     } else if (activeTab === 'communications') {
-      fetchCommunications()
+      communicationsQuery.refetch()
     }
-  }, [activeTab, fetchInvoices, fetchActivities, fetchAttachments, fetchCommunications])
+  }, [activeTab, invoicesQuery, activitiesQuery, attachmentsQuery, communicationsQuery])
 
   /**
-   * Change active tab and fetch data if needed
+   * Change active tab
    */
   const changeTab = useCallback((tab: string) => {
     setActiveTab(tab)
   }, [])
-
-  /**
-   * Auto-fetch data when tab changes
-   */
-  useEffect(() => {
-    if (session && tenant && eventId) {
-      if (activeTab === 'invoices') {
-        fetchInvoices()
-      } else if (activeTab === 'activity') {
-        fetchActivities()
-      } else if (activeTab === 'files') {
-        fetchAttachments()
-      } else if (activeTab === 'communications') {
-        fetchCommunications()
-      }
-    }
-  }, [activeTab, session, tenant, eventId, fetchInvoices, fetchActivities, fetchAttachments, fetchCommunications])
 
   return {
     // Tab state
@@ -156,33 +58,33 @@ export function useEventTabs(
     setActiveTab,
     changeTab,
 
-    // Tab data
-    invoices,
-    activities,
-    attachments,
-    communications,
+    // Tab data (with fallback to empty arrays)
+    invoices: invoicesQuery.data ?? [],
+    activities: activitiesQuery.data ?? [],
+    attachments: attachmentsQuery.data ?? [],
+    communications: communicationsQuery.data ?? [],
 
     // Loading states
-    loadingInvoices,
-    loadingActivities,
-    loadingAttachments,
+    loadingInvoices: invoicesQuery.isLoading,
+    loadingActivities: activitiesQuery.isLoading,
+    loadingAttachments: attachmentsQuery.isLoading,
 
     // Pagination
     communicationsPage,
     setCommunicationsPage,
 
-    // Fetch functions
-    fetchInvoices,
-    fetchActivities,
-    fetchAttachments,
-    fetchCommunications,
+    // Fetch functions (mapped to React Query refetch)
+    fetchInvoices: invoicesQuery.refetch,
+    fetchActivities: activitiesQuery.refetch,
+    fetchAttachments: attachmentsQuery.refetch,
+    fetchCommunications: communicationsQuery.refetch,
     refetchActiveTab,
 
-    // Setters (for advanced use cases)
-    setInvoices,
-    setActivities,
-    setAttachments,
-    setCommunications,
+    // Setters (for backward compatibility - now no-ops)
+    setInvoices: () => {},
+    setActivities: () => {},
+    setAttachments: () => {},
+    setCommunications: () => {},
   }
 }
 

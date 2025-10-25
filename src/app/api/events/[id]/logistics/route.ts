@@ -22,6 +22,8 @@ export async function GET(
       .select(`
         id,
         location,
+        load_in_time,
+        load_in_notes,
         venue_contact_name,
         venue_contact_phone,
         venue_contact_email,
@@ -189,6 +191,8 @@ export async function GET(
     const logistics = {
       client_name: event.account?.name,
       event_date: primaryEventDate?.event_date,
+      load_in_time: event.load_in_time,
+      load_in_notes: event.load_in_notes,
       start_time: primaryEventDate?.start_time ||
         (event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', {
           hour: '2-digit',

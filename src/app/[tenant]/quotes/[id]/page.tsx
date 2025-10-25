@@ -7,6 +7,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useQuote } from '@/hooks/useQuote'
 
 interface QuoteLineItem {
   id: string
@@ -59,33 +61,15 @@ export default function QuoteDetailPage() {
     }
   }, [])
 
-  const [quote, setQuote] = useState<Quote | null>(null)
-  const [localLoading, setLocalLoading] = useState(true)
+  // ✨ REACT QUERY HOOK - Automatic caching and background refetching!
+  const queryClient = useQueryClient()
+  const { data: quote, isLoading: quoteLoading } = useQuote(quoteId)
+
+  // Aggregate loading state
+  const localLoading = quoteLoading
+
+  // UI State (not data fetching)
   const [updating, setUpdating] = useState(false)
-
-  useEffect(() => {
-    if (session && tenant && quoteId) {
-      fetchQuote()
-    }
-  }, [session, tenant, quoteId])
-
-  const fetchQuote = async () => {
-    try {
-      setLocalLoading(true)
-      const response = await fetch(`/api/quotes/${quoteId}`)
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch quote')
-      }
-
-      const data = await response.json()
-      setQuote(data)
-    } catch (error) {
-      console.error('Error fetching quote:', error)
-    } finally {
-      setLocalLoading(false)
-    }
-  }
 
   const handleDownloadPDF = async () => {
     try {
@@ -108,7 +92,7 @@ export default function QuoteDetailPage() {
       if (!response.ok) throw new Error('Failed to send quote')
 
       alert('Quote sent successfully!')
-      fetchQuote()
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] })
     } catch (error) {
       console.error('Error sending quote:', error)
       alert('Failed to send quote')
@@ -131,7 +115,7 @@ export default function QuoteDetailPage() {
       if (!response.ok) throw new Error('Failed to update quote')
 
       alert('Quote marked as accepted!')
-      fetchQuote()
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] })
     } catch (error) {
       console.error('Error updating quote:', error)
       alert('Failed to update quote')

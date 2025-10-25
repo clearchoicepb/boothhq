@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -14,6 +14,10 @@ import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
 import { EventsStatsCards } from '@/components/events/events-stats-cards'
 import toast from 'react-hot-toast'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEvents } from '@/hooks/useEvents'
+import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
+import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 
 interface EventDate {
   id: string
@@ -83,10 +87,19 @@ export default function EventsPage() {
   const params = useParams()
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
-  const [events, setEvents] = useState<Event[]>([])
-  const [localLoading, setLocalLoading] = useState(true)
+
+  // ✨ REACT QUERY HOOKS - Automatic caching and background refetching!
+  const queryClient = useQueryClient()
+  const { data: events = [], isLoading: eventsLoading } = useEvents()
+  const { data: coreTasks = [] } = useCoreTaskTemplates()
+  const eventIds = useMemo(() => events.map(e => e.id), [events])
+  const { data: taskStatus = {} } = useEventsTaskStatus(eventIds)
+
+  // Aggregate loading state
+  const localLoading = eventsLoading
+
+  // UI State (not data fetching)
   const [searchTerm, setSearchTerm] = useState('')
-  const [taskStatus, setTaskStatus] = useState<Record<string, any>>({})
 
   // Date range filter
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past'>('upcoming')
@@ -98,62 +111,9 @@ export default function EventsPage() {
   const [sortBy, setSortBy] = useState<string>('date_asc')
 
   // Task filtering state
-  const [coreTasks, setCoreTasks] = useState<CoreTask[]>([])
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [taskFilter, setTaskFilter] = useState<'all' | 'incomplete'>('all')
   const [taskDateRangeFilter, setTaskDateRangeFilter] = useState<number>(14) // days from now for incomplete task filter
-
-  const fetchEvents = useCallback(async () => {
-    try {
-      setLocalLoading(true)
-      const response = await fetch('/api/events?status=all&type=all')
-      if (response.ok) {
-        const data = await response.json()
-
-        // Handle both array and object structures
-        const eventsList = Array.isArray(data) ? data : (data.events || [])
-
-        setEvents(eventsList)
-      } else {
-        console.error('Failed to fetch events:', response.status, response.statusText)
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Error details:', errorData)
-      }
-    } catch (error) {
-      console.error('Error fetching events:', error)
-    } finally {
-      setLocalLoading(false)
-    }
-  }, [])
-
-  const fetchCoreTaskTemplates = useCallback(async () => {
-    try {
-      const res = await fetch('/api/core-tasks/templates')
-      const data = await res.json()
-      setCoreTasks(data.templates || [])
-    } catch (error) {
-      console.error('Error fetching core task templates:', error)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (session && tenant) {
-      fetchEvents()
-      fetchCoreTaskTemplates()
-    }
-  }, [session, tenant, fetchEvents, fetchCoreTaskTemplates])
-
-  // Fetch task status for task due notifications
-  useEffect(() => {
-    if (events.length > 0) {
-      const ids = events.map(e => e.id).join(',')
-      fetch(`/api/events/tasks-status?ids=${ids}`)
-        .then(res => res.json())
-        .then(data => setTaskStatus(data.taskStatus || {}))
-        .catch(err => console.error('Failed to fetch task status:', err))
-    }
-  }, [events])
-
 
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
@@ -162,10 +122,13 @@ export default function EventsPage() {
           method: 'DELETE'
         })
         if (response.ok) {
-          setEvents(events.filter(event => event.id !== eventId))
+          // Invalidate events query to refetch
+          queryClient.invalidateQueries({ queryKey: ['events'] })
+          toast.success('Event deleted successfully')
         }
       } catch (error) {
         console.error('Error deleting event:', error)
+        toast.error('Failed to delete event')
       }
     }
   }
