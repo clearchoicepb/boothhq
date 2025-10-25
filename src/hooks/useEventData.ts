@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
 import { Event as EventType } from '@/lib/supabase-client'
+import { useEventDetail, useUpdateEvent, useDeleteEvent } from './useEventDetail'
+import { useEventDates } from './useEventDates'
 
 /**
  * Event with related data (account, contact, opportunity names, category, type, payment status)
@@ -64,108 +65,46 @@ export interface EventDate {
 
 /**
  * Custom hook for managing event data fetching and CRUD operations
- * 
+ * Now powered by React Query for better caching and performance
+ *
  * @param eventId - The ID of the event to fetch
- * @param session - The user session object
- * @param tenantSubdomain - The tenant subdomain for routing
+ * @param session - The user session object (now optional, React Query handles auth)
+ * @param tenantSubdomain - The tenant subdomain for routing (now optional)
  * @returns Event data, loading state, and CRUD operations
  */
 export function useEventData(
   eventId: string,
-  session: any,
-  tenantSubdomain: string
+  session?: any,
+  tenantSubdomain?: string
 ) {
-  const [event, setEvent] = useState<EventWithRelations | null>(null)
-  const [eventDates, setEventDates] = useState<EventDate[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Use React Query hooks for data fetching
+  const eventQuery = useEventDetail(eventId)
+  const eventDatesQuery = useEventDates(eventId)
+  const updateMutation = useUpdateEvent(eventId)
+  const deleteMutation = useDeleteEvent(eventId)
 
   /**
-   * Fetch the main event data
-   */
-  const fetchEvent = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const response = await fetch(`/api/events/${eventId}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch event')
-      }
-
-      const data = await response.json()
-      setEvent(data)
-    } catch (err) {
-      console.error('Error fetching event:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch event')
-    } finally {
-      setLoading(false)
-    }
-  }, [eventId])
-
-  /**
-   * Fetch event dates for this event
-   */
-  const fetchEventDates = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/event-dates?event_id=${eventId}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch event dates')
-      }
-      
-      const data = await response.json()
-      setEventDates(data)
-    } catch (err) {
-      console.error('Error fetching event dates:', err)
-      // Don't set error state here - event dates are supplementary
-    }
-  }, [eventId])
-
-  /**
-   * Update event data
+   * Update event data with React Query mutation
    */
   const updateEvent = async (data: Partial<EventType>) => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update event')
-      }
-
-      await fetchEvent()
+      await updateMutation.mutateAsync(data)
       return true
     } catch (err) {
       console.error('Error updating event:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update event')
       return false
     }
   }
 
   /**
-   * Delete the event
+   * Delete the event with React Query mutation
    */
   const deleteEvent = async () => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete event')
-      }
-
+      await deleteMutation.mutateAsync()
       return true
     } catch (err) {
       console.error('Error deleting event:', err)
-      setError(err instanceof Error ? err.message : 'Failed to delete event')
       return false
     }
   }
@@ -173,38 +112,32 @@ export function useEventData(
   /**
    * Refetch all event data
    */
-  const refetch = useCallback(() => {
-    fetchEvent()
-    fetchEventDates()
-  }, [fetchEvent, fetchEventDates])
-
-  /**
-   * Initial data fetch on mount
-   */
-  useEffect(() => {
-    if (session && eventId) {
-      fetchEvent()
-      fetchEventDates()
-    }
-  }, [fetchEvent, fetchEventDates, session, eventId])
+  const refetch = () => {
+    eventQuery.refetch()
+    eventDatesQuery.refetch()
+  }
 
   return {
     // Data
-    event,
-    eventDates,
-    loading,
-    error,
-    
+    event: eventQuery.data ?? null,
+    eventDates: eventDatesQuery.data ?? [],
+    loading: eventQuery.isLoading || eventDatesQuery.isLoading,
+    error: eventQuery.error?.message ?? eventDatesQuery.error?.message ?? null,
+
     // CRUD Operations
-    fetchEvent,
-    fetchEventDates,
+    fetchEvent: eventQuery.refetch,
+    fetchEventDates: eventDatesQuery.refetch,
     updateEvent,
     deleteEvent,
     refetch,
-    
-    // Setters (for advanced use cases)
-    setEvent,
-    setEventDates,
+
+    // Setters (for backward compatibility - now no-ops)
+    setEvent: () => {},
+    setEventDates: () => {},
+
+    // React Query state (for advanced use cases)
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   }
 }
 
