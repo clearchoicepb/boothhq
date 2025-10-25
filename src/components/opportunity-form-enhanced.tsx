@@ -88,7 +88,7 @@ export function OpportunityFormEnhanced({
     opportunity,
     setFormData: form.setFormData,
     setEventDates: form.setEventDates,
-    form.setSharedLocationId: form.form.setSharedLocationId
+    setSharedLocationId: form.setSharedLocationId
   })
 
   const getDateTypeOptions = () => [
