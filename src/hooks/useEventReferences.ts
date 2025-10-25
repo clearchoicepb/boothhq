@@ -1,131 +1,129 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+
+/**
+ * Fetch accounts
+ */
+async function fetchAccounts(): Promise<any[]> {
+  const response = await fetch('/api/accounts')
+  if (!response.ok) {
+    throw new Error('Failed to fetch accounts')
+  }
+  return response.json()
+}
+
+/**
+ * Fetch contacts
+ */
+async function fetchContacts(): Promise<any[]> {
+  const response = await fetch('/api/contacts')
+  if (!response.ok) {
+    throw new Error('Failed to fetch contacts')
+  }
+  return response.json()
+}
+
+/**
+ * Fetch locations
+ */
+async function fetchLocations(): Promise<any[]> {
+  const response = await fetch('/api/locations')
+  if (!response.ok) {
+    throw new Error('Failed to fetch locations')
+  }
+  return response.json()
+}
+
+/**
+ * Fetch payment status options
+ */
+async function fetchPaymentStatusOptions(): Promise<any[]> {
+  const response = await fetch('/api/payment-status-options')
+  if (!response.ok) {
+    throw new Error('Failed to fetch payment status options')
+  }
+  return response.json()
+}
 
 /**
  * Custom hook for managing event reference/dropdown data
- * (accounts, contacts, locations, payment status options)
- * 
- * @param session - The user session object
- * @param tenantSubdomain - The tenant subdomain for routing
+ * Now powered by React Query for automatic caching and parallel fetching
+ *
+ * @param session - The user session object (now optional)
+ * @param tenantSubdomain - The tenant subdomain for routing (now optional)
  * @returns Reference data and refetch functions
  */
 export function useEventReferences(
-  session: any,
-  tenantSubdomain: string
+  session?: any,
+  tenantSubdomain?: string
 ) {
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
-  const [locations, setLocations] = useState<any[]>([])
-  const [paymentStatusOptions, setPaymentStatusOptions] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  // Use React Query hooks - all queries run in parallel automatically
+  const accountsQuery = useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+    staleTime: 2 * 60 * 1000, // 2 minutes - reference data doesn't change often
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+  })
+
+  const contactsQuery = useQuery({
+    queryKey: ['contacts'],
+    queryFn: fetchContacts,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  })
+
+  const locationsQuery = useQuery({
+    queryKey: ['locations'],
+    queryFn: fetchLocations,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  })
+
+  const paymentStatusQuery = useQuery({
+    queryKey: ['payment-status-options'],
+    queryFn: fetchPaymentStatusOptions,
+    staleTime: 5 * 60 * 1000, // 5 minutes - rarely changes
+    gcTime: 10 * 60 * 1000,
+  })
 
   /**
-   * Fetch accounts and contacts for dropdowns
+   * Fetch accounts and contacts (legacy function for backward compatibility)
    */
-  const fetchAccountsAndContacts = useCallback(async () => {
-    try {
-      const [accountsRes, contactsRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/contacts')
-      ])
-
-      if (accountsRes.ok) {
-        const accountsData = await accountsRes.json()
-        setAccounts(accountsData)
-      }
-
-      if (contactsRes.ok) {
-        const contactsData = await contactsRes.json()
-        setContacts(contactsData)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts and contacts:', error)
-    }
-  }, [])
-
-  /**
-   * Fetch locations for event date assignment
-   */
-  const fetchLocations = useCallback(async () => {
-    try {
-      const response = await fetch('/api/locations')
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch locations')
-      }
-      
-      const data = await response.json()
-      setLocations(data)
-    } catch (error) {
-      console.error('Error fetching locations:', error)
-    }
-  }, [])
-
-  /**
-   * Fetch payment status options for dropdown
-   */
-  const fetchPaymentStatusOptions = useCallback(async () => {
-    try {
-      const response = await fetch('/api/payment-status-options')
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch payment status options')
-      }
-      
-      const data = await response.json()
-      setPaymentStatusOptions(data)
-    } catch (error) {
-      console.error('Error fetching payment status options:', error)
-    }
-  }, [])
+  const fetchAccountsAndContacts = async () => {
+    await Promise.all([
+      accountsQuery.refetch(),
+      contactsQuery.refetch()
+    ])
+  }
 
   /**
    * Fetch all reference data at once
    */
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    try {
-      await Promise.all([
-        fetchAccountsAndContacts(),
-        fetchLocations(),
-        fetchPaymentStatusOptions()
-      ])
-    } finally {
-      setLoading(false)
-    }
-  }, [fetchAccountsAndContacts, fetchLocations, fetchPaymentStatusOptions])
-
-  /**
-   * Refetch all reference data
-   */
-  const refetch = useCallback(() => {
-    fetchAll()
-  }, [fetchAll])
-
-  /**
-   * Initial data fetch on mount
-   */
-  useEffect(() => {
-    if (session) {
-      fetchAll()
-    }
-  }, [fetchAll, session])
+  const fetchAll = async () => {
+    await Promise.all([
+      accountsQuery.refetch(),
+      contactsQuery.refetch(),
+      locationsQuery.refetch(),
+      paymentStatusQuery.refetch()
+    ])
+  }
 
   return {
-    // Data
-    accounts,
-    contacts,
-    locations,
-    paymentStatusOptions,
-    loading,
-    
-    // Individual fetch functions
+    // Data (with fallbacks)
+    accounts: accountsQuery.data ?? [],
+    contacts: contactsQuery.data ?? [],
+    locations: locationsQuery.data ?? [],
+    paymentStatusOptions: paymentStatusQuery.data ?? [],
+    loading: accountsQuery.isLoading || contactsQuery.isLoading || locationsQuery.isLoading || paymentStatusQuery.isLoading,
+
+    // Individual fetch functions (mapped to React Query refetch)
     fetchAccountsAndContacts,
-    fetchLocations,
-    fetchPaymentStatusOptions,
-    
+    fetchLocations: locationsQuery.refetch,
+    fetchPaymentStatusOptions: paymentStatusQuery.refetch,
+
     // Batch operations
     fetchAll,
-    refetch,
+    refetch: fetchAll,
   }
 }
+
 
