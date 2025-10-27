@@ -1,6 +1,9 @@
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { getEntityConfig, EntityConfig } from '@/lib/api-entities'
 import { cacheManager, CacheManager } from './CacheManager'
+import { getTenantClient, getTenantIdInDataSource } from '@/lib/data-sources'
+import { SupabaseClient } from '@supabase/supabase-js'
+import { Database } from '@/types/database'
 
 export interface QueryOptions {
   select?: string[]
@@ -43,12 +46,26 @@ export interface AuditLog {
 export class GenericRepository<T = any> {
   protected entity: string
   protected config: EntityConfig
-  protected supabase: ReturnType<typeof createServerSupabaseClient>
 
   constructor(entity: string) {
     this.entity = entity
     this.config = getEntityConfig(entity)
-    this.supabase = createServerSupabaseClient()
+  }
+
+  /**
+   * Get Supabase client for tenant's data database
+   * Routes to the correct tenant data source
+   */
+  protected async getClientForTenant(tenantId: string): Promise<SupabaseClient<Database>> {
+    return getTenantClient(tenantId, true)
+  }
+
+  /**
+   * Get the tenant ID as it appears in the tenant data database
+   * This may differ from the application tenant ID
+   */
+  protected async getDataSourceTenantId(tenantId: string): Promise<string> {
+    return getTenantIdInDataSource(tenantId)
   }
 
   /**
@@ -56,11 +73,14 @@ export class GenericRepository<T = any> {
    */
   async create(data: Partial<T>, tenantId: string): Promise<T> {
     try {
-      const { data: result, error } = await this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      const { data: result, error } = await supabase
         .from(this.config.table)
         .insert({
           ...data,
-          tenant_id: tenantId
+          tenant_id: dataSourceTenantId
         })
         .select()
         .single()
@@ -72,7 +92,7 @@ export class GenericRepository<T = any> {
       // Log audit trail
       await this.logAudit('create', result.id, tenantId, null, result)
 
-      return this.config.transformResponse ? 
+      return this.config.transformResponse ?
         this.config.transformResponse([result])[0] : result
     } catch (error) {
       console.error(`Error creating ${this.entity}:`, error)
@@ -92,11 +112,14 @@ export class GenericRepository<T = any> {
         return cached
       }
 
-      let query = this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      let query = supabase
         .from(this.config.table)
         .select(this.buildSelectQuery(options?.include))
         .eq('id', id)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (options?.where) {
         query = this.applyWhereConditions(query, options.where)
@@ -111,7 +134,7 @@ export class GenericRepository<T = any> {
         throw new Error(`Failed to find ${this.entity}: ${error.message}`)
       }
 
-      const result = this.config.transformResponse ? 
+      const result = this.config.transformResponse ?
         this.config.transformResponse([data])[0] : data
 
       // Cache the result
@@ -132,22 +155,25 @@ export class GenericRepository<T = any> {
    */
   async findMany(tenantId: string, options?: QueryOptions): Promise<T[]> {
     try {
-      let query = this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      let query = supabase
         .from(this.config.table)
         .select(this.buildSelectQuery(options?.include))
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (options?.where) {
         query = this.applyWhereConditions(query, options.where)
       }
 
       if (options?.orderBy) {
-        query = query.order(options.orderBy.field, { 
-          ascending: options.orderBy.direction === 'asc' 
+        query = query.order(options.orderBy.field, {
+          ascending: options.orderBy.direction === 'asc'
         })
       } else if (this.config.defaultOrder) {
-        query = query.order(this.config.defaultOrder.field, { 
-          ascending: this.config.defaultOrder.direction === 'asc' 
+        query = query.order(this.config.defaultOrder.field, {
+          ascending: this.config.defaultOrder.direction === 'asc'
         })
       }
 
@@ -165,7 +191,7 @@ export class GenericRepository<T = any> {
         throw new Error(`Failed to find ${this.entity} records: ${error.message}`)
       }
 
-      return this.config.transformResponse ? 
+      return this.config.transformResponse ?
         this.config.transformResponse(data) : data
     } catch (error) {
       console.error(`Error finding ${this.entity} records:`, error)
@@ -181,11 +207,14 @@ export class GenericRepository<T = any> {
       // Get the original record for audit logging
       const originalRecord = await this.findById(id, tenantId)
 
-      const { data: result, error } = await this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      const { data: result, error } = await supabase
         .from(this.config.table)
         .update(data)
         .eq('id', id)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .select()
         .single()
 
@@ -199,7 +228,7 @@ export class GenericRepository<T = any> {
       // Log audit trail
       await this.logAudit('update', id, tenantId, originalRecord, result)
 
-      return this.config.transformResponse ? 
+      return this.config.transformResponse ?
         this.config.transformResponse([result])[0] : result
     } catch (error) {
       console.error(`Error updating ${this.entity}:`, error)
@@ -215,11 +244,14 @@ export class GenericRepository<T = any> {
       // Get the original record for audit logging
       const originalRecord = await this.findById(id, tenantId)
 
-      const { error } = await this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      const { error } = await supabase
         .from(this.config.table)
         .delete()
         .eq('id', id)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (error) {
         throw new Error(`Failed to delete ${this.entity}: ${error.message}`)
@@ -243,28 +275,31 @@ export class GenericRepository<T = any> {
    */
   async search(tenantId: string, searchOptions: SearchOptions, queryOptions?: QueryOptions): Promise<T[]> {
     try {
-      let query = this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      let query = supabase
         .from(this.config.table)
         .select(this.buildSelectQuery(queryOptions?.include))
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (searchOptions.fuzzy) {
         // Use full-text search if available
-        const searchConditions = searchOptions.fields.map(field => 
+        const searchConditions = searchOptions.fields.map(field =>
           `${field}.ilike.%${searchOptions.query}%`
         ).join(',')
         query = query.or(searchConditions)
       } else {
         // Use exact match search
-        const searchConditions = searchOptions.fields.map(field => 
+        const searchConditions = searchOptions.fields.map(field =>
           `${field}.eq.${searchOptions.query}`
         ).join(',')
         query = query.or(searchConditions)
       }
 
       if (queryOptions?.orderBy) {
-        query = query.order(queryOptions.orderBy.field, { 
-          ascending: queryOptions.orderBy.direction === 'asc' 
+        query = query.order(queryOptions.orderBy.field, {
+          ascending: queryOptions.orderBy.direction === 'asc'
         })
       }
 
@@ -278,7 +313,7 @@ export class GenericRepository<T = any> {
         throw new Error(`Failed to search ${this.entity}: ${error.message}`)
       }
 
-      return this.config.transformResponse ? 
+      return this.config.transformResponse ?
         this.config.transformResponse(data) : data
     } catch (error) {
       console.error(`Error searching ${this.entity}:`, error)
@@ -291,10 +326,13 @@ export class GenericRepository<T = any> {
    */
   async count(tenantId: string, where?: Record<string, any>): Promise<number> {
     try {
-      let query = this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      let query = supabase
         .from(this.config.table)
         .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (where) {
         query = this.applyWhereConditions(query, where)
@@ -318,12 +356,15 @@ export class GenericRepository<T = any> {
    */
   async bulkCreate(data: Partial<T>[], tenantId: string): Promise<BulkOperationResult<T>> {
     try {
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
       const recordsWithTenant = data.map(record => ({
         ...record,
-        tenant_id: tenantId
+        tenant_id: dataSourceTenantId
       }))
 
-      const { data: results, error } = await this.supabase
+      const { data: results, error } = await supabase
         .from(this.config.table)
         .insert(recordsWithTenant)
         .select()
@@ -339,7 +380,7 @@ export class GenericRepository<T = any> {
 
       return {
         success: true,
-        data: this.config.transformResponse ? 
+        data: this.config.transformResponse ?
           this.config.transformResponse(results) : results,
         count: results.length
       }
@@ -391,11 +432,14 @@ export class GenericRepository<T = any> {
    */
   async bulkDelete(ids: string[], tenantId: string): Promise<BulkOperationResult<boolean>> {
     try {
-      const { error } = await this.supabase
+      const supabase = await this.getClientForTenant(tenantId)
+      const dataSourceTenantId = await this.getDataSourceTenantId(tenantId)
+
+      const { error } = await supabase
         .from(this.config.table)
         .delete()
         .in('id', ids)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (error) {
         throw new Error(`Failed to bulk delete ${this.entity}: ${error.message}`)
