@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "db:test": "npx ts-node scripts/test-dual-database-setup.ts",
+    "db:migrate-data": "npx ts-node scripts/migrate-existing-data.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
