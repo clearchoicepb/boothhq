@@ -8,6 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArrowLeft, Edit, Trash2, DollarSign, Building2, User, Calendar, FileText, TrendingUp, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, MoreVertical, ChevronDown, Clock, X, Copy } from 'lucide-react'
 import Link from 'next/link'
+import { useOpportunity } from '@/hooks/useOpportunity'
+import { useOpportunityQuotes } from '@/hooks/useOpportunityQuotes'
+import { useOpportunityActivities } from '@/hooks/useOpportunityActivities'
+import { useAccounts, useContacts } from '@/hooks/useAccountsAndContacts'
+import { useQueryClient } from '@tanstack/react-query'
 import { NotesSection } from '@/components/notes-section'
 import { LeadConversionModal } from '@/components/lead-conversion-modal'
 import { LogCommunicationModal } from '@/components/log-communication-modal'
@@ -17,6 +22,14 @@ import { SMSThread } from '@/components/sms-thread'
 import { GenerateContractModal } from '@/components/generate-contract-modal'
 import AttachmentsSection from '@/components/attachments-section'
 import { TasksSection } from '@/components/tasks-section'
+import { OpportunityAttachmentsTab } from '@/components/opportunities/detail/tabs/OpportunityAttachmentsTab'
+import { OpportunityNotesTab } from '@/components/opportunities/detail/tabs/OpportunityNotesTab'
+import { OpportunityTasksTab } from '@/components/opportunities/detail/tabs/OpportunityTasksTab'
+import { OpportunityPricingTab } from '@/components/opportunities/detail/tabs/OpportunityPricingTab'
+import { OpportunityActivityTab } from '@/components/opportunities/detail/tabs/OpportunityActivityTab'
+import { OpportunityQuotesTab } from '@/components/opportunities/detail/tabs/OpportunityQuotesTab'
+import { OpportunityCommunicationsTab } from '@/components/opportunities/detail/tabs/OpportunityCommunicationsTab'
+import { OpportunityOverviewTab } from '@/components/opportunities/detail/tabs/OpportunityOverviewTab'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { OpportunityPricing } from '@/components/opportunity-pricing'
 import { Lead } from '@/lib/supabase-client'
@@ -72,8 +85,19 @@ export default function OpportunityDetailPage() {
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const opportunityId = params.id as string
-  const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
-  const [localLoading, setLocalLoading] = useState(true)
+
+  // ✨ PARALLEL QUERIES - All fetch simultaneously!
+  const queryClient = useQueryClient()
+  const { data: opportunity, isLoading: opportunityLoading } = useOpportunity(opportunityId)
+  const { data: quotes = [], isLoading: quotesLoading } = useOpportunityQuotes(opportunityId)
+  const { data: activities = [], isLoading: activitiesLoading } = useOpportunityActivities(opportunityId)
+  const { data: accounts = [] } = useAccounts()
+  const { data: contacts = [] } = useContacts()
+
+  // Aggregate loading state
+  const localLoading = opportunityLoading
+
+  // UI State (not data fetching)
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false)
   const [lead, setLead] = useState<Lead | null>(null)
   const [activeEventTab, setActiveEventTab] = useState(0)
@@ -94,17 +118,11 @@ export default function OpportunityDetailPage() {
   const actionsRef = useRef<HTMLDivElement>(null)
   const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
-  const [quotes, setQuotes] = useState<any[]>([])
-  const [quotesLoading, setQuotesLoading] = useState(false)
-  const [activities, setActivities] = useState<any[]>([])
-  const [activitiesLoading, setActivitiesLoading] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
   const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
   const [editAccountId, setEditAccountId] = useState<string>('')
   const [editContactId, setEditContactId] = useState<string>('')
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
 
   // Close opportunity modal state
   const [showCloseModal, setShowCloseModal] = useState(false)
@@ -115,21 +133,30 @@ export default function OpportunityDetailPage() {
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
   const [updatingOwner, setUpdatingOwner] = useState(false)
 
-  useEffect(() => {
-    if (session && tenant && opportunityId) {
-      fetchOpportunity()
-      fetchQuotes()
-      fetchActivities()
-      fetchAccountsAndContacts()
-    }
-  }, [session, tenant, opportunityId])
-
   // Fetch tenant users for owner assignment
   useEffect(() => {
     if (session && tenant) {
       fetchTenantUsers().then(setTenantUsers)
     }
   }, [session, tenant])
+
+  // Fetch related data when opportunity loads
+  useEffect(() => {
+    if (opportunity) {
+      // Fetch lead data if opportunity has a lead_id
+      if (opportunity.lead_id) {
+        fetchLead(opportunity.lead_id)
+      }
+
+      // Fetch locations for event_dates
+      if (opportunity.event_dates && opportunity.event_dates.length > 0) {
+        fetchLocations(opportunity.event_dates)
+      }
+
+      // Fetch communications
+      fetchCommunications()
+    }
+  }, [opportunity?.id])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -141,37 +168,9 @@ export default function OpportunityDetailPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchOpportunity = async () => {
-    try {
-      setLocalLoading(true)
-      
-      const response = await fetch(`/api/opportunities/${opportunityId}`)
-      
-      if (!response.ok) {
-        console.error('Error fetching opportunity')
-        return
-      }
-
-      const data = await response.json()
-      setOpportunity(data)
-
-      // Fetch lead data if opportunity has a lead_id
-      if (data.lead_id) {
-        fetchLead(data.lead_id)
-      }
-
-      // Fetch locations for event_dates
-      if (data.event_dates && data.event_dates.length > 0) {
-        fetchLocations(data.event_dates)
-      }
-
-      // Fetch communications
-      fetchCommunications()
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLocalLoading(false)
-    }
+  // Helper to invalidate opportunity data
+  const refreshOpportunityData = () => {
+    queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
   }
 
   const fetchLead = async (leadId: string) => {
@@ -183,36 +182,6 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching lead:', error)
-    }
-  }
-
-  const fetchQuotes = async () => {
-    try {
-      setQuotesLoading(true)
-      const response = await fetch(`/api/quotes?opportunity_id=${opportunityId}`)
-      if (response.ok) {
-        const quotesData = await response.json()
-        setQuotes(quotesData)
-      }
-    } catch (error) {
-      console.error('Error fetching quotes:', error)
-    } finally {
-      setQuotesLoading(false)
-    }
-  }
-
-  const fetchActivities = async () => {
-    try {
-      setActivitiesLoading(true)
-      const response = await fetch(`/api/opportunities/${opportunityId}/activity`)
-      if (response.ok) {
-        const activitiesData = await response.json()
-        setActivities(activitiesData)
-      }
-    } catch (error) {
-      console.error('Error fetching activities:', error)
-    } finally {
-      setActivitiesLoading(false)
     }
   }
 
@@ -264,7 +233,7 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         // Refresh the opportunity data to get updated notes
-        await fetchOpportunity()
+        refreshOpportunityData()
         // Clear editing state for this event date
         setEditingNotes(prev => {
           const newState = { ...prev }
@@ -327,7 +296,7 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         // Refresh the opportunity data
-        await fetchOpportunity()
+        refreshOpportunityData()
 
         // Show success toast
         if (newStage === 'closed_won') {
@@ -401,7 +370,7 @@ export default function OpportunityDetailPage() {
   const handleCloseModalCancel = () => {
     // Revert dropdown to previous stage
     if (previousStage && opportunity) {
-      setOpportunity({ ...opportunity, stage: previousStage })
+      queryClient.setQueryData(['opportunity', opportunityId], { ...opportunity, stage: previousStage })
     }
     setShowCloseModal(false)
     setPendingCloseStage(null)
@@ -415,7 +384,7 @@ export default function OpportunityDetailPage() {
     // Optimistic update - update UI immediately
     const previousOwner = opportunity?.owner_id
     if (opportunity) {
-      setOpportunity(prev => prev ? { ...prev, owner_id: newOwnerId || null } : null)
+      queryClient.setQueryData(['opportunity', opportunityId], { ...opportunity, owner_id: newOwnerId || null })
     }
 
     try {
@@ -432,20 +401,20 @@ export default function OpportunityDetailPage() {
       }
 
       // Refresh opportunity data
-      await fetchOpportunity()
-      
+      refreshOpportunityData()
+
       // Invalidate dashboard cache - force refetch on next visit
       router.refresh()
-      
+
       toast.success('Owner updated successfully!', { id: toastId })
     } catch (error) {
       console.error('Error updating owner:', error)
-      
+
       // Rollback optimistic update
       if (opportunity) {
-        setOpportunity(prev => prev ? { ...prev, owner_id: previousOwner } : null)
+        queryClient.setQueryData(['opportunity', opportunityId], { ...opportunity, owner_id: previousOwner })
       }
-      
+
       toast.error('Failed to update owner', { id: toastId })
     } finally {
       setUpdatingOwner(false)
@@ -461,27 +430,6 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching communications:', error)
-    }
-  }
-
-  const fetchAccountsAndContacts = async () => {
-    try {
-      const [accountsRes, contactsRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/contacts')
-      ])
-
-      if (accountsRes.ok) {
-        const accountsData = await accountsRes.json()
-        setAccounts(accountsData)
-      }
-
-      if (contactsRes.ok) {
-        const contactsData = await contactsRes.json()
-        setContacts(contactsData)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts and contacts:', error)
     }
   }
 
@@ -511,7 +459,7 @@ export default function OpportunityDetailPage() {
       })
 
       if (response.ok) {
-        await fetchOpportunity()
+        refreshOpportunityData()
         setIsEditingAccountContact(false)
       } else {
         alert('Failed to update account/contact')
@@ -539,10 +487,10 @@ export default function OpportunityDetailPage() {
 
       if (response.ok) {
         const result = await response.json()
-        
+
         // Refresh the opportunity data
-        await fetchOpportunity()
-        
+        refreshOpportunityData()
+
         // Show success message
         alert('Lead converted successfully!')
       } else {
@@ -886,845 +834,116 @@ export default function OpportunityDetailPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-0">
-            <div className="space-y-6">
-              {/* Opportunity Name & Client Information - Priority 1 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="mb-4 pb-4 border-b border-gray-200">
-                  <h2 className="text-2xl font-bold text-gray-900">{opportunity.name}</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Client</label>
-                    {lead ? (
-                      <div className="flex items-center">
-                        <User className="h-5 w-5 text-[#347dc4] mr-2" />
-                        <div>
-                          <p className="text-xl font-semibold text-gray-900">{lead.first_name} {lead.last_name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              Lead
-                            </span>
-                            {lead.is_converted && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                Converted
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ) : isEditingAccountContact ? (
-                      <div>
-                        <select
-                          value={editContactId}
-                          onChange={(e) => setEditContactId(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
-                        >
-                          <option value="">-- No Contact --</option>
-                          {contacts
-                            .filter(c => !editAccountId || c.account_id === editAccountId)
-                            .map(contact => (
-                              <option key={contact.id} value={contact.id}>
-                                {contact.first_name} {contact.last_name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    ) : opportunity.contact_name ? (
-                      <div className="flex items-center justify-between">
-                        <Link
-                          href={`/${tenantSubdomain}/contacts/${opportunity.contact_id}`}
-                          className="flex items-center text-[#347dc4] hover:text-[#2c6aa3]"
-                        >
-                          <User className="h-5 w-5 mr-2" />
-                          <div>
-                            <p className="text-xl font-semibold">{opportunity.contact_name}</p>
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                              Contact
-                            </span>
-                          </div>
-                        </Link>
-                        <button
-                          onClick={handleStartEditAccountContact}
-                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
-                          title="Edit contact"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-500 italic">No client assigned</p>
-                        <button
-                          onClick={handleStartEditAccountContact}
-                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
-                          title="Edit contact"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Account</label>
-                    {isEditingAccountContact ? (
-                      <div>
-                        <select
-                          value={editAccountId}
-                          onChange={(e) => {
-                            setEditAccountId(e.target.value)
-                            // Clear contact if changing account
-                            if (e.target.value !== opportunity?.account_id) {
-                              setEditContactId('')
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
-                        >
-                          <option value="">-- No Account --</option>
-                          {accounts.map(account => (
-                            <option key={account.id} value={account.id}>
-                              {account.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : opportunity.account_name ? (
-                      <div className="flex items-center justify-between">
-                        <Link
-                          href={`/${tenantSubdomain}/accounts/${opportunity.account_id}`}
-                          className="flex items-center text-[#347dc4] hover:text-[#2c6aa3]"
-                        >
-                          <Building2 className="h-5 w-5 mr-2" />
-                          <p className="text-xl font-semibold">{opportunity.account_name}</p>
-                        </Link>
-                        <button
-                          onClick={handleStartEditAccountContact}
-                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
-                          title="Edit account"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-500 italic">No account assigned</p>
-                        <button
-                          onClick={handleStartEditAccountContact}
-                          className="ml-2 p-1 text-gray-400 hover:text-[#347dc4] transition-colors"
-                          title="Edit account"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Owner Section */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Owner</label>
-
-                    {opportunity.owner_id ? (
-                      <div className="space-y-3">
-                        {/* Avatar and name */}
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-[#347dc4] flex items-center justify-center text-white text-sm font-semibold">
-                            {getOwnerDisplayName(opportunity.owner_id, tenantUsers)
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')
-                              .toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-base font-semibold text-gray-900">
-                              {getOwnerDisplayName(opportunity.owner_id, tenantUsers)}
-                            </div>
-                            <div className="text-xs text-gray-500">Opportunity Owner</div>
-                          </div>
-                        </div>
-
-                        {/* Dropdown to change */}
-                        <select
-                          value={opportunity.owner_id || ''}
-                          onChange={(e) => handleOwnerChange(e.target.value)}
-                          disabled={updatingOwner}
-                          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4] disabled:bg-gray-100"
-                        >
-                          <option value="">Unassigned</option>
-                          {tenantUsers.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.full_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : (
-                      /* Owner display when unassigned */
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-semibold">
-                            ?
-                          </div>
-                          <div>
-                            <div className="text-base font-semibold text-gray-500">Unassigned</div>
-                            <div className="text-xs text-gray-400">No owner assigned</div>
-                          </div>
-                        </div>
-
-                        <select
-                          value=""
-                          onChange={(e) => handleOwnerChange(e.target.value)}
-                          disabled={updatingOwner}
-                          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
-                        >
-                          <option value="">Assign owner...</option>
-                          {tenantUsers.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.full_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Save/Cancel buttons for inline editing */}
-                {isEditingAccountContact && (
-                  <div className="mt-4 flex items-center gap-2">
-                    <button
-                      onClick={handleSaveAccountContact}
-                      className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                      title="Save changes"
-                    >
-                      <CheckCircle className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={handleCancelEditAccountContact}
-                      className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                      title="Cancel"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Key Metrics - Event Date, Deal Value, Probability, Stage */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <label className="block text-sm font-medium text-gray-500 mb-3">Event Date</label>
-                  {opportunity.event_dates && opportunity.event_dates.length > 0 ? (
-                    <div>
-                      <div className="flex items-center">
-                        <Calendar className="h-5 w-5 text-[#347dc4] mr-2" />
-                        <p className="text-2xl font-bold text-gray-900">
-                          {formatDate(opportunity.event_dates[0].event_date)}
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {(() => {
-                          const daysUntil = getDaysUntil(opportunity.event_dates[0].event_date)
-                          return daysUntil && daysUntil > 0 ? `${daysUntil} day${daysUntil !== 1 ? 's' : ''} away` : daysUntil === 0 ? 'Today!' : daysUntil ? `${Math.abs(daysUntil)} day${Math.abs(daysUntil) !== 1 ? 's' : ''} ago` : ''
-                        })()}
-                      </p>
-                      {opportunity.event_dates.length > 1 && (
-                        <p className="text-xs text-gray-500">+{opportunity.event_dates.length - 1} more date{opportunity.event_dates.length > 2 ? 's' : ''}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-lg text-gray-500 italic">Not set</p>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <label className="block text-sm font-medium text-gray-500 mb-3">Deal Value</label>
-                  <p className="text-5xl font-bold text-[#347dc4]">
-                    ${opportunity.amount ? opportunity.amount.toLocaleString() : '0'}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <label className="block text-sm font-medium text-gray-500 mb-3">Probability</label>
-                  <div className="flex items-baseline">
-                    <p className="text-4xl font-bold text-gray-900">
-                      {getOpportunityProbability(opportunity, settings.opportunities)}
-                    </p>
-                    <span className="text-2xl font-semibold text-gray-500 ml-1">%</span>
-                  </div>
-                  {settings.opportunities?.autoCalculateProbability && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Auto-calculated from stage
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Weighted: ${getWeightedValue(opportunity, settings.opportunities).toLocaleString()}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <label className="block text-sm font-medium text-gray-500 mb-3">Stage</label>
-                  <select
-                    value={opportunity.stage}
-                    onChange={(e) => handleStageChange(e.target.value)}
-                    disabled={updatingStage}
-                    className={`w-full px-4 py-3 text-lg font-semibold rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-[#347dc4] ${getStageColor(opportunity.stage, settings)}`}
-                  >
-                    {settings.opportunities?.stages?.filter((s: any) => s.enabled !== false).map((stage: any) => (
-                      <option key={stage.id} value={stage.id}>{stage.name}</option>
-                    )) || (
-                      <>
-                        <option value="prospecting">Prospecting</option>
-                        <option value="qualification">Qualification</option>
-                        <option value="proposal">Proposal</option>
-                        <option value="negotiation">Negotiation</option>
-                        <option value="closed_won">Closed Won</option>
-                        <option value="closed_lost">Closed Lost</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Event Details */}
-                  {opportunity.event_dates && opportunity.event_dates.length > 0 ? (
-                    <div className="bg-white rounded-lg shadow p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h2>
-
-                    {/* Event Date(s) with Tabs */}
-                    <div>
-                      {opportunity.event_dates.length > 1 && (
-                        <div className="border-b border-gray-200 mb-4">
-                          <nav className="-mb-px flex space-x-4 overflow-x-auto">
-                            {opportunity.event_dates.map((eventDate, index) => (
-                              <button
-                                key={eventDate.id}
-                                onClick={() => setActiveEventTab(index)}
-                                className={`whitespace-nowrap py-2 px-3 border-b-2 font-medium text-sm ${
-                                  activeEventTab === index
-                                    ? 'border-[#347dc4] text-[#347dc4]'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                              >
-                                {formatDate(eventDate.event_date)}
-                              </button>
-                            ))}
-                          </nav>
-                        </div>
-                      )}
-
-                      {opportunity.event_dates.map((eventDate, index) => (
-                        <div
-                          key={eventDate.id}
-                          className={opportunity.event_dates!.length > 1 && activeEventTab !== index ? 'hidden' : ''}
-                        >
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Date</label>
-                              <div className="flex items-center">
-                                <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                                <p className="text-sm text-gray-900">
-                                  {formatDate(eventDate.event_date, {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  })}
-                                </p>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Time</label>
-                              <p className="text-sm text-gray-900">
-                                {eventDate.start_time && eventDate.end_time
-                                  ? `${eventDate.start_time} - ${eventDate.end_time}`
-                                  : eventDate.start_time || '-'}
-                              </p>
-                            </div>
-                            <div className="col-span-2">
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
-                              <p className="text-sm text-gray-900">
-                                {eventDate.location_id && locations[eventDate.location_id]
-                                  ? locations[eventDate.location_id].name
-                                  : 'Not specified'}
-                              </p>
-                            </div>
-                            {eventDate.notes && (
-                              <div className="col-span-2">
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-                                <p className="text-sm text-gray-900">{eventDate.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h2>
-
-                    {/* No Event Dates Empty State */}
-                    <div className="py-8 text-center">
-                      <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No event dates</h3>
-                      <p className="text-sm text-gray-600">Event dates will appear here once added to this opportunity.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Sidebar */}
-              <div className="space-y-6">
-                {/* Description */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Description</h3>
-                  {opportunity.description ? (
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{opportunity.description}</p>
-                  ) : (
-                    <p className="text-sm text-gray-500 italic">No description provided</p>
-                  )}
-                </div>
-
-                {/* Additional Details */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Details</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Event Type</label>
-                      <p className="text-sm text-gray-900">{opportunity.event_type || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Expected Close Date</label>
-                      <p className="text-sm text-gray-900">
-                        {formatDate(opportunity.expected_close_date)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Created</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(opportunity.created_at).toLocaleDateString()} at {new Date(opportunity.created_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Last Updated</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(opportunity.updated_at).toLocaleDateString()} at {new Date(opportunity.updated_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            </div>
+            <OpportunityOverviewTab
+              opportunity={opportunity}
+              tenantSubdomain={tenantSubdomain}
+              lead={lead}
+              tenantUsers={tenantUsers}
+              accounts={accounts}
+              contacts={contacts}
+              locations={locations}
+              settings={settings}
+              onUpdate={refreshOpportunityData}
+              onShowCloseModal={(stage, previousStage) => {
+                setPreviousStage(previousStage)
+                setPendingCloseStage(stage)
+                setShowCloseModal(true)
+              }}
+              getOwnerDisplayName={getOwnerDisplayName}
+            />
           </TabsContent>
 
           {/* Pricing Tab */}
           <TabsContent value="pricing" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <OpportunityPricing
-                opportunityId={opportunityId}
-                currentAmount={opportunity?.amount || 0}
-                onAmountUpdate={() => {
-                  fetchOpportunity()
-                  fetchQuotes()
-                }}
-              />
-            </div>
+            <OpportunityPricingTab
+              opportunityId={opportunityId}
+              currentAmount={opportunity?.amount || 0}
+              onAmountUpdate={() => {
+                refreshOpportunityData()
+                queryClient.invalidateQueries({ queryKey: ['opportunity-quotes', opportunityId] })
+              }}
+            />
           </TabsContent>
 
           {/* Quotes Tab */}
           <TabsContent value="quotes" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Quotes</h3>
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    const response = await fetch('/api/quotes', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        opportunity_id: opportunityId,
-                        account_id: opportunity?.account_id,
-                        contact_id: opportunity?.contact_id,
-                        tax_rate: 0.08,
-                        status: 'draft'
-                      })
-                    })
+            <OpportunityQuotesTab
+              opportunityId={opportunityId}
+              tenantSubdomain={tenantSubdomain}
+              quotes={quotes}
+              loading={quotesLoading}
+              onGenerateQuote={async () => {
+                const response = await fetch('/api/quotes', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    opportunity_id: opportunityId,
+                    account_id: opportunity?.account_id,
+                    contact_id: opportunity?.contact_id,
+                    tax_rate: 0.08,
+                    status: 'draft'
+                  })
+                })
 
-                    if (response.ok) {
-                      const quote = await response.json()
-                      router.push(`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`)
-                    } else {
-                      alert('Failed to generate quote')
-                    }
-                  }}
-                  className="bg-[#347dc4] hover:bg-[#2c6aa3]"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Generate Quote
-                </Button>
-              </div>
-
-              {quotesLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-500">Loading quotes...</p>
-                </div>
-              ) : quotes.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600 mb-1">No quotes yet</p>
-                  <p className="text-sm text-gray-500">Generate a quote from your pricing items</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote #</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue Date</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valid Until</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {quotes.map((quote) => (
-                        <tr key={quote.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-[#347dc4]">
-                            <Link href={`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`}>
-                              {quote.quote_number}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {new Date(quote.issue_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {quote.valid_until ? new Date(quote.valid_until).toLocaleDateString() : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                            ${quote.total_amount.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              quote.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                              quote.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                              quote.status === 'viewed' ? 'bg-purple-100 text-purple-800' :
-                              quote.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                              quote.status === 'declined' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right">
-                            <Link href={`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`}>
-                              <button className="text-[#347dc4] hover:text-[#2c6aa3] font-medium">
-                                View
-                              </button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                if (response.ok) {
+                  const quote = await response.json()
+                  router.push(`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`)
+                } else {
+                  alert('Failed to generate quote')
+                }
+              }}
+            />
           </TabsContent>
 
           {/* Activity Timeline Tab */}
           <TabsContent value="activity" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Activity Timeline</h3>
-
-              {activitiesLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-500">Loading activities...</p>
-                </div>
-              ) : activities.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <Clock className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600 mb-1">No activity yet</p>
-                  <p className="text-sm text-gray-500">Activity will appear here as you work with this opportunity</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {activities.map((activity, index) => (
-                    <div key={activity.id} className="relative pl-8 pb-6 border-l-2 border-gray-200 last:border-l-0 last:pb-0">
-                      {/* Timeline dot */}
-                      <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-[#347dc4]"></div>
-
-                      {/* Activity content */}
-                      <div
-                        className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleActivityClick(activity)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            {activity.type === 'communication' && <MessageSquare className="h-4 w-4 text-blue-600" />}
-                            {activity.type === 'task' && <ListTodo className="h-4 w-4 text-purple-600" />}
-                            {activity.type === 'quote' && <FileText className="h-4 w-4 text-green-600" />}
-                            {activity.type === 'note' && <Info className="h-4 w-4 text-orange-600" />}
-                            {activity.type === 'attachment' && <Paperclip className="h-4 w-4 text-gray-600" />}
-                            <span className="font-medium text-gray-900">{activity.title}</span>
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(activity.date).toLocaleString()}
-                          </span>
-                        </div>
-                        {activity.description && (
-                          <p className="text-sm text-gray-600 ml-6">{activity.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <OpportunityActivityTab
+              activities={activities}
+              loading={activitiesLoading}
+              onActivityClick={handleActivityClick}
+            />
           </TabsContent>
 
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
-                <Button
-                  size="sm"
-                  onClick={() => setIsTaskModalOpen(true)}
-                  className="bg-[#347dc4] hover:bg-[#2c6aa3]"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
-              </div>
-              <TasksSection
-                key={tasksKey}
-                entityType="opportunity"
-                entityId={opportunity.id}
-                onRefresh={() => setTasksKey(prev => prev + 1)}
-              />
-            </div>
+            <OpportunityTasksTab
+              opportunityId={opportunity.id}
+              onAddTask={() => setIsTaskModalOpen(true)}
+            />
           </TabsContent>
 
           {/* Files Tab */}
           <TabsContent value="files" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <AttachmentsSection
-                entityType="opportunity"
-                entityId={opportunity.id}
-              />
-            </div>
+            <OpportunityAttachmentsTab opportunityId={opportunity.id} />
           </TabsContent>
 
           {/* Communications Tab */}
           <TabsContent value="communications" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Client Communications</h2>
-
-              <div className="flex flex-wrap gap-3 mb-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEmailModalOpen(true)}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Create Email
-                </Button>
-                <Button
-                  variant={showSMSThread ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowSMSThread(!showSMSThread)}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  {showSMSThread ? 'Hide SMS Thread' : 'View SMS Thread'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsLogCommunicationModalOpen(true)}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Log Communication
-                </Button>
-              </div>
-
-              {showSMSThread ? (
-                <SMSThread
-                  opportunityId={opportunityId}
-                  contactId={opportunity?.contact_id || undefined}
-                  accountId={opportunity?.account_id || undefined}
-                  leadId={opportunity?.lead_id || undefined}
-                  contactPhone={
-                    opportunity?.contacts?.phone ||
-                    opportunity?.leads?.phone ||
-                    opportunity?.accounts?.phone
-                  }
-                  onClose={() => setShowSMSThread(false)}
-                />
-              ) : communications.length === 0 ? (
-                <div className="p-4 bg-gray-50 rounded-md text-center">
-                  <p className="text-sm text-gray-500">No communications logged yet. Use the buttons above to start communicating with the client.</p>
-                </div>
-              ) : (
-                <>
-                  {(() => {
-                    const itemsPerPage = 10
-                    const startIndex = (communicationsPage - 1) * itemsPerPage
-                    const endIndex = startIndex + itemsPerPage
-                    const paginatedCommunications = communications.slice(startIndex, endIndex)
-
-                    const total = communications.length
-                    let containerSpacing = 'space-y-4'
-                    let padding = 'p-5'
-                    let badgeText = 'text-sm'
-                    let badgePadding = 'px-2.5 py-1'
-                    let dateText = 'text-sm'
-                    let subjectText = 'text-base'
-                    let notesText = 'text-base'
-                    let headerGap = 'gap-3'
-                    let headerMargin = 'mb-3'
-                    let maxLines = ''
-
-                    if (total >= 10) {
-                      containerSpacing = 'space-y-1'
-                      padding = 'p-1.5'
-                      badgeText = 'text-[9px]'
-                      badgePadding = 'px-1 py-0.5'
-                      dateText = 'text-[9px]'
-                      subjectText = 'text-[11px]'
-                      notesText = 'text-[10px]'
-                      headerGap = 'gap-0.5'
-                      headerMargin = 'mb-0.5'
-                      maxLines = 'line-clamp-2'
-                    } else if (total >= 6) {
-                      containerSpacing = 'space-y-1.5'
-                      padding = 'p-2.5'
-                      badgeText = 'text-[10px]'
-                      badgePadding = 'px-1.5 py-0.5'
-                      dateText = 'text-[10px]'
-                      subjectText = 'text-xs'
-                      notesText = 'text-xs'
-                      headerGap = 'gap-1'
-                      headerMargin = 'mb-1'
-                      maxLines = 'line-clamp-3'
-                    } else if (total >= 3) {
-                      containerSpacing = 'space-y-3'
-                      padding = 'p-3.5'
-                      badgeText = 'text-xs'
-                      badgePadding = 'px-2 py-0.5'
-                      dateText = 'text-xs'
-                      subjectText = 'text-sm'
-                      notesText = 'text-sm'
-                      headerGap = 'gap-2'
-                      headerMargin = 'mb-2'
-                      maxLines = 'line-clamp-5'
-                    }
-
-                    return (
-                      <div className={containerSpacing}>
-                        {paginatedCommunications.map((comm) => (
-                          <div
-                            key={comm.id}
-                            className={`border border-gray-200 rounded-md ${padding} hover:bg-gray-50 cursor-pointer transition-colors`}
-                            onClick={() => {
-                              setSelectedCommunication(comm)
-                              setIsCommunicationDetailOpen(true)
-                            }}
-                          >
-                            <div className={`flex justify-between items-start ${headerMargin}`}>
-                              <div className={`flex items-center ${headerGap}`}>
-                                <span className={`inline-flex items-center ${badgePadding} rounded ${badgeText} font-medium ${
-                                  comm.communication_type === 'email' ? 'bg-blue-100 text-blue-800' :
-                                  comm.communication_type === 'sms' ? 'bg-green-100 text-green-800' :
-                                  comm.communication_type === 'phone' ? 'bg-purple-100 text-purple-800' :
-                                  comm.communication_type === 'in_person' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {comm.communication_type === 'in_person' ? 'In-Person' : comm.communication_type.toUpperCase()}
-                                </span>
-                                <span className={`${badgeText} ${comm.direction === 'inbound' ? 'text-green-600' : 'text-blue-600'}`}>
-                                  {comm.direction === 'inbound' ? '← Inbound' : '→ Outbound'}
-                                </span>
-                              </div>
-                              <span className={`${dateText} text-gray-500`}>
-                                {new Date(comm.communication_date).toLocaleString()}
-                              </span>
-                            </div>
-                            {comm.subject && (
-                              <h4 className={`${subjectText} font-medium text-gray-900 mb-1`}>{comm.subject}</h4>
-                            )}
-                            {comm.notes && (
-                              <p className={`${notesText} text-gray-600 ${maxLines}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{comm.notes}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })()}
-
-                  {communications.length > 10 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <div className="text-sm text-gray-500">
-                        Showing {((communicationsPage - 1) * 10) + 1}-{Math.min(communicationsPage * 10, communications.length)} of {communications.length} communications
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setCommunicationsPage(p => Math.max(1, p - 1))}
-                          disabled={communicationsPage === 1}
-                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        {Array.from({ length: Math.ceil(communications.length / 10) }, (_, i) => i + 1).map(page => (
-                          <button
-                            key={page}
-                            onClick={() => setCommunicationsPage(page)}
-                            className={`px-3 py-1 text-sm border rounded-md ${
-                              page === communicationsPage
-                                ? 'bg-[#347dc4] text-white border-[#347dc4]'
-                                : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setCommunicationsPage(p => Math.min(Math.ceil(communications.length / 10), p + 1))}
-                          disabled={communicationsPage === Math.ceil(communications.length / 10)}
-                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <OpportunityCommunicationsTab
+              opportunityId={opportunityId}
+              communications={communications}
+              showSMSThread={showSMSThread}
+              contactId={opportunity?.contact_id}
+              accountId={opportunity?.account_id}
+              leadId={opportunity?.lead_id}
+              contactPhone={
+                opportunity?.contacts?.phone ||
+                opportunity?.leads?.phone ||
+                opportunity?.accounts?.phone
+              }
+              onCreateEmail={() => setIsEmailModalOpen(true)}
+              onToggleSMSThread={() => setShowSMSThread(!showSMSThread)}
+              onLogCommunication={() => setIsLogCommunicationModalOpen(true)}
+              onCommunicationClick={(comm) => {
+                setSelectedCommunication(comm)
+                setIsCommunicationDetailOpen(true)
+              }}
+            />
           </TabsContent>
 
           {/* Notes Tab */}
           <TabsContent value="notes" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
-              <NotesSection
-                entityId={opportunity.id}
-                entityType="opportunity"
-              />
-            </div>
+            <OpportunityNotesTab opportunityId={opportunity.id} />
           </TabsContent>
         </Tabs>
       </div>

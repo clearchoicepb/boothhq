@@ -10,6 +10,12 @@ import { NotesSection } from '@/components/notes-section'
 import { ArrowLeft, Edit, Trash2, Building2, User, Phone, Mail, MapPin, Globe, FileText, Plus, Calendar, DollarSign, ArrowRight, CheckCircle } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAccount } from '@/hooks/useAccount'
+import { useAccountContacts } from '@/hooks/useAccountContacts'
+import { useAccountUpcomingEvents, useAccountPreviousEvents } from '@/hooks/useAccountEvents'
+import { useAccountInvoices } from '@/hooks/useAccountInvoices'
+import { useAccountSummary } from '@/hooks/useAccountSummary'
 
 interface Account {
   id: string
@@ -98,27 +104,29 @@ export default function AccountDetailPage() {
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const accountId = params.id as string
-  const [account, setAccount] = useState<Account | null>(null)
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([])
-  const [previousEvents, setPreviousEvents] = useState<Event[]>([])
-  const [upcomingInvoices, setUpcomingInvoices] = useState<Invoice[]>([])
-  const [summary, setSummary] = useState<AccountSummary | null>(null)
+
+  // ✨ PARALLEL QUERIES - All fetch simultaneously!
+  const queryClient = useQueryClient()
+  const { data: account, isLoading: accountLoading } = useAccount(accountId)
+  const { data: contacts = [] } = useAccountContacts(accountId)
+  const { data: upcomingEvents = [] } = useAccountUpcomingEvents(accountId)
+  const { data: previousEvents = [] } = useAccountPreviousEvents(accountId)
+  const { data: upcomingInvoices = [] } = useAccountInvoices(accountId)
+  const { data: summary = null } = useAccountSummary(accountId)
+
+  // Aggregate loading state
+  const localLoading = accountLoading
+
+  // UI State (not data fetching)
   const [assignedUser, setAssignedUser] = useState<{id: string, first_name: string | null, last_name: string | null, email: string, role: string} | null>(null)
-  const [localLoading, setLocalLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showContactSelector, setShowContactSelector] = useState(false)
 
-  useEffect(() => {
-    if (session && tenant && accountId) {
-      fetchAccount()
-      fetchContacts()
-      fetchEvents()
-      fetchInvoices()
-      fetchSummary()
-    }
-  }, [session, tenant, accountId])
+  // Helper to invalidate account data
+  const refreshAccountData = () => {
+    queryClient.invalidateQueries({ queryKey: ['account', accountId] })
+  }
 
   // Fetch assigned user details when account changes
   useEffect(() => {
@@ -128,86 +136,6 @@ export default function AccountDetailPage() {
       setAssignedUser(null)
     }
   }, [account?.assigned_to])
-
-  const fetchAccount = async () => {
-    try {
-      setLocalLoading(true)
-      
-      const response = await fetch(`/api/accounts/${accountId}`)
-      
-      if (!response.ok) {
-        console.error('Error fetching account')
-        return
-      }
-
-      const data = await response.json()
-      setAccount(data)
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLocalLoading(false)
-    }
-  }
-
-  const fetchContacts = async () => {
-    try {
-      const response = await fetch(`/api/contacts?account_id=${accountId}`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        setContacts(data || [])
-      }
-    } catch (error) {
-      console.error('Error fetching contacts:', error)
-    }
-  }
-
-  const fetchEvents = async () => {
-    try {
-      const [upcomingResponse, previousResponse] = await Promise.all([
-        fetch(`/api/accounts/${accountId}/events?type=upcoming`),
-        fetch(`/api/accounts/${accountId}/events?type=previous`)
-      ])
-      
-      if (upcomingResponse.ok) {
-        const data = await upcomingResponse.json()
-        setUpcomingEvents(data || [])
-      }
-      
-      if (previousResponse.ok) {
-        const data = await previousResponse.json()
-        setPreviousEvents(data || [])
-      }
-    } catch (error) {
-      console.error('Error fetching events:', error)
-    }
-  }
-
-  const fetchInvoices = async () => {
-    try {
-      const response = await fetch(`/api/accounts/${accountId}/invoices?type=upcoming`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        setUpcomingInvoices(data || [])
-      }
-    } catch (error) {
-      console.error('Error fetching invoices:', error)
-    }
-  }
-
-  const fetchSummary = async () => {
-    try {
-      const response = await fetch(`/api/accounts/${accountId}/summary`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        setSummary(data)
-      }
-    } catch (error) {
-      console.error('Error fetching summary:', error)
-    }
-  }
 
   const fetchAssignedUser = async (userId: string) => {
     try {

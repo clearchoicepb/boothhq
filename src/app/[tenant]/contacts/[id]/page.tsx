@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -10,6 +10,8 @@ import { NotesSection } from '@/components/notes-section'
 import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText, ArrowRight } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
+import { useQueryClient } from '@tanstack/react-query'
+import { useContact } from '@/hooks/useContact'
 
 interface Contact {
   id: string
@@ -52,35 +54,16 @@ export default function ContactDetailPage() {
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const contactId = params.id as string
-  const [contact, setContact] = useState<Contact | null>(null)
-  const [localLoading, setLocalLoading] = useState(true)
+
+  // ✨ REACT QUERY HOOK - Automatic caching and background refetching!
+  const queryClient = useQueryClient()
+  const { data: contact, isLoading: contactLoading } = useContact(contactId)
+
+  // Aggregate loading state
+  const localLoading = contactLoading
+
+  // UI State (not data fetching)
   const [showAccountSelector, setShowAccountSelector] = useState(false)
-
-  useEffect(() => {
-    if (session && tenant && contactId) {
-      fetchContact()
-    }
-  }, [session, tenant, contactId])
-
-  const fetchContact = async () => {
-    try {
-      setLocalLoading(true)
-      
-      const response = await fetch(`/api/contacts/${contactId}`)
-      
-      if (!response.ok) {
-        console.error('Error fetching contact')
-        return
-      }
-
-      const data = await response.json()
-      setContact(data)
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLocalLoading(false)
-    }
-  }
 
   const handleCreateOpportunity = () => {
     if (!contact) return
