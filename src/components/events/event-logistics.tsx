@@ -92,11 +92,11 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
 
   // Helper to invalidate logistics data (triggers refetch)
   const invalidateLogistics = () => {
-    queryClient.invalidateQueries({ queryKey: ['event-logistics', eventId, tenant] })
+    queryClient.invalidateQueries({ queryKey: ['event-logistics', eventId] })
   }
 
   // Use custom hook for data fetching (SOLID: Dependency Inversion)
-  const { logistics, loading } = useEventLogistics(eventId, tenant)
+  const { logistics, loading } = useEventLogistics(eventId)
 
   // Use field editor hooks for inline editing (SOLID: Single Responsibility)
   const notesEditor = useFieldEditor({
