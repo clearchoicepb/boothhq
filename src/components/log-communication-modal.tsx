@@ -14,6 +14,7 @@ interface LogCommunicationModalProps {
   accountId?: string
   contactId?: string
   leadId?: string
+  eventId?: string
   onSuccess?: () => void
 }
 
@@ -24,6 +25,7 @@ export function LogCommunicationModal({
   accountId,
   contactId,
   leadId,
+  eventId,
   onSuccess
 }: LogCommunicationModalProps) {
   const [formData, setFormData] = useState({

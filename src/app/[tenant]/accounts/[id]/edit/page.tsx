@@ -11,6 +11,7 @@ import Link from 'next/link'
 import type { Tables } from '@/types/database'
 
 type Account = Tables<'accounts'>
+type AccountUpdate = Partial<Omit<Account, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>
 
 export default function EditAccountPage() {
   const { data: session, status } = useSession()
