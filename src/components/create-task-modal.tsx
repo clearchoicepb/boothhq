@@ -23,6 +23,8 @@ interface CreateTaskModalProps {
   entityType?: string
   entityId?: string
   eventDates?: EventDate[]
+  accountId?: string | null
+  contactId?: string | null
   onSuccess?: () => void
 }
 
@@ -32,6 +34,8 @@ export function CreateTaskModal({
   entityType,
   entityId,
   eventDates,
+  accountId,
+  contactId,
   onSuccess
 }: CreateTaskModalProps) {
   const [users, setUsers] = useState<User[]>([])

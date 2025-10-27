@@ -63,20 +63,22 @@ interface LogisticsData {
   }>
 }
 
-async function fetchEventLogistics(eventId: string, tenant: string): Promise<LogisticsData> {
-  const response = await fetch(`/api/events/${eventId}/logistics?tenant=${tenant}`)
+async function fetchEventLogistics(eventId: string): Promise<LogisticsData> {
+  // No tenant parameter needed - the API route gets tenant from the session
+  const response = await fetch(`/api/events/${eventId}/logistics`)
   if (!response.ok) throw new Error('Failed to fetch logistics')
   const data = await response.json()
   // API returns { logistics: {...} }, so unwrap it
   return data.logistics || data
 }
 
-export function useEventLogistics(eventId: string, tenant: string) {
+export function useEventLogistics(eventId: string) {
   const query = useQuery({
-    queryKey: ['event-logistics', eventId, tenant],
-    queryFn: () => fetchEventLogistics(eventId, tenant),
+    // Tenant is determined server-side from session, so not needed in query key
+    queryKey: ['event-logistics', eventId],
+    queryFn: () => fetchEventLogistics(eventId),
     staleTime: 30 * 1000, // Consider data fresh for 30 seconds
-    enabled: Boolean(eventId && tenant), // Only fetch if we have both params
+    enabled: Boolean(eventId), // Only fetch if we have eventId
   })
 
   return {

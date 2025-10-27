@@ -206,9 +206,9 @@ export default function EventDetailPage() {
 
   const handleStartEditAccountContact = () => {
     startEditingAccountContact(
-      event?.account_id || '', 
-      event?.primary_contact_id || event?.contact_id || '',
-      event?.event_planner_id || ''
+      event?.account_id || '',
+      event?.primary_contact?.id || event?.contact_id || '',
+      event?.event_planner?.id || ''
     )
   }
 
@@ -1005,7 +1005,6 @@ export default function EventDetailPage() {
                 return true
               }}
               onRemoveStaff={staff.removeStaff}
-              onEditStaff={handleEditStaff}
               onStartAdding={() => staff.setIsAddingStaff(true)}
               onCancelAdding={() => {
                 staff.setIsAddingStaff(false)
@@ -1027,8 +1026,7 @@ export default function EventDetailPage() {
               isEditing={isEditingDescription}
               editedDescription={editedDescription}
               onStartEdit={() => {
-                      setEditedDescription(event.description || '')
-                startEditingDescription()
+                startEditingDescription(event.description || '')
               }}
               onDescriptionChange={setEditedDescription}
               onSave={handleSaveDescription}
