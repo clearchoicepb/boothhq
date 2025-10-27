@@ -87,8 +87,10 @@ export function useOpportunityDragAndDrop({
 
       if (response.ok) {
         // Update local state optimistically
-        setOpportunities(prev =>
-          prev.map(opp =>
+        // Note: setOpportunities is a React Query cache updater, not a state setter
+        // We need to pass the updated array directly, not a callback function
+        setOpportunities(
+          opportunities.map(opp =>
             opp.id === opportunityId
               ? { ...opp, stage: newStage, close_reason: closeReason || opp.close_reason, close_notes: closeNotes || opp.close_notes }
               : opp
@@ -111,7 +113,7 @@ export function useOpportunityDragAndDrop({
       console.error('Error updating opportunity stage:', error)
       throw error
     }
-  }, [setOpportunities])
+  }, [opportunities, setOpportunities])
 
   // Handle drop
   const handleDrop = useCallback(async (e: React.DragEvent, newStage: string) => {
