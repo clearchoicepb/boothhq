@@ -19,6 +19,9 @@ import {
 } from 'lucide-react'
 import { LocationSelect } from '@/components/location-select'
 import { Button } from '@/components/ui/button'
+import { useEventLogistics } from '@/hooks/useEventLogistics'
+import { useFieldEditor } from '@/hooks/useFieldEditor'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface EventLogisticsProps {
   eventId: string
@@ -84,196 +87,87 @@ interface LogisticsData {
 }
 
 export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
-  const [logistics, setLogistics] = useState<LogisticsData | null>(null)
-  const [loading, setLoading] = useState(true)
+  // React Query client for cache invalidation
+  const queryClient = useQueryClient()
 
-  // Editing states for each field
-  const [isEditingNotes, setIsEditingNotes] = useState(false)
-  const [isEditingLoadInTime, setIsEditingLoadInTime] = useState(false)
-  const [isEditingVenueContact, setIsEditingVenueContact] = useState(false)
-  const [isEditingEventPlanner, setIsEditingEventPlanner] = useState(false)
-  const [isEditingLocation, setIsEditingLocation] = useState(false)
-
-  // Edited values
-  const [editedNotes, setEditedNotes] = useState('')
-  const [editedLoadInTime, setEditedLoadInTime] = useState('')
-  const [editedVenueContact, setEditedVenueContact] = useState({ name: '', phone: '', email: '' })
-  const [editedEventPlanner, setEditedEventPlanner] = useState({ name: '', phone: '', email: '' })
-  const [editedLocationId, setEditedLocationId] = useState<string | null>(null)
-
-  // Saving states
-  const [savingNotes, setSavingNotes] = useState(false)
-  const [savingLoadInTime, setSavingLoadInTime] = useState(false)
-  const [savingVenueContact, setSavingVenueContact] = useState(false)
-  const [savingEventPlanner, setSavingEventPlanner] = useState(false)
-  const [savingLocation, setSavingLocation] = useState(false)
-
-  useEffect(() => {
-    fetchLogistics()
-  }, [eventId])
-
-  const fetchLogistics = async () => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/logistics`)
-      const data = await res.json()
-      setLogistics(data.logistics || {})
-    } catch (error) {
-      console.error('Error fetching logistics:', error)
-    } finally {
-      setLoading(false)
-    }
+  // Helper to invalidate logistics data (triggers refetch)
+  const invalidateLogistics = () => {
+    queryClient.invalidateQueries({ queryKey: ['event-logistics', eventId, tenant] })
   }
 
-  // Load-in notes handlers
-  const handleEditNotes = () => {
-    setEditedNotes(logistics?.load_in_notes || '')
-    setIsEditingNotes(true)
-  }
+  // Use custom hook for data fetching (SOLID: Dependency Inversion)
+  const { logistics, loading } = useEventLogistics(eventId, tenant)
 
-  const handleSaveNotes = async () => {
-    setSavingNotes(true)
-    try {
+  // Use field editor hooks for inline editing (SOLID: Single Responsibility)
+  const notesEditor = useFieldEditor({
+    initialValue: logistics?.load_in_notes || '',
+    onSave: async (value) => {
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ load_in_notes: editedNotes })
+        body: JSON.stringify({ load_in_notes: value })
       })
-
-      if (res.ok) {
-        setLogistics(prev => prev ? { ...prev, load_in_notes: editedNotes } : null)
-        setIsEditingNotes(false)
-      }
-    } catch (error) {
-      console.error('Error saving notes:', error)
-    } finally {
-      setSavingNotes(false)
+      if (res.ok) invalidateLogistics()
     }
-  }
+  })
 
-  const handleCancelEditNotes = () => {
-    setIsEditingNotes(false)
-    setEditedNotes('')
-  }
-
-  // Load-in time handlers
-  const handleEditLoadInTime = () => {
-    setEditedLoadInTime(logistics?.load_in_time || '')
-    setIsEditingLoadInTime(true)
-  }
-
-  const handleSaveLoadInTime = async () => {
-    setSavingLoadInTime(true)
-    try {
+  const loadInTimeEditor = useFieldEditor({
+    initialValue: logistics?.load_in_time || '',
+    onSave: async (value) => {
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ load_in_time: editedLoadInTime })
+        body: JSON.stringify({ load_in_time: value })
       })
-
-      if (res.ok) {
-        setLogistics(prev => prev ? { ...prev, load_in_time: editedLoadInTime } : null)
-        setIsEditingLoadInTime(false)
-        await fetchLogistics() // Refresh to get all data
-      }
-    } catch (error) {
-      console.error('Error saving load-in time:', error)
-    } finally {
-      setSavingLoadInTime(false)
+      if (res.ok) invalidateLogistics()
     }
-  }
+  })
 
-  const handleCancelEditLoadInTime = () => {
-    setIsEditingLoadInTime(false)
-    setEditedLoadInTime('')
-  }
-
-  // Venue contact handlers
-  const handleEditVenueContact = () => {
-    setEditedVenueContact({
+  const venueContactEditor = useFieldEditor({
+    initialValue: {
       name: logistics?.venue_contact_name || '',
       phone: logistics?.venue_contact_phone || '',
       email: logistics?.venue_contact_email || ''
-    })
-    setIsEditingVenueContact(true)
-  }
-
-  const handleSaveVenueContact = async () => {
-    setSavingVenueContact(true)
-    try {
+    },
+    onSave: async (value) => {
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          venue_contact_name: editedVenueContact.name,
-          venue_contact_phone: editedVenueContact.phone,
-          venue_contact_email: editedVenueContact.email
+          venue_contact_name: value.name,
+          venue_contact_phone: value.phone,
+          venue_contact_email: value.email
         })
       })
-
-      if (res.ok) {
-        setLogistics(prev => prev ? {
-          ...prev,
-          venue_contact_name: editedVenueContact.name,
-          venue_contact_phone: editedVenueContact.phone,
-          venue_contact_email: editedVenueContact.email
-        } : null)
-        setIsEditingVenueContact(false)
-        await fetchLogistics()
-      }
-    } catch (error) {
-      console.error('Error saving venue contact:', error)
-    } finally {
-      setSavingVenueContact(false)
+      if (res.ok) invalidateLogistics()
     }
-  }
+  })
 
-  const handleCancelEditVenueContact = () => {
-    setIsEditingVenueContact(false)
-  }
-
-  // Event planner handlers
-  const handleEditEventPlanner = () => {
-    setEditedEventPlanner({
+  const eventPlannerEditor = useFieldEditor({
+    initialValue: {
       name: logistics?.event_planner_name || '',
       phone: logistics?.event_planner_phone || '',
       email: logistics?.event_planner_email || ''
-    })
-    setIsEditingEventPlanner(true)
-  }
-
-  const handleSaveEventPlanner = async () => {
-    setSavingEventPlanner(true)
-    try {
+    },
+    onSave: async (value) => {
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event_planner_name: editedEventPlanner.name,
-          event_planner_phone: editedEventPlanner.phone,
-          event_planner_email: editedEventPlanner.email
+          event_planner_name: value.name,
+          event_planner_phone: value.phone,
+          event_planner_email: value.email
         })
       })
-
-      if (res.ok) {
-        setLogistics(prev => prev ? {
-          ...prev,
-          event_planner_name: editedEventPlanner.name,
-          event_planner_phone: editedEventPlanner.phone,
-          event_planner_email: editedEventPlanner.email
-        } : null)
-        setIsEditingEventPlanner(false)
-        await fetchLogistics()
-      }
-    } catch (error) {
-      console.error('Error saving event planner:', error)
-    } finally {
-      setSavingEventPlanner(false)
+      if (res.ok) invalidateLogistics()
     }
-  }
+  })
 
-  const handleCancelEditEventPlanner = () => {
-    setIsEditingEventPlanner(false)
-  }
+  // Location editing (kept separate as it's more complex)
+  const [isEditingLocation, setIsEditingLocation] = useState(false)
+  const [editedLocationId, setEditedLocationId] = useState<string | null>(null)
+  const [savingLocation, setSavingLocation] = useState(false)
+
 
   // Location handlers
   const handleEditLocation = () => {
@@ -316,7 +210,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
         }
 
         // Refresh logistics data
-        await fetchLogistics()
+        invalidateLogistics()
         setIsEditingLocation(false)
       }
     } catch (error) {
@@ -750,25 +644,25 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
             {/* Event Setup Time (Load-In Time) */}
             <div className="flex">
               <span className="text-sm font-semibold text-gray-700 w-40">Setup Time:</span>
-              {isEditingLoadInTime ? (
+              {loadInTimeEditor.isEditing ? (
                 <div className="flex-1 space-y-2 print:hidden">
                   <input
                     type="time"
-                    value={editedLoadInTime}
-                    onChange={(e) => setEditedLoadInTime(e.target.value)}
+                    value={loadInTimeEditor.editedValue}
+                    onChange={(e) => loadInTimeEditor.setEditedValue(e.target.value)}
                     className="px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={handleSaveLoadInTime}
-                      disabled={savingLoadInTime}
+                      onClick={loadInTimeEditor.saveEdit}
+                      disabled={loadInTimeEditor.isSaving}
                       className="px-3 py-1 bg-[#347dc4] text-white rounded text-xs hover:bg-[#2d6ba8]"
                     >
-                      {savingLoadInTime ? 'Saving...' : 'Save'}
+                      {loadInTimeEditor.isSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button
-                      onClick={handleCancelEditLoadInTime}
-                      disabled={savingLoadInTime}
+                      onClick={loadInTimeEditor.cancelEdit}
+                      disabled={loadInTimeEditor.isSaving}
                       className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
                     >
                       Cancel
@@ -781,7 +675,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
                     {logistics?.load_in_time ? formatTime(logistics.load_in_time) : 'Not specified'}
                   </span>
                   <button
-                    onClick={handleEditLoadInTime}
+                    onClick={loadInTimeEditor.startEdit}
                     className="text-[#347dc4] hover:text-[#2d6ba8] print:hidden"
                   >
                     <Edit className="h-3 w-3" />
@@ -872,9 +766,9 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
         <section className="pb-6 border-b border-gray-300">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">Load-In Details</h3>
-            {!isEditingNotes && (
+            {!notesEditor.isEditing && (
               <button
-                onClick={handleEditNotes}
+                onClick={notesEditor.startEdit}
                 className="flex items-center gap-1 px-2 py-1 text-xs text-[#347dc4] hover:underline print:hidden"
               >
                 <Edit className="h-3 w-3" />
@@ -884,27 +778,27 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
           </div>
 
           <div className="pl-4 space-y-4">
-            {isEditingNotes ? (
+            {notesEditor.isEditing ? (
               <div className="space-y-3 print:hidden">
                 <label className="block text-sm font-semibold text-gray-700">Operations Notes:</label>
                 <textarea
-                  value={editedNotes}
-                  onChange={(e) => setEditedNotes(e.target.value)}
+                  value={notesEditor.editedValue}
+                  onChange={(e) => notesEditor.setEditedValue(e.target.value)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Examples: See security upon arrival, Call onsite POC, parking instructions, etc."
                 />
                 <div className="flex gap-2">
                   <button
-                    onClick={handleSaveNotes}
-                    disabled={savingNotes}
+                    onClick={notesEditor.saveEdit}
+                    disabled={notesEditor.isSaving}
                     className="px-3 py-1 bg-[#347dc4] text-white rounded text-xs hover:bg-[#2d6ba8]"
                   >
-                    {savingNotes ? 'Saving...' : 'Save'}
+                    {notesEditor.isSaving ? 'Saving...' : 'Save'}
                   </button>
                   <button
-                    onClick={handleCancelEditNotes}
-                    disabled={savingNotes}
+                    onClick={notesEditor.cancelEdit}
+                    disabled={notesEditor.isSaving}
                     className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
                   >
                     Cancel
@@ -941,9 +835,9 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-bold text-gray-900 uppercase">Venue Contact</h4>
-                {!isEditingVenueContact && (
+                {!venueContactEditor.isEditing && (
                   <button
-                    onClick={handleEditVenueContact}
+                    onClick={venueContactEditor.startEdit}
                     className="text-xs text-[#347dc4] hover:underline print:hidden"
                   >
                     <Edit className="h-3 w-3 inline" /> Edit
@@ -951,40 +845,40 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
                 )}
               </div>
 
-              {isEditingVenueContact ? (
+              {venueContactEditor.isEditing ? (
                 <div className="space-y-2 print:hidden">
                   <input
                     type="text"
                     placeholder="Name"
-                    value={editedVenueContact.name}
-                    onChange={(e) => setEditedVenueContact({ ...editedVenueContact, name: e.target.value })}
+                    value={venueContactEditor.editedValue.name}
+                    onChange={(e) => venueContactEditor.setEditedValue({ ...venueContactEditor.editedValue, name: e.target.value })}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <input
                     type="tel"
                     placeholder="Phone"
-                    value={editedVenueContact.phone}
-                    onChange={(e) => setEditedVenueContact({ ...editedVenueContact, phone: e.target.value })}
+                    value={venueContactEditor.editedValue.phone}
+                    onChange={(e) => venueContactEditor.setEditedValue({ ...venueContactEditor.editedValue, phone: e.target.value })}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <input
                     type="email"
                     placeholder="Email"
-                    value={editedVenueContact.email}
-                    onChange={(e) => setEditedVenueContact({ ...editedVenueContact, email: e.target.value })}
+                    value={venueContactEditor.editedValue.email}
+                    onChange={(e) => venueContactEditor.setEditedValue({ ...venueContactEditor.editedValue, email: e.target.value })}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={handleSaveVenueContact}
-                      disabled={savingVenueContact}
+                      onClick={venueContactEditor.saveEdit}
+                      disabled={venueContactEditor.isSaving}
                       className="px-3 py-1 bg-[#347dc4] text-white rounded text-xs hover:bg-[#2d6ba8]"
                     >
-                      {savingVenueContact ? 'Saving...' : 'Save'}
+                      {venueContactEditor.isSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button
-                      onClick={handleCancelEditVenueContact}
-                      disabled={savingVenueContact}
+                      onClick={venueContactEditor.cancelEdit}
+                      disabled={venueContactEditor.isSaving}
                       className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
                     >
                       Cancel
@@ -1023,9 +917,9 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-bold text-gray-900 uppercase">Event Planner</h4>
-                {!isEditingEventPlanner && (
+                {!eventPlannerEditor.isEditing && (
                   <button
-                    onClick={handleEditEventPlanner}
+                    onClick={eventPlannerEditor.startEdit}
                     className="text-xs text-[#347dc4] hover:underline print:hidden"
                   >
                     <Edit className="h-3 w-3 inline" /> Edit
@@ -1033,40 +927,40 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
                 )}
               </div>
 
-              {isEditingEventPlanner ? (
+              {eventPlannerEditor.isEditing ? (
                 <div className="space-y-2 print:hidden">
                   <input
                     type="text"
                     placeholder="Name"
-                    value={editedEventPlanner.name}
-                    onChange={(e) => setEditedEventPlanner({ ...editedEventPlanner, name: e.target.value })}
+                    value={eventPlannerEditor.editedValue.name}
+                    onChange={(e) => eventPlannerEditor.setEditedValue({ ...eventPlannerEditor.editedValue, name: e.target.value })}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <input
                     type="tel"
                     placeholder="Phone"
-                    value={editedEventPlanner.phone}
-                    onChange={(e) => setEditedEventPlanner({ ...editedEventPlanner, phone: e.target.value })}
+                    value={eventPlannerEditor.editedValue.phone}
+                    onChange={(e) => eventPlannerEditor.setEditedValue({ ...eventPlannerEditor.editedValue, phone: e.target.value })}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <input
                     type="email"
                     placeholder="Email"
-                    value={editedEventPlanner.email}
-                    onChange={(e) => setEditedEventPlanner({ ...editedEventPlanner, email: e.target.value })}
+                    value={eventPlannerEditor.editedValue.email}
+                    onChange={(e) => eventPlannerEditor.setEditedValue({ ...eventPlannerEditor.editedValue, email: e.target.value })}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={handleSaveEventPlanner}
-                      disabled={savingEventPlanner}
+                      onClick={eventPlannerEditor.saveEdit}
+                      disabled={eventPlannerEditor.isSaving}
                       className="px-3 py-1 bg-[#347dc4] text-white rounded text-xs hover:bg-[#2d6ba8]"
                     >
-                      {savingEventPlanner ? 'Saving...' : 'Save'}
+                      {eventPlannerEditor.isSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button
-                      onClick={handleCancelEditEventPlanner}
-                      disabled={savingEventPlanner}
+                      onClick={eventPlannerEditor.cancelEdit}
+                      disabled={eventPlannerEditor.isSaving}
                       className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
                     >
                       Cancel
