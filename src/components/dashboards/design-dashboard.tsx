@@ -10,9 +10,7 @@ import {
   AlertCircle,
   Calendar,
   Filter,
-  TrendingUp,
   User,
-  X,
   ExternalLink,
   Save,
   Package,
@@ -23,6 +21,20 @@ import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import AttachmentUpload from '@/components/attachment-upload'
+
+interface Designer {
+  id: string
+  first_name?: string
+  last_name?: string
+  email: string
+}
+
+interface DesignStatus {
+  id: string
+  name: string
+  slug: string
+  is_active: boolean
+}
 
 interface DesignItem {
   id: string
@@ -49,6 +61,11 @@ interface DesignItem {
       name: string
     }
   }
+}
+
+interface EventWithDates {
+  event_dates?: Array<{ event_date: string }>
+  start_date?: string
 }
 
 interface DashboardData {
@@ -95,8 +112,8 @@ export function DesignDashboard() {
   const { getSetting } = useSettings()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
-  const [designers, setDesigners] = useState<any[]>([])
-  const [designStatuses, setDesignStatuses] = useState<any[]>([])
+  const [designers, setDesigners] = useState<Designer[]>([])
+  const [designStatuses, setDesignStatuses] = useState<DesignStatus[]>([])
   const [selectedDesigner, setSelectedDesigner] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedTask, setSelectedTask] = useState<DesignItem | null>(null)
@@ -175,8 +192,8 @@ export function DesignDashboard() {
     return Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const getEventDate = (event: any) => {
-    return event.event_dates?.[0]?.event_date || event.start_date
+  const getEventDate = (event: EventWithDates): string => {
+    return event.event_dates?.[0]?.event_date || event.start_date || new Date().toISOString()
   }
 
   const navigateToEvent = (eventId: string) => {
@@ -284,6 +301,7 @@ export function DesignDashboard() {
         <select
           value={selectedDesigner}
           onChange={(e) => setSelectedDesigner(e.target.value)}
+          aria-label="Filter by designer"
           className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
           style={{
             '--tw-ring-color': PRIMARY_COLOR,
@@ -303,6 +321,7 @@ export function DesignDashboard() {
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
+          aria-label="Filter by status"
           className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
           style={{
             '--tw-ring-color': PRIMARY_COLOR,
@@ -311,8 +330,8 @@ export function DesignDashboard() {
         >
           <option value="">All Statuses</option>
           {designStatuses
-            .filter((status: any) => status.is_active)
-            .map((status: any) => (
+            .filter((status) => status.is_active)
+            .map((status) => (
               <option key={status.id} value={status.slug}>
                 {status.name}
               </option>
@@ -412,11 +431,11 @@ export function DesignDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {groupItemsByEvent(data.items).map(([eventId, items], eventIndex) => {
+                {groupItemsByEvent(data.items).map(([, items], eventIndex) => {
                   const bgColor = eventIndex % 2 === 0 ? PRIMARY_COLOR : SECONDARY_COLOR
                   const textColor = getTextColor(bgColor)
 
-                  return items.map((item, itemIndex) => {
+                  return items.map((item) => {
                     const daysUntil = getDaysUntil(item.design_deadline)
                     const itemName = item.item_name || item.design_item_type?.name || 'Design Item'
                     const designerName = item.assigned_designer
@@ -597,6 +616,7 @@ export function DesignDashboard() {
               <select
                 value={taskStatus}
                 onChange={(e) => setTaskStatus(e.target.value)}
+                aria-label="Task status"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
                 style={{
                   '--tw-ring-color': PRIMARY_COLOR,
@@ -604,8 +624,8 @@ export function DesignDashboard() {
                 } as React.CSSProperties}
               >
                 {designStatuses
-                  .filter((status: any) => status.is_active)
-                  .map((status: any) => (
+                  .filter((status) => status.is_active)
+                  .map((status) => (
                     <option key={status.id} value={status.slug}>
                       {status.name}
                     </option>
@@ -685,8 +705,16 @@ export function DesignDashboard() {
 }
 
 // KPI Card Component
-function KPICard({ title, value, subtitle, icon: Icon, color }: any) {
-  const colors = {
+interface KPICardProps {
+  title: string
+  value: number
+  subtitle: string
+  icon: React.ComponentType<{ className?: string }>
+  color: 'yellow' | 'green' | 'red' | 'orange' | 'purple'
+}
+
+function KPICard({ title, value, subtitle, icon: Icon, color }: KPICardProps) {
+  const colors: Record<KPICardProps['color'], string> = {
     yellow: 'bg-yellow-50 text-yellow-600',
     green: 'bg-green-50 text-green-600',
     red: 'bg-red-50 text-red-600',
