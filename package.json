@@ -11,6 +11,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:dual-database": "npx ts-node scripts/test-dual-database-setup.ts",
     "db:test": "npx ts-node scripts/test-dual-database-setup.ts",
     "db:migrate-data": "npx ts-node scripts/migrate-existing-data.ts"
   },
