@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
   request: Request,
@@ -14,7 +14,7 @@ export async function GET(
 
   try {
     const { id: eventId } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch event with related data (including old location TEXT field for fallback)
     const { data: event, error: eventError} = await supabase

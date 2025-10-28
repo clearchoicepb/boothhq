@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const filterType = searchParams.get('filterType') || 'all'
-    
-    const supabase = createServerSupabaseClient()
+
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     let query = supabase
       .from('accounts')
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
       console.error('Error parsing request body:', error)
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
-    
-    const supabase = createServerSupabaseClient()
+
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('accounts')

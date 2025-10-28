@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
     }
     
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('contacts')
@@ -109,7 +109,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('contacts')
@@ -211,7 +211,7 @@ export async function DELETE(
     }
 
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { error } = await supabase
       .from('contacts')

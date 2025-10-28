@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createServerSupabaseClient()
+  const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
   // Get one event
   const { data: event } = await supabase

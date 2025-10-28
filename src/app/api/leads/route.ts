@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const filterType = searchParams.get('filterType') || 'all'
     
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     let query = supabase
       .from('leads')
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('leads')

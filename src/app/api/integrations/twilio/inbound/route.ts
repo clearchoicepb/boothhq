@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import twilio from 'twilio'
 
 /**
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Normalize phone number for matching (remove +1, spaces, dashes, etc.)
     const normalizePhone = (phone: string) => {

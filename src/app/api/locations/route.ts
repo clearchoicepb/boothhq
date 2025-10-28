@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const isOneTime = searchParams.get('isOneTime')
     
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     let query = supabase
       .from('locations')
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('locations')

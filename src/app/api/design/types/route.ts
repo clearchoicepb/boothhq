@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // GET - Fetch all design types for tenant
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('design_item_types')
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('design_item_types')

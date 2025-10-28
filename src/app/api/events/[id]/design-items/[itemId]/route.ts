@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // PUT - Update design item
 export async function PUT(
@@ -16,7 +16,7 @@ export async function PUT(
   try {
     const { itemId } = await params
     const body = await request.json()
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Check if the new status is a completion status
     let isCompletedStatus = false
@@ -74,7 +74,7 @@ export async function DELETE(
 
   try {
     const { itemId } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Get the design item to find linked task
     const { data: designItem } = await supabase

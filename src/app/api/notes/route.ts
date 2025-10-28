@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing entityType or entityId' }, { status: 400 })
     }
     
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     const { data, error } = await supabase
       .from('notes')
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('notes')

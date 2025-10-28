@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Test if we can query the event_custom_items table
     const { data, error, count } = await supabase

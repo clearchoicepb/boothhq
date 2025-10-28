@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function POST(
   request: NextRequest,
@@ -15,7 +15,7 @@ export async function POST(
     }
 
     const { id: opportunityId } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch original opportunity with relations
     const { data: original, error: fetchError } = await supabase

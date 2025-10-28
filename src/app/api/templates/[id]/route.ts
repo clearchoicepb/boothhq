@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // GET - Get single template
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const params = await context.params
     const templateId = params.id
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data: template, error } = await supabase
       .from('templates')
@@ -60,7 +60,7 @@ export async function PUT(
     const body = await request.json()
     const { name, subject, content, merge_fields, is_active } = body
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const updateData: any = {}
     if (name !== undefined) updateData.name = name
@@ -109,7 +109,7 @@ export async function DELETE(
     const params = await context.params
     const templateId = params.id
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { error } = await supabase
       .from('templates')

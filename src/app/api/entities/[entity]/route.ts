@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { getEntityConfig, validateEntityData } from '@/lib/api-entities'
 
 export async function GET(
@@ -32,7 +32,7 @@ export async function GET(
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 25
     const pipelineView = searchParams.get('pipelineView') === 'true'
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Build the count query first
     let countQuery = supabase
@@ -173,7 +173,7 @@ export async function POST(
     }
 
     const config = getEntityConfig(entity)
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Extract event_dates for opportunities before transformation
     const { event_dates, ...bodyWithoutEventDates } = body

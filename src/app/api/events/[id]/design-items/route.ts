@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { createDesignItemForEvent, createDesignItemsForProduct } from '@/lib/design-helpers'
 
 // GET - Fetch all design items for an event
@@ -16,7 +16,7 @@ export async function GET(
 
   try {
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data: designItems, error } = await supabase
       .from('event_design_items')
@@ -66,7 +66,7 @@ export async function POST(
     } = body
 
     let designItem
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // If product_id is provided, create design item from product
     if (product_id) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { sendEmail, generateInvoiceEmailHTML } from '@/lib/email'
 import { generateInvoicePDF } from '@/lib/pdf-generator'
 
@@ -17,7 +17,7 @@ export async function POST(
     }
     
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Get invoice data
     const { data: invoice, error: invoiceError } = await supabase

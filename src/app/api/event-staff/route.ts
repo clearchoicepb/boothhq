@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
     const eventDateId = searchParams.get('event_date_id')
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('[EVENT-STAFF-POST] Request body received:', JSON.stringify(body, null, 2))
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const staffData = {
       ...body,

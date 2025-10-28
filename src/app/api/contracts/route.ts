@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // Create a new contract record
 export async function POST(request: NextRequest) {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Generate contract number
     const { data: contractNumber } = await supabase
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     const contactId = searchParams.get('contactId')
     const leadId = searchParams.get('leadId')
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     let query = supabase
       .from('contracts')

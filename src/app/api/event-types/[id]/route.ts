@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // PUT - Update event type
 export async function PUT(
@@ -22,7 +22,7 @@ export async function PUT(
     const body = await request.json()
     const { name, description, is_active, event_category_id } = body
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // If changing category, verify new category exists and belongs to tenant
     if (event_category_id) {
@@ -84,7 +84,7 @@ export async function DELETE(
 
   try {
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Check if system default
     const { data: eventType } = await supabase

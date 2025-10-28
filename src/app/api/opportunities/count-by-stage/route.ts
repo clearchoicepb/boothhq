@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 /**
  * GET /api/opportunities/count-by-stage
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Count opportunities in this stage for the authenticated user's tenant
     const { count, error: countError } = await supabase
