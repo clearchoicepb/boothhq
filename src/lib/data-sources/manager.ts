@@ -13,6 +13,7 @@ import {
   ConnectionTestResult,
   ConnectionInfo,
 } from './types';
+import crypto from 'crypto';
 
 /**
  * Cache entry for tenant connection configuration
@@ -195,80 +196,156 @@ export class DataSourceManager {
   }
 
   /**
-   * Decrypt API keys
+   * Decrypt API keys using AES-256-GCM
    *
-   * TODO: Implement actual decryption based on your security requirements
+   * Decrypts keys that were encrypted using the encryptKey() method.
+   * Validates authentication tag to ensure data hasn't been tampered with.
    *
-   * Options:
-   * 1. AWS KMS - Best for AWS deployments
-   * 2. HashiCorp Vault - Best for multi-cloud
-   * 3. Supabase Vault - If using Supabase
-   * 4. Node.js crypto with environment key - Simple option
+   * Security features:
+   * - AES-256-GCM authenticated decryption
+   * - Authentication tag verification (prevents tampering)
+   * - Proper error handling for invalid/corrupted data
    *
-   * @param encryptedKey - Encrypted API key
-   * @returns Decrypted API key
+   * @param encryptedKey - Encrypted API key in format: iv:authTag:encrypted (base64 encoded)
+   * @returns Decrypted API key in plain text
+   * @throws Error if ENCRYPTION_KEY is not set, format is invalid, or decryption fails
    */
   private decryptKey(encryptedKey: string): string {
-    // TODO: Implement actual decryption
-    // For now, assume keys are stored in plain text (NOT RECOMMENDED FOR PRODUCTION)
-
-    // Example with Node.js crypto (uncomment and configure for production):
-    /*
-    const crypto = require('crypto');
-    const algorithm = 'aes-256-gcm';
-    const key = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
-
     try {
-      const [ivHex, authTagHex, encryptedHex] = encryptedKey.split(':');
-      const iv = Buffer.from(ivHex, 'hex');
-      const authTag = Buffer.from(authTagHex, 'hex');
-      const encrypted = Buffer.from(encryptedHex, 'hex');
+      // Validate environment variable
+      const encryptionKey = process.env.ENCRYPTION_KEY;
+      if (!encryptionKey) {
+        throw new Error('ENCRYPTION_KEY environment variable is not set');
+      }
 
+      // Validate input
+      if (!encryptedKey || typeof encryptedKey !== 'string') {
+        throw new Error('Invalid input: encryptedKey must be a non-empty string');
+      }
+
+      // Parse the encrypted data format: iv:authTag:encrypted
+      const parts = encryptedKey.split(':');
+      if (parts.length !== 3) {
+        throw new Error('Invalid encrypted key format. Expected format: iv:authTag:encrypted');
+      }
+
+      const [ivBase64, authTagBase64, encryptedBase64] = parts;
+
+      // Validate that all parts are present
+      if (!ivBase64 || !authTagBase64 || !encryptedBase64) {
+        throw new Error('Invalid encrypted key format. Missing required components');
+      }
+
+      // Convert from base64 to buffers
+      const iv = Buffer.from(ivBase64, 'base64');
+      const authTag = Buffer.from(authTagBase64, 'base64');
+      const encrypted = Buffer.from(encryptedBase64, 'base64');
+
+      // Validate buffer sizes
+      if (iv.length !== 16) {
+        throw new Error('Invalid IV length. Expected 16 bytes');
+      }
+      if (authTag.length !== 16) {
+        throw new Error('Invalid auth tag length. Expected 16 bytes');
+      }
+
+      // AES-256-GCM requires a 256-bit (32-byte) key
+      const algorithm = 'aes-256-gcm';
+      const key = Buffer.from(encryptionKey, 'hex');
+
+      // Validate key length
+      if (key.length !== 32) {
+        throw new Error('ENCRYPTION_KEY must be 64 hex characters (32 bytes for AES-256)');
+      }
+
+      // Create decipher with algorithm, key, and IV
       const decipher = crypto.createDecipheriv(algorithm, key, iv);
+
+      // Set the authentication tag
+      // This verifies the data hasn't been tampered with
       decipher.setAuthTag(authTag);
 
+      // Decrypt the data
       let decrypted = decipher.update(encrypted);
       decrypted = Buffer.concat([decrypted, decipher.final()]);
 
+      // Return the decrypted string
       return decrypted.toString('utf8');
-    } catch (error) {
+    } catch (error: any) {
+      // Log error for debugging but don't expose sensitive details
+      console.error('Decryption failed:', error.message);
+
+      // Provide more helpful error messages for common issues
+      if (error.message.includes('Unsupported state or unable to authenticate data')) {
+        throw new Error('Failed to decrypt key: Authentication failed. The key may have been tampered with or encrypted with a different key.');
+      }
+
       throw new Error(`Failed to decrypt key: ${error.message}`);
     }
-    */
-
-    return encryptedKey;
   }
 
   /**
-   * Encrypt API keys
+   * Encrypt API keys using AES-256-GCM
    *
-   * TODO: Implement actual encryption
+   * Uses authenticated encryption (GCM mode) for security.
+   * Generates a random IV for each encryption operation.
    *
-   * @param plainKey - Plain text API key
-   * @returns Encrypted API key
+   * Security features:
+   * - AES-256-GCM authenticated encryption
+   * - Random IV per encryption (prevents pattern analysis)
+   * - Authentication tag validation (prevents tampering)
+   * - Base64 encoding for safe storage
+   *
+   * @param plainKey - Plain text API key to encrypt
+   * @returns Encrypted API key in format: iv:authTag:encrypted (all base64 encoded)
+   * @throws Error if ENCRYPTION_KEY is not set or encryption fails
    */
   public encryptKey(plainKey: string): string {
-    // TODO: Implement actual encryption
-    // For now, return plain text (NOT RECOMMENDED FOR PRODUCTION)
+    try {
+      // Validate environment variable
+      const encryptionKey = process.env.ENCRYPTION_KEY;
+      if (!encryptionKey) {
+        throw new Error('ENCRYPTION_KEY environment variable is not set');
+      }
 
-    // Example with Node.js crypto (uncomment and configure for production):
-    /*
-    const crypto = require('crypto');
-    const algorithm = 'aes-256-gcm';
-    const key = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
-    const iv = crypto.randomBytes(16);
+      // Validate input
+      if (!plainKey || typeof plainKey !== 'string') {
+        throw new Error('Invalid input: plainKey must be a non-empty string');
+      }
 
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-    let encrypted = cipher.update(plainKey, 'utf8');
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
+      // AES-256-GCM requires a 256-bit (32-byte) key
+      // The encryption key should be a 64-character hex string (32 bytes)
+      const algorithm = 'aes-256-gcm';
+      const key = Buffer.from(encryptionKey, 'hex');
 
-    const authTag = cipher.getAuthTag();
+      // Validate key length
+      if (key.length !== 32) {
+        throw new Error('ENCRYPTION_KEY must be 64 hex characters (32 bytes for AES-256)');
+      }
 
-    // Format: iv:authTag:encrypted (all hex encoded)
-    return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
-    */
+      // Generate a random 16-byte IV (initialization vector)
+      // Using a unique IV for each encryption prevents pattern analysis
+      const iv = crypto.randomBytes(16);
 
-    return plainKey;
+      // Create cipher with algorithm, key, and IV
+      const cipher = crypto.createCipheriv(algorithm, key, iv);
+
+      // Encrypt the plain text
+      let encrypted = cipher.update(plainKey, 'utf8');
+      encrypted = Buffer.concat([encrypted, cipher.final()]);
+
+      // Get the authentication tag (for GCM mode)
+      // This allows verification that the data hasn't been tampered with
+      const authTag = cipher.getAuthTag();
+
+      // Return format: iv:authTag:encrypted (all base64 encoded)
+      // Base64 encoding makes it safe to store in databases
+      return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+    } catch (error: any) {
+      // Log error for debugging but don't expose sensitive details
+      console.error('Encryption failed:', error.message);
+      throw new Error(`Failed to encrypt key: ${error.message}`);
+    }
   }
 
   /**
