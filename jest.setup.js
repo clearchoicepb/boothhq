@@ -4,6 +4,8 @@
  * This file runs before all tests to set up the testing environment.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 // Set up environment variables for testing
 process.env.NODE_ENV = 'test';
 
