@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "db:test": "npx ts-node scripts/test-dual-database-setup.ts",
     "db:migrate-data": "npx ts-node scripts/migrate-existing-data.ts"
   },
@@ -55,13 +58,17 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
     "pg": "^8.16.3",
     "tailwindcss": "^4",
+    "ts-jest": "^29.2.5",
     "typescript": "^5",
     "vercel": "^48.1.4"
   },
