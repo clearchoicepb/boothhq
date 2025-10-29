@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function POST(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = createClient()
+    const supabase = getTenantDatabaseClient()
     const eventId = params.id
 
     // Fetch the original event

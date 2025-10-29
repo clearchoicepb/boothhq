@@ -314,6 +314,7 @@ export function EventTimelineView({
           ))}
         </div>
       </div>
+    </div>
 
       {/* Drag Overlay */}
       <DragOverlay>
