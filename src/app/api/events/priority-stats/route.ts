@@ -34,21 +34,11 @@ export async function GET(request: NextRequest) {
     next45Days.setDate(next45Days.getDate() + 45)
     next45Days.setHours(23, 59, 59, 999)
 
-    // Fetch all upcoming events with task completions
+    // Fetch all events (we'll filter by date in JavaScript)
     const { data: events, error: eventsError } = await supabase
       .from('events')
-      .select(`
-        id,
-        start_date,
-        end_date,
-        status,
-        task_completions:event_core_task_completions (
-          core_task_template_id,
-          is_completed
-        )
-      `)
+      .select('id, start_date, end_date, status')
       .eq('tenant_id', session.user.tenantId)
-      .gte('start_date', todayStart.toISOString())
       .order('start_date', { ascending: true })
 
     if (eventsError) {
@@ -69,18 +59,41 @@ export async function GET(request: NextRequest) {
 
     const totalTasksPerEvent = coreTasks?.length || 0
 
-    // Helper function to count completed tasks for an event
-    const getCompletedTaskCount = (event: any): number => {
-      if (!event.task_completions || event.task_completions.length === 0) {
-        return 0
+    // Fetch task completions for all upcoming events
+    const eventIds = events?.map(e => e.id) || []
+    let eventTaskCompletions: Record<string, any[]> = {}
+
+    if (eventIds.length > 0) {
+      const { data: taskCompletionsData, error: completionsError } = await supabase
+        .from('event_core_task_completion')
+        .select('event_id, core_task_template_id, is_completed')
+        .in('event_id', eventIds)
+
+      if (completionsError) {
+        console.error('Error fetching task completions:', completionsError)
       }
-      return event.task_completions.filter((tc: any) => tc.is_completed).length
+
+      // Group completion data by event_id
+      if (taskCompletionsData) {
+        taskCompletionsData.forEach(task => {
+          if (!eventTaskCompletions[task.event_id]) {
+            eventTaskCompletions[task.event_id] = []
+          }
+          eventTaskCompletions[task.event_id].push(task)
+        })
+      }
+    }
+
+    // Helper function to count completed tasks for an event
+    const getCompletedTaskCount = (eventId: string): number => {
+      const completions = eventTaskCompletions[eventId] || []
+      return completions.filter((tc: any) => tc.is_completed).length
     }
 
     // Helper function to check if event has incomplete tasks
-    const hasIncompleteTasks = (event: any): boolean => {
+    const hasIncompleteTasks = (eventId: string): boolean => {
       if (totalTasksPerEvent === 0) return false
-      const completedCount = getCompletedTaskCount(event)
+      const completedCount = getCompletedTaskCount(eventId)
       return completedCount < totalTasksPerEvent
     }
 
@@ -91,7 +104,7 @@ export async function GET(request: NextRequest) {
     }) || []
 
     const next10DaysTasks = next10DaysEvents.reduce((acc, event) => {
-      const completed = getCompletedTaskCount(event)
+      const completed = getCompletedTaskCount(event.id)
       return {
         complete: acc.complete + completed,
         total: acc.total + totalTasksPerEvent
@@ -108,20 +121,25 @@ export async function GET(request: NextRequest) {
       return startDate >= todayStart && startDate <= next45Days
     }) || []
 
-    const next45DaysWithIncomplete = next45DaysEvents.filter(hasIncompleteTasks)
+    const next45DaysWithIncomplete = next45DaysEvents.filter(e => hasIncompleteTasks(e.id))
     const totalIncompleteTasks = next45DaysWithIncomplete.reduce((acc, event) => {
-      const completed = getCompletedTaskCount(event)
+      const completed = getCompletedTaskCount(event.id)
       const incomplete = totalTasksPerEvent - completed
       return acc + incomplete
     }, 0)
 
-    // Calculate All Upcoming stats
-    const allUpcomingCount = events?.length || 0
+    // Calculate All Upcoming stats (filter to future events only)
+    const upcomingEvents = events?.filter(e => {
+      const startDate = new Date(e.start_date)
+      return startDate >= todayStart
+    }) || []
+
+    const allUpcomingCount = upcomingEvents.length
 
     // Find furthest event date for "through" display
     let throughDate = 'Dec 2025'
-    if (events && events.length > 0) {
-      const furthestEvent = events[events.length - 1]
+    if (upcomingEvents && upcomingEvents.length > 0) {
+      const furthestEvent = upcomingEvents[upcomingEvents.length - 1]
       if (furthestEvent?.start_date) {
         const date = new Date(furthestEvent.start_date)
         throughDate = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
