@@ -266,11 +266,95 @@ export default function EventsPage() {
       { key: 'account_name', label: 'Account' },
       { key: 'created_at', label: 'Created Date' }
     ]
-    
+
     const filename = `events-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(sortedEvents, filename, columns)
     toast.success(`Exported ${sortedEvents.length} events`)
   }
+
+  // Calculate event counts for different date filters (for badge counts)
+  // Must be before early returns to maintain hook order
+  const calculateEventCounts = useMemo(() => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    const counts = {
+      total: events.length,
+      filtered: 0, // Will be set after filtering
+      today: 0,
+      thisWeek: 0,
+      thisMonth: 0,
+      upcoming: 0,
+      past: 0,
+      next10Days: 0,
+      next45Days: 0
+    }
+
+    events.forEach(event => {
+      if (!event.start_date) return
+
+      const eventDate = parseLocalDate(event.start_date)
+      eventDate.setHours(0, 0, 0, 0)
+
+      const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+      // Today
+      if (isDateToday(event.start_date)) {
+        counts.today++
+      }
+
+      // This week (next 7 days)
+      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      if (eventDate >= now && eventDate <= weekEnd) {
+        counts.thisWeek++
+      }
+
+      // This month
+      if (eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear()) {
+        counts.thisMonth++
+      }
+
+      // Upcoming (future events)
+      if (eventDate >= now) {
+        counts.upcoming++
+      }
+
+      // Past
+      if (eventDate < now) {
+        counts.past++
+      }
+
+      // Next 10 days
+      if (daysUntil >= 0 && daysUntil <= 10) {
+        counts.next10Days++
+      }
+
+      // Next 45 days with incomplete tasks (inline logic to avoid calling helper function)
+      if (daysUntil >= 0 && daysUntil <= 45 && coreTasks.length > 0) {
+        // Check if event has incomplete tasks
+        let hasIncompleteTasks = false
+
+        if (!event.task_completions || event.task_completions.length === 0) {
+          // No completions means all tasks are incomplete
+          hasIncompleteTasks = true
+        } else {
+          // Check if any tasks are not completed
+          const completedTaskIds = new Set(
+            event.task_completions
+              .filter(tc => tc.is_completed)
+              .map(tc => tc.core_task_template_id)
+          )
+          hasIncompleteTasks = coreTasks.some(task => !completedTaskIds.has(task.id))
+        }
+
+        if (hasIncompleteTasks) {
+          counts.next45Days++
+        }
+      }
+    })
+
+    return counts
+  }, [events, coreTasks])
 
   if (status === 'loading' || loading || localLoading) {
     return (
@@ -341,74 +425,6 @@ export default function EventsPage() {
     futureDate.setDate(futureDate.getDate() + filters.taskDateRangeFilter)
     return eventDate >= now && eventDate <= futureDate
   }
-
-  // Calculate event counts for different date filters (for badge counts)
-  const calculateEventCounts = useMemo(() => {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-
-    const counts = {
-      total: events.length,
-      filtered: 0, // Will be set after filtering
-      today: 0,
-      thisWeek: 0,
-      thisMonth: 0,
-      upcoming: 0,
-      past: 0,
-      next10Days: 0,
-      next45Days: 0
-    }
-
-    events.forEach(event => {
-      if (!event.start_date) return
-
-      const eventDate = parseLocalDate(event.start_date)
-      eventDate.setHours(0, 0, 0, 0)
-
-      const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-      // Today
-      if (isDateToday(event.start_date)) {
-        counts.today++
-      }
-
-      // This week (next 7 days)
-      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      if (eventDate >= now && eventDate <= weekEnd) {
-        counts.thisWeek++
-      }
-
-      // This month
-      if (eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear()) {
-        counts.thisMonth++
-      }
-
-      // Upcoming (future events)
-      if (eventDate >= now) {
-        counts.upcoming++
-      }
-
-      // Past
-      if (eventDate < now) {
-        counts.past++
-      }
-
-      // Next 10 days
-      if (daysUntil >= 0 && daysUntil <= 10) {
-        counts.next10Days++
-      }
-
-      // Next 45 days with incomplete tasks
-      if (daysUntil >= 0 && daysUntil <= 45) {
-        const incompleteTasks = getIncompleteTasks(event)
-        if (incompleteTasks.length > 0) {
-          counts.next45Days++
-        }
-      }
-    })
-
-    return counts
-  }, [events, coreTasks])
 
   const filteredEvents = events.filter(event => {
     // Search filter
