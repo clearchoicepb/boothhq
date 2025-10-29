@@ -133,14 +133,7 @@ ORDER BY count DESC;
 -- Verify tenant_id
 SELECT DISTINCT tenant_id FROM users;
 
--- Test a join with design items
-SELECT 
-  d.id,
-  d.item_name,
-  u.first_name || ' ' || u.last_name as designer_name
-FROM event_design_items d
-LEFT JOIN users u ON d.assigned_designer_id = u.id
-LIMIT 5;
+
 
 -- ============================================================================
 -- SUCCESS!

@@ -96,9 +96,12 @@ export async function GET(
       } : null,
       primary_contact_name: data.primary_contact ?
         `${data.primary_contact.first_name} ${data.primary_contact.last_name}`.trim() : null,
-      // TODO: Re-enable event_planner join once foreign key is set up in Tenant DB
-      event_planner: null,
-      event_planner_name: null,
+      event_planner: data.event_planner ? {
+        ...data.event_planner,
+        company: getContactCompany(data.event_planner)
+      } : null,
+      event_planner_name: data.event_planner ?
+        `${data.event_planner.first_name} ${data.event_planner.last_name}`.trim() : null,
       opportunity_name: data.opportunities?.name || null,
       event_category: data.event_categories || null,
       event_type: data.event_types || null

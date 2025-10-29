@@ -124,7 +124,14 @@ export async function POST(request: NextRequest) {
         description: description || null,
         uploaded_by: session.user.id,
       })
-      .select('*')
+      .select(`
+        *,
+        uploaded_by_user:users!uploaded_by (
+          first_name,
+          last_name,
+          email
+        )
+      `)
       .single()
 
     if (dbError) {
