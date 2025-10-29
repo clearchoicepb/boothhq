@@ -236,7 +236,17 @@ export default function InventorySettingsPage() {
   // Load settings from global context
   useEffect(() => {
     if (globalSettings.inventory) {
-      setSettings(globalSettings.inventory);
+      // Merge database settings with defaults to ensure all required properties exist
+      setSettings(prev => ({
+        ...prev,
+        ...globalSettings.inventory,
+        requiredFields: {
+          ...prev.requiredFields,
+          ...globalSettings.inventory.requiredFields
+        },
+        categories: globalSettings.inventory.categories || prev.categories,
+        customFields: globalSettings.inventory.customFields || prev.customFields
+      }));
     }
   }, [globalSettings, settingsLoading]);
 

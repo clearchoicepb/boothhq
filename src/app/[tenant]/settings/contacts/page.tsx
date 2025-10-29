@@ -67,7 +67,16 @@ export default function ContactsSettingsPage() {
   // Load settings from global context
   useEffect(() => {
     if (globalSettings.contacts) {
-      setSettings(globalSettings.contacts);
+      // Merge database settings with defaults to ensure all required properties exist
+      setSettings(prev => ({
+        ...prev,
+        ...globalSettings.contacts,
+        requiredFields: {
+          ...prev.requiredFields,
+          ...globalSettings.contacts.requiredFields
+        },
+        customFields: globalSettings.contacts.customFields || prev.customFields
+      }));
     }
   }, [globalSettings, settingsLoading]);
 

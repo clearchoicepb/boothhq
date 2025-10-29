@@ -73,7 +73,18 @@ export default function LeadsSettingsPage() {
   // Load settings from global context
   useEffect(() => {
     if (globalSettings.leads) {
-      setSettings(globalSettings.leads);
+      // Merge database settings with defaults to ensure all required properties exist
+      setSettings(prev => ({
+        ...prev,
+        ...globalSettings.leads,
+        requiredFields: {
+          ...prev.requiredFields,
+          ...globalSettings.leads.requiredFields
+        },
+        leadSources: globalSettings.leads.leadSources || prev.leadSources,
+        leadStatuses: globalSettings.leads.leadStatuses || prev.leadStatuses,
+        customFields: globalSettings.leads.customFields || prev.customFields
+      }));
     }
   }, [globalSettings, settingsLoading]);
 
