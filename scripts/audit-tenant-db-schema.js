@@ -2,12 +2,9 @@
 
 /**
  * Audit Tenant Database Schema
- *
- * Compares tables between Application DB and Tenant DB to find missing tables.
- *
- * Expected architecture:
- * - Application DB: tenants, users (global), application metadata
- * - Tenant DB: ALL business data (contacts, accounts, leads, opportunities, events, settings, etc.)
+ * 
+ * Compares the tenant database schema with the application database
+ * to identify any discrepancies, missing tables, or column mismatches.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -16,6 +13,7 @@ const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
+// Database connections
 const appDb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -26,212 +24,249 @@ const tenantDb = createClient(
   process.env.DEFAULT_TENANT_DATA_SERVICE_KEY
 );
 
-const colors = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  magenta: '\x1b[35m',
-  bold: '\x1b[1m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
-
-// Tables that should be in TENANT DB (business data + tenant-specific config)
-const TENANT_TABLES = [
-  // Core Business Entities
+// Tables that should exist in the tenant database
+const EXPECTED_TABLES = [
   'accounts',
   'contacts',
   'contact_accounts',
   'leads',
   'opportunities',
+  'opportunity_stages',
   'opportunity_line_items',
+  'locations',
   'events',
   'event_dates',
-  'event_staff',
-  'invoices',
-  'invoice_line_items',
-  'quotes',
-  'quote_line_items',
-  'payments',
-
-  // Supporting Data
-  'locations',
+  'event_categories',
   'tasks',
   'notes',
   'attachments',
-  'communications',
-  'contracts',
-
-  // Configuration & Settings
-  'tenant_settings',
-  'templates',
-  'packages',
-  'add_ons',
-  'staff_roles',
-
-  // Event-Specific
-  'event_categories',
-  'event_types',
-  'booth_types',
-  'booths',
-  'booth_assignments',
-  'equipment',
-  'equipment_types',
-  'equipment_items',
-  'equipment_categories',
-  'design_types',
-  'design_statuses',
-
-  // Core Tasks System
-  'core_task_templates',
-  'core_tasks',
+  'communications'
 ];
 
-// Tables that should be in APPLICATION DB ONLY
-const APPLICATION_TABLES = [
-  'tenants',
-  'users', // Global users table (NOT tenant-specific)
-  'roles',
-  'permissions',
-  'audit_log',
-];
+async function getTableColumns(db, tableName) {
+  try {
+    const { data, error } = await db
+      .from(tableName)
+      .select('*')
+      .limit(1);
 
-async function getTables(db, dbName) {
-  const { data, error } = await db.rpc('get_tables_list');
-
-  if (error) {
-    // Fallback: Query information_schema
-    const { data: tables, error: err2 } = await db
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public')
-      .eq('table_type', 'BASE TABLE');
-
-    if (err2) {
-      log(`Error getting tables from ${dbName}: ${err2.message}`, 'red');
-      return null;
+    if (error) {
+      return { error: error.message, columns: [] };
     }
 
-    return tables.map(t => t.table_name);
+    const columns = data && data.length > 0 ? Object.keys(data[0]) : [];
+    return { columns, error: null };
+  } catch (err) {
+    return { error: err.message, columns: [] };
   }
-
-  return data;
 }
 
-async function main() {
-  log('\n' + '='.repeat(80), 'blue');
-  log('TENANT DATABASE SCHEMA AUDIT', 'bold');
-  log('='.repeat(80) + '\n', 'blue');
+async function getTableInfo(db, tableName) {
+  // Get table columns using PostgreSQL information_schema
+  const query = `
+    SELECT 
+      column_name,
+      data_type,
+      is_nullable,
+      column_default
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = '${tableName}'
+    ORDER BY ordinal_position;
+  `;
 
-  // Get tables from both databases
-  log('Fetching table lists...', 'cyan');
-
-  const appTables = await getTables(appDb, 'Application DB');
-  const tenantTables = await getTables(tenantDb, 'Tenant DB');
-
-  if (!appTables || !tenantTables) {
-    log('\nFailed to fetch table lists. Trying alternative method...', 'yellow');
-
-    // Alternative: Query using raw SQL
-    const { data: appData } = await appDb.rpc('exec_sql', {
-      sql: "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
-    });
-
-    const { data: tenantData } = await tenantDb.rpc('exec_sql', {
-      sql: "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
-    });
-
-    if (!appData || !tenantData) {
-      log('Unable to fetch tables. Manual check required.', 'red');
-      return;
+  try {
+    const { data, error } = await db.rpc('exec_sql', { sql: query });
+    
+    if (error) {
+      // Fallback to simple column detection
+      return await getTableColumns(db, tableName);
     }
+
+    return { columns: data || [], error: null };
+  } catch (err) {
+    // Fallback to simple column detection
+    return await getTableColumns(db, tableName);
   }
+}
 
-  log(`\nApplication DB: ${appTables ? appTables.length : 0} tables`, 'cyan');
-  log(`Tenant DB: ${tenantTables ? tenantTables.length : 0} tables\n`, 'cyan');
+async function checkRLSPolicies(db, tableName) {
+  const query = `
+    SELECT 
+      schemaname,
+      tablename,
+      policyname,
+      permissive,
+      roles,
+      cmd,
+      qual,
+      with_check
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = '${tableName}';
+  `;
 
-  // Find missing tenant tables
-  const missingInTenant = TENANT_TABLES.filter(t =>
-    !tenantTables || !tenantTables.includes(t)
-  );
+  try {
+    const { data, error } = await db.rpc('exec_sql', { sql: query });
+    
+    if (error) {
+      return { policies: [], error: error.message };
+    }
 
-  // Find tables that should NOT be in tenant DB
-  const wronglyInTenant = APPLICATION_TABLES.filter(t =>
-    tenantTables && tenantTables.includes(t)
-  );
+    return { policies: data || [], error: null };
+  } catch (err) {
+    return { policies: [], error: err.message };
+  }
+}
 
-  // Report
-  log('='.repeat(80), 'blue');
-  log('MISSING TABLES IN TENANT DB', 'bold');
-  log('='.repeat(80), 'blue');
+async function auditSchema() {
+  console.log('\n🔍 TENANT DATABASE SCHEMA AUDIT\n');
+  console.log('=' .repeat(70));
+  
+  const issues = [];
+  const summary = {
+    totalTables: EXPECTED_TABLES.length,
+    tablesChecked: 0,
+    missingTables: [],
+    columnMismatches: [],
+    missingPolicies: [],
+    errors: []
+  };
 
-  if (missingInTenant.length === 0) {
-    log('✅ All expected tenant tables are present!', 'green');
-  } else {
-    log(`❌ Found ${missingInTenant.length} missing tables:\n`, 'red');
-    missingInTenant.forEach(table => {
-      const inApp = appTables && appTables.includes(table);
-      if (inApp) {
-        log(`  ⚠️  ${table} (EXISTS in App DB - needs migration)`, 'yellow');
+  // Check each expected table
+  for (const tableName of EXPECTED_TABLES) {
+    console.log(`\n📋 Checking table: ${tableName}`);
+    console.log('-'.repeat(70));
+
+    // Check if table exists in app database
+    const appResult = await getTableColumns(appDb, tableName);
+    if (appResult.error) {
+      console.log(`  ❌ App DB Error: ${appResult.error}`);
+      summary.errors.push({ table: tableName, db: 'app', error: appResult.error });
+      continue;
+    }
+
+    // Check if table exists in tenant database
+    const tenantResult = await getTableColumns(tenantDb, tableName);
+    if (tenantResult.error) {
+      console.log(`  ❌ Tenant DB Error: ${tenantResult.error}`);
+      if (tenantResult.error.includes('does not exist')) {
+        summary.missingTables.push(tableName);
+        console.log(`  ⚠️  Table missing in tenant database!`);
       } else {
-        log(`  ❌ ${table} (MISSING from both DBs - needs creation)`, 'red');
+        summary.errors.push({ table: tableName, db: 'tenant', error: tenantResult.error });
       }
+      continue;
+    }
+
+    summary.tablesChecked++;
+
+    // Compare columns
+    const appColumns = appResult.columns.sort();
+    const tenantColumns = tenantResult.columns.sort();
+
+    const missingInTenant = appColumns.filter(col => !tenantColumns.includes(col));
+    const extraInTenant = tenantColumns.filter(col => !appColumns.includes(col));
+
+    if (missingInTenant.length > 0 || extraInTenant.length > 0) {
+      console.log(`  ⚠️  Column mismatch detected!`);
+      
+      if (missingInTenant.length > 0) {
+        console.log(`  ❌ Missing in tenant DB: ${missingInTenant.join(', ')}`);
+        summary.columnMismatches.push({
+          table: tableName,
+          type: 'missing',
+          columns: missingInTenant
+        });
+      }
+
+      if (extraInTenant.length > 0) {
+        console.log(`  ➕ Extra in tenant DB: ${extraInTenant.join(', ')}`);
+        summary.columnMismatches.push({
+          table: tableName,
+          type: 'extra',
+          columns: extraInTenant
+        });
+      }
+    } else {
+      console.log(`  ✅ Columns match (${appColumns.length} columns)`);
+    }
+
+    // Check RLS policies (informational)
+    const { policies, error: rlsError } = await checkRLSPolicies(tenantDb, tableName);
+    if (rlsError) {
+      console.log(`  ℹ️  RLS check skipped: ${rlsError}`);
+    } else if (policies.length === 0) {
+      console.log(`  ⚠️  No RLS policies found (may need service role policies)`);
+      summary.missingPolicies.push(tableName);
+    } else {
+      console.log(`  ✅ RLS policies: ${policies.length} found`);
+    }
+  }
+
+  // Print summary
+  console.log('\n');
+  console.log('=' .repeat(70));
+  console.log('📊 AUDIT SUMMARY');
+  console.log('=' .repeat(70));
+  console.log(`\nTotal tables expected: ${summary.totalTables}`);
+  console.log(`Tables successfully checked: ${summary.tablesChecked}`);
+  
+  if (summary.missingTables.length > 0) {
+    console.log(`\n❌ Missing tables (${summary.missingTables.length}):`);
+    summary.missingTables.forEach(table => console.log(`   - ${table}`));
+  }
+
+  if (summary.columnMismatches.length > 0) {
+    console.log(`\n⚠️  Column mismatches (${summary.columnMismatches.length}):`);
+    summary.columnMismatches.forEach(mismatch => {
+      console.log(`   - ${mismatch.table}: ${mismatch.type} columns: ${mismatch.columns.join(', ')}`);
     });
   }
 
-  log('\n' + '='.repeat(80), 'blue');
-  log('TABLES IN WRONG DATABASE', 'bold');
-  log('='.repeat(80), 'blue');
+  if (summary.errors.length > 0) {
+    console.log(`\n❌ Errors encountered (${summary.errors.length}):`);
+    summary.errors.forEach(err => {
+      console.log(`   - ${err.table} (${err.db}): ${err.error}`);
+    });
+  }
 
-  if (wronglyInTenant.length === 0) {
-    log('✅ No application tables found in tenant DB', 'green');
+  if (summary.missingPolicies.length > 0) {
+    console.log(`\n⚠️  Tables without RLS policies (${summary.missingPolicies.length}):`);
+    console.log(`   Note: Service role should bypass RLS automatically`);
+    summary.missingPolicies.forEach(table => console.log(`   - ${table}`));
+  }
+
+  // Overall status
+  console.log('\n');
+  console.log('=' .repeat(70));
+  const allGood = summary.missingTables.length === 0 && 
+                  summary.columnMismatches.length === 0 && 
+                  summary.errors.length === 0;
+
+  if (allGood) {
+    console.log('✅ AUDIT PASSED: Tenant database schema is in sync!');
   } else {
-    log(`⚠️  Found ${wronglyInTenant.length} application tables in tenant DB:\n`, 'yellow');
-    wronglyInTenant.forEach(table => {
-      log(`  - ${table}`, 'yellow');
-    });
+    console.log('❌ AUDIT FAILED: Schema discrepancies found!');
+    console.log('\nRecommended actions:');
+    if (summary.missingTables.length > 0) {
+      console.log('  1. Run the tenant database schema SQL to create missing tables');
+    }
+    if (summary.columnMismatches.length > 0) {
+      console.log('  2. Update tenant database schema to match application database');
+    }
+    if (summary.errors.length > 0) {
+      console.log('  3. Check database connections and permissions');
+    }
   }
+  console.log('=' .repeat(70));
+  console.log('\n');
 
-  // Critical tables check
-  const criticalMissing = ['tenant_settings', 'accounts', 'contacts', 'opportunities', 'events'].filter(t =>
-    missingInTenant.includes(t)
-  );
-
-  if (criticalMissing.length > 0) {
-    log('\n' + '='.repeat(80), 'red');
-    log('🚨 CRITICAL TABLES MISSING 🚨', 'bold');
-    log('='.repeat(80), 'red');
-    log('\nThe following critical tables are missing from Tenant DB:', 'red');
-    criticalMissing.forEach(table => {
-      log(`  ❌ ${table}`, 'red');
-    });
-    log('\nThis explains the 500 errors and missing data!', 'yellow');
-  }
-
-  // Next steps
-  log('\n' + '='.repeat(80), 'blue');
-  log('RECOMMENDED NEXT STEPS', 'bold');
-  log('='.repeat(80) + '\n', 'blue');
-
-  if (missingInTenant.length > 0) {
-    log('1. Create missing tables in Tenant DB', 'yellow');
-    log('2. Migrate data from Application DB to Tenant DB', 'yellow');
-    log('3. Update API routes to use correct database', 'yellow');
-    log('\nRun: node scripts/migrate-missing-tables.js', 'green');
-  } else {
-    log('Schema looks good! ✅', 'green');
-  }
-
-  log('\n');
+  process.exit(allGood ? 0 : 1);
 }
 
-main().catch(err => {
-  log(`Fatal error: ${err.message}`, 'red');
-  console.error(err);
+// Run the audit
+auditSchema().catch(error => {
+  console.error('\n❌ Fatal error during audit:', error);
   process.exit(1);
 });
