@@ -93,7 +93,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         contactsApi.getAll(),
         opportunitiesApi.getAll()
       ])
-      
+
       setAccounts(accountsData)
       setContacts(contactsData)
       setOpportunities(opportunitiesData)
@@ -196,7 +196,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
       ...prev,
       [field]: value
     }))
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -224,7 +224,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
   ]
 
   // Filter contacts and opportunities based on selected account
-  const filteredContacts = formData.account_id 
+  const filteredContacts = formData.account_id
     ? contacts.filter(contact => contact.account_id === formData.account_id)
     : contacts
 
@@ -423,4 +423,3 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     </Modal>
   )
 }
-

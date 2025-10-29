@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     })
 
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
+
     let query = supabase
       .from('locations')
       .select('*')
@@ -176,18 +176,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -69,6 +69,7 @@ export function LocationSelect({
     console.log('[LocationSelect] Location created successfully:', location)
     console.log('[LocationSelect] Adding location to list and calling onChange with ID:', location.id)
     setLocations(prev => [location, ...prev])
+    console.log('[LocationSelect] Calling onChange with:', { id: location.id, location })
     onChange(location.id, location)
     setIsFormOpen(false)
     setEditingLocation(null)
