@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -802,8 +802,8 @@ export default function EventsPage() {
                     const isLoadingTasks = loadingTasks.has(event.id)
 
                     return (
-                      <>
-                      <tr key={event.id} className={`hover:bg-gray-50 ${priority.border}`}>
+                      <React.Fragment key={event.id}>
+                      <tr className={`hover:bg-gray-50 ${priority.border}`}>
                         {/* Expand/Collapse Button */}
                         <td className="px-2 py-4 text-center">
                           <button
@@ -1011,7 +1011,7 @@ export default function EventsPage() {
                           </td>
                         </tr>
                       )}
-                      </>
+                      </React.Fragment>
                     )
                   })}
                 </tbody>
