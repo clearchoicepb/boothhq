@@ -12,7 +12,6 @@ import { useParams, useRouter } from 'next/navigation'
 import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
-import { EventPriorityStatsCards } from '@/components/events/event-priority-stats-cards'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
 import { EventInlineTasks } from '@/components/events/event-inline-tasks'
 import { EventFilters, type FilterState } from '@/components/events/event-filters'
@@ -195,46 +194,6 @@ export default function EventsPage() {
     queryClient.invalidateQueries({ queryKey: ['eventsTaskStatus'] })
   }
 
-  // Handler for priority stats card clicks
-  const handlePriorityCardClick = (filter: 'next_10_days' | 'tasks_45_days' | 'all_upcoming') => {
-    switch (filter) {
-      case 'next_10_days':
-        // Filter to next 10 days
-        setFilters({
-          ...filters,
-          dateRangeFilter: 'custom_days',
-          customDaysFilter: 10,
-          statusFilter: 'all',
-          taskFilter: 'all',
-          selectedTaskIds: [],
-          searchTerm: ''
-        })
-        break
-      case 'tasks_45_days':
-        // Filter to events with incomplete tasks in next 45 days
-        setFilters({
-          ...filters,
-          dateRangeFilter: 'all',
-          statusFilter: 'all',
-          taskFilter: 'incomplete',
-          taskDateRangeFilter: 45,
-          selectedTaskIds: [],
-          searchTerm: ''
-        })
-        break
-      case 'all_upcoming':
-        // Show all upcoming events
-        setFilters({
-          ...filters,
-          dateRangeFilter: 'upcoming',
-          statusFilter: 'all',
-          taskFilter: 'all',
-          selectedTaskIds: [],
-          searchTerm: ''
-        })
-        break
-    }
-  }
 
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
@@ -578,11 +537,6 @@ export default function EventsPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          
-          {/* KPI Stats Cards */}
-          <EventPriorityStatsCards
-            onCardClick={handlePriorityCardClick}
-          />
 
           {/* Enhanced Filters */}
           <EventFilters
