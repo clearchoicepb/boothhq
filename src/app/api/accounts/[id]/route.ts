@@ -135,7 +135,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -153,6 +153,11 @@ export async function DELETE(
       console.error('Error deleting account:', error)
       return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
     }
+
+    // Revalidate the accounts list page to show deletion immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/${tenantSubdomain}/accounts`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -34,10 +34,11 @@ export async function GET(request: NextRequest) {
     }
 
     const response = NextResponse.json(data)
-    
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-    
+
+    // Use no-cache to ensure deleted leads disappear immediately
+    // This prevents stale data from being served after DELETE operations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate')
+
     return response
   } catch (error) {
     console.error('Error:', error)

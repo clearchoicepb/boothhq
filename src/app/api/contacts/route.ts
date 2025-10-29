@@ -104,10 +104,11 @@ export async function GET(request: NextRequest) {
     })) || []
 
     const response = NextResponse.json(transformedData)
-    
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
-    
+
+    // Use no-cache to ensure deleted contacts disappear immediately
+    // This prevents stale data from being served after DELETE operations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate')
+
     return response
   } catch (error) {
     console.error('Error:', error)
@@ -199,8 +200,8 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json(data)
 
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
+    // Use no-cache to ensure new contacts appear immediately
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate')
 
     return response
   } catch (error) {

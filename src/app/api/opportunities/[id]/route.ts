@@ -223,7 +223,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -240,6 +240,11 @@ export async function DELETE(
       console.error('Error deleting opportunity:', error)
       return NextResponse.json({ error: 'Failed to delete opportunity' }, { status: 500 })
     }
+
+    // Revalidate the opportunities list page to show deletion immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/${tenantSubdomain}/opportunities`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

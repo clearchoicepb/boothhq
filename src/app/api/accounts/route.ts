@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
     }
 
     const response = NextResponse.json(data || [])
-    // Reduced cache time to 5 seconds for better UX after creates/updates
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=30')
+    // Use no-cache to ensure deleted accounts disappear immediately
+    // This prevents stale data from being served after DELETE operations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate')
     return response
   } catch (error) {
     console.error('Error:', error)
