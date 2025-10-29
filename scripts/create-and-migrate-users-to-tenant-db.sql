@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL,
   first_name TEXT,
   last_name TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'user', 'designer', 'customer')),
+  role TEXT DEFAULT 'user',
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
   
   -- Login tracking
