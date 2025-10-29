@@ -66,7 +66,9 @@ export function LocationSelect({
   }
 
   const handleLocationCreated = (location: Location) => {
+    console.log('[LocationSelect] Location created:', location)
     setLocations(prev => [location, ...prev])
+    console.log('[LocationSelect] Calling onChange with:', { id: location.id, location })
     onChange(location.id, location)
     setIsFormOpen(false)
     setEditingLocation(null)
@@ -140,8 +142,11 @@ export function LocationSelect({
           isOpen={isFormOpen}
           onClose={() => { setIsFormOpen(false); setEditingLocation(null); }}
           onSave={async (locationData) => {
+            console.log('[LocationSelect] Saving location:', locationData)
             const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations'
             const method = editingLocation ? 'PUT' : 'POST'
+
+            console.log('[LocationSelect] Making request:', { url, method })
 
             const response = await fetch(url, {
               method,
@@ -149,11 +154,16 @@ export function LocationSelect({
               body: JSON.stringify(locationData)
             })
 
+            console.log('[LocationSelect] Response status:', response.status)
+
             if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}))
+              console.error('[LocationSelect] Save failed:', errorData)
               throw new Error('Failed to save location')
             }
 
             const location = await response.json()
+            console.log('[LocationSelect] Location saved:', location)
 
             if (editingLocation) {
               handleLocationUpdated(location)
