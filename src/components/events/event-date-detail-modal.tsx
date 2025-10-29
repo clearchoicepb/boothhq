@@ -186,10 +186,19 @@ export function EventDateDetailModal({
                     </option>
                   ))}
                 </select>
-              ) : eventDate.location_name ? (
-                <div className="flex items-center">
-                  <MapPin className="h-5 w-5 text-gray-400 mr-2" />
-                  <span className="text-base text-gray-900">{eventDate.location_name}</span>
+              ) : eventDate.locations ? (
+                <div>
+                  <div className="flex items-center">
+                    <MapPin className="h-5 w-5 text-gray-400 mr-2" />
+                    <span className="text-base text-gray-900">{eventDate.locations.name}</span>
+                  </div>
+                  {eventDate.locations.address_line1 && (
+                    <div className="mt-1 ml-7 text-sm text-gray-600">
+                      {eventDate.locations.address_line1}
+                      {eventDate.locations.city && `, ${eventDate.locations.city}`}
+                      {eventDate.locations.state && `, ${eventDate.locations.state}`}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <span className="text-sm text-gray-500">Not set</span>

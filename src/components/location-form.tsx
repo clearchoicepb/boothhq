@@ -96,9 +96,7 @@ export function LocationForm({
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+  const handleSubmit = async () => {
     if (!formData.name.trim()) {
       alert('Location name is required')
       return
@@ -132,7 +130,7 @@ export function LocationForm({
       title={title}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
@@ -257,14 +255,15 @@ export function LocationForm({
             Cancel
           </Button>
           <Button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700"
           >
             {isLoading ? 'Saving...' : (location ? 'Update Location' : 'Create Location')}
           </Button>
         </div>
-      </form>
+      </div>
     </Modal>
   )
 }

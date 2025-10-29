@@ -56,6 +56,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('=== EVENT DATE UPDATE API START ===')
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -65,11 +66,20 @@ export async function PUT(
     const params = await context.params
     const eventDateId = params.id
     const body = await request.json()
+    console.log('[Event Date API] Received body:', JSON.stringify(body, null, 2))
+    
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
+
+    // Sanitize UUID fields: convert empty strings to null
+    const sanitizedBody = {
+      ...body,
+      location_id: body.location_id === '' ? null : body.location_id,
+    }
+    console.log('[Event Date API] Sanitized body:', JSON.stringify(sanitizedBody, null, 2))
 
     const { data, error } = await supabase
       .from('event_dates')
-      .update(body)
+      .update(sanitizedBody)
       .eq('id', eventDateId)
       .eq('tenant_id', session.user.tenantId)
       .select(`
@@ -85,14 +95,25 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating event date:', error)
-      return NextResponse.json({ error: 'Failed to update event date', details: error.message }, { status: 500 })
+      console.error('[Event Date API] Supabase error:', JSON.stringify(error, null, 2))
+      return NextResponse.json({ 
+        error: 'Failed to update event date', 
+        details: error.message,
+        code: error.code,
+        hint: error.hint 
+      }, { status: 500 })
     }
 
+    console.log('[Event Date API] Update successful')
+    console.log('=== EVENT DATE UPDATE API END ===')
     return NextResponse.json(data)
-  } catch (error) {
-    console.error('Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error: any) {
+    console.error('[Event Date API] Caught exception:', error)
+    console.error('[Event Date API] Error stack:', error.stack)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: error.message 
+    }, { status: 500 })
   }
 }
 
