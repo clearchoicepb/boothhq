@@ -27,6 +27,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     start_date: '',
     end_date: null,
     location: '',
+    location_id: null,
     status: 'scheduled',
     account_id: null,
     contact_id: null,
@@ -54,11 +55,13 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         start_date: event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
         end_date: event.end_date || null,
         location: event.location || '',
+        location_id: event.location_id || null,
         status: event.status || 'scheduled',
         account_id: event.account_id,
         contact_id: event.contact_id,
         opportunity_id: event.opportunity_id
       })
+      setLocationId(event.location_id || null)
     } else {
       // Set default start date to current time
       const now = new Date()
@@ -72,11 +75,13 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         start_date: defaultStartDate,
         end_date: null,
         location: '',
+        location_id: null,
         status: 'scheduled',
         account_id: null,
         contact_id: null,
         opportunity_id: null
       })
+      setLocationId(null)
     }
     setErrors({})
   }, [event, isOpen])
@@ -122,7 +127,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -130,7 +135,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     setLoading(true)
     try {
       let result: Event
-      
+
       if (event) {
         // Update existing event
         const updateData: EventUpdate = {
@@ -138,6 +143,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
+        console.log('[EventForm] Updating event with data:', updateData)
         result = await eventsApi.update(event.id, updateData)
       } else {
         // Create new event
@@ -146,12 +152,14 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
+        console.log('[EventForm] Creating event with data:', insertData)
         result = await eventsApi.create(insertData)
       }
-      
+
+      console.log('[EventForm] Event saved successfully:', result)
       onSubmit(result)
     } catch (error) {
-      console.error('Error saving event:', error)
+      console.error('[EventForm] Error saving event:', error)
       setErrors({ submit: 'Failed to save event. Please try again.' })
     } finally {
       setLoading(false)
@@ -294,7 +302,9 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
             <LocationSelect
               value={locationId}
               onChange={(locId, location) => {
+                console.log('[EventForm] Location changed:', { locId, location })
                 setLocationId(locId)
+                handleInputChange('location_id', locId)
                 // Also set location name in the old field for backward compatibility
                 if (location) {
                   handleInputChange('location', location.name)

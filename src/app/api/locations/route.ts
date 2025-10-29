@@ -54,33 +54,71 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== LOCATION CREATE API START ===')
+
     const session = await getServerSession(authOptions)
-    
+    console.log('[Locations API] Session user:', session?.user ? {
+      id: session.user.id,
+      email: session.user.email,
+      tenantId: session.user.tenantId
+    } : 'No session')
+
     if (!session?.user) {
+      console.error('[Locations API] Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log('[Locations API] Request body:', JSON.stringify(body, null, 2))
+
+    console.log('[Locations API] Getting tenant database client for tenant:', session.user.tenantId)
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    console.log('[Locations API] Tenant database client created successfully')
+
+    const locationData = {
+      ...body,
+      tenant_id: session.user.tenantId
+    }
+    console.log('[Locations API] Inserting location data:', JSON.stringify(locationData, null, 2))
 
     const { data, error } = await supabase
       .from('locations')
-      .insert({
-        ...body,
-        tenant_id: session.user.tenantId
-      })
+      .insert(locationData)
       .select()
       .single()
 
     if (error) {
-      console.error('Error creating location:', error)
-      return NextResponse.json({ error: 'Failed to create location', details: error.message }, { status: 500 })
+      console.error('[Locations API] Database error:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
+      return NextResponse.json({
+        error: 'Failed to create location',
+        details: error.message,
+        code: error.code
+      }, { status: 500 })
     }
 
+    console.log('[Locations API] Location created successfully:', {
+      id: data.id,
+      name: data.name,
+      tenant_id: data.tenant_id
+    })
+    console.log('=== LOCATION CREATE API END (SUCCESS) ===')
+
     return NextResponse.json(data)
-  } catch (error) {
-    console.error('Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error: any) {
+    console.error('[Locations API] Unexpected error:', {
+      message: error.message,
+      stack: error.stack
+    })
+    console.log('=== LOCATION CREATE API END (ERROR) ===')
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error.message
+    }, { status: 500 })
   }
 }
 
