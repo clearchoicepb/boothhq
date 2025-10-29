@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -60,7 +60,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
+    console.log('[ACCOUNTS POST] Getting tenant database client for tenant:', session.user.tenantId)
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    console.log('[ACCOUNTS POST] Got tenant database client, inserting account...')
 
     const { data, error } = await supabase
       .from('accounts')
@@ -70,6 +72,8 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single()
+
+    console.log('[ACCOUNTS POST] Insert result - error:', error, 'data:', data ? 'success' : 'null')
 
     if (error) {
       console.error('Error creating account:', error)
