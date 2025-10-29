@@ -205,7 +205,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -223,6 +223,10 @@ export async function DELETE(
       console.error('Error deleting contact:', error)
       return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 })
     }
+
+    // Revalidate the contacts list page to show deletion immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    revalidatePath(`/${tenantSubdomain}/contacts`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

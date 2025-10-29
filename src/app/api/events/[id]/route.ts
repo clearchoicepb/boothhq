@@ -244,6 +244,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 })
     }
 
+    // Revalidate the events list page to show deletion immediately
+    const tenantSubdomain = session.user.tenantSubdomain || 'default'
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/${tenantSubdomain}/events`)
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error:', error)
