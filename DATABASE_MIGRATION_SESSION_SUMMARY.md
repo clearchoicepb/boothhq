@@ -82,7 +82,8 @@ NOTIFY pgrst, 'reload schema';
 
 **Audit Results:**
 - ✅ 25 FKs already working correctly
-- ❌ 7 FKs were missing (all fixed!)
+- ❌ 6 valid FKs were missing (all fixed!)
+- ❌ 2 false positives (columns don't exist - audit script errors)
 - ⚠️ 3 ambiguous relationships (expected - tables with multiple FKs to same target)
 
 ---
@@ -116,30 +117,30 @@ FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
 ---
 
 ### 5. ✅ Business Tables - Relationship Foreign Keys
-**Missing FKs Identified:** 4 critical business data relationships
+**Missing FKs Identified:** 3 critical business data relationships
 
 **FKs Added:**
 ```sql
--- 1. Opportunities → Event Types
-ALTER TABLE opportunities
-ADD CONSTRAINT opportunities_event_type_id_fkey
-FOREIGN KEY (event_type_id) REFERENCES event_types(id) ON DELETE RESTRICT;
-
--- 2. Opportunity Line Items → Packages (nullable)
+-- 1. Opportunity Line Items → Packages (nullable)
 ALTER TABLE opportunity_line_items
 ADD CONSTRAINT opportunity_line_items_package_id_fkey
 FOREIGN KEY (package_id) REFERENCES packages(id) ON DELETE SET NULL;
 
--- 3. Opportunity Line Items → Add-ons (nullable)
+-- 2. Opportunity Line Items → Add-ons (nullable)
 ALTER TABLE opportunity_line_items
 ADD CONSTRAINT opportunity_line_items_add_on_id_fkey
 FOREIGN KEY (add_on_id) REFERENCES add_ons(id) ON DELETE SET NULL;
 
--- 4. Invoices → Opportunities
+-- 3. Invoices → Opportunities
 ALTER TABLE invoices
 ADD CONSTRAINT invoices_opportunity_id_fkey
 FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE RESTRICT;
 ```
+
+**NOT Added (by design):**
+- ❌ `opportunities.event_type_id` - Column doesn't exist
+  - Opportunities use `event_type` VARCHAR (e.g., "wedding", "corporate")
+  - This is an older design pattern - event type stored as string, not FK
 
 **Script:** `scripts/add-missing-business-table-fks.sql`
 
