@@ -37,18 +37,30 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== CREATE USER API START ===')
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
+      console.error('[Create User] No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has admin role
     if (!isAdmin(session.user.role as UserRole)) {
+      console.error('[Create User] User is not admin:', session.user.role)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     const body = await request.json()
+    console.log('[Create User] Request body:', {
+      email: body.email,
+      first_name: body.first_name,
+      last_name: body.last_name,
+      role: body.role,
+      tenant_id: body.tenant_id,
+      has_password: !!body.password
+    })
+
     const {
       email,
       password,
@@ -75,13 +87,21 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!email || !first_name || !last_name || !tenant_id) {
+      const missing = []
+      if (!email) missing.push('email')
+      if (!first_name) missing.push('first_name')
+      if (!last_name) missing.push('last_name')
+      if (!tenant_id) missing.push('tenant_id')
+      
+      console.error('[Create User] Missing required fields:', missing)
       return NextResponse.json({
-        error: 'Missing required fields: email, first_name, last_name'
+        error: `Missing required fields: ${missing.join(', ')}`
       }, { status: 400 })
     }
 
     // Validate password for new users
     if (!password) {
+      console.error('[Create User] Password is required')
       return NextResponse.json({
         error: 'Password is required for new users'
       }, { status: 400 })
@@ -91,14 +111,17 @@ export async function POST(request: NextRequest) {
     const appSupabase = createServerSupabaseClient()
 
     // Check if user already exists in auth.users
+    console.log('[Create User] Checking if user exists in Supabase Auth...')
     const { data: existingAuthUsers } = await appSupabase.auth.admin.listUsers()
     const authUserExists = existingAuthUsers?.users?.some(u => u.email === email)
 
     if (authUserExists) {
+      console.error('[Create User] User already exists in Supabase Auth:', email)
       return NextResponse.json({ error: 'User with this email already exists in auth system' }, { status: 400 })
     }
 
     // Check if user already exists in Tenant DB users table
+    console.log('[Create User] Checking if user exists in Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
     const tenantSupabase = await getTenantDatabaseClient(tenant_id)
     
@@ -110,10 +133,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (existingUser) {
+      console.error('[Create User] User already exists in users table:', email)
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
     }
 
     // Step 1: Create auth user in Supabase Auth
+    console.log('[Create User] Creating user in Supabase Auth...')
     const { data: authData, error: authError } = await appSupabase.auth.admin.createUser({
       email,
       password,
@@ -126,13 +151,16 @@ export async function POST(request: NextRequest) {
     })
 
     if (authError) {
-      console.error('Error creating auth user:', authError)
+      console.error('[Create User] Supabase Auth error:', authError)
       return NextResponse.json({ error: `Failed to create auth user: ${authError.message}` }, { status: 500 })
     }
 
     if (!authData.user) {
+      console.error('[Create User] No user returned from Supabase Auth')
       return NextResponse.json({ error: 'Failed to create auth user' }, { status: 500 })
     }
+
+    console.log('[Create User] User created in Supabase Auth:', authData.user.id)
 
     // Step 2: Create user record in Tenant DB users table with the auth user's ID
     const { data: user, error: userError } = await tenantSupabase
@@ -165,15 +193,18 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError) {
-      console.error('Error creating user record:', userError)
+      console.error('[Create User] Error creating user in Tenant DB:', userError)
       // Rollback: delete the auth user if we can't create the user record
+      console.log('[Create User] Rolling back Supabase Auth user...')
       await appSupabase.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ error: `Failed to create user record: ${userError.message}` }, { status: 500 })
     }
 
+    console.log('[Create User] User created successfully:', user.id)
+    console.log('=== CREATE USER API END (SUCCESS) ===')
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
-    console.error('Error in POST /api/users:', error)
+    console.error('[Create User] Caught exception:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
