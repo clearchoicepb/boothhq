@@ -321,6 +321,57 @@ export default function EventsPage() {
     toast.success(`Exported ${selectedEvents.length} selected events`)
   }
 
+  // Handle drag-and-drop event move
+  const handleEventMove = async (eventId: string, newSectionId: string) => {
+    // Calculate new date based on section
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    let newStartDate = new Date(now)
+
+    switch (newSectionId) {
+      case 'todayTomorrow':
+        // Set to tomorrow
+        newStartDate.setDate(now.getDate() + 1)
+        break
+      case 'thisWeek':
+        // Set to 5 days from now
+        newStartDate.setDate(now.getDate() + 5)
+        break
+      case 'nextTwoWeeks':
+        // Set to 10 days from now
+        newStartDate.setDate(now.getDate() + 10)
+        break
+      case 'next15To45Days':
+        // Set to 30 days from now
+        newStartDate.setDate(now.getDate() + 30)
+        break
+      case 'beyond45Days':
+        // Set to 60 days from now
+        newStartDate.setDate(now.getDate() + 60)
+        break
+    }
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start_date: newStartDate.toISOString().split('T')[0]
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update event date')
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+      toast.success('Event date updated successfully')
+    } catch (error) {
+      console.error('Error moving event:', error)
+      toast.error('Failed to update event date')
+    }
+  }
+
   // Calculate event counts for different date filters (for badge counts)
   // Must be before early returns to maintain hook order
   const calculateEventCounts = useMemo(() => {
@@ -694,6 +745,7 @@ export default function EventsPage() {
               events={sortedEvents}
               tenantSubdomain={tenantSubdomain}
               coreTasks={coreTasks}
+              onEventMove={handleEventMove}
             />
           )}
 

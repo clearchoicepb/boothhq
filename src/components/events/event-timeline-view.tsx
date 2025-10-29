@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { EventTimelineCard } from './event-timeline-card'
 import { EventPreviewModal } from './event-preview-modal'
 import { getDaysUntil } from '@/lib/utils/date-utils'
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import toast from 'react-hot-toast'
 
 interface Event {
   id: string
@@ -29,14 +31,45 @@ interface EventTimelineViewProps {
   events: Event[]
   tenantSubdomain: string
   coreTasks: any[]
+  onEventMove?: (eventId: string, newSectionId: string) => void
 }
 
 export function EventTimelineView({
   events,
   tenantSubdomain,
-  coreTasks
+  coreTasks,
+  onEventMove
 }: EventTimelineViewProps) {
   const [previewEventId, setPreviewEventId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement before drag starts
+      },
+    })
+  )
+
+  // Handle drag end
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    setActiveId(null)
+
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    if (onEventMove) {
+      onEventMove(active.id as string, over.id as string)
+    }
+  }
+
+  const handleDragStart = (event: DragEndEvent) => {
+    setActiveId(event.active.id as string)
+  }
 
   const totalTasksPerEvent = coreTasks.length
 
@@ -94,6 +127,40 @@ export function EventTimelineView({
 
   const groupedEvents = groupEventsByTimeline()
 
+  // Draggable Event Card Wrapper
+  function DraggableEventCard({ event, children }: { event: Event; children: React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+      id: event.id,
+    })
+
+    return (
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className={`cursor-move ${isDragging ? 'opacity-50' : ''}`}
+      >
+        {children}
+      </div>
+    )
+  }
+
+  // Droppable Section Wrapper
+  function DroppableSection({ id, children }: { id: string; children: React.ReactNode }) {
+    const { setNodeRef, isOver } = useDroppable({
+      id,
+    })
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`space-y-3 flex-1 min-h-[200px] ${isOver ? 'bg-blue-50/50 rounded-lg p-2' : ''}`}
+      >
+        {children}
+      </div>
+    )
+  }
+
   const timelineSections = [
     {
       id: 'todayTomorrow',
@@ -147,50 +214,54 @@ export function EventTimelineView({
     }
   ]
 
-  return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-md">
-      <div className="p-6">
-        {/* Desktop: Grid Layout */}
-        <div className="hidden lg:grid lg:grid-cols-5 gap-4">
-          {timelineSections.map(section => (
-            <div key={section.id} className="flex flex-col">
-              {/* Section Header */}
-              <div className={`${section.bgColor} border-2 ${section.borderColor} rounded-lg p-3 mb-3`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">{section.icon}</span>
-                  <div className="flex-1">
-                    <h3 className={`text-xs font-bold uppercase tracking-wide ${section.textColor}`}>
-                      {section.title}
-                    </h3>
-                    <p className="text-xs text-gray-600">{section.subtitle}</p>
-                  </div>
-                </div>
-                <div className={`text-sm font-bold ${section.textColor} mt-1`}>
-                  {section.events.length} {section.events.length === 1 ? 'event' : 'events'}
-                </div>
-              </div>
+  const activeEvent = activeId ? events.find(e => e.id === activeId) : null
 
-              {/* Event Cards */}
-              <div className="space-y-3 flex-1 min-h-[200px]">
-                {section.events.length === 0 ? (
-                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
-                    <p className="text-xs text-gray-400">No events</p>
+  return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <div className="p-6">
+          {/* Desktop: Grid Layout */}
+          <div className="hidden lg:grid lg:grid-cols-5 gap-4">
+            {timelineSections.map(section => (
+              <div key={section.id} className="flex flex-col">
+                {/* Section Header */}
+                <div className={`${section.bgColor} border-2 ${section.borderColor} rounded-lg p-3 mb-3`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">{section.icon}</span>
+                    <div className="flex-1">
+                      <h3 className={`text-xs font-bold uppercase tracking-wide ${section.textColor}`}>
+                        {section.title}
+                      </h3>
+                      <p className="text-xs text-gray-600">{section.subtitle}</p>
+                    </div>
                   </div>
-                ) : (
-                  section.events.map(event => (
-                    <EventTimelineCard
-                      key={event.id}
-                      event={event}
-                      tenantSubdomain={tenantSubdomain}
-                      taskProgress={getTaskProgress(event)}
-                      onClick={() => setPreviewEventId(event.id)}
-                    />
-                  ))
-                )}
+                  <div className={`text-sm font-bold ${section.textColor} mt-1`}>
+                    {section.events.length} {section.events.length === 1 ? 'event' : 'events'}
+                  </div>
+                </div>
+
+                {/* Event Cards - Droppable Area */}
+                <DroppableSection id={section.id}>
+                  {section.events.length === 0 ? (
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
+                      <p className="text-xs text-gray-400">Drop events here</p>
+                    </div>
+                  ) : (
+                    section.events.map(event => (
+                      <DraggableEventCard key={event.id} event={event}>
+                        <EventTimelineCard
+                          event={event}
+                          tenantSubdomain={tenantSubdomain}
+                          taskProgress={getTaskProgress(event)}
+                          onClick={() => setPreviewEventId(event.id)}
+                        />
+                      </DraggableEventCard>
+                    ))
+                  )}
+                </DroppableSection>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
         {/* Mobile/Tablet: Horizontal Scrolling Sections */}
         <div className="lg:hidden space-y-6">
@@ -215,30 +286,48 @@ export function EventTimelineView({
               </div>
 
               {/* Horizontal Scroll Container */}
-              {section.events.length === 0 ? (
-                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
-                  <p className="text-sm text-gray-400">No events in this section</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto pb-2 -mx-4 px-4">
-                  <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
-                    {section.events.map(event => (
-                      <div key={event.id} className="w-72 flex-shrink-0">
-                        <EventTimelineCard
-                          event={event}
-                          tenantSubdomain={tenantSubdomain}
-                          taskProgress={getTaskProgress(event)}
-                          onClick={() => setPreviewEventId(event.id)}
-                        />
-                      </div>
-                    ))}
+              <DroppableSection id={section.id}>
+                {section.events.length === 0 ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                    <p className="text-sm text-gray-400">Drop events here</p>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                    <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
+                      {section.events.map(event => (
+                        <div key={event.id} className="w-72 flex-shrink-0">
+                          <DraggableEventCard event={event}>
+                            <EventTimelineCard
+                              event={event}
+                              tenantSubdomain={tenantSubdomain}
+                              taskProgress={getTaskProgress(event)}
+                              onClick={() => setPreviewEventId(event.id)}
+                            />
+                          </DraggableEventCard>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </DroppableSection>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeEvent ? (
+          <div className="cursor-grabbing opacity-90">
+            <EventTimelineCard
+              event={activeEvent}
+              tenantSubdomain={tenantSubdomain}
+              taskProgress={getTaskProgress(activeEvent)}
+              onClick={() => {}}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
 
       {/* Preview Modal */}
       {previewEventId && (
@@ -249,6 +338,6 @@ export function EventTimelineView({
           tenantSubdomain={tenantSubdomain}
         />
       )}
-    </div>
+    </DndContext>
   )
 }
