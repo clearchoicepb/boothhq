@@ -4,6 +4,9 @@
 -- Based on comprehensive audit of Tenant DB foreign key relationships
 -- Run this in your TENANT DB SQL Editor
 -- ============================================================================
+-- ⚠️  IMPORTANT: Run cleanup-invalid-line-item-references.sql FIRST!
+-- This script requires that all opportunity_line_items references are valid
+-- ============================================================================
 -- NOTE: opportunities table uses event_type VARCHAR (not event_type_id FK)
 -- This is by design - it stores event type as a string, not a foreign key
 -- ============================================================================
