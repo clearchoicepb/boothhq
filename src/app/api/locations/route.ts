@@ -55,32 +55,50 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
+      console.error('[Locations API] Unauthorized: No session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log('[Locations API] Creating location:', {
+      tenantId: session.user.tenantId,
+      locationData: body
+    })
+
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
+
+    const locationData = {
+      ...body,
+      tenant_id: session.user.tenantId
+    }
+
+    console.log('[Locations API] Inserting into tenant database:', locationData)
 
     const { data, error } = await supabase
       .from('locations')
-      .insert({
-        ...body,
-        tenant_id: session.user.tenantId
-      })
+      .insert(locationData)
       .select()
       .single()
 
     if (error) {
-      console.error('Error creating location:', error)
-      return NextResponse.json({ error: 'Failed to create location', details: error.message }, { status: 500 })
+      console.error('[Locations API] Database error:', error)
+      return NextResponse.json({
+        error: 'Failed to create location',
+        details: error.message,
+        code: error.code
+      }, { status: 500 })
     }
 
+    console.log('[Locations API] Location created successfully:', data)
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[Locations API] Unexpected error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

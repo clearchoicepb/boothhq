@@ -127,7 +127,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -135,7 +135,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     setLoading(true)
     try {
       let result: Event
-      
+
       if (event) {
         // Update existing event
         const updateData: EventUpdate = {
@@ -143,6 +143,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
+        console.log('[EventForm] Updating event with data:', updateData)
         result = await eventsApi.update(event.id, updateData)
       } else {
         // Create new event
@@ -151,12 +152,14 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
+        console.log('[EventForm] Creating event with data:', insertData)
         result = await eventsApi.create(insertData)
       }
-      
+
+      console.log('[EventForm] Event saved:', result)
       onSubmit(result)
     } catch (error) {
-      console.error('Error saving event:', error)
+      console.error('[EventForm] Error saving event:', error)
       setErrors({ submit: 'Failed to save event. Please try again.' })
     } finally {
       setLoading(false)
@@ -299,6 +302,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
             <LocationSelect
               value={locationId}
               onChange={(locId, location) => {
+                console.log('[EventForm] Location changed:', { locId, location })
                 setLocationId(locId)
                 // Update formData with location_id
                 handleInputChange('location_id', locId)
