@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X, Download, ChevronDown } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X, Download, ChevronDown, Grid, List } from 'lucide-react'
 import { Select } from '@/components/ui/select'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -13,6 +13,7 @@ import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate 
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
 import { EventPriorityStatsCards } from '@/components/events/event-priority-stats-cards'
+import { EventTimelineView } from '@/components/events/event-timeline-view'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -101,6 +102,9 @@ export default function EventsPage() {
   // UI State (not data fetching)
   const [searchTerm, setSearchTerm] = useState('')
 
+  // View mode state (table vs timeline)
+  const [currentView, setCurrentView] = useState<'table' | 'timeline'>('table')
+
   // Date range filter
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past' | 'custom_days'>('upcoming')
   const [customDaysFilter, setCustomDaysFilter] = useState<number | null>(null) // For custom X-day filters (e.g., next 10 days)
@@ -115,6 +119,24 @@ export default function EventsPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [taskFilter, setTaskFilter] = useState<'all' | 'incomplete'>('all')
   const [taskDateRangeFilter, setTaskDateRangeFilter] = useState<number>(14) // days from now for incomplete task filter
+
+  // Load view preference from localStorage on mount
+  useEffect(() => {
+    const savedView = localStorage.getItem('events_view_mode')
+    if (savedView === 'table' || savedView === 'timeline') {
+      setCurrentView(savedView)
+    }
+  }, [])
+
+  // Save view preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('events_view_mode', currentView)
+  }, [currentView])
+
+  // Handler for view change
+  const handleViewChange = (newView: 'table' | 'timeline') => {
+    setCurrentView(newView)
+  }
 
   // Handler for priority stats card clicks
   const handlePriorityCardClick = (filter: 'next_10_days' | 'tasks_45_days' | 'all_upcoming') => {
@@ -694,6 +716,51 @@ export default function EventsPage() {
             </div>
           </div>
 
+          {/* View Toggle */}
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Events View</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleViewChange('table')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    currentView === 'table'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  title="Table View"
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">Table</span>
+                </button>
+                <button
+                  onClick={() => handleViewChange('timeline')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    currentView === 'timeline'
+                      ? 'bg-[#347dc4] text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  title="Timeline View"
+                >
+                  <Grid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Timeline</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline View */}
+          {currentView === 'timeline' && (
+            <EventTimelineView
+              events={sortedEvents}
+              tenantSubdomain={tenantSubdomain}
+              coreTasks={coreTasks}
+            />
+          )}
+
+          {/* Table View */}
+          {currentView === 'table' && (
+            <>
           {/* Events Table - Desktop */}
           <div className="hidden lg:block bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -1195,6 +1262,8 @@ export default function EventsPage() {
               )
             })}
           </div>
+            </>
+          )}
         </div>
       </div>
     </AppLayout>
