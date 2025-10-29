@@ -12,7 +12,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
-import { EventsStatsCards } from '@/components/events/events-stats-cards'
+import { EventPriorityStatsCards } from '@/components/events/event-priority-stats-cards'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -102,7 +102,8 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
   // Date range filter
-  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past'>('upcoming')
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past' | 'custom_days'>('upcoming')
+  const [customDaysFilter, setCustomDaysFilter] = useState<number | null>(null) // For custom X-day filters (e.g., next 10 days)
 
   // Status filter
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -114,6 +115,38 @@ export default function EventsPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [taskFilter, setTaskFilter] = useState<'all' | 'incomplete'>('all')
   const [taskDateRangeFilter, setTaskDateRangeFilter] = useState<number>(14) // days from now for incomplete task filter
+
+  // Handler for priority stats card clicks
+  const handlePriorityCardClick = (filter: 'next_10_days' | 'tasks_45_days' | 'all_upcoming') => {
+    switch (filter) {
+      case 'next_10_days':
+        // Filter to next 10 days
+        setDateRangeFilter('custom_days')
+        setCustomDaysFilter(10)
+        setStatusFilter('all')
+        setTaskFilter('all')
+        setSelectedTaskIds([])
+        setSearchTerm('')
+        break
+      case 'tasks_45_days':
+        // Filter to events with incomplete tasks in next 45 days
+        setDateRangeFilter('all')
+        setStatusFilter('all')
+        setTaskFilter('incomplete')
+        setTaskDateRangeFilter(45)
+        setSelectedTaskIds([])
+        setSearchTerm('')
+        break
+      case 'all_upcoming':
+        // Show all upcoming events
+        setDateRangeFilter('upcoming')
+        setStatusFilter('all')
+        setTaskFilter('all')
+        setSelectedTaskIds([])
+        setSearchTerm('')
+        break
+    }
+  }
 
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
@@ -238,7 +271,7 @@ export default function EventsPage() {
     if (dateRangeFilter !== 'all' && event.start_date) {
       const now = new Date()
       now.setHours(0, 0, 0, 0)
-      
+
       const eventDate = parseLocalDate(event.start_date)
       eventDate.setHours(0, 0, 0, 0)
 
@@ -246,23 +279,31 @@ export default function EventsPage() {
         case 'today':
           if (!isDateToday(event.start_date)) return false
           break
-        
+
         case 'this_week':
           const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
           if (eventDate < now || eventDate > weekEnd) return false
           break
-        
+
         case 'this_month':
-          if (eventDate.getMonth() !== now.getMonth() || 
+          if (eventDate.getMonth() !== now.getMonth() ||
               eventDate.getFullYear() !== now.getFullYear()) return false
           break
-        
+
         case 'upcoming':
           if (eventDate < now) return false
           break
-        
+
         case 'past':
           if (eventDate >= now) return false
+          break
+
+        case 'custom_days':
+          if (customDaysFilter !== null) {
+            const customEnd = new Date(now.getTime() + customDaysFilter * 24 * 60 * 60 * 1000)
+            customEnd.setHours(23, 59, 59, 999)
+            if (eventDate < now || eventDate > customEnd) return false
+          }
           break
       }
     }
@@ -367,10 +408,8 @@ export default function EventsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           
           {/* KPI Stats Cards */}
-          <EventsStatsCards 
-            filters={{
-              status: statusFilter
-            }}
+          <EventPriorityStatsCards
+            onCardClick={handlePriorityCardClick}
           />
           
           {/* Filters and Search */}
@@ -494,16 +533,18 @@ export default function EventsPage() {
               </div>
 
               {/* Clear Filters Button */}
-              {(statusFilter !== 'all' || 
-                dateRangeFilter !== 'upcoming' || 
-                searchTerm || 
+              {(statusFilter !== 'all' ||
+                dateRangeFilter !== 'upcoming' ||
+                searchTerm ||
                 taskFilter !== 'all' ||
-                selectedTaskIds.length > 0) && (
+                selectedTaskIds.length > 0 ||
+                customDaysFilter !== null) && (
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setStatusFilter('all')
                       setDateRangeFilter('upcoming')
+                      setCustomDaysFilter(null)
                       setSearchTerm('')
                       setTaskFilter('all')
                       setSelectedTaskIds([])
@@ -525,6 +566,7 @@ export default function EventsPage() {
               {dateRangeFilter === 'this_month' && 'Events in the current month'}
               {dateRangeFilter === 'upcoming' && 'Events scheduled for today and beyond'}
               {dateRangeFilter === 'past' && 'Events that have already occurred'}
+              {dateRangeFilter === 'custom_days' && customDaysFilter && `Events in the next ${customDaysFilter} days`}
             </p>
           </div>
 
@@ -679,20 +721,21 @@ export default function EventsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
+                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Priority</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Progress</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedEvents.length === 0 && events.length > 0 && (
                     <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center">
+                      <td colSpan={9} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <p className="text-lg font-medium mb-2">No events match your filters</p>
                           <p className="text-sm">Try adjusting your date range or search criteria</p>
@@ -710,17 +753,49 @@ export default function EventsPage() {
                     // Get incomplete tasks for this event
                     const incompleteTaskIds = getIncompleteTasks(event)
                     const incompleteCount = incompleteTaskIds.length
+                    const totalTasks = coreTasks.length
+                    const completedTasks = totalTasks - incompleteCount
+                    const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
+
+                    // Determine priority level based on days until event and task status
+                    const getPriorityLevel = () => {
+                      if (daysUntil === null || daysUntil < 0) return 'none'
+                      if (daysUntil <= 2) return 'critical' // Red
+                      if (daysUntil <= 7) return 'high' // Orange
+                      if (daysUntil <= 14) return 'medium' // Yellow
+                      if (daysUntil <= 30) return 'low' // Blue
+                      return 'none' // Gray
+                    }
+
+                    const priorityLevel = getPriorityLevel()
+
+                    // Priority colors and badges
+                    const priorityConfig = {
+                      critical: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴', border: 'border-l-4 border-red-500' },
+                      high: { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🟠', border: 'border-l-4 border-orange-500' },
+                      medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡', border: 'border-l-4 border-yellow-500' },
+                      low: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵', border: 'border-l-4 border-blue-500' },
+                      none: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '⚪', border: '' }
+                    }
+
+                    const priority = priorityConfig[priorityLevel]
 
                     return (
-                      <tr key={event.id} className="hover:bg-gray-50">
-                        <td className="px-2 py-4 text-center w-8">
-                          {taskStatus[event.id] && (taskStatus[event.id].isDueSoon || taskStatus[event.id].isOverdue) && (
-                            <TaskIndicator
-                              isOverdue={taskStatus[event.id].isOverdue}
-                              isDueSoon={taskStatus[event.id].isDueSoon}
-                            />
-                          )}
+                      <tr key={event.id} className={`hover:bg-gray-50 ${priority.border}`}>
+                        {/* Priority Indicator */}
+                        <td className="px-3 py-4 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xl">{priority.icon}</span>
+                            {taskStatus[event.id] && (taskStatus[event.id].isDueSoon || taskStatus[event.id].isOverdue) && (
+                              <TaskIndicator
+                                isOverdue={taskStatus[event.id].isOverdue}
+                                isDueSoon={taskStatus[event.id].isDueSoon}
+                              />
+                            )}
+                          </div>
                         </td>
+
+                        {/* Event Name */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={event.title || 'Untitled Event'}>
@@ -754,25 +829,67 @@ export default function EventsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex items-center gap-2">
-                            <span>{displayDate}</span>
-                            {daysUntil !== null && daysUntil >= 0 && daysUntil <= 7 && (
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                isDateToday(event.start_date || '') 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {isDateToday(event.start_date || '') ? 'Today' : `${daysUntil}d`}
+
+                        {/* Days Until */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {daysUntil !== null && daysUntil >= 0 ? (
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${priority.bg} ${priority.text}`}>
+                                {isDateToday(event.start_date || '') ? 'TODAY' : `${daysUntil} days`}
                               </span>
-                            )}
-                          </div>
+                            </div>
+                          ) : daysUntil !== null && daysUntil < 0 ? (
+                            <span className="text-xs text-gray-500">Past event</span>
+                          ) : (
+                            <span className="text-xs text-gray-400">No date</span>
+                          )}
+                        </td>
+
+                        {/* Task Progress */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {totalTasks > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {completedTasks}/{totalTasks}
+                                </span>
+                                <span className={`text-xs font-semibold ${
+                                  taskCompletionPercentage === 100 ? 'text-green-600' :
+                                  taskCompletionPercentage >= 75 ? 'text-blue-600' :
+                                  taskCompletionPercentage >= 50 ? 'text-yellow-600' :
+                                  'text-red-600'
+                                }`}>
+                                  {taskCompletionPercentage}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    taskCompletionPercentage === 100 ? 'bg-green-500' :
+                                    taskCompletionPercentage >= 75 ? 'bg-blue-500' :
+                                    taskCompletionPercentage >= 50 ? 'bg-yellow-500' :
+                                    'bg-red-500'
+                                  }`}
+                                  style={{ width: `${taskCompletionPercentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">No tasks</span>
+                          )}
+                        </td>
+
+                        {/* Start Date */}
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div>{displayDate}</div>
                           {eventDateCount > 1 && (
                             <div className="text-xs text-gray-500 mt-1">
-                              +{eventDateCount - 1} more date{eventDateCount > 2 ? 's' : ''}
+                              +{eventDateCount - 1} more
                             </div>
                           )}
                         </td>
+
+                        {/* Location */}
                         <td className="px-6 py-4 text-sm text-gray-900 truncate max-w-32" title={displayLocation}>
                           {displayLocation}
                           {event.date_type && event.date_type !== 'single_day' && (
@@ -781,9 +898,13 @@ export default function EventsPage() {
                             </div>
                           )}
                         </td>
+
+                        {/* Account */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-32" title={event.account_name || 'No account'}>
                           {event.account_name || 'No account'}
                         </td>
+
+                        {/* Status */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -797,23 +918,13 @@ export default function EventsPage() {
                             {event.core_tasks_ready && (
                               <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
-                                Ready for Event
-                              </span>
-                            )}
-                            {incompleteCount > 0 && (
-                              <span
-                                className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800"
-                                title={`${incompleteCount} incomplete task${incompleteCount > 1 ? 's' : ''}`}
-                              >
-                                <AlertCircle className="w-3 h-3 mr-1" />
-                                {incompleteCount} Task{incompleteCount > 1 ? 's' : ''}
+                                Ready
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {eventDateCount > 0 ? `${eventDateCount} date${eventDateCount > 1 ? 's' : ''}` : 'N/A'}
-                        </td>
+
+                        {/* Actions */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <Link href={`/${tenantSubdomain}/events/${event.id}`}>
@@ -884,12 +995,50 @@ export default function EventsPage() {
               const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
               const incompleteTaskIds = getIncompleteTasks(event)
               const incompleteCount = incompleteTaskIds.length
+              const totalTasks = coreTasks.length
+              const completedTasks = totalTasks - incompleteCount
+              const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
+
+              // Determine priority level
+              const getPriorityLevel = () => {
+                if (daysUntil === null || daysUntil < 0) return 'none'
+                if (daysUntil <= 2) return 'critical'
+                if (daysUntil <= 7) return 'high'
+                if (daysUntil <= 14) return 'medium'
+                if (daysUntil <= 30) return 'low'
+                return 'none'
+              }
+
+              const priorityLevel = getPriorityLevel()
+              const priorityConfig = {
+                critical: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴', border: 'border-l-4 border-red-500', label: 'CRITICAL' },
+                high: { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🟠', border: 'border-l-4 border-orange-500', label: 'HIGH' },
+                medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡', border: 'border-l-4 border-yellow-500', label: 'MEDIUM' },
+                low: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵', border: 'border-l-4 border-blue-500', label: 'LOW' },
+                none: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '⚪', border: '', label: '' }
+              }
+              const priority = priorityConfig[priorityLevel]
 
               return (
                 <div
                   key={event.id}
-                  className="bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg"
+                  className={`bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg ${priority.border}`}
                 >
+                  {/* Priority Header Banner */}
+                  {priorityLevel !== 'none' && (
+                    <div className={`${priority.bg} ${priority.text} px-4 py-2 rounded-t-lg flex items-center justify-between`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{priority.icon}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide">{priority.label} Priority</span>
+                      </div>
+                      {daysUntil !== null && daysUntil >= 0 && (
+                        <span className="text-sm font-bold">
+                          {isDateToday(event.start_date || '') ? 'TODAY' : `${daysUntil} DAYS`}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="p-4">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
@@ -977,21 +1126,46 @@ export default function EventsPage() {
                       )}
                     </div>
 
-                    {/* Task Badges */}
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {event.core_tasks_ready && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Ready
-                        </span>
-                      )}
-                      {incompleteCount > 0 && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          {incompleteCount} Task{incompleteCount > 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
+                    {/* Task Progress - Prominent Display */}
+                    {totalTasks > 0 && (
+                      <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                            Task Completion
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-900">
+                              {completedTasks}/{totalTasks}
+                            </span>
+                            <span className={`text-sm font-bold ${
+                              taskCompletionPercentage === 100 ? 'text-green-600' :
+                              taskCompletionPercentage >= 75 ? 'text-blue-600' :
+                              taskCompletionPercentage >= 50 ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
+                              {taskCompletionPercentage}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full transition-all duration-300 ${
+                              taskCompletionPercentage === 100 ? 'bg-green-500' :
+                              taskCompletionPercentage >= 75 ? 'bg-blue-500' :
+                              taskCompletionPercentage >= 50 ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${taskCompletionPercentage}%` }}
+                          />
+                        </div>
+                        {event.core_tasks_ready && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <span className="text-xs font-semibold text-green-700">Ready for Event</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-3 border-t border-gray-200">
