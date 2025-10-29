@@ -97,17 +97,19 @@ ON CONFLICT (id) DO NOTHING;
 -- Update any tables that reference users to point to tenant DB users table
 -- Most references should already work since we're using the same UUIDs
 
--- For event_design_items
-ALTER TABLE event_design_items
-  DROP CONSTRAINT IF EXISTS event_design_items_assigned_designer_id_fkey;
+-- Note: Commenting out event_design_items constraints as table doesn't exist yet
+-- Uncomment when event_design_items is migrated to Tenant DB:
 
-ALTER TABLE event_design_items
-  ADD CONSTRAINT event_design_items_assigned_designer_id_fkey
-  FOREIGN KEY (assigned_designer_id)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
+-- ALTER TABLE event_design_items
+--   DROP CONSTRAINT IF EXISTS event_design_items_assigned_designer_id_fkey;
+-- 
+-- ALTER TABLE event_design_items
+--   ADD CONSTRAINT event_design_items_assigned_designer_id_fkey
+--   FOREIGN KEY (assigned_designer_id)
+--   REFERENCES users(id)
+--   ON DELETE SET NULL;
 
--- For any other tables with user references, add similar constraints
+-- For any other tables with user references, add similar constraints when needed
 
 -- ============================================================================
 -- STEP 5: RELOAD SCHEMA CACHE
