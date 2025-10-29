@@ -139,9 +139,17 @@ export default function AccountsSettingsPage() {
   // Load settings from global context
   useEffect(() => {
     if (globalSettings.accounts) {
-      setSettings(globalSettings.accounts);
-    } else if (!settingsLoading) {
-      // If no settings are loaded and we're not loading, initialize with defaults
+      // Merge database settings with defaults to ensure all required properties exist
+      setSettings(prev => ({
+        ...prev,
+        ...globalSettings.accounts,
+        requiredFields: {
+          ...prev.requiredFields,
+          ...globalSettings.accounts.requiredFields
+        },
+        accountTypes: globalSettings.accounts.accountTypes || prev.accountTypes,
+        customFields: globalSettings.accounts.customFields || prev.customFields
+      }));
     }
   }, [globalSettings, settingsLoading]);
 
