@@ -7,7 +7,7 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 
 interface Event {
   id: string
@@ -18,18 +18,32 @@ interface Event {
   location: string | null
   account_name: string | null
   event_dates?: Array<{
+    id: string
     event_date: string
     start_time: string | null
     end_time: string | null
+    status: string
   }>
+}
+
+interface CalendarEvent {
+  id: string
+  name: string
+  event_date: string
+  start_time?: string
+  end_time?: string
+  status: string
+  event_id: string
 }
 
 export default function EventsCalendarPage() {
   const { data: session, status } = useSession()
   const { tenant, loading } = useTenant()
   const params = useParams()
+  const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const [events, setEvents] = useState<Event[]>([])
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)
 
   useEffect(() => {
@@ -38,6 +52,39 @@ export default function EventsCalendarPage() {
     }
   }, [session, tenant])
 
+  // Transform events into calendar events (flatten event_dates)
+  useEffect(() => {
+    const transformedEvents: CalendarEvent[] = []
+    
+    events.forEach(event => {
+      // If event has event_dates, use those
+      if (event.event_dates && event.event_dates.length > 0) {
+        event.event_dates.forEach(eventDate => {
+          transformedEvents.push({
+            id: eventDate.id,
+            name: event.title,
+            event_date: eventDate.event_date,
+            start_time: eventDate.start_time || undefined,
+            end_time: eventDate.end_time || undefined,
+            status: eventDate.status || event.status,
+            event_id: event.id
+          })
+        })
+      } else {
+        // Fallback: use start_date if no event_dates
+        transformedEvents.push({
+          id: event.id,
+          name: event.title,
+          event_date: event.start_date,
+          status: event.status,
+          event_id: event.id
+        })
+      }
+    })
+    
+    setCalendarEvents(transformedEvents)
+  }, [events])
+
   const fetchEvents = async () => {
     try {
       setEventsLoading(true)
@@ -45,12 +92,19 @@ export default function EventsCalendarPage() {
       if (response.ok) {
         const data = await response.json()
         setEvents(data)
+      } else {
+        console.error('Failed to fetch events:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching events:', error)
     } finally {
       setEventsLoading(false)
     }
+  }
+
+  const handleEventClick = (calendarEvent: any) => {
+    // Navigate to the event detail page
+    router.push(`/${tenantSubdomain}/events/${calendarEvent.event_id}`)
   }
 
   if (status === 'loading' || loading) {
@@ -112,7 +166,10 @@ export default function EventsCalendarPage() {
               </div>
             </div>
           ) : (
-            <CalendarComponent events={events} />
+            <CalendarComponent 
+              events={calendarEvents} 
+              onEventClick={handleEventClick}
+            />
           )}
         </div>
       </div>
