@@ -27,14 +27,6 @@ FOREIGN KEY (add_on_id)
 REFERENCES add_ons(id)
 ON DELETE SET NULL;
 
--- 3. Invoices: Link to opportunities
--- This allows querying invoice.opportunity relationship
-ALTER TABLE invoices
-ADD CONSTRAINT invoices_opportunity_id_fkey
-FOREIGN KEY (opportunity_id)
-REFERENCES opportunities(id)
-ON DELETE RESTRICT;  -- RESTRICT to prevent deleting opportunities that have invoices
-
 -- Reload the PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
 
@@ -56,8 +48,7 @@ JOIN information_schema.referential_constraints AS rc
 WHERE tc.constraint_type = 'FOREIGN KEY'
   AND tc.constraint_name IN (
     'opportunity_line_items_package_id_fkey',
-    'opportunity_line_items_add_on_id_fkey',
-    'invoices_opportunity_id_fkey'
+    'opportunity_line_items_add_on_id_fkey'
   )
 ORDER BY tc.table_name, kcu.column_name;
 
