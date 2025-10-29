@@ -5,8 +5,8 @@
 -- ============================================================================
 -- This creates the remaining business tables that were missing:
 -- - invoices & invoice_line_items (billing)
--- - packages (product packages)  
--- - event_design_items & design_item_types (design workflow)
+-- - packages, add_ons, opportunity_line_items (pricing/quoting)  
+-- - design_item_types & event_design_items (design workflow)
 -- - event_core_task_completion (event checklists)
 -- ============================================================================
 
@@ -91,7 +91,7 @@ GRANT ALL ON invoice_line_items TO service_role;
 GRANT ALL ON invoice_line_items TO postgres;
 
 -- ============================================================================
--- PART 2: PACKAGES SYSTEM
+-- PART 2: PACKAGES & ADD-ONS SYSTEM
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS packages (
@@ -115,15 +115,107 @@ CREATE TABLE IF NOT EXISTS packages (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS add_ons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  
+  -- Add-on details
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10, 2) NOT NULL,
+  unit VARCHAR(50) DEFAULT 'each', -- 'each', 'hour', 'set', 'day', etc.
+  
+  -- Categorization
+  category VARCHAR(50), -- 'props', 'equipment', 'staffing', 'printing', etc.
+  
+  -- Status
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
+  
+  -- Audit fields
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS opportunity_line_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  opportunity_id UUID NOT NULL,
+  
+  -- Item type and references
+  item_type VARCHAR(20) NOT NULL CHECK (item_type IN ('package', 'add_on', 'custom')),
+  package_id UUID,
+  add_on_id UUID,
+  
+  -- Item details (captured at time of adding to opportunity)
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  
+  -- Pricing
+  quantity DECIMAL(10, 2) NOT NULL DEFAULT 1,
+  unit_price DECIMAL(10, 2) NOT NULL,
+  total DECIMAL(10, 2) NOT NULL, -- quantity * unit_price
+  
+  -- Ordering
+  sort_order INTEGER DEFAULT 0,
+  
+  -- Audit fields
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_packages_tenant_id ON packages(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_packages_category ON packages(category);
 CREATE INDEX IF NOT EXISTS idx_packages_is_active ON packages(is_active);
 
+CREATE INDEX IF NOT EXISTS idx_add_ons_tenant_id ON add_ons(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_add_ons_category ON add_ons(category);
+CREATE INDEX IF NOT EXISTS idx_add_ons_is_active ON add_ons(is_active);
+
+CREATE INDEX IF NOT EXISTS idx_opportunity_line_items_tenant_id ON opportunity_line_items(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_opportunity_line_items_opportunity_id ON opportunity_line_items(opportunity_id);
+CREATE INDEX IF NOT EXISTS idx_opportunity_line_items_item_type ON opportunity_line_items(item_type);
+CREATE INDEX IF NOT EXISTS idx_opportunity_line_items_package_id ON opportunity_line_items(package_id);
+CREATE INDEX IF NOT EXISTS idx_opportunity_line_items_add_on_id ON opportunity_line_items(add_on_id);
+
+-- Foreign keys
+ALTER TABLE opportunity_line_items
+  DROP CONSTRAINT IF EXISTS opportunity_line_items_opportunity_id_fkey;
+ALTER TABLE opportunity_line_items
+  ADD CONSTRAINT opportunity_line_items_opportunity_id_fkey
+  FOREIGN KEY (opportunity_id)
+  REFERENCES opportunities(id)
+  ON DELETE CASCADE;
+
+ALTER TABLE opportunity_line_items
+  DROP CONSTRAINT IF EXISTS opportunity_line_items_package_id_fkey;
+ALTER TABLE opportunity_line_items
+  ADD CONSTRAINT opportunity_line_items_package_id_fkey
+  FOREIGN KEY (package_id)
+  REFERENCES packages(id)
+  ON DELETE SET NULL;
+
+ALTER TABLE opportunity_line_items
+  DROP CONSTRAINT IF EXISTS opportunity_line_items_add_on_id_fkey;
+ALTER TABLE opportunity_line_items
+  ADD CONSTRAINT opportunity_line_items_add_on_id_fkey
+  FOREIGN KEY (add_on_id)
+  REFERENCES add_ons(id)
+  ON DELETE SET NULL;
+
 -- Permissions
 GRANT ALL ON packages TO authenticated;
 GRANT ALL ON packages TO service_role;
 GRANT ALL ON packages TO postgres;
+
+GRANT ALL ON add_ons TO authenticated;
+GRANT ALL ON add_ons TO service_role;
+GRANT ALL ON add_ons TO postgres;
+
+GRANT ALL ON opportunity_line_items TO authenticated;
+GRANT ALL ON opportunity_line_items TO service_role;
+GRANT ALL ON opportunity_line_items TO postgres;
 
 -- ============================================================================
 -- PART 3: DESIGN SYSTEM
@@ -355,6 +447,10 @@ SELECT 'invoice_line_items', COUNT(*) FROM invoice_line_items
 UNION ALL
 SELECT 'packages', COUNT(*) FROM packages
 UNION ALL
+SELECT 'add_ons', COUNT(*) FROM add_ons
+UNION ALL
+SELECT 'opportunity_line_items', COUNT(*) FROM opportunity_line_items
+UNION ALL
 SELECT 'design_item_types', COUNT(*) FROM design_item_types
 UNION ALL
 SELECT 'event_design_items', COUNT(*) FROM event_design_items
@@ -366,8 +462,11 @@ SELECT 'event_core_task_completion', COUNT(*) FROM event_core_task_completion;
 -- ============================================================================
 -- All business tables now exist in Tenant DB:
 -- ✅ Invoicing system (invoices, invoice_line_items)
--- ✅ Packages system (packages)
+-- ✅ Pricing/Quoting system (packages, add_ons, opportunity_line_items)
 -- ✅ Design workflow (design_item_types, event_design_items)
 -- ✅ Event checklists (event_core_task_completion)
+-- 
+-- Total tables created: 8
+-- Total design templates: 12 (default)
 -- ============================================================================
 
