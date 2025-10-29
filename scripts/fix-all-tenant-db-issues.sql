@@ -23,13 +23,14 @@
 -- ============================================================================
 
 -- Events (event_planner_id only - no created_by column)
+-- NOTE: event_planner_id references CONTACTS, not users!
 ALTER TABLE events
   DROP CONSTRAINT IF EXISTS events_event_planner_id_fkey;
 
 ALTER TABLE events
   ADD CONSTRAINT events_event_planner_id_fkey
   FOREIGN KEY (event_planner_id)
-  REFERENCES users(id)
+  REFERENCES contacts(id)
   ON DELETE SET NULL;
 
 -- Attachments (uploaded_by)
