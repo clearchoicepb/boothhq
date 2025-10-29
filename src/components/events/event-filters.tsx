@@ -211,144 +211,56 @@ export function EventFilters({
         </div>
       </div>
 
-      {/* Search Bar and Quick Filters */}
+      {/* Search Bar and Filters - Single Row */}
       <div className="bg-white p-6 rounded-lg shadow">
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search events by name, location, or account..."
-              value={filters.searchTerm}
-              onChange={(e) => updateFilter('searchTerm', e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
-            />
-            {filters.searchTerm && (
-              <button
-                onClick={() => updateFilter('searchTerm', '')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Filter Chips - Date Range */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Date Range:</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => updateMultipleFilters({ dateRangeFilter: 'all', customDaysFilter: null })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
-                filters.dateRangeFilter === 'all'
-                  ? 'bg-[#347dc4] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filters.dateRangeFilter === 'all' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {eventCounts.total}
-              </span>
-            </button>
-
-            <button
-              onClick={() => updateMultipleFilters({ dateRangeFilter: 'today', customDaysFilter: null })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
-                filters.dateRangeFilter === 'today'
-                  ? 'bg-[#347dc4] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Today
-              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filters.dateRangeFilter === 'today' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {eventCounts.today}
-              </span>
-            </button>
-
-            <button
-              onClick={() => updateMultipleFilters({ dateRangeFilter: 'this_week', customDaysFilter: null })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
-                filters.dateRangeFilter === 'this_week'
-                  ? 'bg-[#347dc4] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              This Week
-              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filters.dateRangeFilter === 'this_week' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {eventCounts.thisWeek}
-              </span>
-            </button>
-
-            <button
-              onClick={() => updateMultipleFilters({ dateRangeFilter: 'this_month', customDaysFilter: null })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
-                filters.dateRangeFilter === 'this_month'
-                  ? 'bg-[#347dc4] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              This Month
-              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filters.dateRangeFilter === 'this_month' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {eventCounts.thisMonth}
-              </span>
-            </button>
-
-            <button
-              onClick={() => updateMultipleFilters({ dateRangeFilter: 'upcoming', customDaysFilter: null })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
-                filters.dateRangeFilter === 'upcoming'
-                  ? 'bg-[#347dc4] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Upcoming
-              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filters.dateRangeFilter === 'upcoming' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {eventCounts.upcoming}
-              </span>
-            </button>
-
-            <button
-              onClick={() => updateMultipleFilters({ dateRangeFilter: 'past', customDaysFilter: null })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
-                filters.dateRangeFilter === 'past'
-                  ? 'bg-[#347dc4] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Past
-              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filters.dateRangeFilter === 'past' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {eventCounts.past}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Status and Sort Dropdowns */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-4 pt-4 border-t border-gray-200">
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* Search Bar */}
           <div className="flex-1">
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-              Status
-            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search events by name, location, or account..."
+                value={filters.searchTerm}
+                onChange={(e) => updateFilter('searchTerm', e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
+              />
+              {filters.searchTerm && (
+                <button
+                  onClick={() => updateFilter('searchTerm', '')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Date Range Dropdown */}
+          <div className="w-full lg:w-48">
+            <select
+              value={filters.dateRangeFilter}
+              onChange={(e) => updateMultipleFilters({
+                dateRangeFilter: e.target.value as FilterState['dateRangeFilter'],
+                customDaysFilter: null
+              })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
+            >
+              <option value="all">All Events ({eventCounts.total})</option>
+              <option value="today">Today ({eventCounts.today})</option>
+              <option value="this_week">This Week ({eventCounts.thisWeek})</option>
+              <option value="this_month">This Month ({eventCounts.thisMonth})</option>
+              <option value="upcoming">Upcoming ({eventCounts.upcoming})</option>
+              <option value="past">Past ({eventCounts.past})</option>
+            </select>
+          </div>
+
+          {/* Status Dropdown */}
+          <div className="w-full lg:w-48">
             <select
               value={filters.statusFilter}
               onChange={(e) => updateFilter('statusFilter', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
             >
               <option value="all">All Statuses</option>
               <option value="scheduled">Scheduled</option>
