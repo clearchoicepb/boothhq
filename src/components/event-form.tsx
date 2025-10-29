@@ -27,6 +27,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     start_date: '',
     end_date: null,
     location: '',
+    location_id: null,
     status: 'scheduled',
     account_id: null,
     contact_id: null,
@@ -54,11 +55,13 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         start_date: event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
         end_date: event.end_date || null,
         location: event.location || '',
+        location_id: event.location_id || null,
         status: event.status || 'scheduled',
         account_id: event.account_id,
         contact_id: event.contact_id,
         opportunity_id: event.opportunity_id
       })
+      setLocationId(event.location_id || null)
     } else {
       // Set default start date to current time
       const now = new Date()
@@ -72,11 +75,13 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         start_date: defaultStartDate,
         end_date: null,
         location: '',
+        location_id: null,
         status: 'scheduled',
         account_id: null,
         contact_id: null,
         opportunity_id: null
       })
+      setLocationId(null)
     }
     setErrors({})
   }, [event, isOpen])
@@ -295,6 +300,8 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
               value={locationId}
               onChange={(locId, location) => {
                 setLocationId(locId)
+                // Update formData with location_id
+                handleInputChange('location_id', locId)
                 // Also set location name in the old field for backward compatibility
                 if (location) {
                   handleInputChange('location', location.name)
