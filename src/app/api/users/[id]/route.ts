@@ -16,7 +16,9 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = createServerSupabaseClient()
+    // Query Tenant DB for user
+    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     const { data: user, error } = await supabase
       .from('users')
@@ -84,7 +86,9 @@ export async function PUT(
       avatar_url
     } = body
 
-    const supabase = createServerSupabaseClient()
+    // Query Tenant DB for user updates
+    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Prepare update data (only with fields that actually exist in the database)
     const updateData: any = {
@@ -186,7 +190,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
     }
 
-    const supabase = createServerSupabaseClient()
+    // Query Tenant DB for user deletion
+    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { error } = await supabase
       .from('users')

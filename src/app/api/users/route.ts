@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = createServerSupabaseClient()
+    // Query Tenant DB for users (users table is now in Tenant DB)
+    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     // Get all users for the current tenant
     const { data: users, error } = await supabase
@@ -85,18 +87,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = createServerSupabaseClient()
+    // Use App DB for auth operations
+    const appSupabase = createServerSupabaseClient()
 
     // Check if user already exists in auth.users
-    const { data: existingAuthUsers } = await supabase.auth.admin.listUsers()
+    const { data: existingAuthUsers } = await appSupabase.auth.admin.listUsers()
     const authUserExists = existingAuthUsers?.users?.some(u => u.email === email)
 
     if (authUserExists) {
       return NextResponse.json({ error: 'User with this email already exists in auth system' }, { status: 400 })
     }
 
-    // Check if user already exists in users table
-    const { data: existingUser } = await supabase
+    // Check if user already exists in Tenant DB users table
+    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+    const tenantSupabase = await getTenantDatabaseClient(tenant_id)
+    
+    const { data: existingUser } = await tenantSupabase
       .from('users')
       .select('id')
       .eq('email', email)
@@ -108,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 1: Create auth user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    const { data: authData, error: authError } = await appSupabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true, // Auto-confirm email
@@ -128,8 +134,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create auth user' }, { status: 500 })
     }
 
-    // Step 2: Create user record in users table with the auth user's ID
-    const { data: user, error: userError } = await supabase
+    // Step 2: Create user record in Tenant DB users table with the auth user's ID
+    const { data: user, error: userError } = await tenantSupabase
       .from('users')
       .insert({
         id: authData.user.id, // Use the auth user's ID
@@ -161,7 +167,7 @@ export async function POST(request: NextRequest) {
     if (userError) {
       console.error('Error creating user record:', userError)
       // Rollback: delete the auth user if we can't create the user record
-      await supabase.auth.admin.deleteUser(authData.user.id)
+      await appSupabase.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ error: `Failed to create user record: ${userError.message}` }, { status: 500 })
     }
 

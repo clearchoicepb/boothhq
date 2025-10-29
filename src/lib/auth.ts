@@ -35,27 +35,31 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // Now use service role key for database queries
-          const supabase = createServerSupabaseClient()
+          // Query Tenant DB for user (users table is now in Tenant DB)
+          const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+          
+          // TODO: For multi-tenant support, need a mapping table in App DB
+          // For now, we'll query the default Tenant DB
+          const DEFAULT_TENANT_ID = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
+          const tenantSupabase = await getTenantDatabaseClient(DEFAULT_TENANT_ID)
 
-          // Get all users with this email across all tenants
-          const { data: users, error: usersError } = await supabase
+          // Get user from Tenant DB
+          const { data: tenantUsers, error: usersError } = await tenantSupabase
             .from('users')
-            .select('*, tenants!inner(*)')
+            .select('*')
             .eq('email', credentials.email)
             .eq('status', 'active')
-            .eq('tenants.status', 'active')
 
-          if (usersError || !users || users.length === 0) {
-            console.error('User lookup error:', usersError)
+          if (usersError || !tenantUsers || tenantUsers.length === 0) {
+            console.error('User lookup error in Tenant DB:', usersError)
             console.error('Email:', credentials.email)
             return null
           }
 
-          // If tenantId is provided, use that specific tenant
-          let authenticatedUser = users[0]
+          // If tenantId is provided, filter to that specific tenant
+          let authenticatedUser = tenantUsers[0]
           if (credentials.tenantId) {
-            const specificUser = users.find(u => u.tenants.id === credentials.tenantId)
+            const specificUser = tenantUsers.find(u => u.tenant_id === credentials.tenantId)
             if (specificUser) {
               authenticatedUser = specificUser
             } else {
@@ -64,10 +68,22 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
-          const matchedTenant = authenticatedUser.tenants
+          // Get tenant info from App DB (tenants table stays in App DB)
+          const appSupabase = createServerSupabaseClient()
+          const { data: tenant } = await appSupabase
+            .from('tenants')
+            .select('*')
+            .eq('id', authenticatedUser.tenant_id)
+            .eq('status', 'active')
+            .single()
 
-          // Update last login
-          await supabase
+          if (!tenant) {
+            console.error('Tenant not found or inactive:', authenticatedUser.tenant_id)
+            return null
+          }
+
+          // Update last login in Tenant DB
+          await tenantSupabase
             .from('users')
             .update({ last_login: new Date().toISOString() })
             .eq('id', authenticatedUser.id)
@@ -78,11 +94,11 @@ export const authOptions: NextAuthOptions = {
             email: authenticatedUser.email,
             name: `${authenticatedUser.first_name} ${authenticatedUser.last_name}`.trim(),
             role: authenticatedUser.role,
-            tenantId: matchedTenant.id,
-            tenantName: matchedTenant.name,
-            tenantSubdomain: matchedTenant.subdomain,
+            tenantId: tenant.id,
+            tenantName: tenant.name,
+            tenantSubdomain: tenant.subdomain,
             permissions: authenticatedUser.permissions || {},
-            hasMultipleTenants: users.length > 1
+            hasMultipleTenants: tenantUsers.length > 1
           }
         } catch (error) {
           console.error('Auth error:', error)
