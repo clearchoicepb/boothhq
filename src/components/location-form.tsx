@@ -106,11 +106,14 @@ export function LocationForm({
 
     setIsLoading(true)
     try {
+      console.log('[LocationForm] Submitting location data:', formData)
       await onSave(formData)
+      console.log('[LocationForm] onSave completed successfully')
       onClose()
-    } catch (error) {
-      console.error('Error saving location:', error)
-      alert('Failed to save location. Please try again.')
+    } catch (error: any) {
+      console.error('[LocationForm] Error saving location:', error)
+      const errorMessage = error.message || 'Failed to save location. Please try again.'
+      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`)
     } finally {
       setIsLoading(false)
     }

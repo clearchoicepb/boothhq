@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { eventsApi, accountsApi, contactsApi, opportunitiesApi } from '@/lib/db'
+import { accountsApi, contactsApi, opportunitiesApi } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -93,7 +93,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         contactsApi.getAll(),
         opportunitiesApi.getAll()
       ])
-      
+
       setAccounts(accountsData)
       setContacts(contactsData)
       setOpportunities(opportunitiesData)
@@ -137,30 +137,55 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
       let result: Event
 
       if (event) {
-        // Update existing event
+        // Update existing event via API route (uses tenant database)
         const updateData: EventUpdate = {
           ...formData,
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
-        console.log('[EventForm] Updating event with data:', updateData)
-        result = await eventsApi.update(event.id, updateData)
+        console.log('[EventForm] Updating event via API with data:', updateData)
+
+        const response = await fetch(`/api/events/${event.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.details || errorData.error || 'Failed to update event')
+        }
+
+        result = await response.json()
       } else {
-        // Create new event
+        // Create new event via API route (uses tenant database)
         const insertData: EventInsert = {
           ...formData,
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
-        console.log('[EventForm] Creating event with data:', insertData)
-        result = await eventsApi.create(insertData)
+        console.log('[EventForm] Creating event via API with data:', insertData)
+
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(insertData)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.details || errorData.error || 'Failed to create event')
+        }
+
+        const responseData = await response.json()
+        result = responseData.event || responseData
       }
 
-      console.log('[EventForm] Event saved:', result)
+      console.log('[EventForm] Event saved successfully via API:', result)
       onSubmit(result)
-    } catch (error) {
+    } catch (error: any) {
       console.error('[EventForm] Error saving event:', error)
-      setErrors({ submit: 'Failed to save event. Please try again.' })
+      setErrors({ submit: error.message || 'Failed to save event. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -171,7 +196,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
       ...prev,
       [field]: value
     }))
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -199,7 +224,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
   ]
 
   // Filter contacts and opportunities based on selected account
-  const filteredContacts = formData.account_id 
+  const filteredContacts = formData.account_id
     ? contacts.filter(contact => contact.account_id === formData.account_id)
     : contacts
 
@@ -304,7 +329,6 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
               onChange={(locId, location) => {
                 console.log('[EventForm] Location changed:', { locId, location })
                 setLocationId(locId)
-                // Update formData with location_id
                 handleInputChange('location_id', locId)
                 // Also set location name in the old field for backward compatibility
                 if (location) {
@@ -399,4 +423,3 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     </Modal>
   )
 }
-

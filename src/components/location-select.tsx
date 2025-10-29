@@ -66,7 +66,8 @@ export function LocationSelect({
   }
 
   const handleLocationCreated = (location: Location) => {
-    console.log('[LocationSelect] Location created:', location)
+    console.log('[LocationSelect] Location created successfully:', location)
+    console.log('[LocationSelect] Adding location to list and calling onChange with ID:', location.id)
     setLocations(prev => [location, ...prev])
     console.log('[LocationSelect] Calling onChange with:', { id: location.id, location })
     onChange(location.id, location)
@@ -142,11 +143,10 @@ export function LocationSelect({
           isOpen={isFormOpen}
           onClose={() => { setIsFormOpen(false); setEditingLocation(null); }}
           onSave={async (locationData) => {
-            console.log('[LocationSelect] Saving location:', locationData)
+            console.log('[LocationSelect] onSave called with data:', locationData)
             const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations'
             const method = editingLocation ? 'PUT' : 'POST'
-
-            console.log('[LocationSelect] Making request:', { url, method })
+            console.log('[LocationSelect] Making API request:', { url, method })
 
             const response = await fetch(url, {
               method,
@@ -154,16 +154,16 @@ export function LocationSelect({
               body: JSON.stringify(locationData)
             })
 
-            console.log('[LocationSelect] Response status:', response.status)
+            console.log('[LocationSelect] API response status:', response.status)
 
             if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}))
-              console.error('[LocationSelect] Save failed:', errorData)
-              throw new Error('Failed to save location')
+              const errorData = await response.json()
+              console.error('[LocationSelect] API error:', errorData)
+              throw new Error(`Failed to save location: ${errorData.details || errorData.error}`)
             }
 
             const location = await response.json()
-            console.log('[LocationSelect] Location saved:', location)
+            console.log('[LocationSelect] Location saved successfully:', location)
 
             if (editingLocation) {
               handleLocationUpdated(location)
