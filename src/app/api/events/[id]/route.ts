@@ -36,7 +36,18 @@ export async function GET(
             is_primary,
             accounts(id, name)
           )
-        )
+        ),
+        event_planner:contacts!event_planner_id(
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          contact_accounts(
+            is_primary,
+            accounts(id, name)
+          )
+        ),
         opportunities!events_opportunity_id_fkey(name),
         event_categories(id, name, slug, color, icon),
         event_types(id, name, slug),
