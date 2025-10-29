@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS add_ons (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- NOTE: Creating without FK constraints initially to allow data migration
 CREATE TABLE IF NOT EXISTS opportunity_line_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL,
