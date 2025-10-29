@@ -31,8 +31,6 @@ export async function GET(request: NextRequest) {
         *,
         accounts!events_account_id_fkey(name),
         contacts!events_contact_id_fkey(first_name, last_name),
-        event_categories(id, name, slug, color, icon),
-        event_types(id, name, slug, event_category_id),
         event_dates(
           id,
           event_date,
@@ -46,6 +44,10 @@ export async function GET(request: NextRequest) {
       `)
       .eq('tenant_id', session.user.tenantId)
       .order('start_date', { ascending: true })
+    
+    // TODO: Re-enable once event_categories and event_types foreign keys are set up in Tenant DB
+    // event_categories(id, name, slug, color, icon),
+    // event_types(id, name, slug, event_category_id),
 
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter)
