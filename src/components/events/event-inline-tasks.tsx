@@ -1,0 +1,225 @@
+'use client'
+
+import { useState } from 'react'
+import { CheckCircle2, Circle, Loader2, CheckCheck } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+interface Task {
+  id: string // This is the completion_id
+  core_task_template_id: string
+  task_name: string
+  task_description: string | null
+  is_completed: boolean
+  completed_at: string | null
+  completed_by: string | null
+  core_task_template?: {
+    id: string
+    task_name: string
+    task_description?: string | null
+  }
+}
+
+interface EventInlineTasksProps {
+  eventId: string
+  tasks: Task[]
+  onTaskUpdate: () => void
+  onAllTasksComplete?: () => void
+}
+
+export function EventInlineTasks({
+  eventId,
+  tasks,
+  onTaskUpdate,
+  onAllTasksComplete
+}: EventInlineTasksProps) {
+  const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set())
+  const [markingReady, setMarkingReady] = useState(false)
+
+  const completedCount = tasks.filter(t => t.is_completed).length
+  const allTasksComplete = completedCount === tasks.length && tasks.length > 0
+
+  const handleTaskToggle = async (completionId: string, currentStatus: boolean) => {
+    // Optimistic update
+    setUpdatingTasks(prev => new Set(prev).add(completionId))
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/core-tasks`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completion_id: completionId,
+          is_completed: !currentStatus
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update task')
+      }
+
+      toast.success(!currentStatus ? 'Task completed!' : 'Task marked incomplete')
+      onTaskUpdate()
+
+      // Check if all tasks are now complete
+      const updatedTasks = tasks.map(t =>
+        t.id === completionId ? { ...t, is_completed: !currentStatus } : t
+      )
+      const allComplete = updatedTasks.every(t => t.is_completed)
+      if (allComplete && onAllTasksComplete) {
+        onAllTasksComplete()
+      }
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    } finally {
+      setUpdatingTasks(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(completionId)
+        return newSet
+      })
+    }
+  }
+
+  const handleMarkAllComplete = async () => {
+    setMarkingReady(true)
+
+    try {
+      // Complete all incomplete tasks
+      const incompleteTasks = tasks.filter(t => !t.is_completed)
+
+      const promises = incompleteTasks.map(task =>
+        fetch(`/api/events/${eventId}/core-tasks`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            completion_id: task.id,
+            is_completed: true
+          })
+        })
+      )
+
+      await Promise.all(promises)
+
+      toast.success('🎉 All tasks completed! Event is ready!')
+      onTaskUpdate()
+      if (onAllTasksComplete) {
+        onAllTasksComplete()
+      }
+    } catch (error) {
+      console.error('Error marking all tasks complete:', error)
+      toast.error('Failed to complete all tasks')
+    } finally {
+      setMarkingReady(false)
+    }
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className="py-4 px-6 bg-gray-50 border-t border-gray-200">
+        <p className="text-sm text-gray-500 text-center">No tasks configured for this event</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="py-4 px-6 bg-gray-50 border-t border-gray-200">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900">Event Tasks</h4>
+          <p className="text-xs text-gray-600 mt-0.5">
+            {completedCount} of {tasks.length} tasks complete
+          </p>
+        </div>
+
+        {!allTasksComplete && (
+          <button
+            onClick={handleMarkAllComplete}
+            disabled={markingReady}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {markingReady ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Completing...
+              </>
+            ) : (
+              <>
+                <CheckCheck className="h-4 w-4" />
+                Mark All Complete
+              </>
+            )}
+          </button>
+        )}
+
+        {allTasksComplete && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-md text-sm font-semibold">
+            <CheckCircle2 className="h-4 w-4" />
+            Event Ready
+          </span>
+        )}
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full transition-all duration-500 ${
+              allTasksComplete ? 'bg-green-500' : 'bg-blue-500'
+            }`}
+            style={{ width: `${(completedCount / tasks.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Task List */}
+      <div className="space-y-2">
+        {tasks.map(task => {
+          const isUpdating = updatingTasks.has(task.id)
+
+          return (
+            <div
+              key={task.id}
+              className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+            >
+              {/* Checkbox */}
+              <button
+                onClick={() => handleTaskToggle(task.id, task.is_completed)}
+                disabled={isUpdating}
+                className="flex-shrink-0 mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#347dc4] focus:ring-offset-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUpdating ? (
+                  <Loader2 className="h-5 w-5 text-[#347dc4] animate-spin" />
+                ) : task.is_completed ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Circle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+
+              {/* Task Content */}
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${
+                  task.is_completed ? 'text-gray-500 line-through' : 'text-gray-900'
+                }`}>
+                  {task.core_task_template?.task_name || task.task_name || 'Unnamed Task'}
+                </p>
+                {(task.core_task_template?.task_description || task.task_description) && (
+                  <p className={`text-xs mt-1 ${
+                    task.is_completed ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {task.core_task_template?.task_description || task.task_description}
+                  </p>
+                )}
+                {task.is_completed && task.completed_at && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Completed {new Date(task.completed_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

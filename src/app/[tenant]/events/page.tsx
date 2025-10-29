@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X, Download, ChevronDown, Grid, List } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Calendar as CalendarIcon, CheckCircle2, Filter, Palette, Wrench, AlertCircle, X, Download, ChevronDown, Grid, List, ChevronRight, ChevronDown as ChevronDownIcon } from 'lucide-react'
 import { Select } from '@/components/ui/select'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -14,6 +14,7 @@ import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
 import { EventPriorityStatsCards } from '@/components/events/event-priority-stats-cards'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
+import { EventInlineTasks } from '@/components/events/event-inline-tasks'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -105,6 +106,11 @@ export default function EventsPage() {
   // View mode state (table vs timeline)
   const [currentView, setCurrentView] = useState<'table' | 'timeline'>('table')
 
+  // Expanded rows state (for inline tasks)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, any[]>>({})
+  const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set())
+
   // Date range filter
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past' | 'custom_days'>('upcoming')
   const [customDaysFilter, setCustomDaysFilter] = useState<number | null>(null) // For custom X-day filters (e.g., next 10 days)
@@ -136,6 +142,59 @@ export default function EventsPage() {
   // Handler for view change
   const handleViewChange = (newView: 'table' | 'timeline') => {
     setCurrentView(newView)
+  }
+
+  // Handler for expanding/collapsing rows
+  const handleToggleRow = async (eventId: string) => {
+    const newExpandedRows = new Set(expandedRows)
+
+    if (newExpandedRows.has(eventId)) {
+      // Collapse the row
+      newExpandedRows.delete(eventId)
+      setExpandedRows(newExpandedRows)
+    } else {
+      // Expand the row and fetch task completions if not already loaded
+      newExpandedRows.add(eventId)
+      setExpandedRows(newExpandedRows)
+
+      if (!eventTaskCompletions[eventId]) {
+        await fetchEventTaskCompletions(eventId)
+      }
+    }
+  }
+
+  // Fetch task completions for a specific event
+  const fetchEventTaskCompletions = async (eventId: string) => {
+    setLoadingTasks(prev => new Set(prev).add(eventId))
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/core-tasks`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks')
+      }
+
+      const tasks = await response.json()
+      setEventTaskCompletions(prev => ({
+        ...prev,
+        [eventId]: tasks
+      }))
+    } catch (error) {
+      console.error('Error fetching event tasks:', error)
+      toast.error('Failed to load tasks')
+    } finally {
+      setLoadingTasks(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(eventId)
+        return newSet
+      })
+    }
+  }
+
+  // Handler for task update (refresh event data)
+  const handleTaskUpdate = async () => {
+    // Refetch events to update task completion counts
+    queryClient.invalidateQueries({ queryKey: ['events'] })
+    queryClient.invalidateQueries({ queryKey: ['eventsTaskStatus'] })
   }
 
   // Handler for priority stats card clicks
@@ -788,6 +847,9 @@ export default function EventsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                      {/* Expand/Collapse */}
+                    </th>
                     <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Priority</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until</th>
@@ -802,7 +864,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedEvents.length === 0 && events.length > 0 && (
                     <tr>
-                      <td colSpan={9} className="px-6 py-12 text-center">
+                      <td colSpan={10} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <p className="text-lg font-medium mb-2">No events match your filters</p>
                           <p className="text-sm">Try adjusting your date range or search criteria</p>
@@ -846,9 +908,27 @@ export default function EventsPage() {
                     }
 
                     const priority = priorityConfig[priorityLevel]
+                    const isExpanded = expandedRows.has(event.id)
+                    const isLoadingTasks = loadingTasks.has(event.id)
 
                     return (
+                      <>
                       <tr key={event.id} className={`hover:bg-gray-50 ${priority.border}`}>
+                        {/* Expand/Collapse Button */}
+                        <td className="px-2 py-4 text-center">
+                          <button
+                            onClick={() => handleToggleRow(event.id)}
+                            className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#347dc4] rounded"
+                            title={isExpanded ? 'Collapse tasks' : 'Expand tasks'}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon className="h-5 w-5" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5" />
+                            )}
+                          </button>
+                        </td>
+
                         {/* Priority Indicator */}
                         <td className="px-3 py-4 text-center">
                           <div className="flex flex-col items-center gap-1">
@@ -1019,6 +1099,32 @@ export default function EventsPage() {
                           </div>
                         </td>
                       </tr>
+
+                      {/* Inline Tasks Row (Expandable) */}
+                      {isExpanded && (
+                        <tr key={`${event.id}-tasks`}>
+                          <td colSpan={10} className="p-0">
+                            {isLoadingTasks ? (
+                              <div className="py-8 px-6 bg-gray-50 border-t border-gray-200 text-center">
+                                <div className="inline-flex items-center gap-2 text-gray-600">
+                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  <span className="text-sm">Loading tasks...</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <EventInlineTasks
+                                eventId={event.id}
+                                tasks={eventTaskCompletions[event.id] || []}
+                                onTaskUpdate={handleTaskUpdate}
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </>
                     )
                   })}
                 </tbody>
