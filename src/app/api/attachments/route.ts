@@ -24,16 +24,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
+    // TODO: Re-enable users join once foreign key is set up in Tenant DB
     const { data: attachments, error } = await supabase
       .from('attachments')
-      .select(`
-        *,
-        uploaded_by_user:users!uploaded_by (
-          first_name,
-          last_name,
-          email
-        )
-      `)
+      .select('*')
       .eq('tenant_id', session.user.tenantId)
       .eq('entity_type', entityType)
       .eq('entity_id', entityId)
@@ -124,14 +118,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         uploaded_by: session.user.id,
       })
-      .select(`
-        *,
-        uploaded_by_user:users!uploaded_by (
-          first_name,
-          last_name,
-          email
-        )
-      `)
+      .select('*')
       .single()
 
     if (dbError) {
