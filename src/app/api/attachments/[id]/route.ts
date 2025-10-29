@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // GET - Download/view a specific attachment
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const params = await context.params
     const attachmentId = params.id
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch attachment metadata
     const { data: attachment, error } = await supabase
@@ -74,7 +74,7 @@ export async function DELETE(
     const params = await context.params
     const attachmentId = params.id
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch attachment to get storage path
     const { data: attachment, error: fetchError } = await supabase

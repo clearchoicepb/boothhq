@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // GET - Fetch a single package
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
     }
 
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data: package_data, error } = await supabase
       .from('packages')
@@ -59,7 +59,7 @@ export async function PUT(
       sort_order,
     } = body
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -108,7 +108,7 @@ export async function DELETE(
     }
 
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { error: deleteError } = await supabase
       .from('packages')

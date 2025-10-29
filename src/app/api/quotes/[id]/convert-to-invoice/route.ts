@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function POST(
   request: NextRequest,
@@ -24,7 +24,7 @@ export async function POST(
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch the quote
     const { data: quote, error: quoteError } = await supabase

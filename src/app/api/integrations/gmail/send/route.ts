@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // Helper to refresh access token if expired
 async function refreshAccessToken(refreshToken: string) {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's Gmail integration
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data: integration, error: integrationError } = await supabase
       .from('user_integrations')

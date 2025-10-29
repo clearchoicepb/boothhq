@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 /**
  * POST - Add contact to account (create relationship)
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     // If is_primary, unset other primary relationships for this contact
     if (is_primary) {
@@ -84,7 +84,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 })
     }
     
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     const { error } = await supabase
       .from('contact_accounts')
@@ -122,7 +122,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 })
     }
     
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     
     // Build update object
     const updateData: any = {}

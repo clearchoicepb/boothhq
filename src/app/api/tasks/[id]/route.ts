@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // GET - Fetch a single task
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
     }
 
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data: task, error } = await supabase
       .from('tasks')
@@ -63,7 +63,7 @@ export async function PATCH(
       dueDate,
     } = body
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -126,7 +126,7 @@ export async function DELETE(
     }
 
     const { id } = await params
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { error: deleteError } = await supabase
       .from('tasks')

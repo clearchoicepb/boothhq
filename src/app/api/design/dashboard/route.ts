@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions)
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const designerId = searchParams.get('designer_id')
     const status = searchParams.get('status')
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Build query
     let query = supabase

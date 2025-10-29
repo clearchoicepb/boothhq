@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 // Helper function to count event days in a period
 function countEventDays(events: any[], periodStart: Date, periodEnd: Date): number {
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     const tenantId = session.user.tenantId
 
     // 1. Total Revenue Generated (invoices created in period)

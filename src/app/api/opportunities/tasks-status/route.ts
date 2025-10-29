@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantDatabaseClient } from '@/lib/supabase-client'
 
 /**
  * GET /api/opportunities/tasks-status
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ taskStatus: {} })
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch incomplete tasks for these opportunities
     const { data: tasks, error } = await supabase
