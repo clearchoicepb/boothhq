@@ -13,6 +13,10 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,6 +56,31 @@ export default function SignInPage() {
     }
   }
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setResetLoading(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail })
+      })
+
+      if (response.ok) {
+        setResetSuccess(true)
+      } else {
+        const data = await response.json()
+        setError(data.error || 'Failed to send reset email')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred')
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -65,7 +94,96 @@ export default function SignInPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          {showForgotPassword ? (
+            /* Forgot Password Form */
+            <div>
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false)
+                  setResetSuccess(false)
+                  setResetEmail('')
+                  setError('')
+                }}
+                className="text-sm text-blue-600 hover:text-blue-500 mb-6"
+              >
+                ← Back to sign in
+              </button>
+
+              {resetSuccess ? (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <p className="text-sm text-green-800">
+                      Password reset email sent! Check your inbox for instructions to reset your password.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setResetSuccess(false)
+                      setResetEmail('')
+                    }}
+                    className="w-full"
+                  >
+                    Return to Sign In
+                  </Button>
+                </div>
+              ) : (
+                <form className="space-y-6" onSubmit={handleForgotPassword}>
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                      Reset Password
+                    </h2>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Enter your email address and we'll send you a link to reset your password.
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                      <div className="flex">
+                        <AlertCircle className="h-5 w-5 text-red-400" />
+                        <div className="ml-3">
+                          <p className="text-sm text-red-800">{error}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700">
+                      Email address
+                    </label>
+                    <div className="mt-1 relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Mail className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <Input
+                        id="reset-email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        className="pl-10"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="w-full"
+                  >
+                    {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                </form>
+              )}
+            </div>
+          ) : (
+            /* Sign In Form */
+            <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
                 <div className="flex">
@@ -132,6 +250,16 @@ export default function SignInPage() {
               </div>
             </div>
 
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                Forgot password?
+              </button>
+            </div>
+
             <div>
               <Button
                 type="submit"
@@ -142,6 +270,7 @@ export default function SignInPage() {
               </Button>
             </div>
           </form>
+          )}
 
           <div className="mt-6">
             <div className="relative">

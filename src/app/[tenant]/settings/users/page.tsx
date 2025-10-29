@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
 import { ROLES, ROLES_WITH_LABELS, type UserRole } from '@/lib/roles'
-import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Building, Shield } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Building, Shield, Key } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -59,6 +59,9 @@ export default function UsersSettingsPage() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
   const [bulkAction, setBulkAction] = useState<string>('')
   const [processingBulk, setProcessingBulk] = useState(false)
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
 
   const tenantSubdomain = useParams().tenant as string
 
@@ -229,6 +232,42 @@ export default function UsersSettingsPage() {
       alert('Failed to perform bulk action')
     } finally {
       setProcessingBulk(false)
+    }
+  }
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser || !newPassword) {
+      alert('Please enter a new password')
+      return
+    }
+
+    if (newPassword.length < 8) {
+      alert('Password must be at least 8 characters')
+      return
+    }
+
+    setIsResettingPassword(true)
+
+    try {
+      const response = await fetch(`/api/users/${resetPasswordUser.id}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword })
+      })
+
+      if (response.ok) {
+        alert(`Password reset successfully for ${resetPasswordUser.email}`)
+        setResetPasswordUser(null)
+        setNewPassword('')
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error || 'Failed to reset password'}`)
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error)
+      alert('Failed to reset password')
+    } finally {
+      setIsResettingPassword(false)
     }
   }
 
@@ -449,6 +488,18 @@ export default function UsersSettingsPage() {
                       >
                     <Edit className="w-4 h-4 mr-1" />
                     Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setResetPasswordUser(user)
+                          setNewPassword('')
+                        }}
+                        className="text-orange-600 hover:text-orange-700 hover:border-orange-300"
+                      >
+                        <Key className="w-4 h-4 mr-1" />
+                        Reset Password
                       </Button>
                       <Button
                     variant="outline"
@@ -850,6 +901,59 @@ export default function UsersSettingsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        isOpen={resetPasswordUser !== null}
+        onClose={() => {
+          setResetPasswordUser(null)
+          setNewPassword('')
+        }}
+        title={`Reset Password for ${resetPasswordUser?.first_name} ${resetPasswordUser?.last_name}`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Enter a new password for <strong>{resetPasswordUser?.email}</strong>
+          </p>
+          
+          <div>
+            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-2">
+              New Password
+            </label>
+            <Input
+              id="new-password"
+              type="text"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password (min 8 characters)"
+              className="w-full"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Password must be at least 8 characters long
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResetPasswordUser(null)
+                setNewPassword('')
+              }}
+              disabled={isResettingPassword}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={isResettingPassword || !newPassword || newPassword.length < 8}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isResettingPassword ? 'Resetting...' : 'Reset Password'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
