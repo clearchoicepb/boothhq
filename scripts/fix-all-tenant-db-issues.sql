@@ -11,25 +11,24 @@
 -- ============================================================================
 
 -- ============================================================================
--- PART 1: ADD FOREIGN KEYS FOR USERS
+-- PART 1: ADD FOREIGN KEYS FOR USERS (ONLY FOR COLUMNS THAT EXIST!)
+-- ============================================================================
+-- Verified columns:
+-- ✅ events: event_planner_id
+-- ✅ attachments: uploaded_by
+-- ✅ accounts: assigned_to
+-- ✅ tasks: assigned_to, created_by
+-- ✅ notes: created_by
+-- ✅ communications: created_by
 -- ============================================================================
 
--- Events (event_planner_id, created_by)
+-- Events (event_planner_id only - no created_by column)
 ALTER TABLE events
   DROP CONSTRAINT IF EXISTS events_event_planner_id_fkey;
 
 ALTER TABLE events
   ADD CONSTRAINT events_event_planner_id_fkey
   FOREIGN KEY (event_planner_id)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
-ALTER TABLE events
-  DROP CONSTRAINT IF EXISTS events_created_by_fkey;
-
-ALTER TABLE events
-  ADD CONSTRAINT events_created_by_fkey
-  FOREIGN KEY (created_by)
   REFERENCES users(id)
   ON DELETE SET NULL;
 
@@ -43,22 +42,13 @@ ALTER TABLE attachments
   REFERENCES users(id)
   ON DELETE SET NULL;
 
--- Accounts (assigned_to, created_by)
+-- Accounts (assigned_to only - no created_by column)
 ALTER TABLE accounts
   DROP CONSTRAINT IF EXISTS accounts_assigned_to_fkey;
 
 ALTER TABLE accounts
   ADD CONSTRAINT accounts_assigned_to_fkey
   FOREIGN KEY (assigned_to)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
-ALTER TABLE accounts
-  DROP CONSTRAINT IF EXISTS accounts_created_by_fkey;
-
-ALTER TABLE accounts
-  ADD CONSTRAINT accounts_created_by_fkey
-  FOREIGN KEY (created_by)
   REFERENCES users(id)
   ON DELETE SET NULL;
 
@@ -81,44 +71,6 @@ ALTER TABLE tasks
   REFERENCES users(id)
   ON DELETE SET NULL;
 
--- Opportunities (assigned_to, created_by)
-ALTER TABLE opportunities
-  DROP CONSTRAINT IF EXISTS opportunities_assigned_to_fkey;
-
-ALTER TABLE opportunities
-  ADD CONSTRAINT opportunities_assigned_to_fkey
-  FOREIGN KEY (assigned_to)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
-ALTER TABLE opportunities
-  DROP CONSTRAINT IF EXISTS opportunities_created_by_fkey;
-
-ALTER TABLE opportunities
-  ADD CONSTRAINT opportunities_created_by_fkey
-  FOREIGN KEY (created_by)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
--- Leads (assigned_to, created_by)
-ALTER TABLE leads
-  DROP CONSTRAINT IF EXISTS leads_assigned_to_fkey;
-
-ALTER TABLE leads
-  ADD CONSTRAINT leads_assigned_to_fkey
-  FOREIGN KEY (assigned_to)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
-ALTER TABLE leads
-  DROP CONSTRAINT IF EXISTS leads_created_by_fkey;
-
-ALTER TABLE leads
-  ADD CONSTRAINT leads_created_by_fkey
-  FOREIGN KEY (created_by)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
 -- Notes (created_by)
 ALTER TABLE notes
   DROP CONSTRAINT IF EXISTS notes_created_by_fkey;
@@ -135,16 +87,6 @@ ALTER TABLE communications
 
 ALTER TABLE communications
   ADD CONSTRAINT communications_created_by_fkey
-  FOREIGN KEY (created_by)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
-
--- Contacts (created_by)
-ALTER TABLE contacts
-  DROP CONSTRAINT IF EXISTS contacts_created_by_fkey;
-
-ALTER TABLE contacts
-  ADD CONSTRAINT contacts_created_by_fkey
   FOREIGN KEY (created_by)
   REFERENCES users(id)
   ON DELETE SET NULL;
@@ -310,7 +252,7 @@ NOTIFY pgrst, 'reload schema';
 -- PART 6: VERIFICATION
 -- ============================================================================
 
--- Check foreign keys
+-- Check foreign keys to users table
 SELECT 
   conname AS constraint_name,
   conrelid::regclass AS table_name,
@@ -321,6 +263,16 @@ JOIN pg_attribute a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
 WHERE confrelid = 'users'::regclass
 AND contype = 'f'
 ORDER BY table_name, column_name;
+
+-- Expected results:
+-- accounts_assigned_to_fkey | accounts | assigned_to | users
+-- attachments_uploaded_by_fkey | attachments | uploaded_by | users  
+-- communications_created_by_fkey | communications | created_by | users
+-- event_staff_assignments_user_id_fkey | event_staff_assignments | user_id | users
+-- events_event_planner_id_fkey | events | event_planner_id | users
+-- notes_created_by_fkey | notes | created_by | users
+-- tasks_assigned_to_fkey | tasks | assigned_to | users
+-- tasks_created_by_fkey | tasks | created_by | users
 
 -- Check new tables
 SELECT 'staff_roles' as table_name, COUNT(*) as count FROM staff_roles
@@ -333,9 +285,14 @@ SELECT 'payment_status_options', COUNT(*) FROM payment_status_options;
 -- SUCCESS!
 -- ============================================================================
 -- All issues should now be fixed:
--- ✅ Event planner field will show (FK added)
--- ✅ Attachment uploader name will show (FK added)
--- ✅ Staff assignments feature is set up
--- ✅ Payment status options available
+-- ✅ Event planner field will show (FK added: events.event_planner_id → users)
+-- ✅ Attachment uploader name will show (FK added: attachments.uploaded_by → users)
+-- ✅ Staff assignments feature fully set up (staff_roles + event_staff_assignments)
+-- ✅ Payment status options available (payment_status_options table)
+-- ✅ User assignment fields working (accounts, tasks, notes, communications)
+-- ============================================================================
+-- Total Foreign Keys Added: 8 (only for columns that actually exist)
+-- Tables Created: 3 (staff_roles, event_staff_assignments, payment_status_options)
+-- Default Data Rows: 9 (5 staff roles + 4 payment statuses)
 -- ============================================================================
 
