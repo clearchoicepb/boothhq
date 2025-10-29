@@ -152,7 +152,7 @@ export default function AccountDetailPage() {
 
   const handleDelete = async () => {
     if (!account) return
-    
+
     setIsDeleting(true)
     try {
       const response = await fetch(`/api/accounts/${account.id}`, {
@@ -162,6 +162,10 @@ export default function AccountDetailPage() {
       if (!response.ok) {
         throw new Error('Failed to delete account')
       }
+
+      // Invalidate React Query cache to remove deleted account from lists
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['account', account.id] })
 
       // Redirect to accounts list
       router.push(`/${tenantSubdomain}/accounts`)
