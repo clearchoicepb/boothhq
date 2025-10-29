@@ -220,11 +220,13 @@ export async function POST(request: NextRequest) {
       .from('events')
       .insert(insertData)
       .select(`
-        *,
-        event_categories(id, name, slug, color, icon),
-        event_types(id, name, slug)
+        *
       `)
       .single()
+    
+    // TODO: Re-enable once event_categories and event_types foreign keys are set up in Tenant DB
+    // event_categories(id, name, slug, color, icon),
+    // event_types(id, name, slug)
 
     if (eventError) {
       console.error('Error creating event:', eventError)
