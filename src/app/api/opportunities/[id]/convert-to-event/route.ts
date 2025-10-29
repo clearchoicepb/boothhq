@@ -188,6 +188,7 @@ export async function POST(
       // Calculate start and end dates from event_dates
       let startDate = new Date().toISOString()
       let endDate = null
+      let primaryLocationId = null
 
       if (opportunityEventDates.length > 0) {
         const sortedDates = opportunityEventDates
@@ -198,6 +199,9 @@ export async function POST(
         if (sortedDates.length > 1) {
           endDate = sortedDates[sortedDates.length - 1].toISOString()
         }
+
+        // Get the location_id from the first event_date as the primary location
+        primaryLocationId = opportunityEventDates[0]?.location_id || null
       }
 
       const { data: event, error: eventError } = await supabase
@@ -213,6 +217,7 @@ export async function POST(
           start_date: eventData?.start_date || startDate,
           end_date: eventData?.end_date || endDate,
           location: eventData?.location || null,
+          location_id: eventData?.location_id || primaryLocationId,
           status: eventData?.status || 'scheduled',
           date_type: eventData?.date_type || opportunity.date_type || 'single_day',
           mailing_address_line1: eventData?.mailing_address_line1 || opportunity.mailing_address_line1,

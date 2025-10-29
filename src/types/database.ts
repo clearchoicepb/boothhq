@@ -311,6 +311,7 @@ export interface Database {
           start_date: string
           end_date: string | null
           location: string | null
+          location_id: string | null
           status: string
           date_type: string | null
           mailing_address_line1: string | null
@@ -335,6 +336,7 @@ export interface Database {
           start_date: string
           end_date?: string | null
           location?: string | null
+          location_id?: string | null
           status?: string
           date_type?: string | null
           mailing_address_line1?: string | null
@@ -359,6 +361,7 @@ export interface Database {
           start_date?: string
           end_date?: string | null
           location?: string | null
+          location_id?: string | null
           status?: string
           date_type?: string | null
           mailing_address_line1?: string | null
