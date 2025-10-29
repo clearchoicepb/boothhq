@@ -16,6 +16,7 @@ import { EventTimelineView } from '@/components/events/event-timeline-view'
 import { EventInlineTasks } from '@/components/events/event-inline-tasks'
 import { EventFilters, type FilterState } from '@/components/events/event-filters'
 import { EventQuickActionsMenu } from '@/components/events/event-quick-actions-menu'
+import { EventBulkActionsBar } from '@/components/events/event-bulk-actions-bar'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -124,6 +125,9 @@ export default function EventsPage() {
     selectedTaskIds: []
   })
 
+  // Bulk selection state
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set())
+
   // Load view preference from localStorage on mount
   useEffect(() => {
     const savedView = localStorage.getItem('events_view_mode')
@@ -230,6 +234,91 @@ export default function EventsPage() {
     const filename = `events-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(sortedEvents, filename, columns)
     toast.success(`Exported ${sortedEvents.length} events`)
+  }
+
+  // Bulk operation handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allEventIds = new Set(sortedEvents.map(e => e.id))
+      setSelectedEventIds(allEventIds)
+    } else {
+      setSelectedEventIds(new Set())
+    }
+  }
+
+  const handleSelectEvent = (eventId: string, checked: boolean) => {
+    const newSelection = new Set(selectedEventIds)
+    if (checked) {
+      newSelection.add(eventId)
+    } else {
+      newSelection.delete(eventId)
+    }
+    setSelectedEventIds(newSelection)
+  }
+
+  const handleBulkDelete = async () => {
+    const count = selectedEventIds.size
+    if (!confirm(`Are you sure you want to delete ${count} event${count > 1 ? 's' : ''}?`)) {
+      return
+    }
+
+    try {
+      const deletePromises = Array.from(selectedEventIds).map(eventId =>
+        fetch(`/api/events/${eventId}`, { method: 'DELETE' })
+      )
+
+      await Promise.all(deletePromises)
+
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+      toast.success(`Deleted ${count} event${count > 1 ? 's' : ''} successfully`)
+      setSelectedEventIds(new Set())
+    } catch (error) {
+      console.error('Error deleting events:', error)
+      toast.error('Failed to delete some events')
+    }
+  }
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    const count = selectedEventIds.size
+
+    try {
+      const updatePromises = Array.from(selectedEventIds).map(eventId =>
+        fetch(`/api/events/${eventId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        })
+      )
+
+      await Promise.all(updatePromises)
+
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+      toast.success(`Updated ${count} event${count > 1 ? 's' : ''} to ${newStatus}`)
+      setSelectedEventIds(new Set())
+    } catch (error) {
+      console.error('Error updating event statuses:', error)
+      toast.error('Failed to update some events')
+    }
+  }
+
+  const handleBulkExport = () => {
+    const selectedEvents = sortedEvents.filter(e => selectedEventIds.has(e.id))
+
+    const columns = [
+      { key: 'title', label: 'Event Title' },
+      { key: 'event_type', label: 'Event Type' },
+      { key: 'status', label: 'Status' },
+      { key: 'start_date', label: 'Start Date' },
+      { key: 'end_date', label: 'End Date' },
+      { key: 'location', label: 'Location' },
+      { key: 'contact_name', label: 'Contact' },
+      { key: 'account_name', label: 'Account' },
+      { key: 'created_at', label: 'Created Date' }
+    ]
+
+    const filename = `events-selected-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(selectedEvents, filename, columns)
+    toast.success(`Exported ${selectedEvents.length} selected events`)
   }
 
   // Calculate event counts for different date filters (for badge counts)
@@ -641,6 +730,15 @@ export default function EventsPage() {
                     <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
                       {/* Expand/Collapse */}
                     </th>
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                      {/* Select All Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={sortedEvents.length > 0 && selectedEventIds.size === sortedEvents.length}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
+                      />
+                    </th>
                     <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Priority</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until</th>
@@ -655,7 +753,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedEvents.length === 0 && events.length > 0 && (
                     <tr>
-                      <td colSpan={10} className="px-6 py-12 text-center">
+                      <td colSpan={11} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <p className="text-lg font-medium mb-2">No events match your filters</p>
                           <p className="text-sm">Try adjusting your date range or search criteria</p>
@@ -718,6 +816,17 @@ export default function EventsPage() {
                               <ChevronRight className="h-5 w-5" />
                             )}
                           </button>
+                        </td>
+
+                        {/* Selection Checkbox */}
+                        <td className="px-2 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedEventIds.has(event.id)}
+                            onChange={(e) => handleSelectEvent(event.id, e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
+                          />
                         </td>
 
                         {/* Priority Indicator */}
@@ -880,7 +989,7 @@ export default function EventsPage() {
                       {/* Inline Tasks Row (Expandable) */}
                       {isExpanded && (
                         <tr key={`${event.id}-tasks`}>
-                          <td colSpan={10} className="p-0">
+                          <td colSpan={11} className="p-0">
                             {isLoadingTasks ? (
                               <div className="py-8 px-6 bg-gray-50 border-t border-gray-200 text-center">
                                 <div className="inline-flex items-center gap-2 text-gray-600">
@@ -1147,6 +1256,15 @@ export default function EventsPage() {
           )}
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      <EventBulkActionsBar
+        selectedCount={selectedEventIds.size}
+        onClearSelection={() => setSelectedEventIds(new Set())}
+        onBulkDelete={handleBulkDelete}
+        onBulkStatusChange={handleBulkStatusChange}
+        onBulkExport={handleBulkExport}
+      />
     </AppLayout>
   )
 }
