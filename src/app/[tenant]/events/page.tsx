@@ -15,6 +15,7 @@ import { exportToCSV } from '@/lib/csv-export'
 import { EventPriorityStatsCards } from '@/components/events/event-priority-stats-cards'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
 import { EventInlineTasks } from '@/components/events/event-inline-tasks'
+import { EventFilters, type FilterState } from '@/components/events/event-filters'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -101,8 +102,6 @@ export default function EventsPage() {
   const localLoading = eventsLoading
 
   // UI State (not data fetching)
-  const [searchTerm, setSearchTerm] = useState('')
-
   // View mode state (table vs timeline)
   const [currentView, setCurrentView] = useState<'table' | 'timeline'>('table')
 
@@ -111,20 +110,19 @@ export default function EventsPage() {
   const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, any[]>>({})
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set())
 
-  // Date range filter
-  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past' | 'custom_days'>('upcoming')
-  const [customDaysFilter, setCustomDaysFilter] = useState<number | null>(null) // For custom X-day filters (e.g., next 10 days)
-
-  // Status filter
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-
   // Sort options
   const [sortBy, setSortBy] = useState<string>('date_asc')
 
-  // Task filtering state
-  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
-  const [taskFilter, setTaskFilter] = useState<'all' | 'incomplete'>('all')
-  const [taskDateRangeFilter, setTaskDateRangeFilter] = useState<number>(14) // days from now for incomplete task filter
+  // Filter state (consolidated)
+  const [filters, setFilters] = useState<FilterState>({
+    searchTerm: '',
+    dateRangeFilter: 'upcoming',
+    customDaysFilter: null,
+    statusFilter: 'all',
+    taskFilter: 'all',
+    taskDateRangeFilter: 14,
+    selectedTaskIds: []
+  })
 
   // Load view preference from localStorage on mount
   useEffect(() => {
@@ -202,29 +200,38 @@ export default function EventsPage() {
     switch (filter) {
       case 'next_10_days':
         // Filter to next 10 days
-        setDateRangeFilter('custom_days')
-        setCustomDaysFilter(10)
-        setStatusFilter('all')
-        setTaskFilter('all')
-        setSelectedTaskIds([])
-        setSearchTerm('')
+        setFilters({
+          ...filters,
+          dateRangeFilter: 'custom_days',
+          customDaysFilter: 10,
+          statusFilter: 'all',
+          taskFilter: 'all',
+          selectedTaskIds: [],
+          searchTerm: ''
+        })
         break
       case 'tasks_45_days':
         // Filter to events with incomplete tasks in next 45 days
-        setDateRangeFilter('all')
-        setStatusFilter('all')
-        setTaskFilter('incomplete')
-        setTaskDateRangeFilter(45)
-        setSelectedTaskIds([])
-        setSearchTerm('')
+        setFilters({
+          ...filters,
+          dateRangeFilter: 'all',
+          statusFilter: 'all',
+          taskFilter: 'incomplete',
+          taskDateRangeFilter: 45,
+          selectedTaskIds: [],
+          searchTerm: ''
+        })
         break
       case 'all_upcoming':
         // Show all upcoming events
-        setDateRangeFilter('upcoming')
-        setStatusFilter('all')
-        setTaskFilter('all')
-        setSelectedTaskIds([])
-        setSearchTerm('')
+        setFilters({
+          ...filters,
+          dateRangeFilter: 'upcoming',
+          statusFilter: 'all',
+          taskFilter: 'all',
+          selectedTaskIds: [],
+          searchTerm: ''
+        })
         break
     }
   }
@@ -319,10 +326,10 @@ export default function EventsPage() {
 
   // Helper function to check if event matches selected specific tasks
   const matchesSelectedTasks = (event: Event): boolean => {
-    if (selectedTaskIds.length === 0) return true
+    if (filters.selectedTaskIds.length === 0) return true
 
     const incompleteTasks = getIncompleteTasks(event)
-    return selectedTaskIds.some(taskId => incompleteTasks.includes(taskId))
+    return filters.selectedTaskIds.some(taskId => incompleteTasks.includes(taskId))
   }
 
   // Helper function to check if event is within task date range (for incomplete task filter)
@@ -331,32 +338,100 @@ export default function EventsPage() {
     const eventDate = new Date(event.start_date)
     const now = new Date()
     const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + taskDateRangeFilter)
+    futureDate.setDate(futureDate.getDate() + filters.taskDateRangeFilter)
     return eventDate >= now && eventDate <= futureDate
   }
 
+  // Calculate event counts for different date filters (for badge counts)
+  const calculateEventCounts = useMemo(() => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    const counts = {
+      total: events.length,
+      filtered: 0, // Will be set after filtering
+      today: 0,
+      thisWeek: 0,
+      thisMonth: 0,
+      upcoming: 0,
+      past: 0,
+      next10Days: 0,
+      next45Days: 0
+    }
+
+    events.forEach(event => {
+      if (!event.start_date) return
+
+      const eventDate = parseLocalDate(event.start_date)
+      eventDate.setHours(0, 0, 0, 0)
+
+      const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+      // Today
+      if (isDateToday(event.start_date)) {
+        counts.today++
+      }
+
+      // This week (next 7 days)
+      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      if (eventDate >= now && eventDate <= weekEnd) {
+        counts.thisWeek++
+      }
+
+      // This month
+      if (eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear()) {
+        counts.thisMonth++
+      }
+
+      // Upcoming (future events)
+      if (eventDate >= now) {
+        counts.upcoming++
+      }
+
+      // Past
+      if (eventDate < now) {
+        counts.past++
+      }
+
+      // Next 10 days
+      if (daysUntil >= 0 && daysUntil <= 10) {
+        counts.next10Days++
+      }
+
+      // Next 45 days with incomplete tasks
+      if (daysUntil >= 0 && daysUntil <= 45) {
+        const incompleteTasks = getIncompleteTasks(event)
+        if (incompleteTasks.length > 0) {
+          counts.next45Days++
+        }
+      }
+    })
+
+    return counts
+  }, [events, coreTasks])
+
   const filteredEvents = events.filter(event => {
     // Search filter
-    const matchesSearch = (event.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (event.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (event.account_name && event.account_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesSearch = (event.title || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                         (event.location || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+                         (event.account_name && event.account_name.toLowerCase().includes(filters.searchTerm.toLowerCase()))
 
     if (!matchesSearch) return false
 
     // Status filter
-    if (statusFilter !== 'all' && event.status !== statusFilter) {
+    if (filters.statusFilter !== 'all' && event.status !== filters.statusFilter) {
       return false
     }
 
     // Date range filter
-    if (dateRangeFilter !== 'all' && event.start_date) {
+    if (filters.dateRangeFilter !== 'all' && event.start_date) {
       const now = new Date()
       now.setHours(0, 0, 0, 0)
 
       const eventDate = parseLocalDate(event.start_date)
       eventDate.setHours(0, 0, 0, 0)
 
-      switch (dateRangeFilter) {
+      switch (filters.dateRangeFilter) {
         case 'today':
           if (!isDateToday(event.start_date)) return false
           break
@@ -380,8 +455,8 @@ export default function EventsPage() {
           break
 
         case 'custom_days':
-          if (customDaysFilter !== null) {
-            const customEnd = new Date(now.getTime() + customDaysFilter * 24 * 60 * 60 * 1000)
+          if (filters.customDaysFilter !== null) {
+            const customEnd = new Date(now.getTime() + filters.customDaysFilter * 24 * 60 * 60 * 1000)
             customEnd.setHours(23, 59, 59, 999)
             if (eventDate < now || eventDate > customEnd) return false
           }
@@ -390,7 +465,7 @@ export default function EventsPage() {
     }
 
     // Task filter
-    if (taskFilter === 'incomplete') {
+    if (filters.taskFilter === 'incomplete') {
       // Check if event has any incomplete tasks
       const incompleteTasks = getIncompleteTasks(event)
       const hasIncomplete = incompleteTasks.length > 0
@@ -492,117 +567,55 @@ export default function EventsPage() {
           <EventPriorityStatsCards
             onCardClick={handlePriorityCardClick}
           />
-          
-          {/* Filters and Search */}
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search events..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
-                  />
+
+          {/* Enhanced Filters */}
+          <EventFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            coreTasks={coreTasks}
+            eventCounts={{ ...calculateEventCounts, filtered: sortedEvents.length }}
+          />
+
+          {/* View Toggle and Sort */}
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-medium text-gray-900">View</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleViewChange('table')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      currentView === 'table'
+                        ? 'bg-[#347dc4] text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    title="Table View"
+                  >
+                    <List className="h-4 w-4" />
+                    <span className="hidden sm:inline">Table</span>
+                  </button>
+                  <button
+                    onClick={() => handleViewChange('timeline')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      currentView === 'timeline'
+                        ? 'bg-[#347dc4] text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    title="Timeline View"
+                  >
+                    <Grid className="h-4 w-4" />
+                    <span className="hidden sm:inline">Timeline</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Date Range Filters */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setDateRangeFilter('all')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'all'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📊 All
-                </button>
-
-                <button
-                  onClick={() => setDateRangeFilter('today')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'today'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📅 Today
-                </button>
-
-                <button
-                  onClick={() => setDateRangeFilter('this_week')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'this_week'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📆 This Week
-                </button>
-
-                <button
-                  onClick={() => setDateRangeFilter('this_month')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'this_month'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📅 This Month
-                </button>
-
-                <button
-                  onClick={() => setDateRangeFilter('upcoming')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'upcoming'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  🔜 Upcoming
-                </button>
-
-                <button
-                  onClick={() => setDateRangeFilter('past')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    dateRangeFilter === 'past'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  📋 Past
-                </button>
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex gap-3">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent transition-all duration-150"
-                  aria-label="Filter by status"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="postponed">Postponed</option>
-                </select>
-              </div>
-
-              {/* Sort Options */}
-              <div className="flex gap-3">
+              {/* Sort Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Sort by:</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent transition-all duration-150"
-                  aria-label="Sort events"
+                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
                 >
                   <option value="date_asc">Date (Earliest First)</option>
                   <option value="date_desc">Date (Latest First)</option>
@@ -611,199 +624,6 @@ export default function EventsPage() {
                   <option value="account_asc">Account (A-Z)</option>
                   <option value="account_desc">Account (Z-A)</option>
                 </select>
-              </div>
-
-              {/* Clear Filters Button */}
-              {(statusFilter !== 'all' ||
-                dateRangeFilter !== 'upcoming' ||
-                searchTerm ||
-                taskFilter !== 'all' ||
-                selectedTaskIds.length > 0 ||
-                customDaysFilter !== null) && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setStatusFilter('all')
-                      setDateRangeFilter('upcoming')
-                      setCustomDaysFilter(null)
-                      setSearchTerm('')
-                      setTaskFilter('all')
-                      setSelectedTaskIds([])
-                    }}
-                    className="px-4 py-2 border border-red-300 text-red-600 rounded-lg font-medium hover:bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-150 flex items-center gap-2"
-                  >
-                    <X className="h-4 w-4" />
-                    Clear All Filters
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Helper text */}
-            <p className="text-xs text-gray-500 mt-3">
-              {dateRangeFilter === 'all' && 'All events regardless of date'}
-              {dateRangeFilter === 'today' && 'Events happening today'}
-              {dateRangeFilter === 'this_week' && 'Events in the next 7 days'}
-              {dateRangeFilter === 'this_month' && 'Events in the current month'}
-              {dateRangeFilter === 'upcoming' && 'Events scheduled for today and beyond'}
-              {dateRangeFilter === 'past' && 'Events that have already occurred'}
-              {dateRangeFilter === 'custom_days' && customDaysFilter && `Events in the next ${customDaysFilter} days`}
-            </p>
-          </div>
-
-          {/* Task Filtering Section */}
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-[#347dc4]" />
-                <h3 className="text-lg font-semibold text-gray-900">Task Filters</h3>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {/* Filter Mode Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setTaskFilter('all')
-                    setSelectedTaskIds([])
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 ${
-                    taskFilter === 'all'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <Filter className="h-4 w-4" />
-                  All Events
-                </button>
-                <button
-                  onClick={() => setTaskFilter('incomplete')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-150 active:scale-95 ${
-                    taskFilter === 'incomplete'
-                      ? 'bg-orange-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-orange-50'
-                  }`}
-                >
-                  <AlertCircle className="h-4 w-4" />
-                  Incomplete Tasks Only
-                </button>
-              </div>
-
-              {taskFilter === 'incomplete' && (
-                <>
-                  {/* Date Range Filter */}
-                  <div className="flex items-center gap-4">
-                    <label className="text-sm font-medium text-gray-700">Events within next:</label>
-                    <select
-                      value={taskDateRangeFilter}
-                      onChange={(e) => setTaskDateRangeFilter(Number(e.target.value))}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
-                    >
-                      <option value={7}>7 days</option>
-                      <option value={14}>14 days</option>
-                      <option value={30}>30 days</option>
-                      <option value={60}>60 days</option>
-                      <option value={90}>90 days</option>
-                    </select>
-                  </div>
-
-                  {/* Core Task Checkboxes */}
-                  {coreTasks.length > 0 && (
-                    <div className="border-t pt-4">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Filter by Specific Tasks
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {coreTasks.map(task => (
-                          <label key={task.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-blue-50">
-                            <input
-                              type="checkbox"
-                              checked={selectedTaskIds.includes(task.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedTaskIds([...selectedTaskIds, task.id])
-                                } else {
-                                  setSelectedTaskIds(selectedTaskIds.filter(t => t !== task.id))
-                                }
-                              }}
-                              className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
-                            />
-                            <span className="text-sm text-gray-700">{task.task_name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Active Filters Display */}
-                  {selectedTaskIds.length > 0 && (
-                    <div className="border-t pt-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700">Active Task Filters:</h4>
-                        <button
-                          onClick={() => setSelectedTaskIds([])}
-                          className="text-xs text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedTaskIds.map(taskId => {
-                          const task = coreTasks.find(t => t.id === taskId)
-                          return task ? (
-                            <span
-                              key={taskId}
-                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                            >
-                              {task.task_name}
-                              <button
-                                onClick={() => setSelectedTaskIds(selectedTaskIds.filter(t => t !== taskId))}
-                                className="hover:opacity-70"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </span>
-                          ) : null
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* View Toggle */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Events View</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleViewChange('table')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    currentView === 'table'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  title="Table View"
-                >
-                  <List className="h-4 w-4" />
-                  <span className="hidden sm:inline">Table</span>
-                </button>
-                <button
-                  onClick={() => handleViewChange('timeline')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    currentView === 'timeline'
-                      ? 'bg-[#347dc4] text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  title="Timeline View"
-                >
-                  <Grid className="h-4 w-4" />
-                  <span className="hidden sm:inline">Timeline</span>
-                </button>
               </div>
             </div>
           </div>
@@ -825,13 +645,13 @@ export default function EventsPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {dateRangeFilter === 'all' && '📊 All Events'}
-                  {dateRangeFilter === 'today' && '📅 Today\'s Events'}
-                  {dateRangeFilter === 'this_week' && '📆 This Week\'s Events'}
-                  {dateRangeFilter === 'this_month' && '📅 This Month\'s Events'}
-                  {dateRangeFilter === 'upcoming' && '🔜 Upcoming Events'}
-                  {dateRangeFilter === 'past' && '📋 Past Events'}
-                  {taskFilter === 'incomplete' && (
+                  {filters.dateRangeFilter === 'all' && '📊 All Events'}
+                  {filters.dateRangeFilter === 'today' && '📅 Today\'s Events'}
+                  {filters.dateRangeFilter === 'this_week' && '📆 This Week\'s Events'}
+                  {filters.dateRangeFilter === 'this_month' && '📅 This Month\'s Events'}
+                  {filters.dateRangeFilter === 'upcoming' && '🔜 Upcoming Events'}
+                  {filters.dateRangeFilter === 'past' && '📋 Past Events'}
+                  {filters.taskFilter === 'incomplete' && (
                     <span className="ml-2 text-sm font-normal text-orange-600">
                       (with incomplete tasks)
                     </span>
@@ -1138,12 +958,12 @@ export default function EventsPage() {
             <div className="bg-white shadow rounded-lg p-4 mb-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {dateRangeFilter === 'all' && '📊 All Events'}
-                  {dateRangeFilter === 'today' && '📅 Today\'s Events'}
-                  {dateRangeFilter === 'this_week' && '📆 This Week\'s Events'}
-                  {dateRangeFilter === 'this_month' && '📅 This Month\'s Events'}
-                  {dateRangeFilter === 'upcoming' && '🔜 Upcoming Events'}
-                  {dateRangeFilter === 'past' && '📋 Past Events'}
+                  {filters.dateRangeFilter === 'all' && '📊 All Events'}
+                  {filters.dateRangeFilter === 'today' && '📅 Today\'s Events'}
+                  {filters.dateRangeFilter === 'this_week' && '📆 This Week\'s Events'}
+                  {filters.dateRangeFilter === 'this_month' && '📅 This Month\'s Events'}
+                  {filters.dateRangeFilter === 'upcoming' && '🔜 Upcoming Events'}
+                  {filters.dateRangeFilter === 'past' && '📋 Past Events'}
                 </h3>
                 <div className="text-sm text-gray-600">
                   {sortedEvents.length} of {events.length}
