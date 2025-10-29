@@ -16,13 +16,13 @@ export async function GET(request: Request) {
 
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
-    // Build query
+    // Build query - Note: users table is in App DB, not Tenant DB
+    // So we can't join it here - we'll fetch user data separately if needed
     let query = supabase
       .from('event_design_items')
       .select(`
         *,
         design_item_type:design_item_types(id, name, type, due_date_days, urgent_threshold_days, missed_deadline_days),
-        assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, first_name, last_name, email),
         event:events!inner(
           id,
           title,
@@ -46,6 +46,41 @@ export async function GET(request: Request) {
     const { data: designItems, error } = await query
 
     if (error) throw error
+
+    // Fetch user data from App DB for assigned designers
+    // Get unique designer IDs
+    const designerIds = [...new Set(
+      (designItems || [])
+        .map(item => item.assigned_designer_id)
+        .filter(Boolean)
+    )]
+
+    let designerMap = new Map()
+    if (designerIds.length > 0) {
+      // Import createClient to access App DB
+      const { createClient } = await import('@supabase/supabase-js')
+      const appSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const { data: designers } = await appSupabase
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .in('id', designerIds)
+
+      designers?.forEach(designer => {
+        designerMap.set(designer.id, designer)
+      })
+    }
+
+    // Merge designer data back into design items
+    const itemsWithDesigners = (designItems || []).map(item => ({
+      ...item,
+      assigned_designer: item.assigned_designer_id 
+        ? designerMap.get(item.assigned_designer_id) || null
+        : null
+    }))
 
     // Fetch design statuses to check which ones are completion states
     const { data: designStatuses } = await supabase
