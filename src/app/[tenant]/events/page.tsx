@@ -15,6 +15,7 @@ import { exportToCSV } from '@/lib/csv-export'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
 import { EventInlineTasks } from '@/components/events/event-inline-tasks'
 import { EventFilters, type FilterState } from '@/components/events/event-filters'
+import { EventQuickActionsMenu } from '@/components/events/event-quick-actions-menu'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -863,30 +864,16 @@ export default function EventsPage() {
 
                         {/* Actions */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <Link href={`/${tenantSubdomain}/events/${event.id}`}>
-                              <button
-                                className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
-                                aria-label="View event details"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
-                            </Link>
-                            <button
-                              onClick={() => router.push(`/${tenantSubdomain}/events/${event.id}/edit`)}
-                              className="text-[#347dc4] hover:text-[#2c6ba8] cursor-pointer transition-colors duration-150 active:scale-95"
-                              aria-label="Edit event"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteEvent(event.id)}
-                              className="text-red-600 hover:text-red-800 cursor-pointer transition-colors duration-150 active:scale-95"
-                              aria-label="Delete event"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          <EventQuickActionsMenu
+                            eventId={event.id}
+                            eventTitle={event.title || 'Untitled Event'}
+                            currentStatus={event.status}
+                            tenantSubdomain={tenantSubdomain}
+                            onDelete={handleDeleteEvent}
+                            onStatusChange={() => {
+                              queryClient.invalidateQueries({ queryKey: ['events'] })
+                            }}
+                          />
                         </td>
                       </tr>
 
@@ -1138,20 +1125,18 @@ export default function EventsPage() {
                           View
                         </button>
                       </Link>
-                      <button
-                        onClick={() => router.push(`/${tenantSubdomain}/events/${event.id}/edit`)}
-                        className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-                        aria-label="Edit event"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteEvent(event.id)}
-                        className="px-3 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
-                        aria-label="Delete event"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center px-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <EventQuickActionsMenu
+                          eventId={event.id}
+                          eventTitle={event.title || 'Untitled Event'}
+                          currentStatus={event.status}
+                          tenantSubdomain={tenantSubdomain}
+                          onDelete={handleDeleteEvent}
+                          onStatusChange={() => {
+                            queryClient.invalidateQueries({ queryKey: ['events'] })
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
