@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.json(data)
     
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    // Disable caching to ensure fresh data after updates
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
     
     return response
   } catch (error) {
@@ -109,7 +109,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create event date', details: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    const response = NextResponse.json(data)
+    // Disable caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

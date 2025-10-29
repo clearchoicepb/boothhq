@@ -41,8 +41,8 @@ export async function GET(
 
     const response = NextResponse.json(data)
 
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    // Disable caching to ensure fresh data after updates
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
 
     return response
   } catch (error) {
@@ -106,7 +106,11 @@ export async function PUT(
 
     console.log('[Event Date API] Update successful')
     console.log('=== EVENT DATE UPDATE API END ===')
-    return NextResponse.json(data)
+    
+    const response = NextResponse.json(data)
+    // Disable caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return response
   } catch (error: any) {
     console.error('[Event Date API] Caught exception:', error)
     console.error('[Event Date API] Error stack:', error.stack)
