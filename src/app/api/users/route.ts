@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { ROLES, isAdmin, type UserRole } from '@/lib/roles'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
 export async function GET(request: NextRequest) {
   try {
