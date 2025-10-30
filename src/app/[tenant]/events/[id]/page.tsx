@@ -22,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
 import { EventBoothAssignments } from '@/components/event-booth-assignments'
-import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
+import { CoreTasksBanner } from '@/components/events/core-tasks-banner'
 import { EventDesignItems } from '@/components/events/event-design-items'
 import { EventLogistics } from '@/components/events/event-logistics'
 import { useEventData, EventWithRelations, EventDate } from '@/hooks/useEventData'
@@ -608,12 +608,11 @@ export default function EventDetailPage() {
             onDelete={handleDelete}
           />
 
-          {/* Core Tasks Checklist */}
-          <div className="mb-4 relative z-10">
-            <EventCoreTasksChecklist
-              eventId={eventId}
-            />
-          </div>
+          {/* Core Tasks Banner - Dismissible */}
+          <CoreTasksBanner
+            eventId={eventId}
+            onViewTasks={() => setActiveTab('tasks')}
+          />
 
           {/* Tabs */}
           <div className="relative z-0">
