@@ -613,7 +613,7 @@ export default function EventDetailPage() {
           {/* Core Tasks Banner - Dismissible */}
           <CoreTasksBanner
             eventId={eventId}
-            onViewTasks={() => setActiveTab('tasks')}
+            onViewTasks={() => setActiveTab('planning')}
           />
 
           {/* Tabs */}
@@ -667,7 +667,7 @@ export default function EventDetailPage() {
                 setIsEventDateDetailOpen(true)
               }}
               staffAssignments={staffAssignments}
-              onNavigateToStaffing={() => setActiveTab('staffing')}
+              onNavigateToStaffing={() => setActiveTab('details')}
             />
           </TabsContent>
 
@@ -715,42 +715,6 @@ export default function EventDetailPage() {
             </div>
           </TabsContent>
 
-          {/* Tasks Tab */}
-          <TabsContent value="tasks" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
-                <Button onClick={() => setIsTaskModalOpen(true)}>
-                  <ListTodo className="h-4 w-4 mr-2" />
-                  New Task
-                </Button>
-              </div>
-              <TasksSection
-                key={tasksKey}
-                entityType="event"
-                entityId={event.id}
-                onRefresh={() => setTasksKey(prev => prev + 1)}
-              />
-            </div>
-          </TabsContent>
-
-          {/* Design Items Tab */}
-          <TabsContent value="design" className="mt-0">
-            <EventDesignItems
-              eventId={event.id}
-              eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
-              tenant={tenantSubdomain}
-            />
-          </TabsContent>
-
-          {/* Logistics Tab */}
-          <TabsContent value="logistics" className="mt-0">
-            <EventLogistics
-              eventId={event.id}
-              tenant={tenantSubdomain}
-            />
-          </TabsContent>
-
           {/* Communications Tab - NEW: Includes Notes */}
           <TabsContent value="communications" className="mt-0">
             <EventCommunicationsTab
@@ -768,62 +732,6 @@ export default function EventDetailPage() {
               onSMS={() => setIsSMSModalOpen(true)}
               canCreate={canManageEvents}
             />
-          </TabsContent>
-
-          {/* Staffing Tab */}
-          <TabsContent value="staffing" className="mt-0">
-            <EventStaffList
-              staffAssignments={staff.staffAssignments}
-              users={staff.users}
-              staffRoles={staff.staffRoles}
-              eventDates={eventDates}
-              loading={staff.loadingStaff}
-              isAddingStaff={staff.isAddingStaff}
-              selectedUserId={staff.selectedUserId}
-              selectedStaffRoleId={staff.selectedStaffRoleId}
-              staffRole={staff.staffRole}
-              staffNotes={staff.staffNotes}
-              selectedDateTimes={staff.selectedDateTimes}
-              operationsTeamExpanded={staff.operationsTeamExpanded}
-              eventStaffExpanded={staff.eventStaffExpanded}
-              onToggleOperationsTeam={() => staff.setOperationsTeamExpanded(!staff.operationsTeamExpanded)}
-              onToggleEventStaff={() => staff.setEventStaffExpanded(!staff.eventStaffExpanded)}
-              onUserChange={staff.setSelectedUserId}
-              onRoleChange={staff.setSelectedStaffRoleId}
-              onStaffRoleChange={staff.setStaffRole}
-              onNotesChange={staff.setStaffNotes}
-              onDateTimeToggle={(dt) => {
-                const exists = staff.selectedDateTimes.some(
-                  (selected: any) => selected.event_date_id === dt.event_date_id
-                )
-                if (exists) {
-                  staff.setSelectedDateTimes(
-                    staff.selectedDateTimes.filter(
-                      (selected: any) => selected.event_date_id !== dt.event_date_id
-                    )
-                  )
-                } else {
-                  staff.setSelectedDateTimes([...staff.selectedDateTimes, dt])
-                }
-              }}
-              onAddStaff={async () => {
-                // EventStaffList component should handle staff data internally
-                // For now, this is a placeholder
-                return true
-              }}
-              onRemoveStaff={staff.removeStaff}
-              onStartAdding={() => staff.setIsAddingStaff(true)}
-              onCancelAdding={() => {
-                staff.setIsAddingStaff(false)
-                staff.resetAddStaffForm()
-              }}
-              canEdit={canManageEvents}
-            />
-          </TabsContent>
-
-          {/* Equipment Tab */}
-          <TabsContent value="equipment" className="mt-0">
-            <EventBoothAssignments eventId={eventId} tenantSubdomain={tenantSubdomain} />
           </TabsContent>
 
           {/* Details Tab - Consolidates Staffing + Scope/Details */}

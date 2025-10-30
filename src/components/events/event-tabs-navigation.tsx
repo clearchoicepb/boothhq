@@ -7,6 +7,14 @@ import {
   MessageSquare,
   Info
 } from 'lucide-react'
+import { LucideIcon } from 'lucide-react'
+
+interface EventTab {
+  value: string
+  label: string
+  icon: LucideIcon
+  badge?: string
+}
 
 interface EventTabsNavigationProps {
   activeTab: string
@@ -18,7 +26,7 @@ interface EventTabsNavigationProps {
  * Updated to new 7-tab structure (reduced from 11 tabs)
  */
 export function EventTabsNavigation({ activeTab, onTabChange }: EventTabsNavigationProps) {
-  const tabs = [
+  const tabs: EventTab[] = [
     { value: "overview", label: "Overview", icon: Info },
     { value: "planning", label: "Planning", icon: ClipboardList, badge: "New" },
     { value: "financials", label: "Financials", icon: DollarSign },
