@@ -71,7 +71,7 @@
     "tailwindcss": "^4",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5",
+    "typescript": "5.9.3",
     "vercel": "^48.1.4"
   },
   "description": "Full-stack CRM app with Supabase backend",
