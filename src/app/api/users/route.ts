@@ -111,6 +111,10 @@ export async function POST(request: NextRequest) {
     // Use App DB for auth operations
     const appSupabase = createServerSupabaseClient()
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase()
+    console.log('[Create User] Normalized email:', normalizedEmail)
+
     // Check if user already exists in Tenant DB users table
     console.log('[Create User] Checking if user exists in Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
@@ -119,30 +123,31 @@ export async function POST(request: NextRequest) {
     const { data: existingUser } = await tenantSupabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .ilike('email', normalizedEmail)
       .eq('tenant_id', tenant_id)
       .single()
 
     if (existingUser) {
-      console.error('[Create User] User already exists in users table:', email)
+      console.error('[Create User] User already exists in users table:', normalizedEmail)
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
     }
 
     // Check if user already exists in Supabase Auth
     console.log('[Create User] Checking if user exists in Supabase Auth...')
     const { data: existingAuthUsers } = await appSupabase.auth.admin.listUsers()
-    const existingAuthUser = existingAuthUsers?.users?.find(u => u.email === email)
+    const existingAuthUser = existingAuthUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
     let authUserId: string
 
     if (existingAuthUser) {
-      console.log('[Create User] User exists in Supabase Auth but not in Tenant DB - reusing auth user:', email)
+      console.log('[Create User] User exists in Supabase Auth but not in Tenant DB - reusing auth user:', normalizedEmail)
       // User was previously deleted from Tenant DB but still exists in Auth
       // Update their password and reuse the account
       const { error: updateError } = await appSupabase.auth.admin.updateUserById(
         existingAuthUser.id,
         {
           password,
+          email: normalizedEmail, // Ensure email is normalized
           email_confirm: true,
           user_metadata: {
             first_name,
@@ -163,7 +168,7 @@ export async function POST(request: NextRequest) {
       // Step 1: Create new auth user in Supabase Auth
       console.log('[Create User] Creating new user in Supabase Auth...')
       const { data: authData, error: authError } = await appSupabase.auth.admin.createUser({
-        email,
+        email: normalizedEmail,
         password,
         email_confirm: true, // Auto-confirm email
         user_metadata: {
@@ -197,7 +202,7 @@ export async function POST(request: NextRequest) {
       .from('users')
       .insert({
         id: authUserId, // Use the auth user's ID
-        email,
+        email: normalizedEmail,
         password_hash,
         first_name,
         last_name,
