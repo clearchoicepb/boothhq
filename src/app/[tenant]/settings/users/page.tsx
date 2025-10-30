@@ -149,6 +149,12 @@ export default function UsersSettingsPage() {
         tenant_id: tenant?.id
       }
 
+      console.log('[Frontend] Submitting user with payload:', {
+        ...payload,
+        password: payload.password ? '***REDACTED***' : undefined,
+        tenant_id: payload.tenant_id
+      })
+
       // Remove any fields that don't exist in the database
       delete payload.is_active
 
@@ -171,11 +177,12 @@ export default function UsersSettingsPage() {
         handleFormClose()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to save user'}`)
+        console.error('[Frontend] API Error Response:', error)
+        alert(`Error: ${error.error || error.message || 'Failed to save user'}`)
       }
     } catch (error) {
-      console.error('Error saving user:', error)
-      alert('Failed to save user')
+      console.error('[Frontend] Exception saving user:', error)
+      alert('Failed to save user: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
 

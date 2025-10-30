@@ -173,41 +173,67 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('=== DELETE USER API START ===')
     const session = await getServerSession(authOptions)
     const { id } = await params
     
+    console.log('[Delete User] Attempting to delete user:', id)
+    
     if (!session?.user) {
+      console.error('[Delete User] No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has admin role
     if (!isAdmin(session.user.role as UserRole)) {
+      console.error('[Delete User] User is not admin:', session.user.role)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     // Prevent users from deleting themselves
     if (session.user.id === id) {
+      console.error('[Delete User] User attempting to delete themselves')
       return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
     }
 
-    // Query Tenant DB for user deletion
+    // Step 1: Delete from Tenant DB
+    console.log('[Delete User] Deleting from Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
     const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
-    const { error } = await supabase
+    const { error: tenantError } = await supabase
       .from('users')
       .delete()
       .eq('id', id)
       .eq('tenant_id', session.user.tenantId)
 
-    if (error) {
-      console.error('Error deleting user:', error)
-      return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
+    if (tenantError) {
+      console.error('[Delete User] Error deleting from Tenant DB:', tenantError)
+      return NextResponse.json({ error: 'Failed to delete user from database' }, { status: 500 })
     }
 
+    console.log('[Delete User] Deleted from Tenant DB successfully')
+
+    // Step 2: Delete from Supabase Auth
+    console.log('[Delete User] Deleting from Supabase Auth...')
+    const appSupabase = createServerSupabaseClient()
+    
+    const { error: authError } = await appSupabase.auth.admin.deleteUser(id)
+
+    if (authError) {
+      console.error('[Delete User] Error deleting from Supabase Auth:', authError)
+      // Log the error but don't fail the request since the user is already deleted from Tenant DB
+      // This handles cases where the user might not exist in Auth
+      console.warn('[Delete User] User may not exist in Supabase Auth, continuing...')
+    } else {
+      console.log('[Delete User] Deleted from Supabase Auth successfully')
+    }
+
+    console.log('[Delete User] User deleted successfully:', id)
+    console.log('=== DELETE USER API END (SUCCESS) ===')
     return NextResponse.json({ message: 'User deleted successfully' })
   } catch (error) {
-    console.error('Error in DELETE /api/users/[id]:', error)
+    console.error('[Delete User] Caught exception:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
