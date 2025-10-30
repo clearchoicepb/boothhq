@@ -52,6 +52,8 @@ import { EventDateDetailModal } from '@/components/events/event-date-detail-moda
 import { CommunicationDetailModal } from '@/components/events/communication-detail-modal'
 import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
 import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewTab'
+import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
+import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCommunicationsTab'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 
 export default function EventDetailPage() {
@@ -669,8 +671,20 @@ export default function EventDetailPage() {
             />
           </TabsContent>
 
-          {/* Invoices Tab */}
-          <TabsContent value="invoices" className="mt-0">
+          {/* Planning Tab - NEW: Consolidates Tasks, Design, Logistics, Equipment */}
+          <TabsContent value="planning" className="mt-0">
+            <EventPlanningTab
+              eventId={eventId}
+              eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
+              tenantSubdomain={tenantSubdomain}
+              onCreateTask={() => setIsTaskModalOpen(true)}
+              tasksKey={tasksKey}
+              onTasksRefresh={() => setTasksKey(prev => prev + 1)}
+            />
+          </TabsContent>
+
+          {/* Financials Tab (renamed from Invoices) */}
+          <TabsContent value="financials" className="mt-0">
             <EventInvoicesList
               invoices={invoices}
               loading={loadingInvoices}
@@ -737,18 +751,18 @@ export default function EventDetailPage() {
             />
           </TabsContent>
 
-          {/* Communications Tab */}
+          {/* Communications Tab - NEW: Includes Notes */}
           <TabsContent value="communications" className="mt-0">
-            <EventCommunicationsList
+            <EventCommunicationsTab
+              eventId={eventId}
               communications={communications}
-              loading={false}
-              page={communicationsPage}
-              totalPages={Math.ceil(communications.length / 10)}
-              onPageChange={(page) => setCommunicationsPage(page)}
+              communicationsPage={communicationsPage}
+              totalCommunicationsPages={Math.ceil(communications.length / 10)}
+              onCommunicationPageChange={(page) => setCommunicationsPage(page)}
               onCommunicationClick={(comm) => {
-                              setSelectedCommunication(comm)
-                              setIsCommunicationDetailOpen(true)
-                            }}
+                setSelectedCommunication(comm)
+                setIsCommunicationDetailOpen(true)
+              }}
               onNewCommunication={() => setIsLogCommunicationModalOpen(true)}
               onEmail={() => setIsEmailModalOpen(true)}
               onSMS={() => setIsSMSModalOpen(true)}
@@ -812,23 +826,76 @@ export default function EventDetailPage() {
             <EventBoothAssignments eventId={eventId} tenantSubdomain={tenantSubdomain} />
           </TabsContent>
 
-          {/* Event Scope/Details Tab */}
+          {/* Details Tab - Consolidates Staffing + Scope/Details */}
           <TabsContent value="details" className="mt-0">
-            <EventDescriptionCard
-              description={event.description}
-              isEditing={isEditingDescription}
-              editedDescription={editedDescription}
-              onStartEdit={() => {
-                startEditingDescription(event.description || '')
-              }}
-              onDescriptionChange={setEditedDescription}
-              onSave={handleSaveDescription}
-              onCancel={() => {
-                cancelEditingDescription()
-                        setEditedDescription('')
-                      }}
-              canEdit={canManageEvents}
-            />
+            <div className="space-y-6">
+              {/* Event Description / Scope */}
+              <EventDescriptionCard
+                description={event.description}
+                isEditing={isEditingDescription}
+                editedDescription={editedDescription}
+                onStartEdit={() => {
+                  startEditingDescription(event.description || '')
+                }}
+                onDescriptionChange={setEditedDescription}
+                onSave={handleSaveDescription}
+                onCancel={() => {
+                  cancelEditingDescription()
+                  setEditedDescription('')
+                }}
+                canEdit={canManageEvents}
+              />
+
+              {/* Staffing Details */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Staffing Details</h2>
+                <EventStaffList
+                  staffAssignments={staff.staffAssignments}
+                  users={staff.users}
+                  staffRoles={staff.staffRoles}
+                  eventDates={eventDates}
+                  loading={staff.loadingStaff}
+                  isAddingStaff={staff.isAddingStaff}
+                  selectedUserId={staff.selectedUserId}
+                  selectedStaffRoleId={staff.selectedStaffRoleId}
+                  staffRole={staff.staffRole}
+                  staffNotes={staff.staffNotes}
+                  selectedDateTimes={staff.selectedDateTimes}
+                  operationsTeamExpanded={staff.operationsTeamExpanded}
+                  eventStaffExpanded={staff.eventStaffExpanded}
+                  onToggleOperationsTeam={() => staff.setOperationsTeamExpanded(!staff.operationsTeamExpanded)}
+                  onToggleEventStaff={() => staff.setEventStaffExpanded(!staff.eventStaffExpanded)}
+                  onUserChange={staff.setSelectedUserId}
+                  onRoleChange={staff.setSelectedStaffRoleId}
+                  onStaffRoleChange={staff.setStaffRole}
+                  onNotesChange={staff.setStaffNotes}
+                  onDateTimeToggle={(dt) => {
+                    const exists = staff.selectedDateTimes.some(
+                      (selected: any) => selected.event_date_id === dt.event_date_id
+                    )
+                    if (exists) {
+                      staff.setSelectedDateTimes(
+                        staff.selectedDateTimes.filter(
+                          (selected: any) => selected.event_date_id !== dt.event_date_id
+                        )
+                      )
+                    } else {
+                      staff.setSelectedDateTimes([...staff.selectedDateTimes, dt])
+                    }
+                  }}
+                  onAddStaff={async () => {
+                    return true
+                  }}
+                  onRemoveStaff={staff.removeStaff}
+                  onStartAdding={() => staff.setIsAddingStaff(true)}
+                  onCancelAdding={() => {
+                    staff.setIsAddingStaff(false)
+                    staff.resetAddStaffForm()
+                  }}
+                  canEdit={canManageEvents}
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
           </div>

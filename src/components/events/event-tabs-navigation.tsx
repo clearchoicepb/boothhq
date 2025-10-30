@@ -1,14 +1,11 @@
-import { 
+import {
   FileText,
   DollarSign,
   Activity,
   Paperclip,
-  ListTodo,
-  Palette,
-  Truck,
+  ClipboardList,
   MessageSquare,
-  User,
-  Package
+  Info
 } from 'lucide-react'
 
 interface EventTabsNavigationProps {
@@ -18,20 +15,17 @@ interface EventTabsNavigationProps {
 
 /**
  * Tab navigation for event detail page
+ * Updated to new 7-tab structure (reduced from 11 tabs)
  */
 export function EventTabsNavigation({ activeTab, onTabChange }: EventTabsNavigationProps) {
   const tabs = [
-    { value: "overview", label: "Overview", icon: FileText },
-    { value: "invoices", label: "Invoices", icon: DollarSign },
+    { value: "overview", label: "Overview", icon: Info },
+    { value: "planning", label: "Planning", icon: ClipboardList, badge: "New" },
+    { value: "financials", label: "Financials", icon: DollarSign },
     { value: "activity", label: "Activity", icon: Activity },
-    { value: "files", label: "Files", icon: Paperclip },
-    { value: "tasks", label: "Tasks", icon: ListTodo },
-    { value: "design", label: "Design", icon: Palette },
-    { value: "logistics", label: "Logistics", icon: Truck },
     { value: "communications", label: "Communications", icon: MessageSquare },
-    { value: "staffing", label: "Staffing", icon: User },
-    { value: "equipment", label: "Equipment", icon: Package },
-    { value: "details", label: "Scope/Details", icon: FileText },
+    { value: "files", label: "Files", icon: Paperclip },
+    { value: "details", label: "Details", icon: FileText },
   ]
 
   return (
@@ -52,6 +46,11 @@ export function EventTabsNavigation({ activeTab, onTabChange }: EventTabsNavigat
             <Icon className="h-4 w-4 mr-2" />
             <span className="hidden md:inline">{tab.label}</span>
             <span className="md:hidden">{tab.label.split('/')[0]}</span>
+            {tab.badge && (
+              <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                {tab.badge}
+              </span>
+            )}
           </button>
         )
       })}
