@@ -17,6 +17,7 @@ import { EventInlineTasks } from '@/components/events/event-inline-tasks'
 import { EventFilters, type FilterState } from '@/components/events/event-filters'
 import { EventQuickActionsMenu } from '@/components/events/event-quick-actions-menu'
 import { EventBulkActionsBar } from '@/components/events/event-bulk-actions-bar'
+import { EventPreviewModal } from '@/components/events/event-preview-modal'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
@@ -128,6 +129,10 @@ export default function EventsPage() {
   // Bulk selection state
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set())
 
+  // Preview modal state
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [previewEventId, setPreviewEventId] = useState<string | null>(null)
+
   // Load view preference from localStorage on mount
   useEffect(() => {
     const savedView = localStorage.getItem('events_view_mode')
@@ -144,6 +149,18 @@ export default function EventsPage() {
   // Handler for view change
   const handleViewChange = (newView: 'table' | 'timeline') => {
     setCurrentView(newView)
+  }
+
+  // Handler for opening preview modal
+  const handleOpenPreview = (eventId: string) => {
+    setPreviewEventId(eventId)
+    setPreviewModalOpen(true)
+  }
+
+  // Handler for closing preview modal
+  const handleClosePreview = () => {
+    setPreviewModalOpen(false)
+    setPreviewEventId(null)
   }
 
   // Handler for expanding/collapsing rows
@@ -803,11 +820,17 @@ export default function EventsPage() {
 
                     return (
                       <React.Fragment key={event.id}>
-                      <tr className={`hover:bg-gray-50 ${priority.border}`}>
+                      <tr 
+                        className={`hover:bg-gray-50 cursor-pointer ${priority.border}`}
+                        onClick={() => handleOpenPreview(event.id)}
+                      >
                         {/* Expand/Collapse Button */}
                         <td className="px-2 py-4 text-center">
                           <button
-                            onClick={() => handleToggleRow(event.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleToggleRow(event.id)
+                            }}
                             className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#347dc4] rounded"
                             title={isExpanded ? 'Collapse tasks' : 'Expand tasks'}
                           >
@@ -973,7 +996,10 @@ export default function EventsPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td 
+                          className="px-6 py-4 whitespace-nowrap text-sm font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <EventQuickActionsMenu
                             eventId={event.id}
                             eventTitle={event.title || 'Untitled Event'}
@@ -1082,7 +1108,8 @@ export default function EventsPage() {
               return (
                 <div
                   key={event.id}
-                  className={`bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg ${priority.border}`}
+                  className={`bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg cursor-pointer ${priority.border}`}
+                  onClick={() => handleOpenPreview(event.id)}
                 >
                   {/* Priority Header Banner */}
                   {priorityLevel !== 'none' && (
@@ -1103,11 +1130,9 @@ export default function EventsPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <Link href={`/${tenantSubdomain}/events/${event.id}`}>
-                          <h3 className="font-semibold text-gray-900 text-base mb-1 hover:text-[#347dc4] cursor-pointer">
-                            {event.title || 'Untitled Event'}
-                          </h3>
-                        </Link>
+                        <h3 className="font-semibold text-gray-900 text-base mb-1">
+                          {event.title || 'Untitled Event'}
+                        </h3>
                         {/* Category & Type Badges */}
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {event.event_categories && (
@@ -1228,7 +1253,10 @@ export default function EventsPage() {
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 pt-3 border-t border-gray-200">
+                    <div 
+                      className="flex gap-2 pt-3 border-t border-gray-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Link href={`/${tenantSubdomain}/events/${event.id}`} className="flex-1">
                         <button className="w-full px-3 py-2 bg-[#347dc4] text-white rounded-lg text-sm font-medium hover:bg-[#2c6ba8] transition-colors flex items-center justify-center gap-2">
                           <Eye className="h-4 w-4" />
@@ -1266,6 +1294,16 @@ export default function EventsPage() {
         onBulkStatusChange={handleBulkStatusChange}
         onBulkExport={handleBulkExport}
       />
+
+      {/* Preview Modal */}
+      {previewEventId && (
+        <EventPreviewModal
+          isOpen={previewModalOpen}
+          onClose={handleClosePreview}
+          eventId={previewEventId}
+          tenantSubdomain={tenantSubdomain}
+        />
+      )}
     </AppLayout>
   )
 }
