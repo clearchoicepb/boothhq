@@ -16,6 +16,7 @@ import { EventLifecycleProgress } from '../overview/EventLifecycleProgress'
 import { EventAccountContactCard } from '../../event-account-contact-card'
 import { EventDatesCard } from '../../event-dates-card'
 import { EventDescriptionCard } from '../../event-description-card'
+import { EventTypeBadge } from '../../event-type-badge'
 import { NotesSection } from '@/components/notes-section'
 
 interface EventDate {
@@ -28,6 +29,22 @@ interface EventDate {
   status: string
 }
 
+interface EventCategory {
+  id: string
+  name: string
+  slug: string
+  color: string
+  icon?: string
+}
+
+interface EventType {
+  id: string
+  name: string
+  slug: string
+  color?: string
+  icon?: string
+}
+
 interface Event {
   id: string
   title: string
@@ -37,8 +54,8 @@ interface Event {
   event_value: string | null
   start_date: string
   end_date: string | null
-  event_category: string | null
-  event_type: string | null
+  event_category: EventCategory | null
+  event_type: EventType | null
   location: string | null
   date_type: string | null
   guest_count: number | null
@@ -229,16 +246,13 @@ export function EventOverviewTab({
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h3>
             <div className="space-y-3">
-              {event.event_category && (
+              {(event.event_category || event.event_type) && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-                  <p className="text-sm text-gray-900 capitalize">{event.event_category}</p>
-                </div>
-              )}
-              {event.event_type && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
-                  <p className="text-sm text-gray-900 capitalize">{event.event_type}</p>
+                  <label className="block text-xs font-medium text-gray-500 mb-2">Category & Type</label>
+                  <EventTypeBadge
+                    category={event.event_category}
+                    type={event.event_type}
+                  />
                 </div>
               )}
               {event.guest_count && (
