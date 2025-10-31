@@ -14,7 +14,6 @@ import {
   ConnectionInfo,
 } from './types';
 import crypto from 'crypto';
-import { unstable_cache, revalidateTag } from 'next/cache';
 
 /**
  * Cache entry for tenant connection configuration
@@ -261,16 +260,25 @@ export class DataSourceManager {
     if (this.poolConfig.useNextjsCache) {
       // Use Next.js cache for serverless environments
       // This cache persists across function invocations and is shared between instances
-      const getCachedTenantConfig = unstable_cache(
-        async (id: string) => this.fetchTenantConfigFromDatabase(id),
-        ['tenant-config', tenantId],
-        {
-          revalidate: 300, // Revalidate every 5 minutes
-          tags: [`tenant-config-${tenantId}`],
-        }
-      );
+      try {
+        // Dynamic import to avoid issues with client-side imports
+        const { unstable_cache } = await import('next/cache');
 
-      tenant = await getCachedTenantConfig(tenantId);
+        const getCachedTenantConfig = unstable_cache(
+          async (id: string) => this.fetchTenantConfigFromDatabase(id),
+          ['tenant-config', tenantId],
+          {
+            revalidate: 300, // Revalidate every 5 minutes
+            tags: [`tenant-config-${tenantId}`],
+          }
+        );
+
+        tenant = await getCachedTenantConfig(tenantId);
+      } catch (error) {
+        // Fallback to direct fetch if Next.js cache is not available
+        console.warn('Next.js cache not available, falling back to direct fetch:', error);
+        tenant = await this.fetchTenantConfigFromDatabase(tenantId);
+      }
     } else {
       // Direct database fetch (no Next.js cache)
       tenant = await this.fetchTenantConfigFromDatabase(tenantId);
@@ -459,7 +467,7 @@ export class DataSourceManager {
    *
    * @param tenantId - The tenant UUID
    */
-  clearTenantCache(tenantId: string): void {
+  async clearTenantCache(tenantId: string): Promise<void> {
     // Clear in-memory caches
     this.configCache.delete(tenantId);
     this.clientCache.delete(`${tenantId}-anon`);
@@ -468,9 +476,11 @@ export class DataSourceManager {
     // Invalidate Next.js cache (if enabled)
     if (this.poolConfig.useNextjsCache) {
       try {
+        // Dynamic import to avoid issues with client-side imports
+        const { revalidateTag } = await import('next/cache');
         revalidateTag(`tenant-config-${tenantId}`);
       } catch (error) {
-        // revalidateTag may fail in non-serverless environments
+        // revalidateTag may fail in non-serverless environments or client-side
         console.warn(`Failed to revalidate Next.js cache for tenant ${tenantId}:`, error);
       }
     }
