@@ -22,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
 import { EventBoothAssignments } from '@/components/event-booth-assignments'
-import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
+import { CoreTasksBanner } from '@/components/events/core-tasks-banner'
 import { EventDesignItems } from '@/components/events/event-design-items'
 import { EventLogistics } from '@/components/events/event-logistics'
 import { useEventData, EventWithRelations, EventDate } from '@/hooks/useEventData'
@@ -51,6 +51,9 @@ import { EventTabsNavigation } from '@/components/events/event-tabs-navigation'
 import { EventDateDetailModal } from '@/components/events/event-date-detail-modal'
 import { CommunicationDetailModal } from '@/components/events/communication-detail-modal'
 import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
+import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewTab'
+import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
+import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCommunicationsTab'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 
 export default function EventDetailPage() {
@@ -607,12 +610,11 @@ export default function EventDetailPage() {
             onDelete={handleDelete}
           />
 
-          {/* Core Tasks Checklist */}
-          <div className="mb-4 relative z-10">
-            <EventCoreTasksChecklist
-              eventId={eventId}
-            />
-          </div>
+          {/* Core Tasks Banner - Dismissible */}
+          <CoreTasksBanner
+            eventId={eventId}
+            onViewTasks={() => setActiveTab('planning')}
+          />
 
           {/* Tabs */}
           <div className="relative z-0">
@@ -624,260 +626,65 @@ export default function EventDetailPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Event Information */}
-              <EventInformationCard
-                event={event}
-                paymentStatusOptions={paymentStatusOptions}
-                isEditingPaymentStatus={isEditingPaymentStatus}
-                canManageEvents={canManageEvents}
-                onStartEditPaymentStatus={startEditingPaymentStatus}
-                onUpdatePaymentStatus={handleUpdatePaymentStatus}
-                onCancelEditPaymentStatus={() => setIsEditingPaymentStatus(false)}
-              />
-
-              {/* Event Description */}
-                {event.description && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Description</h2>
-                  <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Description</label>
-                    <p className="text-sm text-gray-900">{event.description}</p>
-                  </div>
-              </div>
-              )}
-
-              {/* Event Dates */}
-              <EventDatesCard
-                eventDates={eventDates}
-                activeTab={activeEventDateTab}
-                onTabChange={setActiveEventDateTab}
-                onDateClick={(date) => {
-                  setSelectedEventDate(date)
-                        setIsEventDateDetailOpen(true)
-                      }}
-              />
-
-              {/* Mailing Address */}
-              {(event.mailing_address_line1 || event.mailing_city) && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Mailing Address</h2>
-                  <div className="text-sm text-gray-600">
-                    {event.mailing_address_line1 && <p>{event.mailing_address_line1}</p>}
-                    {event.mailing_address_line2 && <p>{event.mailing_address_line2}</p>}
-                    <p>
-                      {event.mailing_city}
-                      {event.mailing_state && `, ${event.mailing_state}`}
-                      {event.mailing_postal_code && ` ${event.mailing_postal_code}`}
-                    </p>
-                    <p>{event.mailing_country}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Notes */}
-              <NotesSection
-                entityId={event.id}
-                entityType="event"
-              />
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Account and Contact */}
-              <EventAccountContactCard
-                event={event}
-                isEditing={isEditingAccountContact}
-                editAccountId={editAccountId}
-                editContactId={editContactId}
-                editEventPlannerId={editEventPlannerId}
-                tenantSubdomain={tenantSubdomain}
-                onStartEdit={handleStartEditAccountContact}
-                onSave={handleSaveAccountContact}
-                onCancel={handleCancelEditAccountContact}
-                onAccountChange={(accountId) => {
-                          setEditAccountId(accountId || '')
-                          if (accountId !== event?.account_id) {
-                            setEditContactId('')
-                          }
-                        }}
-                onContactChange={(contactId) => setEditContactId(contactId || '')}
-                onEventPlannerChange={(eventPlannerId) => setEditEventPlannerId(eventPlannerId || '')}
-                canEdit={canManageEvents}
-              />
-
-              {/* Staff Summary */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Staffing</h2>
-                <div className="space-y-4">
-                  {/* Operations Team */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Briefcase className="h-4 w-4 text-[#347dc4]" />
-                      <span className="text-sm font-semibold text-gray-700">Operations Team</span>
-                      <span className="text-xs text-gray-500">
-                        ({staffAssignments.filter(s => !s.event_date_id && s.staff_roles?.type === 'operations').length})
-                      </span>
-                    </div>
-                    {staffAssignments.filter(s => !s.event_date_id && s.staff_roles?.type === 'operations').length === 0 ? (
-                      <p className="text-xs text-gray-400 italic ml-6">No operations staff assigned</p>
-                    ) : (
-                      <div className="space-y-2 ml-6">
-                        {staffAssignments
-                          .filter(s => !s.event_date_id && s.staff_roles?.type === 'operations')
-                          .map((staff) => (
-                            <div key={staff.id} className="text-xs">
-                              <p className="font-medium text-gray-900">
-                                {staff.users ? (staff.users.first_name + ' ' + staff.users.last_name).trim() : 'Unknown'}
-                              </p>
-                              {staff.staff_roles?.name && (
-                                <p className="text-[#347dc4] font-medium">{staff.staff_roles.name}</p>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Event Staff */}
-                  <div className="border-t border-gray-200 pt-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="h-4 w-4 text-[#347dc4]" />
-                      <span className="text-sm font-semibold text-gray-700">Event Staff</span>
-                      <span className="text-xs text-gray-500">
-                        ({staffAssignments.filter(s => s.event_date_id && s.staff_roles?.type === 'event_staff').length})
-                      </span>
-                    </div>
-                    {staffAssignments.filter(s => s.event_date_id && s.staff_roles?.type === 'event_staff').length === 0 ? (
-                      <p className="text-xs text-gray-400 italic ml-6">No event staff assigned</p>
-                    ) : (
-                      <div className="space-y-3 ml-6">
-                        {(() => {
-                          const eventStaffAssignments = staffAssignments.filter(s => s.event_date_id && s.staff_roles?.type === 'event_staff')
-                          const grouped = eventStaffAssignments.reduce((acc, staff) => {
-                            const key = `${staff.user_id}_${staff.staff_role_id}`
-                            if (!acc[key]) {
-                              acc[key] = {
-                                user: staff.users,
-                                role: staff.staff_roles,
-                                assignments: []
-                              }
-                            }
-                            acc[key].assignments.push(staff)
-                            return acc
-                          }, {} as Record<string, any>)
-
-                          return Object.values(grouped).map((group: any) => (
-                            <div key={`${group.user?.id}_${group.role?.id}`} className="space-y-1">
-                              <p className="text-xs font-medium text-gray-900">
-                                {group.user ? (group.user.first_name + ' ' + group.user.last_name).trim() : 'Unknown'}
-                              </p>
-                              {group.role?.name && (
-                                <p className="text-xs text-[#347dc4] font-medium">{group.role.name}</p>
-                              )}
-                              <div className="space-y-1 pl-2 border-l-2 border-gray-200">
-                                {group.assignments.map((assignment: any) => {
-                                  const eventDate = eventDates.find(d => d.id === assignment.event_date_id)
-                                  return (
-                                    <div key={assignment.id} className="text-xs text-gray-600">
-                                      <p className="font-medium">
-                                        {eventDate ? formatDateShort(eventDate.event_date) : 'Unknown Date'}
-                                      </p>
-                                      {(assignment.start_time || assignment.end_time) && (
-                                        <div className="flex items-center gap-1">
-                                          <Clock className="h-3 w-3" />
-                                          <span>{formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          ))
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-3 border-t border-gray-200">
-                    <Link href={`#`} onClick={(e) => { e.preventDefault(); setActiveTab('staffing') }}>
-                      <Button className="w-full" variant="outline" size="sm">
-                        <User className="h-4 w-4 mr-2" />
-                        Manage Staff
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-                <div className="space-y-3">
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(`/api/events/${event.id}/clone`, {
-                          method: 'POST'
-                        })
-
-                        if (!response.ok) throw new Error('Failed to clone')
-
-                        const { event: newEvent } = await response.json()
-
-                        toast('Event duplicated successfully', { icon: '✅' })
-                        router.push(`/${tenantSubdomain}/events/${newEvent.id}`)
-                      } catch (error) {
-                        toast('Failed to duplicate event', { icon: '❌' })
-                        console.error(error)
-                      }
-                    }}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate Event
-                  </Button>
-                  <Link href={`/${tenantSubdomain}/invoices/new?event_id=${event.id}&account_id=${event.account_id || ''}&contact_id=${event.contact_id || ''}&returnTo=events/${event.id}`} className="block">
-                    <Button className="w-full" variant="outline">
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Create Invoice
-                    </Button>
-                  </Link>
-                  <Button className="w-full" variant="outline">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Generate Contract
-                  </Button>
-                </div>
-              </div>
-
-              {/* Timeline */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Created</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(event.created_at).toLocaleDateString()} at {new Date(event.created_at).toLocaleTimeString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Last Updated</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(event.updated_at).toLocaleDateString()} at {new Date(event.updated_at).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            </div>
+            <EventOverviewTab
+              event={event}
+              eventDates={eventDates}
+              paymentStatusOptions={paymentStatusOptions}
+              tenantSubdomain={tenantSubdomain}
+              isEditingAccountContact={isEditingAccountContact}
+              editAccountId={editAccountId}
+              editContactId={editContactId}
+              editEventPlannerId={editEventPlannerId}
+              isEditingPaymentStatus={isEditingPaymentStatus}
+              isEditingDescription={isEditingDescription}
+              editedDescription={editedDescription}
+              onStartEditAccountContact={handleStartEditAccountContact}
+              onSaveAccountContact={handleSaveAccountContact}
+              onCancelEditAccountContact={handleCancelEditAccountContact}
+              onAccountChange={(accountId) => {
+                setEditAccountId(accountId || '')
+                if (accountId !== event?.account_id) {
+                  setEditContactId('')
+                }
+              }}
+              onContactChange={(contactId) => setEditContactId(contactId || '')}
+              onEventPlannerChange={(eventPlannerId) => setEditEventPlannerId(eventPlannerId || '')}
+              onStartEditPaymentStatus={startEditingPaymentStatus}
+              onUpdatePaymentStatus={handleUpdatePaymentStatus}
+              onCancelEditPaymentStatus={() => setIsEditingPaymentStatus(false)}
+              onStartEditDescription={() => startEditingDescription(event.description || '')}
+              onDescriptionChange={setEditedDescription}
+              onSaveDescription={handleSaveDescription}
+              onCancelEditDescription={() => {
+                cancelEditingDescription()
+                setEditedDescription('')
+              }}
+              canManageEvents={canManageEvents}
+              activeEventDateTab={activeEventDateTab}
+              onEventDateTabChange={setActiveEventDateTab}
+              onDateClick={(date) => {
+                setSelectedEventDate(date)
+                setIsEventDateDetailOpen(true)
+              }}
+              staffAssignments={staffAssignments}
+              onNavigateToStaffing={() => setActiveTab('details')}
+            />
           </TabsContent>
 
-          {/* Invoices Tab */}
-          <TabsContent value="invoices" className="mt-0">
+          {/* Planning Tab - NEW: Consolidates Tasks, Design, Logistics, Equipment */}
+          <TabsContent value="planning" className="mt-0">
+            <EventPlanningTab
+              eventId={eventId}
+              eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
+              tenantSubdomain={tenantSubdomain}
+              onCreateTask={() => setIsTaskModalOpen(true)}
+              tasksKey={tasksKey}
+              onTasksRefresh={() => setTasksKey(prev => prev + 1)}
+            />
+          </TabsContent>
+
+          {/* Financials Tab (renamed from Invoices) */}
+          <TabsContent value="financials" className="mt-0">
             <EventInvoicesList
               invoices={invoices}
               loading={loadingInvoices}
@@ -908,54 +715,18 @@ export default function EventDetailPage() {
             </div>
           </TabsContent>
 
-          {/* Tasks Tab */}
-          <TabsContent value="tasks" className="mt-0">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
-                <Button onClick={() => setIsTaskModalOpen(true)}>
-                  <ListTodo className="h-4 w-4 mr-2" />
-                  New Task
-                </Button>
-              </div>
-              <TasksSection
-                key={tasksKey}
-                entityType="event"
-                entityId={event.id}
-                onRefresh={() => setTasksKey(prev => prev + 1)}
-              />
-            </div>
-          </TabsContent>
-
-          {/* Design Items Tab */}
-          <TabsContent value="design" className="mt-0">
-            <EventDesignItems
-              eventId={event.id}
-              eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
-              tenant={tenantSubdomain}
-            />
-          </TabsContent>
-
-          {/* Logistics Tab */}
-          <TabsContent value="logistics" className="mt-0">
-            <EventLogistics
-              eventId={event.id}
-              tenant={tenantSubdomain}
-            />
-          </TabsContent>
-
-          {/* Communications Tab */}
+          {/* Communications Tab - NEW: Includes Notes */}
           <TabsContent value="communications" className="mt-0">
-            <EventCommunicationsList
+            <EventCommunicationsTab
+              eventId={eventId}
               communications={communications}
-              loading={false}
-              page={communicationsPage}
-              totalPages={Math.ceil(communications.length / 10)}
-              onPageChange={(page) => setCommunicationsPage(page)}
+              communicationsPage={communicationsPage}
+              totalCommunicationsPages={Math.ceil(communications.length / 10)}
+              onCommunicationPageChange={(page) => setCommunicationsPage(page)}
               onCommunicationClick={(comm) => {
-                              setSelectedCommunication(comm)
-                              setIsCommunicationDetailOpen(true)
-                            }}
+                setSelectedCommunication(comm)
+                setIsCommunicationDetailOpen(true)
+              }}
               onNewCommunication={() => setIsLogCommunicationModalOpen(true)}
               onEmail={() => setIsEmailModalOpen(true)}
               onSMS={() => setIsSMSModalOpen(true)}
@@ -963,79 +734,76 @@ export default function EventDetailPage() {
             />
           </TabsContent>
 
-          {/* Staffing Tab */}
-          <TabsContent value="staffing" className="mt-0">
-            <EventStaffList
-              staffAssignments={staff.staffAssignments}
-              users={staff.users}
-              staffRoles={staff.staffRoles}
-              eventDates={eventDates}
-              loading={staff.loadingStaff}
-              isAddingStaff={staff.isAddingStaff}
-              selectedUserId={staff.selectedUserId}
-              selectedStaffRoleId={staff.selectedStaffRoleId}
-              staffRole={staff.staffRole}
-              staffNotes={staff.staffNotes}
-              selectedDateTimes={staff.selectedDateTimes}
-              operationsTeamExpanded={staff.operationsTeamExpanded}
-              eventStaffExpanded={staff.eventStaffExpanded}
-              onToggleOperationsTeam={() => staff.setOperationsTeamExpanded(!staff.operationsTeamExpanded)}
-              onToggleEventStaff={() => staff.setEventStaffExpanded(!staff.eventStaffExpanded)}
-              onUserChange={staff.setSelectedUserId}
-              onRoleChange={staff.setSelectedStaffRoleId}
-              onStaffRoleChange={staff.setStaffRole}
-              onNotesChange={staff.setStaffNotes}
-              onDateTimeToggle={(dt) => {
-                const exists = staff.selectedDateTimes.some(
-                  (selected: any) => selected.event_date_id === dt.event_date_id
-                )
-                if (exists) {
-                  staff.setSelectedDateTimes(
-                    staff.selectedDateTimes.filter(
-                      (selected: any) => selected.event_date_id !== dt.event_date_id
-                    )
-                  )
-                } else {
-                  staff.setSelectedDateTimes([...staff.selectedDateTimes, dt])
-                }
-              }}
-              onAddStaff={async () => {
-                // EventStaffList component should handle staff data internally
-                // For now, this is a placeholder
-                return true
-              }}
-              onRemoveStaff={staff.removeStaff}
-              onStartAdding={() => staff.setIsAddingStaff(true)}
-              onCancelAdding={() => {
-                staff.setIsAddingStaff(false)
-                staff.resetAddStaffForm()
-              }}
-              canEdit={canManageEvents}
-            />
-          </TabsContent>
-
-          {/* Equipment Tab */}
-          <TabsContent value="equipment" className="mt-0">
-            <EventBoothAssignments eventId={eventId} tenantSubdomain={tenantSubdomain} />
-          </TabsContent>
-
-          {/* Event Scope/Details Tab */}
+          {/* Details Tab - Consolidates Staffing + Scope/Details */}
           <TabsContent value="details" className="mt-0">
-            <EventDescriptionCard
-              description={event.description}
-              isEditing={isEditingDescription}
-              editedDescription={editedDescription}
-              onStartEdit={() => {
-                startEditingDescription(event.description || '')
-              }}
-              onDescriptionChange={setEditedDescription}
-              onSave={handleSaveDescription}
-              onCancel={() => {
-                cancelEditingDescription()
-                        setEditedDescription('')
-                      }}
-              canEdit={canManageEvents}
-            />
+            <div className="space-y-6">
+              {/* Event Description / Scope */}
+              <EventDescriptionCard
+                description={event.description}
+                isEditing={isEditingDescription}
+                editedDescription={editedDescription}
+                onStartEdit={() => {
+                  startEditingDescription(event.description || '')
+                }}
+                onDescriptionChange={setEditedDescription}
+                onSave={handleSaveDescription}
+                onCancel={() => {
+                  cancelEditingDescription()
+                  setEditedDescription('')
+                }}
+                canEdit={canManageEvents}
+              />
+
+              {/* Staffing Details */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Staffing Details</h2>
+                <EventStaffList
+                  staffAssignments={staff.staffAssignments}
+                  users={staff.users}
+                  staffRoles={staff.staffRoles}
+                  eventDates={eventDates}
+                  loading={staff.loadingStaff}
+                  isAddingStaff={staff.isAddingStaff}
+                  selectedUserId={staff.selectedUserId}
+                  selectedStaffRoleId={staff.selectedStaffRoleId}
+                  staffRole={staff.staffRole}
+                  staffNotes={staff.staffNotes}
+                  selectedDateTimes={staff.selectedDateTimes}
+                  operationsTeamExpanded={staff.operationsTeamExpanded}
+                  eventStaffExpanded={staff.eventStaffExpanded}
+                  onToggleOperationsTeam={() => staff.setOperationsTeamExpanded(!staff.operationsTeamExpanded)}
+                  onToggleEventStaff={() => staff.setEventStaffExpanded(!staff.eventStaffExpanded)}
+                  onUserChange={staff.setSelectedUserId}
+                  onRoleChange={staff.setSelectedStaffRoleId}
+                  onStaffRoleChange={staff.setStaffRole}
+                  onNotesChange={staff.setStaffNotes}
+                  onDateTimeToggle={(dt) => {
+                    const exists = staff.selectedDateTimes.some(
+                      (selected: any) => selected.event_date_id === dt.event_date_id
+                    )
+                    if (exists) {
+                      staff.setSelectedDateTimes(
+                        staff.selectedDateTimes.filter(
+                          (selected: any) => selected.event_date_id !== dt.event_date_id
+                        )
+                      )
+                    } else {
+                      staff.setSelectedDateTimes([...staff.selectedDateTimes, dt])
+                    }
+                  }}
+                  onAddStaff={async () => {
+                    return true
+                  }}
+                  onRemoveStaff={staff.removeStaff}
+                  onStartAdding={() => staff.setIsAddingStaff(true)}
+                  onCancelAdding={() => {
+                    staff.setIsAddingStaff(false)
+                    staff.resetAddStaffForm()
+                  }}
+                  canEdit={canManageEvents}
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
           </div>
