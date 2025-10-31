@@ -14,6 +14,7 @@ import {
   ConnectionInfo,
 } from './types';
 import crypto from 'crypto';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 /**
  * Cache entry for tenant connection configuration
@@ -39,6 +40,20 @@ interface ClientCacheEntry {
 interface ConnectionPoolConfig {
   maxClients: number;
   enableMetrics: boolean;
+  useNextjsCache: boolean; // Enable Next.js cache for serverless
+}
+
+/**
+ * Tenant config data from database (before decryption)
+ */
+interface TenantConfigData {
+  id: string;
+  data_source_url: string;
+  data_source_anon_key: string;
+  data_source_service_key: string;
+  data_source_region: string | null;
+  connection_pool_config: any;
+  tenant_id_in_data_source: string | null;
 }
 
 /**
@@ -85,6 +100,7 @@ export class DataSourceManager {
     this.poolConfig = {
       maxClients: config?.maxClients ?? 50, // Default: 50 max clients
       enableMetrics: config?.enableMetrics ?? true,
+      useNextjsCache: config?.useNextjsCache ?? true, // Default: enabled for serverless
     };
     this.startCacheCleanup();
   }
@@ -176,29 +192,14 @@ export class DataSourceManager {
   }
 
   /**
-   * Fetch tenant's connection configuration from APPLICATION database
-   *
-   * IMPORTANT: This always queries the APPLICATION database, not tenant data
+   * Fetch tenant config from database (raw data, before decryption)
+   * This is the inner function that gets wrapped by Next.js cache
    *
    * @param tenantId - The tenant UUID
-   * @returns Connection config and tenant ID in data source
-   * @throws Error if tenant not found or missing configuration
+   * @returns Raw tenant config data from database
+   * @throws Error if tenant not found
    */
-  private async getTenantConnectionConfig(tenantId: string): Promise<{
-    config: TenantConnectionConfig;
-    tenantIdInDataSource: string;
-  }> {
-    // Check config cache
-    const cached = this.configCache.get(tenantId);
-    if (cached && cached.expiry > Date.now()) {
-      return {
-        config: cached.config,
-        tenantIdInDataSource: cached.tenantIdInDataSource,
-      };
-    }
-
-    // Query APPLICATION database for tenant metadata
-    // This uses the main application Supabase connection
+  private async fetchTenantConfigFromDatabase(tenantId: string): Promise<TenantConfigData> {
     const appDb = createServerSupabaseClient();
 
     const { data: tenant, error } = await appDb
@@ -225,6 +226,56 @@ export class DataSourceManager {
       throw new Error(`Tenant ${tenantId} has no data source configured`);
     }
 
+    return tenant as TenantConfigData;
+  }
+
+  /**
+   * Fetch tenant's connection configuration from APPLICATION database
+   *
+   * IMPORTANT: This always queries the APPLICATION database, not tenant data
+   *
+   * Uses a two-tier caching strategy:
+   * 1. In-memory cache (fastest, per-instance)
+   * 2. Next.js cache (persistent, serverless-friendly)
+   *
+   * @param tenantId - The tenant UUID
+   * @returns Connection config and tenant ID in data source
+   * @throws Error if tenant not found or missing configuration
+   */
+  private async getTenantConnectionConfig(tenantId: string): Promise<{
+    config: TenantConnectionConfig;
+    tenantIdInDataSource: string;
+  }> {
+    // Tier 1: Check in-memory cache (fastest)
+    const cached = this.configCache.get(tenantId);
+    if (cached && cached.expiry > Date.now()) {
+      return {
+        config: cached.config,
+        tenantIdInDataSource: cached.tenantIdInDataSource,
+      };
+    }
+
+    // Tier 2: Fetch from database with Next.js cache (if enabled)
+    let tenant: TenantConfigData;
+
+    if (this.poolConfig.useNextjsCache) {
+      // Use Next.js cache for serverless environments
+      // This cache persists across function invocations and is shared between instances
+      const getCachedTenantConfig = unstable_cache(
+        async (id: string) => this.fetchTenantConfigFromDatabase(id),
+        ['tenant-config', tenantId],
+        {
+          revalidate: 300, // Revalidate every 5 minutes
+          tags: [`tenant-config-${tenantId}`],
+        }
+      );
+
+      tenant = await getCachedTenantConfig(tenantId);
+    } else {
+      // Direct database fetch (no Next.js cache)
+      tenant = await this.fetchTenantConfigFromDatabase(tenantId);
+    }
+
     // Decrypt sensitive keys
     const config: TenantConnectionConfig = {
       supabaseUrl: tenant.data_source_url,
@@ -234,7 +285,7 @@ export class DataSourceManager {
       poolConfig: tenant.connection_pool_config as any,
     };
 
-    // Cache the config
+    // Store in Tier 1 cache (in-memory)
     this.configCache.set(tenantId, {
       config,
       tenantIdInDataSource: tenant.tenant_id_in_data_source || tenantId,
@@ -403,14 +454,26 @@ export class DataSourceManager {
   /**
    * Clear all caches for a specific tenant
    *
-   * Call this when tenant configuration changes
+   * Call this when tenant configuration changes.
+   * Clears both in-memory cache and Next.js cache (if enabled).
    *
    * @param tenantId - The tenant UUID
    */
   clearTenantCache(tenantId: string): void {
+    // Clear in-memory caches
     this.configCache.delete(tenantId);
     this.clientCache.delete(`${tenantId}-anon`);
     this.clientCache.delete(`${tenantId}-service`);
+
+    // Invalidate Next.js cache (if enabled)
+    if (this.poolConfig.useNextjsCache) {
+      try {
+        revalidateTag(`tenant-config-${tenantId}`);
+      } catch (error) {
+        // revalidateTag may fail in non-serverless environments
+        console.warn(`Failed to revalidate Next.js cache for tenant ${tenantId}:`, error);
+      }
+    }
   }
 
   /**
@@ -591,6 +654,7 @@ const poolConfig: Partial<ConnectionPoolConfig> = {
     ? parseInt(process.env.DATA_SOURCE_MAX_CLIENTS, 10)
     : 50,
   enableMetrics: process.env.DATA_SOURCE_ENABLE_METRICS !== 'false', // Default: true
+  useNextjsCache: process.env.DATA_SOURCE_USE_NEXTJS_CACHE !== 'false', // Default: true (serverless-friendly)
 };
 
 // Export singleton instance with configuration
