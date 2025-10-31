@@ -25,6 +25,7 @@ import { useEvents } from '@/hooks/useEvents'
 import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters } from '@/hooks/useEventsFilters'
+import { eventsService } from '@/lib/api/services/eventsService'
 
 interface EventDate {
   id: string
@@ -186,12 +187,7 @@ export default function EventsPage() {
     setLoadingTasks(prev => new Set(prev).add(eventId))
 
     try {
-      const response = await fetch(`/api/events/${eventId}/core-tasks`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch tasks')
-      }
-
-      const tasks = await response.json()
+      const tasks = await eventsService.getCoreTasks(eventId)
       setEventTaskCompletions(prev => ({
         ...prev,
         [eventId]: tasks
@@ -219,14 +215,10 @@ export default function EventsPage() {
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
       try {
-        const response = await fetch(`/api/events/${eventId}`, {
-          method: 'DELETE'
-        })
-        if (response.ok) {
-          // Invalidate events query to refetch
-          queryClient.invalidateQueries({ queryKey: ['events'] })
-          toast.success('Event deleted successfully')
-        }
+        await eventsService.delete(eventId)
+        // Invalidate events query to refetch
+        queryClient.invalidateQueries({ queryKey: ['events'] })
+        toast.success('Event deleted successfully')
       } catch (error) {
         console.error('Error deleting event:', error)
         toast.error('Failed to delete event')
@@ -280,7 +272,7 @@ export default function EventsPage() {
 
     try {
       const deletePromises = Array.from(selectedEventIds).map(eventId =>
-        fetch(`/api/events/${eventId}`, { method: 'DELETE' })
+        eventsService.delete(eventId)
       )
 
       await Promise.all(deletePromises)
@@ -299,11 +291,7 @@ export default function EventsPage() {
 
     try {
       const updatePromises = Array.from(selectedEventIds).map(eventId =>
-        fetch(`/api/events/${eventId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
-        })
+        eventsService.update(eventId, { status: newStatus })
       )
 
       await Promise.all(updatePromises)
