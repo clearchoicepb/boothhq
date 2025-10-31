@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -58,10 +58,15 @@ import { StickyEventContext } from '@/components/events/detail/shared/StickyEven
 import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 import { eventsService } from '@/lib/api/services/eventsService'
+import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 
-export default function EventDetailPage() {
+interface EventDetailContentProps {
+  eventData: ReturnType<typeof useEventData>
+}
+
+function EventDetailContent({ eventData }: EventDetailContentProps) {
   const { data: session, status } = useSession()
-  const { tenant, loading } = useTenant()
+  const { tenant, loading: tenantLoading } = useTenant()
   const { hasPermission } = usePermissions()
   const params = useParams()
   const router = useRouter()
@@ -69,18 +74,22 @@ export default function EventDetailPage() {
   const eventId = params.id as string
 
   // Custom Hooks - Core Data (Batch 1)
-  const eventData = useEventData(eventId, session, tenantSubdomain)
+  // eventData passed as prop to avoid duplicate fetching
   const references = useEventReferences(session, tenantSubdomain)
 
   // Custom Hooks - State Management (Batch 2)
   const tabs = useEventTabs(eventId, session, tenant)
-  const modals = useEventModals()
-  const editing = useEventEditing()
   const staff = useEventStaff(eventId, session, tenant)
+
+  // Context - Replaces useEventModals and useEventEditing hooks
+  const context = useEventDetail()
 
   // Destructure for easier access - Core Data
   const { event, eventDates, loading: localLoading } = eventData
   const { accounts, contacts, locations, paymentStatusOptions } = references
+
+  // Destructure for easier access - Context (Modal + Editing state)
+  const { modals: contextModals, editing: contextEditing } = context
 
   // Destructure for easier access - Tabs
   const {
@@ -100,82 +109,19 @@ export default function EventDetailPage() {
     fetchCommunications, // Keep original name for JSX callbacks
   } = tabs
 
-  // Destructure for easier access - Modals
-  const {
-    isTaskModalOpen,
-    setIsTaskModalOpen,
-    tasksKey,
-    setTasksKey,
-    openTaskModal,
-    closeTaskModal,
-    refreshTasks,
-    isLogCommunicationModalOpen,
-    setIsLogCommunicationModalOpen,
-    isEmailModalOpen,
-    setIsEmailModalOpen,
-    isSMSModalOpen,
-    setIsSMSModalOpen,
-    openLogCommunicationModal,
-    closeLogCommunicationModal,
-    openEmailModal,
-    closeEmailModal,
-    openSMSModal,
-    closeSMSModal,
-    selectedCommunication,
-    setSelectedCommunication,
-    isCommunicationDetailOpen,
-    setIsCommunicationDetailOpen,
-    openCommunicationDetail,
-    closeCommunicationDetail,
-    selectedActivity,
-    setSelectedActivity,
-    isActivityDetailOpen,
-    setIsActivityDetailOpen,
-    openActivityDetail,
-    closeActivityDetail,
-    selectedEventDate,
-    setSelectedEventDate,
-    isEventDateDetailOpen,
-    setIsEventDateDetailOpen,
-    activeEventDateTab,
-    setActiveEventDateTab,
-    openEventDateDetail,
-    closeEventDateDetail,
-  } = modals
-
-  // Destructure for easier access - Editing
-  const {
-    isEditingAccountContact,
-    setIsEditingAccountContact,
-    editAccountId,
-    editContactId,
-    editEventPlannerId,
-    setEditAccountId,
-    setEditContactId,
-    setEditEventPlannerId,
-    startEditingAccountContact,
-    cancelEditingAccountContact,
-    finishEditingAccountContact,
-    isEditingEventDate,
-    setIsEditingEventDate,
-    editEventDateData,
-    setEditEventDateData,
-    startEditingEventDate,
-    cancelEditingEventDate,
-    finishEditingEventDate,
-    isEditingPaymentStatus,
-    setIsEditingPaymentStatus,
-    startEditingPaymentStatus,
-    cancelEditingPaymentStatus,
-    finishEditingPaymentStatus,
-    isEditingDescription,
-    setIsEditingDescription,
-    editedDescription,
-    setEditedDescription,
-    startEditingDescription,
-    cancelEditingDescription,
-    finishEditingDescription,
-  } = editing
+  // Local state for modals not yet moved to context (Communications, Activity, etc.)
+  const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
+  const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
+  const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
+  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
+  const [selectedEventDate, setSelectedEventDate] = useState<any>(null)
+  const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
+  const [activeEventDateTab, setActiveEventDateTab] = useState('details')
+  const [isEditingEventDate, setIsEditingEventDate] = useState(false)
+  const [editEventDateData, setEditEventDateData] = useState<any>({})
 
   // Destructure for easier access - Staff
   const {
@@ -211,28 +157,28 @@ export default function EventDetailPage() {
   // All fetch functions now provided by custom hooks (no longer defined here)
 
   const handleStartEditAccountContact = () => {
-    startEditingAccountContact(
-      event?.account_id || '',
-      event?.primary_contact?.id || event?.contact_id || '',
-      event?.event_planner?.id || ''
-    )
+    context.startEditAccountContact()
   }
 
   const handleCancelEditAccountContact = () => {
-    cancelEditingAccountContact()
+    context.cancelEditAccountContact()
   }
 
   const handleSaveAccountContact = async () => {
     try {
       await eventsService.update(eventId, {
-        account_id: editAccountId || null,
-        primary_contact_id: editContactId || null,
-        contact_id: editContactId || null, // Keep for backward compatibility
-        event_planner_id: editEventPlannerId || null
+        account_id: contextEditing.editAccountId || null,
+        primary_contact_id: contextEditing.editContactId || null,
+        contact_id: contextEditing.editContactId || null, // Keep for backward compatibility
+        event_planner_id: contextEditing.editEventPlannerId || null
       })
 
       await eventData.fetchEvent()
-      finishEditingAccountContact()
+      await context.saveEditAccountContact(
+        contextEditing.editAccountId,
+        contextEditing.editContactId,
+        contextEditing.editEventPlannerId
+      )
       toast.success('Account and contact updated successfully')
     } catch (error) {
       console.error('Error updating account/contact:', error)
@@ -293,7 +239,7 @@ export default function EventDetailPage() {
       await eventsService.update(eventId, { payment_status: newStatus })
 
       await eventData.fetchEvent()
-      finishEditingPaymentStatus()
+      await context.saveEditPaymentStatus(newStatus)
       toast.success('Payment status updated successfully')
     } catch (error) {
       console.error('Error updating payment status:', error)
@@ -303,10 +249,10 @@ export default function EventDetailPage() {
 
   const handleSaveDescription = async () => {
     try {
-      await eventsService.update(eventId, { description: editedDescription })
+      await eventsService.update(eventId, { description: contextEditing.editedDescription })
 
       await eventData.fetchEvent()
-      finishEditingDescription()
+      await context.saveEditDescription(contextEditing.editedDescription)
       toast.success('Description updated successfully')
     } catch (error) {
       console.error('Error updating event scope/details:', error)
@@ -530,7 +476,7 @@ export default function EventDetailPage() {
 
   const canManageEvents = hasPermission('events', 'edit')
 
-  if (status === 'loading' || loading || localLoading) {
+  if (status === 'loading' || tenantLoading || localLoading) {
     return (
       <AccessGuard module="events">
         <AppLayout>
@@ -595,34 +541,31 @@ export default function EventDetailPage() {
               eventDates={eventDates}
               paymentStatusOptions={paymentStatusOptions}
               tenantSubdomain={tenantSubdomain}
-              isEditingAccountContact={isEditingAccountContact}
-              editAccountId={editAccountId}
-              editContactId={editContactId}
-              editEventPlannerId={editEventPlannerId}
-              isEditingPaymentStatus={isEditingPaymentStatus}
-              isEditingDescription={isEditingDescription}
-              editedDescription={editedDescription}
+              isEditingAccountContact={contextEditing.isEditingAccountContact}
+              editAccountId={contextEditing.editAccountId}
+              editContactId={contextEditing.editContactId}
+              editEventPlannerId={contextEditing.editEventPlannerId}
+              isEditingPaymentStatus={contextEditing.isEditingPaymentStatus}
+              isEditingDescription={contextEditing.isEditingDescription}
+              editedDescription={contextEditing.editedDescription}
               onStartEditAccountContact={handleStartEditAccountContact}
               onSaveAccountContact={handleSaveAccountContact}
               onCancelEditAccountContact={handleCancelEditAccountContact}
               onAccountChange={(accountId) => {
-                setEditAccountId(accountId || '')
+                context.updateEditAccount(accountId || '')
                 if (accountId !== event?.account_id) {
-                  setEditContactId('')
+                  context.updateEditContact('')
                 }
               }}
-              onContactChange={(contactId) => setEditContactId(contactId || '')}
-              onEventPlannerChange={(eventPlannerId) => setEditEventPlannerId(eventPlannerId || '')}
-              onStartEditPaymentStatus={startEditingPaymentStatus}
+              onContactChange={(contactId) => context.updateEditContact(contactId || '')}
+              onEventPlannerChange={(eventPlannerId) => context.updateEditPlanner(eventPlannerId || '')}
+              onStartEditPaymentStatus={context.startEditPaymentStatus}
               onUpdatePaymentStatus={handleUpdatePaymentStatus}
-              onCancelEditPaymentStatus={() => setIsEditingPaymentStatus(false)}
-              onStartEditDescription={() => startEditingDescription(event.description || '')}
-              onDescriptionChange={setEditedDescription}
+              onCancelEditPaymentStatus={context.cancelEditPaymentStatus}
+              onStartEditDescription={() => context.startEditDescription()}
+              onDescriptionChange={context.updateEditDescription}
               onSaveDescription={handleSaveDescription}
-              onCancelEditDescription={() => {
-                cancelEditingDescription()
-                setEditedDescription('')
-              }}
+              onCancelEditDescription={context.cancelEditDescription}
               canManageEvents={canManageEvents}
               activeEventDateTab={activeEventDateTab}
               onEventDateTabChange={setActiveEventDateTab}
@@ -641,9 +584,9 @@ export default function EventDetailPage() {
               eventId={eventId}
               eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
               tenantSubdomain={tenantSubdomain}
-              onCreateTask={() => setIsTaskModalOpen(true)}
-              tasksKey={tasksKey}
-              onTasksRefresh={() => setTasksKey(prev => prev + 1)}
+              onCreateTask={() => context.openModal('isTaskModalOpen')}
+              tasksKey={contextModals.tasksKey}
+              onTasksRefresh={() => context.refreshData('tasksKey')}
             />
           </TabsContent>
 
@@ -704,17 +647,12 @@ export default function EventDetailPage() {
               {/* Event Description / Scope */}
               <EventDescriptionCard
                 description={event.description}
-                isEditing={isEditingDescription}
-                editedDescription={editedDescription}
-                onStartEdit={() => {
-                  startEditingDescription(event.description || '')
-                }}
-                onDescriptionChange={setEditedDescription}
+                isEditing={contextEditing.isEditingDescription}
+                editedDescription={contextEditing.editedDescription}
+                onStartEdit={context.startEditDescription}
+                onDescriptionChange={context.updateEditDescription}
                 onSave={handleSaveDescription}
-                onCancel={() => {
-                  cancelEditingDescription()
-                  setEditedDescription('')
-                }}
+                onCancel={context.cancelEditDescription}
                 canEdit={canManageEvents}
               />
 
@@ -974,16 +912,14 @@ export default function EventDetailPage() {
 
       {/* Create Task Modal */}
       <CreateTaskModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        isOpen={contextModals.isTaskModalOpen}
+        onClose={() => context.closeModal('isTaskModalOpen')}
         entityType="event"
         entityId={eventId}
         eventDates={eventDates}
         accountId={event?.account_id}
         contactId={event?.contact_id}
-        onSuccess={() => {
-          setTasksKey(prev => prev + 1)
-        }}
+        onSuccess={() => context.refreshData('tasksKey')}
       />
 
       {/* Log Communication Modal */}
@@ -1062,5 +998,28 @@ export default function EventDetailPage() {
         canEdit={canManageEvents}
       />
     </AccessGuard>
+  )
+}
+
+// Main page component that provides context
+export default function EventDetailPage() {
+  const params = useParams()
+  const eventId = params.id as string
+  const { data: session } = useSession()
+  const tenantSubdomain = params.tenant as string
+
+  // Fetch core event data for context provider
+  const eventData = useEventData(eventId, session, tenantSubdomain)
+  const { event, eventDates, loading } = eventData
+
+  return (
+    <EventDetailProvider
+      event={event}
+      eventDates={eventDates}
+      loading={loading}
+      onEventUpdate={eventData.fetchEvent}
+    >
+      <EventDetailContent eventData={eventData} />
+    </EventDetailProvider>
   )
 }
