@@ -54,6 +54,8 @@ import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
 import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewTab'
 import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
 import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCommunicationsTab'
+import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
+import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 
 export default function EventDetailPage() {
@@ -237,12 +239,13 @@ export default function EventDetailPage() {
       if (response.ok) {
         await eventData.fetchEvent()
         finishEditingAccountContact()
+        toast.success('Account and contact updated successfully')
       } else {
-        alert('Failed to update account/contact')
+        toast.error('Failed to update account/contact')
       }
     } catch (error) {
       console.error('Error updating account/contact:', error)
-      alert('Error updating account/contact')
+      toast.error('Error updating account/contact')
     }
   }
 
@@ -292,12 +295,13 @@ export default function EventDetailPage() {
         const updatedEventDate = await response.json()
         setSelectedEventDate(updatedEventDate)
         finishEditingEventDate()
+        toast.success('Event date updated successfully')
       } else {
-        alert('Failed to update event date')
+        toast.error('Failed to update event date')
       }
     } catch (error) {
       console.error('Error updating event date:', error)
-      alert('Error updating event date')
+      toast.error('Error updating event date')
     }
   }
 
@@ -314,12 +318,13 @@ export default function EventDetailPage() {
       if (response.ok) {
         await eventData.fetchEvent()
         finishEditingPaymentStatus()
+        toast.success('Payment status updated successfully')
       } else {
-        alert('Failed to update payment status')
+        toast.error('Failed to update payment status')
       }
     } catch (error) {
       console.error('Error updating payment status:', error)
-      alert('Error updating payment status')
+      toast.error('Error updating payment status')
     }
   }
 
@@ -336,12 +341,13 @@ export default function EventDetailPage() {
       if (response.ok) {
         await eventData.fetchEvent()
         finishEditingDescription()
+        toast.success('Description updated successfully')
       } else {
-        alert('Failed to update event scope/details')
+        toast.error('Failed to update event scope/details')
       }
     } catch (error) {
       console.error('Error updating event scope/details:', error)
-      alert('Error updating event scope/details')
+      toast.error('Error updating event scope/details')
     }
   }
 
@@ -412,12 +418,12 @@ export default function EventDetailPage() {
     console.log('[CLIENT-STAFF] Staff Notes:', staffNotes)
 
     if (!selectedUserId) {
-      alert('Please select a user')
+      toast.error('Please select a user')
       return
     }
 
     if (!selectedStaffRoleId) {
-      alert('Please select a staff role')
+      toast.error('Please select a staff role')
       return
     }
 
@@ -427,7 +433,7 @@ export default function EventDetailPage() {
 
     // Validate that dates are selected for event_staff roles
     if (selectedRole?.type === 'event_staff' && selectedDateTimes.length === 0) {
-      alert('Event Staff roles must be assigned to at least one event date')
+      toast.error('Event Staff roles must be assigned to at least one event date')
       return
     }
 
@@ -481,7 +487,7 @@ export default function EventDetailPage() {
         console.log('[CLIENT-STAFF] Response data:', responseData)
 
         if (!response.ok) {
-          alert(`Failed to ${isEditing ? 'update' : 'add'} staff: ${responseData.error || 'Unknown error'}`)
+          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${responseData.error || 'Unknown error'}`)
           return
         }
       } else {
@@ -516,9 +522,9 @@ export default function EventDetailPage() {
           if (!response.ok) {
             // Check for duplicate constraint error
             if (responseData.code === '23505' || responseData.details?.includes('already exists')) {
-              alert(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
+              toast.error(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
             } else {
-              alert(`Failed to add staff for date: ${responseData.error || 'Unknown error'}`)
+              toast.error(`Failed to add staff for date: ${responseData.error || 'Unknown error'}`)
             }
             return
           }
@@ -529,10 +535,11 @@ export default function EventDetailPage() {
       console.log('[CLIENT-STAFF] Success! Refreshing staff list...')
       await refetchStaff()
       resetAddStaffForm()
+      toast.success('Staff assigned successfully')
       console.log('[CLIENT-STAFF] ========== handleAddStaff complete ==========')
     } catch (error) {
       console.error('[CLIENT-STAFF] ❌ Error saving staff:', error)
-      alert('Error saving staff')
+      toast.error('Error saving staff')
     }
   }
 
@@ -543,7 +550,9 @@ export default function EventDetailPage() {
 
     const success = await removeStaff(staffAssignmentId)
     if (!success) {
-        alert('Failed to remove staff assignment')
+        toast.error('Failed to remove staff assignment')
+    } else {
+        toast.success('Staff assignment removed')
     }
   }
 
@@ -559,9 +568,10 @@ export default function EventDetailPage() {
 
     const success = await eventData.deleteEvent()
     if (success) {
+      toast.success('Event deleted successfully')
       router.push(`/${tenantSubdomain}/events`)
     } else {
-      alert('Failed to delete event')
+      toast.error('Failed to delete event')
     }
   }
 
@@ -609,6 +619,9 @@ export default function EventDetailPage() {
             canManageEvents={canManageEvents}
             onDelete={handleDelete}
           />
+
+          {/* Sticky Event Context Bar - Shows key info across all tabs */}
+          <StickyEventContext event={event} />
 
           {/* Core Tasks Banner - Dismissible */}
           <CoreTasksBanner
@@ -808,6 +821,15 @@ export default function EventDetailPage() {
         </Tabs>
           </div>
         </div>
+
+        {/* Floating Quick Actions - Accessible from all tabs */}
+        <FloatingQuickActions
+          eventId={event.id}
+          accountId={event.account_id}
+          contactId={event.contact_id}
+          tenantSubdomain={tenantSubdomain}
+          canCreate={canManageEvents}
+        />
       </AppLayout>
 
       {/* Add/Edit Staff Modal */}
@@ -1029,7 +1051,7 @@ export default function EventDetailPage() {
         onClose={() => setIsEmailModalOpen(false)}
         onSuccess={() => {
           fetchCommunications()
-          alert('Email sent successfully!')
+          toast.success('Email sent successfully!')
         }}
         defaultSubject={event ? `Regarding: ${event.title}` : ''}
         eventId={eventId}
@@ -1043,7 +1065,7 @@ export default function EventDetailPage() {
         onClose={() => setIsSMSModalOpen(false)}
         onSuccess={() => {
           fetchCommunications()
-          alert('SMS sent successfully!')
+          toast.success('SMS sent successfully!')
         }}
         eventId={eventId}
         accountId={event?.account_id || undefined}

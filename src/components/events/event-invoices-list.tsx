@@ -1,6 +1,8 @@
 import { DollarSign, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from './detail/shared/EmptyState'
+import { SkeletonTable } from './detail/shared/SkeletonLoader'
 
 interface EventInvoicesListProps {
   invoices: any[]
@@ -27,9 +29,8 @@ export function EventInvoicesList({
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-6">Invoices</h2>
+        <SkeletonTable rows={3} columns={5} />
       </div>
     )
   }
@@ -50,11 +51,14 @@ export function EventInvoicesList({
         </div>
 
         {invoices.length === 0 ? (
-          <div className="text-center py-12">
-            <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by creating a new invoice.</p>
-          </div>
+          <EmptyState
+            icon={DollarSign}
+            title="No invoices yet"
+            description="Track payments and billing by creating invoices for this event."
+            actionLabel={canCreate ? "Create Invoice" : undefined}
+            onAction={canCreate ? () => window.location.href = `/${tenantSubdomain}/invoices/new?event_id=${eventId}&account_id=${accountId || ''}&contact_id=${contactId || ''}` : undefined}
+            variant="subtle"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
