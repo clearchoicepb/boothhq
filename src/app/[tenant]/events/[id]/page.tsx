@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -60,8 +60,56 @@ import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 import { eventsService } from '@/lib/api/services/eventsService'
 import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 
+interface EventDate {
+  id: string
+  event_date: string
+  start_time?: string
+  end_time?: string
+  location_id?: string
+  notes?: string
+  status?: string
+  locations?: {
+    id: string
+    name: string
+  }
+}
+
 interface EventDetailContentProps {
   eventData: ReturnType<typeof useEventData>
+}
+
+/**
+ * Get the next upcoming event date from a list of event dates.
+ * Returns the earliest future/today date, or the most recent past date if all are past.
+ *
+ * @param eventDates - Array of event dates
+ * @returns The next upcoming event date, or null if no dates exist
+ */
+function getNextEventDate(eventDates: EventDate[]): EventDate | null {
+  if (!eventDates || eventDates.length === 0) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0) // Start of today
+
+  // Sort dates chronologically
+  const sortedDates = [...eventDates].sort((a, b) => {
+    const dateA = new Date(a.event_date)
+    const dateB = new Date(b.event_date)
+    return dateA.getTime() - dateB.getTime()
+  })
+
+  // Find the first future or today date
+  const nextDate = sortedDates.find(d => {
+    const eventDate = new Date(d.event_date)
+    eventDate.setHours(0, 0, 0, 0)
+    return eventDate >= today
+  })
+
+  // If found a future/today date, return it
+  if (nextDate) return nextDate
+
+  // All dates are in the past, return the most recent one (last in sorted array)
+  return sortedDates[sortedDates.length - 1]
 }
 
 function EventDetailContent({ eventData }: EventDetailContentProps) {
@@ -87,6 +135,9 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   // Destructure for easier access - Core Data
   const { event, eventDates = [], loading: localLoading } = eventData || {}
   const { accounts, contacts, locations, paymentStatusOptions } = references
+
+  // Get the next upcoming event date (sorted chronologically)
+  const nextEventDate = useMemo(() => getNextEventDate(eventDates), [eventDates])
 
   // Destructure for easier access - Context (Modal + Editing state)
   const { modals: contextModals, editing: contextEditing } = context
@@ -582,7 +633,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
           <TabsContent value="planning" className="mt-0">
             <EventPlanningTab
               eventId={eventId}
-              eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
+              eventDate={event.start_date || nextEventDate?.event_date || ''}
               tenantSubdomain={tenantSubdomain}
               onCreateTask={() => context.openModal('isTaskModalOpen')}
               tasksKey={contextModals.tasksKey}
