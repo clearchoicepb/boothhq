@@ -7,6 +7,7 @@ import { EventFormEnhanced } from '@/components/event-form-enhanced'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
+import { eventsService } from '@/lib/api/services/eventsService'
 import toast from 'react-hot-toast'
 
 export default function NewEventPage() {
@@ -19,20 +20,9 @@ export default function NewEventPage() {
 
   const handleSave = async (formData: any) => {
     try {
-      const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+      const data = await eventsService.create(formData)
+      const eventId = data.id
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create event')
-      }
-
-      const data = await response.json()
-      const eventId = data.event?.id || data.id
-      
       toast.success('Event created successfully!')
       router.push(`/${tenantSubdomain}/events/${eventId}`)
     } catch (error) {

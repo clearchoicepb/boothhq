@@ -30,6 +30,15 @@ interface ConfigCacheEntry {
 interface ClientCacheEntry {
   client: SupabaseClient<Database>;
   expiry: number;
+  createdAt: number;
+}
+
+/**
+ * Connection pool configuration
+ */
+interface ConnectionPoolConfig {
+  maxClients: number;
+  enableMetrics: boolean;
 }
 
 /**
@@ -60,17 +69,33 @@ export class DataSourceManager {
   private readonly CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly CLIENT_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-  private constructor() {
+  // Connection pool configuration
+  private readonly poolConfig: ConnectionPoolConfig;
+
+  // Metrics tracking
+  private metrics = {
+    totalClientsCreated: 0,
+    poolExhaustedCount: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+  };
+
+  private constructor(config?: Partial<ConnectionPoolConfig>) {
     // Private constructor for singleton pattern
+    this.poolConfig = {
+      maxClients: config?.maxClients ?? 50, // Default: 50 max clients
+      enableMetrics: config?.enableMetrics ?? true,
+    };
     this.startCacheCleanup();
   }
 
   /**
    * Get singleton instance
+   * @param config - Optional connection pool configuration (only used on first initialization)
    */
-  static getInstance(): DataSourceManager {
+  static getInstance(config?: Partial<ConnectionPoolConfig>): DataSourceManager {
     if (!DataSourceManager.instance) {
-      DataSourceManager.instance = new DataSourceManager();
+      DataSourceManager.instance = new DataSourceManager(config);
     }
     return DataSourceManager.instance;
   }
@@ -81,6 +106,7 @@ export class DataSourceManager {
    * @param tenantId - The tenant UUID
    * @param useServiceRole - Whether to use service role key (bypasses RLS)
    * @returns Supabase client connected to tenant's data database
+   * @throws Error if connection pool is exhausted
    */
   async getClientForTenant(
     tenantId: string,
@@ -91,7 +117,26 @@ export class DataSourceManager {
     // Check client cache
     const cached = this.clientCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) {
+      if (this.poolConfig.enableMetrics) {
+        this.metrics.cacheHits++;
+      }
       return cached.client;
+    }
+
+    if (this.poolConfig.enableMetrics) {
+      this.metrics.cacheMisses++;
+    }
+
+    // Check connection pool limit
+    const activeClients = this.clientCache.size;
+    if (activeClients >= this.poolConfig.maxClients) {
+      if (this.poolConfig.enableMetrics) {
+        this.metrics.poolExhaustedCount++;
+      }
+      throw new Error(
+        `Connection pool exhausted: ${activeClients}/${this.poolConfig.maxClients} clients active. ` +
+        `Consider increasing maxClients or reducing tenant load.`
+      );
     }
 
     // Fetch tenant connection config
@@ -116,10 +161,15 @@ export class DataSourceManager {
       },
     });
 
+    if (this.poolConfig.enableMetrics) {
+      this.metrics.totalClientsCreated++;
+    }
+
     // Cache the client
     this.clientCache.set(cacheKey, {
       client,
       expiry: Date.now() + this.CLIENT_CACHE_TTL,
+      createdAt: Date.now(),
     });
 
     return client;
@@ -484,21 +534,67 @@ export class DataSourceManager {
   }
 
   /**
-   * Get cache statistics for monitoring
+   * Get cache and connection pool statistics for monitoring
    */
   getCacheStats(): {
     configCacheSize: number;
     clientCacheSize: number;
+    maxClients: number;
+    poolUtilization: number;
+    totalClientsCreated: number;
+    poolExhaustedCount: number;
+    cacheHitRate: number;
+    cacheHits: number;
+    cacheMisses: number;
   } {
+    const totalRequests = this.metrics.cacheHits + this.metrics.cacheMisses;
+    const cacheHitRate = totalRequests > 0
+      ? (this.metrics.cacheHits / totalRequests) * 100
+      : 0;
+
     return {
       configCacheSize: this.configCache.size,
       clientCacheSize: this.clientCache.size,
+      maxClients: this.poolConfig.maxClients,
+      poolUtilization: (this.clientCache.size / this.poolConfig.maxClients) * 100,
+      totalClientsCreated: this.metrics.totalClientsCreated,
+      poolExhaustedCount: this.metrics.poolExhaustedCount,
+      cacheHitRate: Math.round(cacheHitRate * 100) / 100,
+      cacheHits: this.metrics.cacheHits,
+      cacheMisses: this.metrics.cacheMisses,
+    };
+  }
+
+  /**
+   * Get connection pool configuration
+   */
+  getPoolConfig(): ConnectionPoolConfig {
+    return { ...this.poolConfig };
+  }
+
+  /**
+   * Reset metrics (useful for testing or debugging)
+   */
+  resetMetrics(): void {
+    this.metrics = {
+      totalClientsCreated: 0,
+      poolExhaustedCount: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
     };
   }
 }
 
-// Export singleton instance
-export const dataSourceManager = DataSourceManager.getInstance();
+// Initialize with configuration from environment variables (if available)
+const poolConfig: Partial<ConnectionPoolConfig> = {
+  maxClients: process.env.DATA_SOURCE_MAX_CLIENTS
+    ? parseInt(process.env.DATA_SOURCE_MAX_CLIENTS, 10)
+    : 50,
+  enableMetrics: process.env.DATA_SOURCE_ENABLE_METRICS !== 'false', // Default: true
+};
+
+// Export singleton instance with configuration
+export const dataSourceManager = DataSourceManager.getInstance(poolConfig);
 
 // Export convenience function
 export async function getTenantClient(
