@@ -24,6 +24,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
 import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
+import { useEventsFilters } from '@/hooks/useEventsFilters'
 
 interface EventDate {
   id: string
@@ -101,6 +102,17 @@ export default function EventsPage() {
   const eventIds = useMemo(() => events.map(e => e.id), [events])
   const { data: taskStatus = {} } = useEventsTaskStatus(eventIds)
 
+  // ✨ FILTER & SORT HOOK - Manages filtering, sorting, and event counts
+  const {
+    sortedEvents,
+    filters,
+    setFilters,
+    sortBy,
+    setSortBy,
+    eventCounts,
+    getIncompleteTasks
+  } = useEventsFilters({ events, coreTasks })
+
   // Aggregate loading state
   const localLoading = eventsLoading
 
@@ -112,20 +124,6 @@ export default function EventsPage() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, any[]>>({})
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set())
-
-  // Sort options
-  const [sortBy, setSortBy] = useState<string>('date_asc')
-
-  // Filter state (consolidated)
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    dateRangeFilter: 'upcoming',
-    customDaysFilter: null,
-    statusFilter: 'all',
-    taskFilter: 'all',
-    taskDateRangeFilter: 14,
-    selectedTaskIds: []
-  })
 
   // Bulk selection state
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set())
@@ -340,90 +338,6 @@ export default function EventsPage() {
   }
 
 
-  // Calculate event counts for different date filters (for badge counts)
-  // Must be before early returns to maintain hook order
-  const calculateEventCounts = useMemo(() => {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-
-    const counts = {
-      total: events.length,
-      filtered: 0, // Will be set after filtering
-      today: 0,
-      thisWeek: 0,
-      thisMonth: 0,
-      upcoming: 0,
-      past: 0,
-      next10Days: 0,
-      next45Days: 0
-    }
-
-    events.forEach(event => {
-      if (!event.start_date) return
-
-      const eventDate = parseLocalDate(event.start_date)
-      eventDate.setHours(0, 0, 0, 0)
-
-      const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-      // Today
-      if (isDateToday(event.start_date)) {
-        counts.today++
-      }
-
-      // This week (next 7 days)
-      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      if (eventDate >= now && eventDate <= weekEnd) {
-        counts.thisWeek++
-      }
-
-      // This month
-      if (eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear()) {
-        counts.thisMonth++
-      }
-
-      // Upcoming (future events)
-      if (eventDate >= now) {
-        counts.upcoming++
-      }
-
-      // Past
-      if (eventDate < now) {
-        counts.past++
-      }
-
-      // Next 10 days
-      if (daysUntil >= 0 && daysUntil <= 10) {
-        counts.next10Days++
-      }
-
-      // Next 45 days with incomplete tasks (inline logic to avoid calling helper function)
-      if (daysUntil >= 0 && daysUntil <= 45 && coreTasks.length > 0) {
-        // Check if event has incomplete tasks
-        let hasIncompleteTasks = false
-
-        if (!event.task_completions || event.task_completions.length === 0) {
-          // No completions means all tasks are incomplete
-          hasIncompleteTasks = true
-        } else {
-          // Check if any tasks are not completed
-          const completedTaskIds = new Set(
-            event.task_completions
-              .filter(tc => tc.is_completed)
-              .map(tc => tc.core_task_template_id)
-          )
-          hasIncompleteTasks = coreTasks.some(task => !completedTaskIds.has(task.id))
-        }
-
-        if (hasIncompleteTasks) {
-          counts.next45Days++
-        }
-      }
-    })
-
-    return counts
-  }, [events, coreTasks])
-
   if (status === 'loading' || loading || localLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -448,156 +362,6 @@ export default function EventsPage() {
       </div>
     )
   }
-
-  // Helper function to get incomplete tasks for an event
-  const getIncompleteTasks = (event: Event): string[] => {
-    // If no core tasks defined, no tasks can be incomplete
-    if (coreTasks.length === 0) {
-      return []
-    }
-
-    // If event has no task_completions array, ALL tasks are incomplete
-    if (!event.task_completions || event.task_completions.length === 0) {
-      return coreTasks.map(task => task.id)
-    }
-
-    // Get completed task IDs
-    const completedTaskIds = new Set(
-      event.task_completions
-        .filter(tc => tc.is_completed)
-        .map(tc => tc.core_task_template_id)
-    )
-
-    // Find tasks that are either not started or marked incomplete
-    const incompleteTasks = coreTasks
-      .filter(task => !completedTaskIds.has(task.id))
-      .map(task => task.id)
-
-    return incompleteTasks
-  }
-
-  // Helper function to check if event matches selected specific tasks
-  const matchesSelectedTasks = (event: Event): boolean => {
-    if (filters.selectedTaskIds.length === 0) return true
-
-    const incompleteTasks = getIncompleteTasks(event)
-    return filters.selectedTaskIds.some(taskId => incompleteTasks.includes(taskId))
-  }
-
-  // Helper function to check if event is within task date range (for incomplete task filter)
-  const isWithinTaskDateRange = (event: Event): boolean => {
-    if (!event.start_date) return false
-    const eventDate = new Date(event.start_date)
-    const now = new Date()
-    const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + filters.taskDateRangeFilter)
-    return eventDate >= now && eventDate <= futureDate
-  }
-
-  const filteredEvents = events.filter(event => {
-    // Search filter
-    const matchesSearch = (event.title || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                         (event.location || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                         (event.account_name && event.account_name.toLowerCase().includes(filters.searchTerm.toLowerCase()))
-
-    if (!matchesSearch) return false
-
-    // Status filter
-    if (filters.statusFilter !== 'all' && event.status !== filters.statusFilter) {
-      return false
-    }
-
-    // Date range filter
-    if (filters.dateRangeFilter !== 'all' && event.start_date) {
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-
-      const eventDate = parseLocalDate(event.start_date)
-      eventDate.setHours(0, 0, 0, 0)
-
-      switch (filters.dateRangeFilter) {
-        case 'today':
-          if (!isDateToday(event.start_date)) return false
-          break
-
-        case 'this_week':
-          const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-          if (eventDate < now || eventDate > weekEnd) return false
-          break
-
-        case 'this_month':
-          if (eventDate.getMonth() !== now.getMonth() ||
-              eventDate.getFullYear() !== now.getFullYear()) return false
-          break
-
-        case 'upcoming':
-          if (eventDate < now) return false
-          break
-
-        case 'past':
-          if (eventDate >= now) return false
-          break
-
-        case 'custom_days':
-          if (filters.customDaysFilter !== null) {
-            const customEnd = new Date(now.getTime() + filters.customDaysFilter * 24 * 60 * 60 * 1000)
-            customEnd.setHours(23, 59, 59, 999)
-            if (eventDate < now || eventDate > customEnd) return false
-          }
-          break
-      }
-    }
-
-    // Task filter
-    if (filters.taskFilter === 'incomplete') {
-      // Check if event has any incomplete tasks
-      const incompleteTasks = getIncompleteTasks(event)
-      const hasIncomplete = incompleteTasks.length > 0
-
-      // Task date range filter (only when filtering by incomplete)
-      const matchesTaskDateRange = isWithinTaskDateRange(event)
-
-      // Check specific task selection
-      const matchesSpecificTasks = matchesSelectedTasks(event)
-
-      return hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
-    }
-
-    return true
-  })
-
-  // Sort events based on user selection
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    switch (sortBy) {
-      case 'date_asc':
-        // Earliest date first
-        return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
-      
-      case 'date_desc':
-        // Latest date first
-        return new Date(b.start_date || b.created_at).getTime() - new Date(a.start_date || a.created_at).getTime()
-      
-      case 'title_asc':
-        // Title A-Z
-        return (a.title || '').localeCompare(b.title || '')
-      
-      case 'title_desc':
-        // Title Z-A
-        return (b.title || '').localeCompare(a.title || '')
-      
-      case 'account_asc':
-        // Account A-Z
-        return (a.account_name || '').localeCompare(b.account_name || '')
-      
-      case 'account_desc':
-        // Account Z-A
-        return (b.account_name || '').localeCompare(a.account_name || '')
-      
-      default:
-        // Default: earliest date first
-        return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
-    }
-  })
 
   return (
     <AppLayout>
@@ -652,7 +416,7 @@ export default function EventsPage() {
             filters={filters}
             onFiltersChange={setFilters}
             coreTasks={coreTasks}
-            eventCounts={{ ...calculateEventCounts, filtered: sortedEvents.length }}
+            eventCounts={eventCounts}
           />
 
           {/* View Toggle and Sort */}
