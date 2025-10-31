@@ -74,7 +74,8 @@ export async function POST(
         eventId: id,
         eventDate: event_date,
         productId: product_id,
-        tenantId: session.user.tenantId
+        tenantId: session.user.tenantId,
+        supabase
       })
 
       // Update assigned designer if provided
@@ -95,7 +96,8 @@ export async function POST(
         eventDate: event_date,
         designTypeId: design_item_type_id,
         customDesignDays: custom_design_days,
-        tenantId: session.user.tenantId
+        tenantId: session.user.tenantId,
+        supabase
       })
 
       // Update assigned designer if provided
