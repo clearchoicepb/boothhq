@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
     // Auto-create design items for auto-added types
     if (event.start_date && session.user.tenantId) {
       try {
-        const designItems = await createAutoDesignItems(event.id, event.start_date, session.user.tenantId)
+        const designItems = await createAutoDesignItems(event.id, event.start_date, session.user.tenantId, supabase)
         console.log(`Created ${designItems.length} auto-added design items for event ${event.id}`)
       } catch (error) {
         console.error('Error auto-creating design items:', error)

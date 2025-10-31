@@ -23,8 +23,8 @@ export async function GET(
       .select(`
         *,
         design_item_type:design_item_types(id, name, type),
-        assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, name, email),
-        approved_by_user:users!event_design_items_approved_by_fkey(id, name, email)
+        assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, first_name, last_name, email),
+        approved_by_user:users!event_design_items_approved_by_fkey(id, first_name, last_name, email)
       `)
       .eq('event_id', id)
       .eq('tenant_id', session.user.tenantId)
@@ -74,7 +74,8 @@ export async function POST(
         eventId: id,
         eventDate: event_date,
         productId: product_id,
-        tenantId: session.user.tenantId
+        tenantId: session.user.tenantId,
+        supabase
       })
 
       // Update assigned designer if provided
@@ -95,7 +96,8 @@ export async function POST(
         eventDate: event_date,
         designTypeId: design_item_type_id,
         customDesignDays: custom_design_days,
-        tenantId: session.user.tenantId
+        tenantId: session.user.tenantId,
+        supabase
       })
 
       // Update assigned designer if provided

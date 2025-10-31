@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 interface CreateDesignItemParams {
   eventId: string
@@ -6,6 +7,7 @@ interface CreateDesignItemParams {
   designTypeId: string
   customDesignDays?: number
   tenantId: string
+  supabase: SupabaseClient // Pass in the tenant database client
 }
 
 export async function createDesignItemForEvent({
@@ -13,9 +15,10 @@ export async function createDesignItemForEvent({
   eventDate,
   designTypeId,
   customDesignDays,
-  tenantId
+  tenantId,
+  supabase
 }: CreateDesignItemParams) {
-  const supabase = createServerSupabaseClient()
+  // Use the provided tenant database client instead of creating a new one
 
   // Fetch design type details
   const { data: designType, error: typeError } = await supabase
@@ -134,9 +137,12 @@ export async function createDesignItemForEvent({
   return designItem
 }
 
-export async function createAutoDesignItems(eventId: string, eventDate: string, tenantId: string) {
-  const supabase = createServerSupabaseClient()
-
+export async function createAutoDesignItems(
+  eventId: string,
+  eventDate: string,
+  tenantId: string,
+  supabase: SupabaseClient
+) {
   // Find all auto-added design types
   const { data: autoTypes, error } = await supabase
     .from('design_item_types')
@@ -159,7 +165,8 @@ export async function createAutoDesignItems(eventId: string, eventDate: string, 
       eventId,
       eventDate,
       designTypeId: type.id,
-      tenantId
+      tenantId,
+      supabase
     })
     if (item) results.push(item)
   }
@@ -171,15 +178,15 @@ export async function createDesignItemsForProduct({
   eventId,
   eventDate,
   productId,
-  tenantId
+  tenantId,
+  supabase
 }: {
   eventId: string
   eventDate: string
   productId: string
   tenantId: string
+  supabase: SupabaseClient
 }) {
-  const supabase = createServerSupabaseClient()
-
   // Fetch product with design requirements
   const { data: product, error: productError } = await supabase
     .from('products')
@@ -205,6 +212,7 @@ export async function createDesignItemsForProduct({
     eventDate,
     designTypeId: product.design_item_type_id,
     customDesignDays: product.design_lead_time_override,
-    tenantId
+    tenantId,
+    supabase
   })
 }
