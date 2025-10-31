@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
+import { getEventPriority, PRIORITY_CONFIG } from '@/lib/utils/event-priority'
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
@@ -793,28 +794,8 @@ export default function EventsPage() {
                     const completedTasks = totalTasks - incompleteCount
                     const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
 
-                    // Determine priority level based on days until event and task status
-                    const getPriorityLevel = () => {
-                      if (daysUntil === null || daysUntil < 0) return 'none'
-                      if (daysUntil <= 2) return 'critical' // Red
-                      if (daysUntil <= 7) return 'high' // Orange
-                      if (daysUntil <= 14) return 'medium' // Yellow
-                      if (daysUntil <= 30) return 'low' // Blue
-                      return 'none' // Gray
-                    }
-
-                    const priorityLevel = getPriorityLevel()
-
-                    // Priority colors and badges
-                    const priorityConfig = {
-                      critical: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴', border: 'border-l-4 border-red-500' },
-                      high: { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🟠', border: 'border-l-4 border-orange-500' },
-                      medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡', border: 'border-l-4 border-yellow-500' },
-                      low: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵', border: 'border-l-4 border-blue-500' },
-                      none: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '⚪', border: '' }
-                    }
-
-                    const priority = priorityConfig[priorityLevel]
+                    // Calculate priority level using shared utility
+                    const { level: priorityLevel, config: priority } = getEventPriority(daysUntil)
                     const isExpanded = expandedRows.has(event.id)
                     const isLoadingTasks = loadingTasks.has(event.id)
 
@@ -1085,25 +1066,8 @@ export default function EventsPage() {
               const completedTasks = totalTasks - incompleteCount
               const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
 
-              // Determine priority level
-              const getPriorityLevel = () => {
-                if (daysUntil === null || daysUntil < 0) return 'none'
-                if (daysUntil <= 2) return 'critical'
-                if (daysUntil <= 7) return 'high'
-                if (daysUntil <= 14) return 'medium'
-                if (daysUntil <= 30) return 'low'
-                return 'none'
-              }
-
-              const priorityLevel = getPriorityLevel()
-              const priorityConfig = {
-                critical: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴', border: 'border-l-4 border-red-500', label: 'CRITICAL' },
-                high: { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🟠', border: 'border-l-4 border-orange-500', label: 'HIGH' },
-                medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡', border: 'border-l-4 border-yellow-500', label: 'MEDIUM' },
-                low: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵', border: 'border-l-4 border-blue-500', label: 'LOW' },
-                none: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '⚪', border: '', label: '' }
-              }
-              const priority = priorityConfig[priorityLevel]
+              // Calculate priority level using shared utility
+              const { level: priorityLevel, config: priority } = getEventPriority(daysUntil)
 
               return (
                 <div
