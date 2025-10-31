@@ -23,8 +23,8 @@ export async function GET(
       .select(`
         *,
         design_item_type:design_item_types(id, name, type),
-        assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, name, email),
-        approved_by_user:users!event_design_items_approved_by_fkey(id, name, email)
+        assigned_designer:assigned_designer_id(id, name, email),
+        approved_by_user:approved_by(id, name, email)
       `)
       .eq('event_id', id)
       .eq('tenant_id', session.user.tenantId)
