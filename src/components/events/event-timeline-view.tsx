@@ -5,6 +5,20 @@ import { EventTimelineCard } from './event-timeline-card'
 import { EventPreviewModal } from './event-preview-modal'
 import { getDaysUntil } from '@/lib/utils/date-utils'
 
+interface EventDate {
+  id: string
+  event_date: string
+  start_time?: string
+  end_time?: string
+  location_id?: string
+  locations?: {
+    id: string
+    name: string
+  }
+  notes?: string
+  status: string
+}
+
 interface Event {
   id: string
   title: string
@@ -12,7 +26,9 @@ interface Event {
   location: string | null
   account_name: string | null
   status: string
-  event_dates?: any[]
+  event_dates?: EventDate[]
+  _currentEventDate?: EventDate
+  _originalEventId?: string
   event_categories?: {
     id: string
     name: string
@@ -37,8 +53,26 @@ export function EventTimelineView({
   coreTasks
 }: EventTimelineViewProps) {
   const [previewEventId, setPreviewEventId] = useState<string | null>(null)
+  const [previewEventDate, setPreviewEventDate] = useState<EventDate | null>(null)
 
   const totalTasksPerEvent = coreTasks.length
+
+  // Handler for opening preview modal with event date
+  const handleOpenPreview = (event: Event) => {
+    // Use _currentEventDate if available (for exploded multi-date events)
+    // Otherwise use the first event_dates entry, or null
+    const eventDate = event._currentEventDate || event.event_dates?.[0] || null
+    const eventId = event._originalEventId || event.id
+
+    setPreviewEventId(eventId)
+    setPreviewEventDate(eventDate)
+  }
+
+  // Handler for closing preview modal
+  const handleClosePreview = () => {
+    setPreviewEventId(null)
+    setPreviewEventDate(null)
+  }
 
   // Helper function to calculate task progress for an event
   const getTaskProgress = (event: Event) => {
@@ -183,7 +217,7 @@ export function EventTimelineView({
                         event={event}
                         tenantSubdomain={tenantSubdomain}
                         taskProgress={getTaskProgress(event)}
-                        onClick={() => setPreviewEventId(event.id)}
+                        onClick={() => handleOpenPreview(event)}
                       />
                     ))
                   )}
@@ -228,7 +262,7 @@ export function EventTimelineView({
                           event={event}
                           tenantSubdomain={tenantSubdomain}
                           taskProgress={getTaskProgress(event)}
-                          onClick={() => setPreviewEventId(event.id)}
+                          onClick={() => handleOpenPreview(event)}
                         />
                       </div>
                     ))}
@@ -244,9 +278,10 @@ export function EventTimelineView({
       {previewEventId && (
         <EventPreviewModal
           isOpen={!!previewEventId}
-          onClose={() => setPreviewEventId(null)}
+          onClose={handleClosePreview}
           eventId={previewEventId}
           tenantSubdomain={tenantSubdomain}
+          selectedEventDate={previewEventDate}
         />
       )}
     </div>
