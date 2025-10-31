@@ -5,21 +5,47 @@ import { X, Calendar, MapPin, Building2, User, CheckCircle2, Clock, ExternalLink
 import { formatDate } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 
+interface EventDate {
+  id: string
+  event_date: string
+  start_time?: string
+  end_time?: string
+  location_id?: string
+  locations?: {
+    id: string
+    name: string
+  }
+}
+
 interface EventPreviewModalProps {
   isOpen: boolean
   onClose: () => void
   eventId: string
   tenantSubdomain: string
+  selectedEventDate?: EventDate | null
 }
 
 export function EventPreviewModal({
   isOpen,
   onClose,
   eventId,
-  tenantSubdomain
+  tenantSubdomain,
+  selectedEventDate
 }: EventPreviewModalProps) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  // Debug: Log what date we're supposed to show
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[PREVIEW MODAL] Opening with:', {
+        eventId,
+        selectedEventDate,
+        hasSelectedDate: !!selectedEventDate,
+        selectedDateValue: selectedEventDate?.event_date
+      })
+    }
+  }, [isOpen, eventId, selectedEventDate])
 
   useEffect(() => {
     if (isOpen && eventId) {
@@ -125,8 +151,19 @@ export function EventPreviewModal({
                   <div>
                     <p className="text-sm font-medium text-gray-900">Date</p>
                     <p className="text-sm text-gray-600">
-                      {event.start_date ? formatDate(event.start_date) : 'Not set'}
+                      {selectedEventDate
+                        ? formatDate(selectedEventDate.event_date)
+                        : event.start_date
+                          ? formatDate(event.start_date)
+                          : 'Not set'}
                     </p>
+                    {selectedEventDate && (selectedEventDate.start_time || selectedEventDate.end_time) && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {selectedEventDate.start_time && selectedEventDate.end_time
+                          ? `${selectedEventDate.start_time} - ${selectedEventDate.end_time}`
+                          : selectedEventDate.start_time || selectedEventDate.end_time}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -136,7 +173,7 @@ export function EventPreviewModal({
                   <div>
                     <p className="text-sm font-medium text-gray-900">Location</p>
                     <p className="text-sm text-gray-600">
-                      {event.event_dates?.[0]?.locations?.name || event.location || 'TBD'}
+                      {selectedEventDate?.locations?.name || event.event_dates?.[0]?.locations?.name || event.location || 'TBD'}
                     </p>
                   </div>
                 </div>

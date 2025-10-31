@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDate, formatDateShort, getDaysUntil, isDateToday, parseLocalDate } from '@/lib/utils/date-utils'
+import { getEventPriority, PRIORITY_CONFIG } from '@/lib/utils/event-priority'
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
@@ -23,6 +24,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
 import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
+import { useEventsFilters } from '@/hooks/useEventsFilters'
+import { eventsService } from '@/lib/api/services/eventsService'
 
 interface EventDate {
   id: string
@@ -76,6 +79,10 @@ interface Event {
     name: string
     slug: string
   }
+  // For exploded multi-date events
+  _originalEventId?: string
+  _currentEventDate?: EventDate
+  _displayId?: string
 }
 
 interface CoreTask {
@@ -84,6 +91,50 @@ interface CoreTask {
   task_name: string
   display_order: number
   is_active: boolean
+}
+
+/**
+ * Explodes events with multiple dates into separate rows for dashboard display.
+ * Each event date becomes its own row with proper priority calculation.
+ *
+ * @param events - Array of events from API
+ * @returns Array of events where multi-date events are exploded into separate rows
+ */
+function explodeMultiDateEvents(events: Event[]): Event[] {
+  const explodedEvents: Event[] = []
+
+  for (const event of events) {
+    const eventDates = event.event_dates || []
+
+    // If event has no dates, keep as-is
+    if (eventDates.length === 0) {
+      explodedEvents.push(event)
+      continue
+    }
+
+    // If event has only 1 date, keep as-is but add _currentEventDate for consistency
+    if (eventDates.length === 1) {
+      explodedEvents.push({
+        ...event,
+        _currentEventDate: eventDates[0] // Set current date for preview modal
+      })
+      continue
+    }
+
+    // Event has multiple dates - create a separate row for each date
+    for (const eventDate of eventDates) {
+      explodedEvents.push({
+        ...event,
+        _originalEventId: event.id, // Store original ID for reference
+        _displayId: `${event.id}-${eventDate.id}`, // Unique ID for React keys
+        _currentEventDate: eventDate, // Current event date being displayed
+        start_date: eventDate.event_date, // Override start_date for sorting/priority
+        location: eventDate.locations?.name || event.location, // Use specific location if available
+      })
+    }
+  }
+
+  return explodedEvents
 }
 
 export default function EventsPage() {
@@ -100,6 +151,20 @@ export default function EventsPage() {
   const eventIds = useMemo(() => events.map(e => e.id), [events])
   const { data: taskStatus = {} } = useEventsTaskStatus(eventIds)
 
+  // ✨ EXPLODE MULTI-DATE EVENTS - Each date becomes a separate row
+  const explodedEvents = useMemo(() => explodeMultiDateEvents(events), [events])
+
+  // ✨ FILTER & SORT HOOK - Manages filtering, sorting, and event counts
+  const {
+    sortedEvents,
+    filters,
+    setFilters,
+    sortBy,
+    setSortBy,
+    eventCounts,
+    getIncompleteTasks
+  } = useEventsFilters({ events: explodedEvents, coreTasks })
+
   // Aggregate loading state
   const localLoading = eventsLoading
 
@@ -112,26 +177,13 @@ export default function EventsPage() {
   const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, any[]>>({})
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set())
 
-  // Sort options
-  const [sortBy, setSortBy] = useState<string>('date_asc')
-
-  // Filter state (consolidated)
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    dateRangeFilter: 'upcoming',
-    customDaysFilter: null,
-    statusFilter: 'all',
-    taskFilter: 'all',
-    taskDateRangeFilter: 14,
-    selectedTaskIds: []
-  })
-
   // Bulk selection state
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set())
 
   // Preview modal state
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [previewEventId, setPreviewEventId] = useState<string | null>(null)
+  const [previewEventDate, setPreviewEventDate] = useState<EventDate | null>(null)
 
   // Load view preference from localStorage on mount
   useEffect(() => {
@@ -151,9 +203,10 @@ export default function EventsPage() {
     setCurrentView(newView)
   }
 
-  // Handler for opening preview modal
-  const handleOpenPreview = (eventId: string) => {
+  // Handler for opening preview modal with specific event date
+  const handleOpenPreview = (eventId: string, eventDate?: EventDate) => {
     setPreviewEventId(eventId)
+    setPreviewEventDate(eventDate || null)
     setPreviewModalOpen(true)
   }
 
@@ -161,41 +214,45 @@ export default function EventsPage() {
   const handleClosePreview = () => {
     setPreviewModalOpen(false)
     setPreviewEventId(null)
+    setPreviewEventDate(null)
   }
 
   // Handler for expanding/collapsing rows
-  const handleToggleRow = async (eventId: string) => {
+  // Note: displayId is used for row state, but tasks are fetched using originalEventId
+  const handleToggleRow = async (displayId: string) => {
+    // Extract the original event ID (before the '-' if this is an exploded multi-date event)
+    const originalEventId = displayId.includes('-') ? displayId.split('-')[0] : displayId
+
     const newExpandedRows = new Set(expandedRows)
 
-    if (newExpandedRows.has(eventId)) {
+    if (newExpandedRows.has(displayId)) {
       // Collapse the row
-      newExpandedRows.delete(eventId)
+      newExpandedRows.delete(displayId)
       setExpandedRows(newExpandedRows)
     } else {
       // Expand the row and fetch task completions if not already loaded
-      newExpandedRows.add(eventId)
+      newExpandedRows.add(displayId)
       setExpandedRows(newExpandedRows)
 
-      if (!eventTaskCompletions[eventId]) {
-        await fetchEventTaskCompletions(eventId)
+      // Tasks are per event, not per date, so fetch using original event ID
+      // But store under displayId so each row has its own task display
+      if (!eventTaskCompletions[displayId]) {
+        await fetchEventTaskCompletions(displayId, originalEventId)
       }
     }
   }
 
   // Fetch task completions for a specific event
-  const fetchEventTaskCompletions = async (eventId: string) => {
-    setLoadingTasks(prev => new Set(prev).add(eventId))
+  // displayId: unique ID for the row (may include event date ID for multi-date events)
+  // originalEventId: the actual event ID to fetch tasks from the API
+  const fetchEventTaskCompletions = async (displayId: string, originalEventId: string) => {
+    setLoadingTasks(prev => new Set(prev).add(displayId))
 
     try {
-      const response = await fetch(`/api/events/${eventId}/core-tasks`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch tasks')
-      }
-
-      const tasks = await response.json()
+      const tasks = await eventsService.getCoreTasks(originalEventId)
       setEventTaskCompletions(prev => ({
         ...prev,
-        [eventId]: tasks
+        [displayId]: tasks
       }))
     } catch (error) {
       console.error('Error fetching event tasks:', error)
@@ -203,7 +260,7 @@ export default function EventsPage() {
     } finally {
       setLoadingTasks(prev => {
         const newSet = new Set(prev)
-        newSet.delete(eventId)
+        newSet.delete(displayId)
         return newSet
       })
     }
@@ -220,14 +277,10 @@ export default function EventsPage() {
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
       try {
-        const response = await fetch(`/api/events/${eventId}`, {
-          method: 'DELETE'
-        })
-        if (response.ok) {
-          // Invalidate events query to refetch
-          queryClient.invalidateQueries({ queryKey: ['events'] })
-          toast.success('Event deleted successfully')
-        }
+        await eventsService.delete(eventId)
+        // Invalidate events query to refetch
+        queryClient.invalidateQueries({ queryKey: ['events'] })
+        toast.success('Event deleted successfully')
       } catch (error) {
         console.error('Error deleting event:', error)
         toast.error('Failed to delete event')
@@ -281,7 +334,7 @@ export default function EventsPage() {
 
     try {
       const deletePromises = Array.from(selectedEventIds).map(eventId =>
-        fetch(`/api/events/${eventId}`, { method: 'DELETE' })
+        eventsService.delete(eventId)
       )
 
       await Promise.all(deletePromises)
@@ -300,11 +353,7 @@ export default function EventsPage() {
 
     try {
       const updatePromises = Array.from(selectedEventIds).map(eventId =>
-        fetch(`/api/events/${eventId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
-        })
+        eventsService.update(eventId, { status: newStatus })
       )
 
       await Promise.all(updatePromises)
@@ -339,90 +388,6 @@ export default function EventsPage() {
   }
 
 
-  // Calculate event counts for different date filters (for badge counts)
-  // Must be before early returns to maintain hook order
-  const calculateEventCounts = useMemo(() => {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-
-    const counts = {
-      total: events.length,
-      filtered: 0, // Will be set after filtering
-      today: 0,
-      thisWeek: 0,
-      thisMonth: 0,
-      upcoming: 0,
-      past: 0,
-      next10Days: 0,
-      next45Days: 0
-    }
-
-    events.forEach(event => {
-      if (!event.start_date) return
-
-      const eventDate = parseLocalDate(event.start_date)
-      eventDate.setHours(0, 0, 0, 0)
-
-      const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-      // Today
-      if (isDateToday(event.start_date)) {
-        counts.today++
-      }
-
-      // This week (next 7 days)
-      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      if (eventDate >= now && eventDate <= weekEnd) {
-        counts.thisWeek++
-      }
-
-      // This month
-      if (eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear()) {
-        counts.thisMonth++
-      }
-
-      // Upcoming (future events)
-      if (eventDate >= now) {
-        counts.upcoming++
-      }
-
-      // Past
-      if (eventDate < now) {
-        counts.past++
-      }
-
-      // Next 10 days
-      if (daysUntil >= 0 && daysUntil <= 10) {
-        counts.next10Days++
-      }
-
-      // Next 45 days with incomplete tasks (inline logic to avoid calling helper function)
-      if (daysUntil >= 0 && daysUntil <= 45 && coreTasks.length > 0) {
-        // Check if event has incomplete tasks
-        let hasIncompleteTasks = false
-
-        if (!event.task_completions || event.task_completions.length === 0) {
-          // No completions means all tasks are incomplete
-          hasIncompleteTasks = true
-        } else {
-          // Check if any tasks are not completed
-          const completedTaskIds = new Set(
-            event.task_completions
-              .filter(tc => tc.is_completed)
-              .map(tc => tc.core_task_template_id)
-          )
-          hasIncompleteTasks = coreTasks.some(task => !completedTaskIds.has(task.id))
-        }
-
-        if (hasIncompleteTasks) {
-          counts.next45Days++
-        }
-      }
-    })
-
-    return counts
-  }, [events, coreTasks])
-
   if (status === 'loading' || loading || localLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -447,156 +412,6 @@ export default function EventsPage() {
       </div>
     )
   }
-
-  // Helper function to get incomplete tasks for an event
-  const getIncompleteTasks = (event: Event): string[] => {
-    // If no core tasks defined, no tasks can be incomplete
-    if (coreTasks.length === 0) {
-      return []
-    }
-
-    // If event has no task_completions array, ALL tasks are incomplete
-    if (!event.task_completions || event.task_completions.length === 0) {
-      return coreTasks.map(task => task.id)
-    }
-
-    // Get completed task IDs
-    const completedTaskIds = new Set(
-      event.task_completions
-        .filter(tc => tc.is_completed)
-        .map(tc => tc.core_task_template_id)
-    )
-
-    // Find tasks that are either not started or marked incomplete
-    const incompleteTasks = coreTasks
-      .filter(task => !completedTaskIds.has(task.id))
-      .map(task => task.id)
-
-    return incompleteTasks
-  }
-
-  // Helper function to check if event matches selected specific tasks
-  const matchesSelectedTasks = (event: Event): boolean => {
-    if (filters.selectedTaskIds.length === 0) return true
-
-    const incompleteTasks = getIncompleteTasks(event)
-    return filters.selectedTaskIds.some(taskId => incompleteTasks.includes(taskId))
-  }
-
-  // Helper function to check if event is within task date range (for incomplete task filter)
-  const isWithinTaskDateRange = (event: Event): boolean => {
-    if (!event.start_date) return false
-    const eventDate = new Date(event.start_date)
-    const now = new Date()
-    const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + filters.taskDateRangeFilter)
-    return eventDate >= now && eventDate <= futureDate
-  }
-
-  const filteredEvents = events.filter(event => {
-    // Search filter
-    const matchesSearch = (event.title || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                         (event.location || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                         (event.account_name && event.account_name.toLowerCase().includes(filters.searchTerm.toLowerCase()))
-
-    if (!matchesSearch) return false
-
-    // Status filter
-    if (filters.statusFilter !== 'all' && event.status !== filters.statusFilter) {
-      return false
-    }
-
-    // Date range filter
-    if (filters.dateRangeFilter !== 'all' && event.start_date) {
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-
-      const eventDate = parseLocalDate(event.start_date)
-      eventDate.setHours(0, 0, 0, 0)
-
-      switch (filters.dateRangeFilter) {
-        case 'today':
-          if (!isDateToday(event.start_date)) return false
-          break
-
-        case 'this_week':
-          const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-          if (eventDate < now || eventDate > weekEnd) return false
-          break
-
-        case 'this_month':
-          if (eventDate.getMonth() !== now.getMonth() ||
-              eventDate.getFullYear() !== now.getFullYear()) return false
-          break
-
-        case 'upcoming':
-          if (eventDate < now) return false
-          break
-
-        case 'past':
-          if (eventDate >= now) return false
-          break
-
-        case 'custom_days':
-          if (filters.customDaysFilter !== null) {
-            const customEnd = new Date(now.getTime() + filters.customDaysFilter * 24 * 60 * 60 * 1000)
-            customEnd.setHours(23, 59, 59, 999)
-            if (eventDate < now || eventDate > customEnd) return false
-          }
-          break
-      }
-    }
-
-    // Task filter
-    if (filters.taskFilter === 'incomplete') {
-      // Check if event has any incomplete tasks
-      const incompleteTasks = getIncompleteTasks(event)
-      const hasIncomplete = incompleteTasks.length > 0
-
-      // Task date range filter (only when filtering by incomplete)
-      const matchesTaskDateRange = isWithinTaskDateRange(event)
-
-      // Check specific task selection
-      const matchesSpecificTasks = matchesSelectedTasks(event)
-
-      return hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
-    }
-
-    return true
-  })
-
-  // Sort events based on user selection
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    switch (sortBy) {
-      case 'date_asc':
-        // Earliest date first
-        return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
-      
-      case 'date_desc':
-        // Latest date first
-        return new Date(b.start_date || b.created_at).getTime() - new Date(a.start_date || a.created_at).getTime()
-      
-      case 'title_asc':
-        // Title A-Z
-        return (a.title || '').localeCompare(b.title || '')
-      
-      case 'title_desc':
-        // Title Z-A
-        return (b.title || '').localeCompare(a.title || '')
-      
-      case 'account_asc':
-        // Account A-Z
-        return (a.account_name || '').localeCompare(b.account_name || '')
-      
-      case 'account_desc':
-        // Account Z-A
-        return (b.account_name || '').localeCompare(a.account_name || '')
-      
-      default:
-        // Default: earliest date first
-        return new Date(a.start_date || a.created_at).getTime() - new Date(b.start_date || b.created_at).getTime()
-    }
-  })
 
   return (
     <AppLayout>
@@ -651,7 +466,7 @@ export default function EventsPage() {
             filters={filters}
             onFiltersChange={setFilters}
             coreTasks={coreTasks}
-            eventCounts={{ ...calculateEventCounts, filtered: sortedEvents.length }}
+            eventCounts={eventCounts}
           />
 
           {/* View Toggle and Sort */}
@@ -780,10 +595,14 @@ export default function EventsPage() {
                     </tr>
                   )}
                   {sortedEvents.map((event) => {
+                    // Use exploded event date info if available
+                    const currentEventDate = event._currentEventDate
+                    const displayId = event._displayId || event.id
+                    const originalEventId = event._originalEventId || event.id
                     const eventDateCount = event.event_dates?.length || 0
-                    const firstDate = event.event_dates?.[0] || null
+
                     const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
-                    const displayLocation = firstDate?.locations?.name || event.location || 'No location'
+                    const displayLocation = currentEventDate?.locations?.name || event.location || 'No location'
                     const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
 
                     // Get incomplete tasks for this event
@@ -793,43 +612,23 @@ export default function EventsPage() {
                     const completedTasks = totalTasks - incompleteCount
                     const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
 
-                    // Determine priority level based on days until event and task status
-                    const getPriorityLevel = () => {
-                      if (daysUntil === null || daysUntil < 0) return 'none'
-                      if (daysUntil <= 2) return 'critical' // Red
-                      if (daysUntil <= 7) return 'high' // Orange
-                      if (daysUntil <= 14) return 'medium' // Yellow
-                      if (daysUntil <= 30) return 'low' // Blue
-                      return 'none' // Gray
-                    }
-
-                    const priorityLevel = getPriorityLevel()
-
-                    // Priority colors and badges
-                    const priorityConfig = {
-                      critical: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴', border: 'border-l-4 border-red-500' },
-                      high: { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🟠', border: 'border-l-4 border-orange-500' },
-                      medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡', border: 'border-l-4 border-yellow-500' },
-                      low: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵', border: 'border-l-4 border-blue-500' },
-                      none: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '⚪', border: '' }
-                    }
-
-                    const priority = priorityConfig[priorityLevel]
-                    const isExpanded = expandedRows.has(event.id)
-                    const isLoadingTasks = loadingTasks.has(event.id)
+                    // Calculate priority level using shared utility (now based on specific event date)
+                    const { level: priorityLevel, config: priority } = getEventPriority(daysUntil)
+                    const isExpanded = expandedRows.has(displayId)
+                    const isLoadingTasks = loadingTasks.has(displayId)
 
                     return (
-                      <React.Fragment key={event.id}>
-                      <tr 
+                      <React.Fragment key={displayId}>
+                      <tr
                         className={`hover:bg-gray-50 cursor-pointer ${priority.border}`}
-                        onClick={() => handleOpenPreview(event.id)}
+                        onClick={() => handleOpenPreview(originalEventId, currentEventDate)}
                       >
                         {/* Expand/Collapse Button */}
                         <td className="px-2 py-4 text-center">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleToggleRow(event.id)
+                              handleToggleRow(displayId)
                             }}
                             className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#347dc4] rounded"
                             title={isExpanded ? 'Collapse tasks' : 'Expand tasks'}
@@ -846,8 +645,8 @@ export default function EventsPage() {
                         <td className="px-2 py-4 text-center">
                           <input
                             type="checkbox"
-                            checked={selectedEventIds.has(event.id)}
-                            onChange={(e) => handleSelectEvent(event.id, e.target.checked)}
+                            checked={selectedEventIds.has(originalEventId)}
+                            onChange={(e) => handleSelectEvent(originalEventId, e.target.checked)}
                             onClick={(e) => e.stopPropagation()}
                             className="w-4 h-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
                           />
@@ -1029,8 +828,8 @@ export default function EventsPage() {
                               </div>
                             ) : (
                               <EventInlineTasks
-                                eventId={event.id}
-                                tasks={eventTaskCompletions[event.id] || []}
+                                eventId={originalEventId}
+                                tasks={eventTaskCompletions[displayId] || []}
                                 onTaskUpdate={handleTaskUpdate}
                               />
                             )}
@@ -1074,10 +873,14 @@ export default function EventsPage() {
 
             {/* Event cards */}
             {sortedEvents.map((event) => {
+              // Use exploded event date info if available
+              const currentEventDate = event._currentEventDate
+              const displayId = event._displayId || event.id
+              const originalEventId = event._originalEventId || event.id
               const eventDateCount = event.event_dates?.length || 0
-              const firstDate = event.event_dates?.[0] || null
+
               const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
-              const displayLocation = firstDate?.locations?.name || event.location || 'No location'
+              const displayLocation = currentEventDate?.locations?.name || event.location || 'No location'
               const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
               const incompleteTaskIds = getIncompleteTasks(event)
               const incompleteCount = incompleteTaskIds.length
@@ -1085,31 +888,14 @@ export default function EventsPage() {
               const completedTasks = totalTasks - incompleteCount
               const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
 
-              // Determine priority level
-              const getPriorityLevel = () => {
-                if (daysUntil === null || daysUntil < 0) return 'none'
-                if (daysUntil <= 2) return 'critical'
-                if (daysUntil <= 7) return 'high'
-                if (daysUntil <= 14) return 'medium'
-                if (daysUntil <= 30) return 'low'
-                return 'none'
-              }
-
-              const priorityLevel = getPriorityLevel()
-              const priorityConfig = {
-                critical: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴', border: 'border-l-4 border-red-500', label: 'CRITICAL' },
-                high: { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🟠', border: 'border-l-4 border-orange-500', label: 'HIGH' },
-                medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡', border: 'border-l-4 border-yellow-500', label: 'MEDIUM' },
-                low: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵', border: 'border-l-4 border-blue-500', label: 'LOW' },
-                none: { bg: 'bg-gray-100', text: 'text-gray-800', icon: '⚪', border: '', label: '' }
-              }
-              const priority = priorityConfig[priorityLevel]
+              // Calculate priority level using shared utility (now based on specific event date)
+              const { level: priorityLevel, config: priority } = getEventPriority(daysUntil)
 
               return (
                 <div
-                  key={event.id}
+                  key={displayId}
                   className={`bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg cursor-pointer ${priority.border}`}
-                  onClick={() => handleOpenPreview(event.id)}
+                  onClick={() => handleOpenPreview(originalEventId, currentEventDate)}
                 >
                   {/* Priority Header Banner */}
                   {priorityLevel !== 'none' && (
@@ -1257,7 +1043,7 @@ export default function EventsPage() {
                       className="flex gap-2 pt-3 border-t border-gray-200"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Link href={`/${tenantSubdomain}/events/${event.id}`} className="flex-1">
+                      <Link href={`/${tenantSubdomain}/events/${originalEventId}`} className="flex-1">
                         <button className="w-full px-3 py-2 bg-[#347dc4] text-white rounded-lg text-sm font-medium hover:bg-[#2c6ba8] transition-colors flex items-center justify-center gap-2">
                           <Eye className="h-4 w-4" />
                           View
@@ -1302,6 +1088,7 @@ export default function EventsPage() {
           onClose={handleClosePreview}
           eventId={previewEventId}
           tenantSubdomain={tenantSubdomain}
+          selectedEventDate={previewEventDate}
         />
       )}
     </AppLayout>

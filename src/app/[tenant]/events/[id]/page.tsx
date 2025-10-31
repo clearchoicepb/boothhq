@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -57,10 +57,64 @@ import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCom
 import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
 import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
+import { eventsService } from '@/lib/api/services/eventsService'
+import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 
-export default function EventDetailPage() {
+interface EventDate {
+  id: string
+  event_date: string
+  start_time?: string
+  end_time?: string
+  location_id?: string
+  notes?: string
+  status?: string
+  locations?: {
+    id: string
+    name: string
+  }
+}
+
+interface EventDetailContentProps {
+  eventData: ReturnType<typeof useEventData>
+}
+
+/**
+ * Get the next upcoming event date from a list of event dates.
+ * Returns the earliest future/today date, or the most recent past date if all are past.
+ *
+ * @param eventDates - Array of event dates
+ * @returns The next upcoming event date, or null if no dates exist
+ */
+function getNextEventDate(eventDates: EventDate[]): EventDate | null {
+  if (!eventDates || eventDates.length === 0) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0) // Start of today
+
+  // Sort dates chronologically
+  const sortedDates = [...eventDates].sort((a, b) => {
+    const dateA = new Date(a.event_date)
+    const dateB = new Date(b.event_date)
+    return dateA.getTime() - dateB.getTime()
+  })
+
+  // Find the first future or today date
+  const nextDate = sortedDates.find(d => {
+    const eventDate = new Date(d.event_date)
+    eventDate.setHours(0, 0, 0, 0)
+    return eventDate >= today
+  })
+
+  // If found a future/today date, return it
+  if (nextDate) return nextDate
+
+  // All dates are in the past, return the most recent one (last in sorted array)
+  return sortedDates[sortedDates.length - 1]
+}
+
+function EventDetailContent({ eventData }: EventDetailContentProps) {
   const { data: session, status } = useSession()
-  const { tenant, loading } = useTenant()
+  const { tenant, loading: tenantLoading } = useTenant()
   const { hasPermission } = usePermissions()
   const params = useParams()
   const router = useRouter()
@@ -68,18 +122,25 @@ export default function EventDetailPage() {
   const eventId = params.id as string
 
   // Custom Hooks - Core Data (Batch 1)
-  const eventData = useEventData(eventId, session, tenantSubdomain)
+  // eventData passed as prop to avoid duplicate fetching
   const references = useEventReferences(session, tenantSubdomain)
 
   // Custom Hooks - State Management (Batch 2)
   const tabs = useEventTabs(eventId, session, tenant)
-  const modals = useEventModals()
-  const editing = useEventEditing()
   const staff = useEventStaff(eventId, session, tenant)
 
+  // Context - Replaces useEventModals and useEventEditing hooks
+  const context = useEventDetail()
+
   // Destructure for easier access - Core Data
-  const { event, eventDates, loading: localLoading } = eventData
+  const { event, eventDates = [], loading: localLoading } = eventData || {}
   const { accounts, contacts, locations, paymentStatusOptions } = references
+
+  // Get the next upcoming event date (sorted chronologically)
+  const nextEventDate = useMemo(() => getNextEventDate(eventDates), [eventDates])
+
+  // Destructure for easier access - Context (Modal + Editing state)
+  const { modals: contextModals, editing: contextEditing } = context
 
   // Destructure for easier access - Tabs
   const {
@@ -99,82 +160,19 @@ export default function EventDetailPage() {
     fetchCommunications, // Keep original name for JSX callbacks
   } = tabs
 
-  // Destructure for easier access - Modals
-  const {
-    isTaskModalOpen,
-    setIsTaskModalOpen,
-    tasksKey,
-    setTasksKey,
-    openTaskModal,
-    closeTaskModal,
-    refreshTasks,
-    isLogCommunicationModalOpen,
-    setIsLogCommunicationModalOpen,
-    isEmailModalOpen,
-    setIsEmailModalOpen,
-    isSMSModalOpen,
-    setIsSMSModalOpen,
-    openLogCommunicationModal,
-    closeLogCommunicationModal,
-    openEmailModal,
-    closeEmailModal,
-    openSMSModal,
-    closeSMSModal,
-    selectedCommunication,
-    setSelectedCommunication,
-    isCommunicationDetailOpen,
-    setIsCommunicationDetailOpen,
-    openCommunicationDetail,
-    closeCommunicationDetail,
-    selectedActivity,
-    setSelectedActivity,
-    isActivityDetailOpen,
-    setIsActivityDetailOpen,
-    openActivityDetail,
-    closeActivityDetail,
-    selectedEventDate,
-    setSelectedEventDate,
-    isEventDateDetailOpen,
-    setIsEventDateDetailOpen,
-    activeEventDateTab,
-    setActiveEventDateTab,
-    openEventDateDetail,
-    closeEventDateDetail,
-  } = modals
-
-  // Destructure for easier access - Editing
-  const {
-    isEditingAccountContact,
-    setIsEditingAccountContact,
-    editAccountId,
-    editContactId,
-    editEventPlannerId,
-    setEditAccountId,
-    setEditContactId,
-    setEditEventPlannerId,
-    startEditingAccountContact,
-    cancelEditingAccountContact,
-    finishEditingAccountContact,
-    isEditingEventDate,
-    setIsEditingEventDate,
-    editEventDateData,
-    setEditEventDateData,
-    startEditingEventDate,
-    cancelEditingEventDate,
-    finishEditingEventDate,
-    isEditingPaymentStatus,
-    setIsEditingPaymentStatus,
-    startEditingPaymentStatus,
-    cancelEditingPaymentStatus,
-    finishEditingPaymentStatus,
-    isEditingDescription,
-    setIsEditingDescription,
-    editedDescription,
-    setEditedDescription,
-    startEditingDescription,
-    cancelEditingDescription,
-    finishEditingDescription,
-  } = editing
+  // Local state for modals not yet moved to context (Communications, Activity, etc.)
+  const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
+  const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
+  const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
+  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
+  const [selectedEventDate, setSelectedEventDate] = useState<any>(null)
+  const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
+  const [activeEventDateTab, setActiveEventDateTab] = useState('details')
+  const [isEditingEventDate, setIsEditingEventDate] = useState(false)
+  const [editEventDateData, setEditEventDateData] = useState<any>({})
 
   // Destructure for easier access - Staff
   const {
@@ -210,39 +208,29 @@ export default function EventDetailPage() {
   // All fetch functions now provided by custom hooks (no longer defined here)
 
   const handleStartEditAccountContact = () => {
-    startEditingAccountContact(
-      event?.account_id || '',
-      event?.primary_contact?.id || event?.contact_id || '',
-      event?.event_planner?.id || ''
-    )
+    context.startEditAccountContact()
   }
 
   const handleCancelEditAccountContact = () => {
-    cancelEditingAccountContact()
+    context.cancelEditAccountContact()
   }
 
   const handleSaveAccountContact = async () => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          account_id: editAccountId || null,
-          primary_contact_id: editContactId || null,
-          contact_id: editContactId || null, // Keep for backward compatibility
-          event_planner_id: editEventPlannerId || null
-        }),
+      await eventsService.update(eventId, {
+        account_id: contextEditing.editAccountId || null,
+        primary_contact_id: contextEditing.editContactId || null,
+        contact_id: contextEditing.editContactId || null, // Keep for backward compatibility
+        event_planner_id: contextEditing.editEventPlannerId || null
       })
 
-      if (response.ok) {
-        await eventData.fetchEvent()
-        finishEditingAccountContact()
-        toast.success('Account and contact updated successfully')
-      } else {
-        toast.error('Failed to update account/contact')
-      }
+      await eventData.fetchEvent()
+      await context.saveEditAccountContact(
+        contextEditing.editAccountId,
+        contextEditing.editContactId,
+        contextEditing.editEventPlannerId
+      )
+      toast.success('Account and contact updated successfully')
     } catch (error) {
       console.error('Error updating account/contact:', error)
       toast.error('Error updating account/contact')
@@ -282,23 +270,15 @@ export default function EventDetailPage() {
     if (!selectedEventDate) return
 
     try {
-      const response = await fetch(`/api/event-dates/${selectedEventDate.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editEventDateData),
-      })
+      const updatedEventDate = await eventsService.updateEventDate(
+        selectedEventDate.id,
+        editEventDateData
+      )
 
-      if (response.ok) {
-        await eventData.fetchEventDates()
-        const updatedEventDate = await response.json()
-        setSelectedEventDate(updatedEventDate)
-        finishEditingEventDate()
-        toast.success('Event date updated successfully')
-      } else {
-        toast.error('Failed to update event date')
-      }
+      await eventData.fetchEventDates()
+      setSelectedEventDate(updatedEventDate)
+      finishEditingEventDate()
+      toast.success('Event date updated successfully')
     } catch (error) {
       console.error('Error updating event date:', error)
       toast.error('Error updating event date')
@@ -307,21 +287,11 @@ export default function EventDetailPage() {
 
   const handleUpdatePaymentStatus = async (newStatus: string) => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ payment_status: newStatus }),
-      })
+      await eventsService.update(eventId, { payment_status: newStatus })
 
-      if (response.ok) {
-        await eventData.fetchEvent()
-        finishEditingPaymentStatus()
-        toast.success('Payment status updated successfully')
-      } else {
-        toast.error('Failed to update payment status')
-      }
+      await eventData.fetchEvent()
+      await context.saveEditPaymentStatus(newStatus)
+      toast.success('Payment status updated successfully')
     } catch (error) {
       console.error('Error updating payment status:', error)
       toast.error('Error updating payment status')
@@ -330,21 +300,11 @@ export default function EventDetailPage() {
 
   const handleSaveDescription = async () => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ description: editedDescription }),
-      })
+      await eventsService.update(eventId, { description: contextEditing.editedDescription })
 
-      if (response.ok) {
-        await eventData.fetchEvent()
-        finishEditingDescription()
-        toast.success('Description updated successfully')
-      } else {
-        toast.error('Failed to update event scope/details')
-      }
+      await eventData.fetchEvent()
+      await context.saveEditDescription(contextEditing.editedDescription)
+      toast.success('Description updated successfully')
     } catch (error) {
       console.error('Error updating event scope/details:', error)
       toast.error('Error updating event scope/details')
@@ -450,15 +410,13 @@ export default function EventDetailPage() {
 
         // Delete all existing assignments
         for (const assignment of existingAssignments) {
-          await fetch(`/api/event-staff/${assignment.id}`, { method: 'DELETE' })
+          await eventsService.deleteStaffAssignment(assignment.id)
         }
       }
 
       // For Operations roles: create/update single record
       if (selectedRole?.type === 'operations') {
         console.log('[CLIENT-STAFF] Processing OPERATIONS role...')
-        const url = isEditing ? `/api/event-staff/${editingStaffId}` : '/api/event-staff'
-        const method = isEditing ? 'PUT' : 'POST'
 
         const requestBody: any = {
           staff_role_id: selectedStaffRoleId,
@@ -473,21 +431,17 @@ export default function EventDetailPage() {
           requestBody.event_date_id = null
         }
 
-        console.log('[CLIENT-STAFF] Making request:', method, url)
         console.log('[CLIENT-STAFF] Request body:', requestBody)
 
-        const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-        })
+        try {
+          const responseData = isEditing
+            ? await eventsService.updateStaffAssignment(editingStaffId, requestBody)
+            : await eventsService.createStaffAssignment(requestBody)
 
-        console.log('[CLIENT-STAFF] Response status:', response.status)
-        const responseData = await response.json()
-        console.log('[CLIENT-STAFF] Response data:', responseData)
-
-        if (!response.ok) {
-          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${responseData.error || 'Unknown error'}`)
+          console.log('[CLIENT-STAFF] Response data:', responseData)
+        } catch (error: any) {
+          console.error('[CLIENT-STAFF] Error:', error)
+          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${error.message || 'Unknown error'}`)
           return
         }
       } else {
@@ -506,25 +460,19 @@ export default function EventDetailPage() {
             notes: staffNotes || null
           }
 
-          console.log('[CLIENT-STAFF] Making POST request for date:', dateTime.dateId)
+          console.log('[CLIENT-STAFF] Creating staff assignment for date:', dateTime.dateId)
           console.log('[CLIENT-STAFF] Request body:', requestBody)
 
-          const response = await fetch('/api/event-staff', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-          })
-
-          console.log('[CLIENT-STAFF] Response status:', response.status)
-          const responseData = await response.json()
-          console.log('[CLIENT-STAFF] Response data:', responseData)
-
-          if (!response.ok) {
+          try {
+            const responseData = await eventsService.createStaffAssignment(requestBody)
+            console.log('[CLIENT-STAFF] Response data:', responseData)
+          } catch (error: any) {
+            console.error('[CLIENT-STAFF] Error:', error)
             // Check for duplicate constraint error
-            if (responseData.code === '23505' || responseData.details?.includes('already exists')) {
+            if (error.code === '23505' || error.message?.includes('already exists')) {
               toast.error(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
             } else {
-              toast.error(`Failed to add staff for date: ${responseData.error || 'Unknown error'}`)
+              toast.error(`Failed to add staff for date: ${error.message || 'Unknown error'}`)
             }
             return
           }
@@ -579,7 +527,7 @@ export default function EventDetailPage() {
 
   const canManageEvents = hasPermission('events', 'edit')
 
-  if (status === 'loading' || loading || localLoading) {
+  if (status === 'loading' || tenantLoading || localLoading) {
     return (
       <AccessGuard module="events">
         <AppLayout>
@@ -644,34 +592,31 @@ export default function EventDetailPage() {
               eventDates={eventDates}
               paymentStatusOptions={paymentStatusOptions}
               tenantSubdomain={tenantSubdomain}
-              isEditingAccountContact={isEditingAccountContact}
-              editAccountId={editAccountId}
-              editContactId={editContactId}
-              editEventPlannerId={editEventPlannerId}
-              isEditingPaymentStatus={isEditingPaymentStatus}
-              isEditingDescription={isEditingDescription}
-              editedDescription={editedDescription}
+              isEditingAccountContact={contextEditing.isEditingAccountContact}
+              editAccountId={contextEditing.editAccountId}
+              editContactId={contextEditing.editContactId}
+              editEventPlannerId={contextEditing.editEventPlannerId}
+              isEditingPaymentStatus={contextEditing.isEditingPaymentStatus}
+              isEditingDescription={contextEditing.isEditingDescription}
+              editedDescription={contextEditing.editedDescription}
               onStartEditAccountContact={handleStartEditAccountContact}
               onSaveAccountContact={handleSaveAccountContact}
               onCancelEditAccountContact={handleCancelEditAccountContact}
               onAccountChange={(accountId) => {
-                setEditAccountId(accountId || '')
+                context.updateEditAccount(accountId || '')
                 if (accountId !== event?.account_id) {
-                  setEditContactId('')
+                  context.updateEditContact('')
                 }
               }}
-              onContactChange={(contactId) => setEditContactId(contactId || '')}
-              onEventPlannerChange={(eventPlannerId) => setEditEventPlannerId(eventPlannerId || '')}
-              onStartEditPaymentStatus={startEditingPaymentStatus}
+              onContactChange={(contactId) => context.updateEditContact(contactId || '')}
+              onEventPlannerChange={(eventPlannerId) => context.updateEditPlanner(eventPlannerId || '')}
+              onStartEditPaymentStatus={context.startEditPaymentStatus}
               onUpdatePaymentStatus={handleUpdatePaymentStatus}
-              onCancelEditPaymentStatus={() => setIsEditingPaymentStatus(false)}
-              onStartEditDescription={() => startEditingDescription(event.description || '')}
-              onDescriptionChange={setEditedDescription}
+              onCancelEditPaymentStatus={context.cancelEditPaymentStatus}
+              onStartEditDescription={() => context.startEditDescription()}
+              onDescriptionChange={context.updateEditDescription}
               onSaveDescription={handleSaveDescription}
-              onCancelEditDescription={() => {
-                cancelEditingDescription()
-                setEditedDescription('')
-              }}
+              onCancelEditDescription={context.cancelEditDescription}
               canManageEvents={canManageEvents}
               activeEventDateTab={activeEventDateTab}
               onEventDateTabChange={setActiveEventDateTab}
@@ -688,11 +633,11 @@ export default function EventDetailPage() {
           <TabsContent value="planning" className="mt-0">
             <EventPlanningTab
               eventId={eventId}
-              eventDate={event.start_date || event.event_dates?.[0]?.event_date || ''}
+              eventDate={event.start_date || nextEventDate?.event_date || ''}
               tenantSubdomain={tenantSubdomain}
-              onCreateTask={() => setIsTaskModalOpen(true)}
-              tasksKey={tasksKey}
-              onTasksRefresh={() => setTasksKey(prev => prev + 1)}
+              onCreateTask={() => context.openModal('isTaskModalOpen')}
+              tasksKey={contextModals.tasksKey}
+              onTasksRefresh={() => context.refreshData('tasksKey')}
             />
           </TabsContent>
 
@@ -753,17 +698,12 @@ export default function EventDetailPage() {
               {/* Event Description / Scope */}
               <EventDescriptionCard
                 description={event.description}
-                isEditing={isEditingDescription}
-                editedDescription={editedDescription}
-                onStartEdit={() => {
-                  startEditingDescription(event.description || '')
-                }}
-                onDescriptionChange={setEditedDescription}
+                isEditing={contextEditing.isEditingDescription}
+                editedDescription={contextEditing.editedDescription}
+                onStartEdit={context.startEditDescription}
+                onDescriptionChange={context.updateEditDescription}
                 onSave={handleSaveDescription}
-                onCancel={() => {
-                  cancelEditingDescription()
-                  setEditedDescription('')
-                }}
+                onCancel={context.cancelEditDescription}
                 canEdit={canManageEvents}
               />
 
@@ -1023,16 +963,14 @@ export default function EventDetailPage() {
 
       {/* Create Task Modal */}
       <CreateTaskModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        isOpen={contextModals.isTaskModalOpen}
+        onClose={() => context.closeModal('isTaskModalOpen')}
         entityType="event"
         entityId={eventId}
         eventDates={eventDates}
         accountId={event?.account_id}
         contactId={event?.contact_id}
-        onSuccess={() => {
-          setTasksKey(prev => prev + 1)
-        }}
+        onSuccess={() => context.refreshData('tasksKey')}
       />
 
       {/* Log Communication Modal */}
@@ -1111,5 +1049,39 @@ export default function EventDetailPage() {
         canEdit={canManageEvents}
       />
     </AccessGuard>
+  )
+}
+
+// Main page component that provides context
+export default function EventDetailPage() {
+  const params = useParams()
+  const eventId = params.id as string
+  const { data: session, status } = useSession()
+  const tenantSubdomain = params.tenant as string
+
+  // Fetch core event data for context provider
+  const eventData = useEventData(eventId, session, tenantSubdomain)
+  const { event, eventDates = [], loading } = eventData || {}
+
+  // Show loading state while data is being fetched
+  if (status === 'loading' || !eventData) {
+    return (
+      <AccessGuard module="events">
+        <AppLayout>
+          <LoadingState />
+        </AppLayout>
+      </AccessGuard>
+    )
+  }
+
+  return (
+    <EventDetailProvider
+      event={event}
+      eventDates={eventDates}
+      loading={loading}
+      onEventUpdate={eventData.fetchEvent}
+    >
+      <EventDetailContent eventData={eventData} />
+    </EventDetailProvider>
   )
 }

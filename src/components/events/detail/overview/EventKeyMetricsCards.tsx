@@ -48,6 +48,37 @@ interface EventKeyMetricsCardsProps {
   canEdit: boolean
 }
 
+/**
+ * Get the next upcoming event date from a list of event dates.
+ * Returns the earliest future/today date, or the most recent past date if all are past.
+ */
+function getNextEventDate(eventDates: EventDate[]): EventDate | null {
+  if (!eventDates || eventDates.length === 0) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Sort dates chronologically
+  const sortedDates = [...eventDates].sort((a, b) => {
+    const dateA = new Date(a.event_date)
+    const dateB = new Date(b.event_date)
+    return dateA.getTime() - dateB.getTime()
+  })
+
+  // Find the first future or today date
+  const nextDate = sortedDates.find(d => {
+    const eventDate = new Date(d.event_date)
+    eventDate.setHours(0, 0, 0, 0)
+    return eventDate >= today
+  })
+
+  // If found a future/today date, return it
+  if (nextDate) return nextDate
+
+  // All dates are in the past, return the most recent one (last in sorted array)
+  return sortedDates[sortedDates.length - 1]
+}
+
 export function EventKeyMetricsCards({
   event,
   paymentStatusOptions,
@@ -59,10 +90,9 @@ export function EventKeyMetricsCards({
   onStatusChange,
   canEdit
 }: EventKeyMetricsCardsProps) {
-  // Determine which date to display (first event_date or start_date fallback)
-  const primaryDate = event.event_dates && event.event_dates.length > 0
-    ? event.event_dates[0].event_date
-    : event.start_date
+  // Determine which date to display - use the next upcoming date chronologically
+  const nextEventDate = event.event_dates ? getNextEventDate(event.event_dates) : null
+  const primaryDate = nextEventDate?.event_date || event.start_date
 
   const daysUntil = getDaysUntil(primaryDate)
   const hasMultipleDates = event.event_dates && event.event_dates.length > 1
