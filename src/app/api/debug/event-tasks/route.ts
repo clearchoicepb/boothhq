@@ -1,21 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-  const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
+  const { supabase, dataSourceTenantId, session } = context
   // Get one event
   const { data: event } = await supabase
     .from('events')
     .select('*')
-    .eq('tenant_id', session.user.tenantId)
+    .eq('tenant_id', dataSourceTenantId)
     .limit(1)
     .single()
 
@@ -28,13 +22,13 @@ export async function GET() {
     .from('event_core_task_completion')
     .select('*')
     .eq('event_id', event.id)
-    .eq('tenant_id', session.user.tenantId)
+    .eq('tenant_id', dataSourceTenantId)
 
   // Get core tasks
   const { data: coreTasks } = await supabase
     .from('core_task_templates')
     .select('*')
-    .eq('tenant_id', session.user.tenantId)
+    .eq('tenant_id', dataSourceTenantId)
     .eq('is_active', true)
 
   return NextResponse.json({

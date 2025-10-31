@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * GET /api/events/stats
  * 
@@ -15,23 +12,19 @@ import { getTenantDatabaseClient } from '@/lib/supabase-client'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status')
     const eventTypeFilter = searchParams.get('event_type')
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Build query with filters
     let query = supabase
       .from('events')
       .select('id, status, start_date, end_date, event_type')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     // Apply filters
     if (statusFilter && statusFilter !== 'all') {

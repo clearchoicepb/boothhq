@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Fetch core task templates for the tenant
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
+  const { supabase, dataSourceTenantId, session } = context
     const { data: templates, error } = await supabase
       .from('core_task_templates')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('display_order', { ascending: true })
 
     if (error) {
@@ -48,12 +41,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Task name is required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: template, error } = await supabase
       .from('core_task_templates')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         task_name,
         display_order: display_order || 0,
         is_active: true
@@ -89,8 +80,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Templates array is required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Update each template
     const updatePromises = templates.map(template =>
       supabase
@@ -101,7 +90,7 @@ export async function PATCH(request: NextRequest) {
           is_active: template.is_active
         })
         .eq('id', template.id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     )
 
     const results = await Promise.all(updatePromises)

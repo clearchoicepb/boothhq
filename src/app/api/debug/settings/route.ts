@@ -1,29 +1,22 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
+  const { supabase, dataSourceTenantId, session } = context
     // Get ALL tenant settings
     const { data: allSettings, error: settingsError } = await supabase
       .from('tenant_settings')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     // Get ALL opportunities to compare
     const { data: opportunities, error: oppError } = await supabase
       .from('opportunities')
       .select('id, name, stage, probability')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .limit(5)
 
     // Parse settings for opportunities module

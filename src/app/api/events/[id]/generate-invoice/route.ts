@@ -1,22 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
     // Get event data
     const { data: event, error: eventError } = await supabase
       .from('events')
@@ -26,7 +19,7 @@ export async function POST(
         contacts!events_contact_id_fkey(first_name, last_name, email)
       `)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (eventError || !event) {
@@ -46,7 +39,7 @@ export async function POST(
       .from('invoices')
       .select('id')
       .eq('event_id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (existingInvoice) {
@@ -60,7 +53,7 @@ export async function POST(
     const { data: lastInvoice } = await supabase
       .from('invoices')
       .select('invoice_number')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
       .limit(1)
       .single()
@@ -99,7 +92,7 @@ export async function POST(
 
     // Create invoice
     const invoiceData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       invoice_number: invoiceNumber,
       account_id: event.account_id,
       contact_id: event.contact_id,
@@ -132,7 +125,7 @@ export async function POST(
     if (lineItems.length > 0) {
       const lineItemsData = lineItems.map((item) => ({
         ...item,
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         invoice_id: invoice.id,
       }))
 

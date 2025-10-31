@@ -1,15 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getTenantDatabaseClient } from '@/lib/supabase-client';
-
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const type = formData.get('type') as string;
@@ -28,7 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId);
+    ;
 
     // Generate unique filename
     const fileExt = file.name.split('.').pop();

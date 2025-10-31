@@ -1,6 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { ROLES, isAdmin, canManageUsers, type UserRole } from '@/lib/roles'
 
@@ -9,22 +8,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    const { id } = await params
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     // Query Tenant DB for user
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -88,8 +82,6 @@ export async function PUT(
 
     // Query Tenant DB for user updates
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Prepare update data (only with fields that actually exist in the database)
     const updateData: any = {
       first_name,
@@ -133,7 +125,7 @@ export async function PUT(
         .from('users')
         .select('id')
         .eq('email', email)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .neq('id', id)
         .single()
 
@@ -150,7 +142,7 @@ export async function PUT(
       .from('users')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -199,13 +191,11 @@ export async function DELETE(
     // Step 1: Delete from Tenant DB
     console.log('[Delete User] Deleting from Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { error: tenantError } = await supabase
       .from('users')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (tenantError) {
       console.error('[Delete User] Error deleting from Tenant DB:', tenantError)

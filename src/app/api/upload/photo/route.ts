@@ -7,13 +7,10 @@ import { existsSync } from 'fs'
 
 export async function POST(request: NextRequest) {
   try {
-    
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const formData = await request.formData()
     const file = formData.get('file') as File
     const entityType = formData.get('entityType') as string

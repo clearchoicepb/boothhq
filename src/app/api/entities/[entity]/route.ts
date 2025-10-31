@@ -1,7 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { getEntityConfig, validateEntityData } from '@/lib/api-entities'
 
 export async function GET(
@@ -11,16 +9,10 @@ export async function GET(
   const { entity } = await params
   
   try {
-    const session = await getServerSession(authOptions)
-    
-    
-    const config = getEntityConfig(entity)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     
     // Extract filters and pagination params
@@ -32,13 +24,11 @@ export async function GET(
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 25
     const pipelineView = searchParams.get('pipelineView') === 'true'
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Build the count query first
     let countQuery = supabase
       .from(config.table)
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     // Build the data query
     let query
@@ -54,12 +44,12 @@ export async function GET(
           leads!opportunities_lead_id_fkey(first_name, last_name),
           event_dates(event_date, start_time, end_time, location_id, notes)
         `)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     } else {
       query = supabase
         .from(config.table)
         .select('*')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     }
 
     // Apply search filter to both queries
@@ -173,8 +163,6 @@ export async function POST(
     }
 
     const config = getEntityConfig(entity)
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Extract event_dates for opportunities before transformation
     const { event_dates, ...bodyWithoutEventDates } = body
 
@@ -183,7 +171,7 @@ export async function POST(
       const { data: existingContact } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, email')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .ilike('email', body.email.trim())
         .maybeSingle()
       
@@ -215,7 +203,7 @@ export async function POST(
     // Auto-assign owner for opportunities if not specified
     const insertData = {
       ...transformedBody,
-      tenant_id: session.user.tenantId
+      tenant_id: dataSourceTenantId
     }
     
     if (entity === 'opportunities' && !insertData.owner_id && session.user.id) {
@@ -241,7 +229,7 @@ export async function POST(
       const eventDatesData = event_dates
         .filter((date: any) => date.event_date) // Only include dates with event_date filled
         .map((date: any) => ({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           opportunity_id: data.id,
           location_id: date.location_id || null,
           event_date: date.event_date,

@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const eventDateId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data, error } = await supabase
       .from('event_dates')
       .select(`
@@ -31,7 +24,7 @@ export async function GET(
         )
       `)
       .eq('id', eventDateId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -68,8 +61,6 @@ export async function PUT(
     const body = await request.json()
     console.log('[Event Date API] Received body:', JSON.stringify(body, null, 2))
     
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Sanitize UUID fields: convert empty strings to null
     const sanitizedBody = {
       ...body,
@@ -81,7 +72,7 @@ export async function PUT(
       .from('event_dates')
       .update(sanitizedBody)
       .eq('id', eventDateId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
         locations (
@@ -134,13 +125,11 @@ export async function DELETE(
 
     const params = await context.params
     const eventDateId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { error } = await supabase
       .from('event_dates')
       .delete()
       .eq('id', eventDateId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting event date:', error)

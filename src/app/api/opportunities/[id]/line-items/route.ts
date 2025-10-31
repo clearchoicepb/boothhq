@@ -1,29 +1,22 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const opportunityId = params.id
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('opportunity_line_items')
       .select('*')
       .eq('opportunity_id', opportunityId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('sort_order', { ascending: true })
 
     if (error) {
@@ -53,10 +46,8 @@ export async function POST(
     const opportunityId = params.id
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const lineItemData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       opportunity_id: opportunityId,
       item_type: body.item_type,
       package_id: body.package_id || null,

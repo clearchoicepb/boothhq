@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const opportunityId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Fetch all activity types
     const [communications, tasks, quotes, notes, attachments] = await Promise.all([
       // Communications
@@ -25,7 +18,7 @@ export async function GET(
         .from('communications')
         .select('*')
         .eq('opportunity_id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('communication_date', { ascending: false }),
 
       // Tasks
@@ -34,7 +27,7 @@ export async function GET(
         .select('*')
         .eq('entity_type', 'opportunity')
         .eq('entity_id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false }),
 
       // Quotes
@@ -42,7 +35,7 @@ export async function GET(
         .from('quotes')
         .select('*')
         .eq('opportunity_id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false }),
 
       // Notes
@@ -50,7 +43,7 @@ export async function GET(
         .from('notes')
         .select('*')
         .eq('opportunity_id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false }),
 
       // Attachments
@@ -58,7 +51,7 @@ export async function GET(
         .from('attachments')
         .select('*')
         .eq('opportunity_id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false })
     ])
 

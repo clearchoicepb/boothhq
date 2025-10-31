@@ -1,24 +1,18 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('active_only') === 'true'
 
     let query = supabase
       .from('staff_roles')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('type', { ascending: true })
       .order('sort_order', { ascending: true })
 
@@ -54,10 +48,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const roleData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       name: body.name,
       type: body.type,
       is_active: body.is_active ?? false,

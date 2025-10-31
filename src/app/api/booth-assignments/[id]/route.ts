@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const assignmentId = params.id
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('booth_assignments')
@@ -29,7 +22,7 @@ export async function GET(
         checked_in_by_user:users!booth_assignments_checked_in_by_fkey(first_name, last_name)
       `)
       .eq('id', assignmentId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -76,13 +69,11 @@ export async function PUT(
     const params = await context.params
     const assignmentId = params.id
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data, error } = await supabase
       .from('booth_assignments')
       .update(body)
       .eq('id', assignmentId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -111,13 +102,11 @@ export async function DELETE(
 
     const params = await context.params
     const assignmentId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { error } = await supabase
       .from('booth_assignments')
       .delete()
       .eq('id', assignmentId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting booth assignment:', error)

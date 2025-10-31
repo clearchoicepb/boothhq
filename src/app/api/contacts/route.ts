@@ -1,19 +1,13 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     // Get account_id filter from query params
     const { searchParams } = new URL(request.url)
     const accountIdFilter = searchParams.get('account_id')
@@ -38,7 +32,7 @@ export async function GET(request: NextRequest) {
             accounts(id, name, account_type)
           )
         `)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .eq('contact_accounts.account_id', accountIdFilter)
         .is('contact_accounts.end_date', null) // Only active relationships
     } else {
@@ -58,7 +52,7 @@ export async function GET(request: NextRequest) {
             accounts(id, name, account_type)
           )
         `)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     }
 
     const { data, error } = await query.order('created_at', { ascending: false })
@@ -125,14 +119,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Check for duplicate email (case-insensitive)
     if (body.email && body.email.trim()) {
       const { data: existingContact } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, email')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .ilike('email', body.email.trim())
         .maybeSingle()
       
@@ -150,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Filter to only include valid contact fields
     const contactData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       account_id: body.account_id || null,
       first_name: body.first_name,
       last_name: body.last_name,
@@ -184,7 +176,7 @@ export async function POST(request: NextRequest) {
           role: body.role || 'Primary Contact',
           is_primary: true, // First account is primary by default
           start_date: new Date().toISOString().split('T')[0],
-          tenant_id: session.user.tenantId
+          tenant_id: dataSourceTenantId
         })
       
       if (junctionError) {

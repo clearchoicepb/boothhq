@@ -1,20 +1,12 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
     console.log('=== LOCATION GET API START ===')
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    const session = await getServerSession(authOptions)
-    console.log('[Locations API GET] Session user tenantId:', session?.user?.tenantId)
-
-    if (!session?.user) {
-      console.error('[Locations API GET] Unauthorized - no session')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const isOneTime = searchParams.get('isOneTime')
@@ -28,12 +20,10 @@ export async function GET(request: NextRequest) {
       isCached: connectionInfo.isCached
     })
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     let query = supabase
       .from('locations')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('name', { ascending: true })
 
     // Filter by search term if provided
@@ -106,12 +96,11 @@ export async function POST(request: NextRequest) {
       isCached: connectionInfo.isCached
     })
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     console.log('[Locations API] Tenant database client created successfully')
 
     const locationData = {
       ...body,
-      tenant_id: session.user.tenantId
+      tenant_id: dataSourceTenantId
     }
     console.log('[Locations API] Inserting location data:', JSON.stringify(locationData, null, 2))
     console.log('[Locations API] About to execute INSERT query on locations table...')

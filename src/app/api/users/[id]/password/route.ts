@@ -1,6 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { isAdmin, type UserRole } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
@@ -20,13 +19,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    const { id } = await params
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
     const { password, currentPassword } = body
 
@@ -78,7 +74,7 @@ export async function POST(
       .from('users')
       .select('email, tenant_id')
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (userError || !user) {
@@ -110,7 +106,7 @@ export async function POST(
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (updateError) {
       console.warn('Warning: Could not update password_hash in users table:', updateError)

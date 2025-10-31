@@ -1,22 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
     // Get invoice with related data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -27,7 +20,7 @@ export async function GET(
         events!invoices_event_id_fkey(id, title, start_date, status)
       `)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (invoiceError) {
@@ -44,7 +37,7 @@ export async function GET(
       .from('invoice_line_items')
       .select('*')
       .eq('invoice_id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: true })
 
     if (lineItemsError) {
@@ -84,8 +77,6 @@ export async function PUT(
     }
     
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     let body
     try {
       body = await request.json()
@@ -114,7 +105,7 @@ export async function PUT(
       .from('invoices')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -130,13 +121,13 @@ export async function PUT(
         .from('invoice_line_items')
         .delete()
         .eq('invoice_id', id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       // Insert new line items
       if (line_items.length > 0) {
         const lineItemsData = line_items.map((item: any) => ({
           ...item,
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           invoice_id: id
         }))
 
@@ -169,21 +160,19 @@ export async function DELETE(
     }
     
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Delete line items first (due to foreign key constraint)
     await supabase
       .from('invoice_line_items')
       .delete()
       .eq('invoice_id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     // Delete the invoice
     const { error } = await supabase
       .from('invoices')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting invoice:', error)

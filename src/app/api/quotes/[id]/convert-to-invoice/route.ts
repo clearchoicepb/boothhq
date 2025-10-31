@@ -1,19 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const quoteId = params.id
 
@@ -24,14 +19,12 @@ export async function POST(
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Fetch the quote
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
       .select('*')
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (quoteError || !quote) {
@@ -49,7 +42,7 @@ export async function POST(
       .from('events')
       .select('start_date, account_id, contact_id')
       .eq('id', event_id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (eventError || !event) {
@@ -62,14 +55,14 @@ export async function POST(
       .from('quote_line_items')
       .select('*')
       .eq('quote_id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('sort_order', { ascending: true })
 
     // Generate invoice number
     const { data: lastInvoice } = await supabase
       .from('invoices')
       .select('invoice_number')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
       .limit(1)
       .single()
@@ -87,7 +80,7 @@ export async function POST(
 
     // Create invoice
     const invoiceData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       quote_id: quote.id,
       event_id: event_id,
       account_id: quote.account_id || event.account_id,
@@ -116,7 +109,7 @@ export async function POST(
     // Copy quote line items to invoice line items
     if (quoteLineItems && quoteLineItems.length > 0) {
       const invoiceLineItemsData = quoteLineItems.map((item: any) => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         invoice_id: invoice.id,
         description: item.name,
         quantity: item.quantity,
@@ -138,7 +131,7 @@ export async function POST(
       .from('quotes')
       .update({ invoice_id: invoice.id })
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     return NextResponse.json({
       success: true,

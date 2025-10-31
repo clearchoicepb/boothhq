@@ -1,24 +1,17 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Fetch tasks
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const entityType = searchParams.get('entityType')
     const entityId = searchParams.get('entityId')
     const assignedTo = searchParams.get('assignedTo')
     const status = searchParams.get('status')
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     let query = supabase
       .from('tasks')
@@ -28,7 +21,7 @@ export async function GET(request: NextRequest) {
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
         event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (entityType && entityId) {
@@ -88,12 +81,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: task, error: createError } = await supabase
       .from('tasks')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         title,
         description,
         assigned_to: assignedTo || null,

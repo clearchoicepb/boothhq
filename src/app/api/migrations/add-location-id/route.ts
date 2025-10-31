@@ -5,12 +5,10 @@ import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 export async function POST() {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const supabase = createServerSupabaseClient()
 
     console.log('🚀 Starting migration: add_location_id_to_events')

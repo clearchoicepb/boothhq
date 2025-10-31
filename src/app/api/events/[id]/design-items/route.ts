@@ -1,7 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { createDesignItemForEvent, createDesignItemsForProduct } from '@/lib/design-helpers'
 
 // GET - Fetch all design items for an event
@@ -9,15 +7,12 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   try {
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: designItems, error } = await supabase
       .from('event_design_items')
       .select(`
@@ -27,7 +22,7 @@ export async function GET(
         approved_by_user:users!event_design_items_approved_by_fkey(id, first_name, last_name, email)
       `)
       .eq('event_id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('design_deadline', { ascending: true })
 
     if (error) throw error
@@ -45,8 +40,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  , { status: 401 })
   }
 
   try {
@@ -66,8 +60,6 @@ export async function POST(
     } = body
 
     let designItem
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // If product_id is provided, create design item from product
     if (product_id) {
       designItem = await createDesignItemsForProduct({
@@ -136,7 +128,7 @@ export async function POST(
     const { data: newDesignItem, error: itemError } = await supabase
       .from('event_design_items')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: id,
         item_name: custom_name,
         design_start_date: designStartDate.toISOString().split('T')[0],
@@ -160,7 +152,7 @@ export async function POST(
     const { data: task } = await supabase
       .from('tasks')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: id,
         title: taskName,
         description: notes || `Complete ${custom_name} for this event`,

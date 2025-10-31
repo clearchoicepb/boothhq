@@ -1,16 +1,12 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - List attachments for an entity
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const entityType = searchParams.get('entity_type')
     const entityId = searchParams.get('entity_id')
@@ -22,8 +18,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: attachments, error } = await supabase
       .from('attachments')
       .select(`
@@ -34,7 +28,7 @@ export async function GET(request: NextRequest) {
           email
         )
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('entity_type', entityType)
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
@@ -87,8 +81,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Generate unique file path
     const fileExt = file.name.split('.').pop()
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
@@ -114,7 +106,7 @@ export async function POST(request: NextRequest) {
     const { data: attachment, error: dbError } = await supabase
       .from('attachments')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         entity_type: entityType,
         entity_id: entityId,
         file_name: file.name,

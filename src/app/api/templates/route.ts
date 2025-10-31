@@ -1,25 +1,19 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - List templates
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const templateType = searchParams.get('type') // email, sms, contract, or null for all
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     let query = supabase
       .from('templates')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (templateType) {
@@ -72,12 +66,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: template, error } = await supabase
       .from('templates')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         template_type,
         name,
         subject: subject || null,

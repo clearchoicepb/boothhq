@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * GET /api/events/priority-stats
  *
@@ -13,14 +10,10 @@ import { getTenantDatabaseClient } from '@/lib/supabase-client'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
+  const { supabase, dataSourceTenantId, session } = context
     // Calculate date ranges
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -38,7 +31,7 @@ export async function GET(request: NextRequest) {
     const { data: events, error: eventsError } = await supabase
       .from('events')
       .select('id, start_date, end_date, status')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('start_date', { ascending: true })
 
     if (eventsError) {
@@ -50,7 +43,7 @@ export async function GET(request: NextRequest) {
     const { data: coreTasks, error: tasksError } = await supabase
       .from('core_task_templates')
       .select('id')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('is_active', true)
 
     if (tasksError) {

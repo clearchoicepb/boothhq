@@ -1,18 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // PUT - Update event type
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   if (session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -22,15 +18,13 @@ export async function PUT(
     const body = await request.json()
     const { name, description, is_active, event_category_id } = body
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // If changing category, verify new category exists and belongs to tenant
     if (event_category_id) {
       const { data: category } = await supabase
         .from('event_categories')
         .select('id')
         .eq('id', event_category_id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .single()
 
       if (!category) {
@@ -52,7 +46,7 @@ export async function PUT(
       .from('event_types')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
         event_categories(id, name, slug, color, icon)
@@ -74,8 +68,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  , { status: 401 })
   }
 
   if (session.user.role !== 'admin') {
@@ -84,14 +77,12 @@ export async function DELETE(
 
   try {
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Check if system default
     const { data: eventType } = await supabase
       .from('event_types')
       .select('is_system_default')
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (eventType?.is_system_default) {
@@ -118,7 +109,7 @@ export async function DELETE(
       .from('event_types')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) throw error
 

@@ -1,19 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * POST - Add contact to account (create relationship)
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
     const { contact_id, account_id, role, is_primary, start_date, notes } = body
     
@@ -24,15 +19,13 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     // If is_primary, unset other primary relationships for this contact
     if (is_primary) {
       await supabase
         .from('contact_accounts')
         .update({ is_primary: false })
         .eq('contact_id', contact_id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     }
     
     // Insert new relationship
@@ -45,7 +38,7 @@ export async function POST(request: NextRequest) {
         is_primary: is_primary || false,
         start_date: start_date || new Date().toISOString().split('T')[0],
         notes: notes || null,
-        tenant_id: session.user.tenantId
+        tenant_id: dataSourceTenantId
       })
       .select(`
         *,
@@ -84,13 +77,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 })
     }
     
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     const { error } = await supabase
       .from('contact_accounts')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
     
     if (error) {
       console.error('Error deleting contact-account relationship:', error)
@@ -122,8 +113,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 })
     }
     
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     // Build update object
     const updateData: any = {}
     if (end_date !== undefined) updateData.end_date = end_date
@@ -146,7 +135,7 @@ export async function PATCH(request: NextRequest) {
             .from('contact_accounts')
             .update({ is_primary: false })
             .eq('contact_id', relationship.contact_id)
-            .eq('tenant_id', session.user.tenantId)
+            .eq('tenant_id', dataSourceTenantId)
             .neq('id', id)
         }
       }
@@ -156,7 +145,7 @@ export async function PATCH(request: NextRequest) {
       .from('contact_accounts')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
         accounts(id, name, account_type),

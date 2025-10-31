@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * GET /api/events/tasks-status
  * 
@@ -11,12 +8,10 @@ import { getTenantDatabaseClient } from '@/lib/supabase-client'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const idsParam = searchParams.get('ids')
     const eventIds = idsParam ? idsParam.split(',').filter(Boolean) : []
@@ -24,8 +19,6 @@ export async function GET(request: NextRequest) {
     if (eventIds.length === 0) {
       return NextResponse.json({ taskStatus: {} })
     }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch incomplete tasks for these events
     const { data: tasks, error } = await supabase
@@ -35,7 +28,7 @@ export async function GET(request: NextRequest) {
       .in('entity_id', eventIds)
       .neq('status', 'completed')
       .neq('status', 'cancelled')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error fetching task status:', error)

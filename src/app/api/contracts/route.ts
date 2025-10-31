@@ -1,17 +1,12 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // Create a new contract record
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
     const {
       opportunityId,
@@ -32,17 +27,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Generate contract number
     const { data: contractNumber } = await supabase
-      .rpc('generate_contract_number', { p_tenant_id: session.user.tenantId })
+      .rpc('generate_contract_number', { p_tenant_id: dataSourceTenantId })
 
     // Create contract record
     const { data: contract, error: createError } = await supabase
       .from('contracts')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         opportunity_id: opportunityId || null,
         account_id: accountId || null,
         contact_id: contactId || null,
@@ -90,12 +83,10 @@ export async function GET(request: NextRequest) {
     const contactId = searchParams.get('contactId')
     const leadId = searchParams.get('leadId')
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     let query = supabase
       .from('contracts')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (opportunityId) {

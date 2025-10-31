@@ -1,23 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Fetch core task completion status for an event
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    const { id: eventId } = await params
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
+  const { supabase, dataSourceTenantId, session } = context
     // Fetch completion records with template details
     const { data: completions, error } = await supabase
       .from('event_core_task_completion')
@@ -35,7 +27,7 @@ export async function GET(
         )
       `)
       .eq('event_id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('core_task_template(display_order)', { ascending: true })
 
     if (error) {
@@ -70,8 +62,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Completion ID is required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const updateData: any = {
       is_completed,
       completed_at: is_completed ? new Date().toISOString() : null,
@@ -83,7 +73,7 @@ export async function PATCH(
       .update(updateData)
       .eq('id', completion_id)
       .eq('event_id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
         core_task_template:core_task_templates(

@@ -118,12 +118,10 @@ export async function POST(request: Request) {
         error: 'Confirmation required. Send { "confirm": "yes-create-test-data" } in request body.'
       }, { status: 400 })
     }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const supabase = createServerSupabaseClient()
     const tenantId = session.user.tenantId
 
@@ -522,8 +520,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    , { status: 401 })
     }
 
     const supabase = createServerSupabaseClient()

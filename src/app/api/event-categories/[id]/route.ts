@@ -1,18 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // PUT - Update event category
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   if (session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -21,8 +17,6 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     const { name, description, color, icon, is_active } = body
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Generate new slug if name changed
     const slug = name ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : undefined
@@ -39,7 +33,7 @@ export async function PUT(
       .from('event_categories')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -58,8 +52,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  , { status: 401 })
   }
 
   if (session.user.role !== 'admin') {
@@ -68,14 +61,12 @@ export async function DELETE(
 
   try {
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Check if system default
     const { data: category } = await supabase
       .from('event_categories')
       .select('is_system_default')
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (category?.is_system_default) {
@@ -102,7 +93,7 @@ export async function DELETE(
       .from('event_categories')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) throw error
 

@@ -1,18 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * Debug endpoint to check if design tables exist in tenant database
  * and show sample data
  */
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   const results: any = {
     tenantId: session.user.tenantId,
     timestamp: new Date().toISOString(),
@@ -20,14 +16,12 @@ export async function GET() {
   }
 
   try {
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Check design_statuses table
     try {
       const { data, error, count } = await supabase
         .from('design_statuses')
         .select('*', { count: 'exact' })
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .limit(5)
 
       results.tables.design_statuses = {
@@ -50,7 +44,7 @@ export async function GET() {
       const { data, error, count } = await supabase
         .from('design_item_types')
         .select('*', { count: 'exact' })
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .limit(5)
 
       results.tables.design_item_types = {
@@ -73,7 +67,7 @@ export async function GET() {
       const { data, error, count } = await supabase
         .from('event_design_items')
         .select('*', { count: 'exact' })
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .limit(5)
 
       results.tables.event_design_items = {
@@ -96,7 +90,7 @@ export async function GET() {
       const { data, error, count } = await supabase
         .from('events')
         .select('id', { count: 'exact' })
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .limit(1)
 
       results.connectionTest = {

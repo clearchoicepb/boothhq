@@ -1,28 +1,21 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { id: opportunityId } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Fetch original opportunity with relations
     const { data: original, error: fetchError } = await supabase
       .from('opportunities')
       .select('*, event_dates(*)')
       .eq('id', opportunityId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (fetchError || !original) {
@@ -62,7 +55,7 @@ export async function POST(
     // Clone event_dates if they exist
     if (event_dates && event_dates.length > 0) {
       const clonedDates = event_dates.map((ed: any) => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         opportunity_id: newOpportunity.id,
         event_date: ed.event_date,
         start_time: ed.start_time,

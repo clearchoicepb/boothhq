@@ -1,7 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { stripe, formatAmountForStripe } from '@/lib/stripe'
 
 export async function POST(
@@ -9,15 +7,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
     // Get invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -27,7 +21,7 @@ export async function POST(
         invoice_line_items(*)
       `)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (invoiceError || !invoice) {
@@ -62,7 +56,7 @@ export async function POST(
         return_url: returnUrl,
         metadata: {
           invoice_id: invoice.id,
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           invoice_number: invoice.invoice_number,
         },
         description: `Payment for invoice ${invoice.invoice_number}`,
@@ -84,7 +78,7 @@ export async function POST(
             updated_at: new Date().toISOString(),
           })
           .eq('id', invoice.id)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
 
         if (updateError) {
           console.error('Error updating invoice after payment:', updateError)
@@ -95,7 +89,7 @@ export async function POST(
         await supabase
           .from('payments')
           .insert({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             invoice_id: invoice.id,
             amount: paymentAmount,
             payment_method: 'stripe',
@@ -152,8 +146,6 @@ export async function GET(
     }
     
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Get invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -162,7 +154,7 @@ export async function GET(
         accounts!invoices_account_id_fkey(name, email, phone)
       `)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (invoiceError || !invoice) {
@@ -183,7 +175,7 @@ export async function GET(
       },
       metadata: {
         invoice_id: invoice.id,
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         invoice_number: invoice.invoice_number,
       },
       description: `Payment for invoice ${invoice.invoice_number}`,

@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const quoteId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Update quote status to 'sent' and record sent timestamp
     const { data: quote, error } = await supabase
       .from('quotes')
@@ -26,7 +19,7 @@ export async function POST(
         sent_at: new Date().toISOString()
       })
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 

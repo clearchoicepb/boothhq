@@ -1,17 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status') || 'all'
     const conditionFilter = searchParams.get('condition') || 'all'
@@ -22,7 +16,7 @@ export async function GET(request: NextRequest) {
         *,
         equipment_categories!equipment_category_id_fkey(name)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('name', { ascending: true })
 
     if (statusFilter !== 'all') {
@@ -62,13 +56,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data, error } = await supabase
       .from('equipment')
       .insert({
         ...body,
-        tenant_id: session.user.tenantId
+        tenant_id: dataSourceTenantId
       })
       .select()
       .single()

@@ -1,16 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const { supabase, dataSourceTenantId, session } = context
     const { data, error } = await supabase
       .from('user_integrations')
       .select('*')

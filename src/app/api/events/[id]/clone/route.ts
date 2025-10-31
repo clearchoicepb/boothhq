@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * POST /api/events/[id]/clone
  * 
@@ -17,21 +14,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { id: eventId } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Fetch original event
     const { data: original, error: fetchError } = await supabase
       .from('events')
       .select('*')
       .eq('id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (fetchError || !original) {
@@ -70,7 +63,7 @@ export async function POST(
 
     if (eventDates && eventDates.length > 0) {
       const clonedDates = eventDates.map(ed => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: newEvent.id,
         opportunity_id: ed.opportunity_id,
         event_date: ed.event_date,
@@ -92,7 +85,7 @@ export async function POST(
 
     if (staff && staff.length > 0) {
       const clonedStaff = staff.map(s => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: newEvent.id,
         user_id: s.user_id,
         staff_role_id: s.staff_role_id,
@@ -132,12 +125,12 @@ export async function POST(
     const { data: coreTaskTemplates } = await supabase
       .from('core_task_templates')
       .select('id')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('is_active', true)
 
     if (coreTaskTemplates && coreTaskTemplates.length > 0) {
       const taskCompletions = coreTaskTemplates.map(template => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: newEvent.id,
         core_task_template_id: template.id,
         is_completed: false,

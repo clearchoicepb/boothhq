@@ -4,12 +4,10 @@ import { authOptions } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     // Get Gmail OAuth credentials from environment or settings
     const clientId = process.env.GOOGLE_CLIENT_ID
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/gmail/callback`

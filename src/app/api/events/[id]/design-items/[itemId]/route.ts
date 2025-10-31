@@ -1,30 +1,24 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // PUT - Update design item
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   try {
     const { itemId } = await params
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Check if the new status is a completion status
     let isCompletedStatus = false
     if (body.status) {
       const { data: statusData } = await supabase
         .from('design_statuses')
         .select('is_completed')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .eq('slug', body.status)
         .single()
 
@@ -40,7 +34,7 @@ export async function PUT(
       .from('event_design_items')
       .update(body)
       .eq('id', itemId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -68,14 +62,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  , { status: 401 })
   }
 
   try {
     const { itemId } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Get the design item to find linked task
     const { data: designItem } = await supabase
       .from('event_design_items')
@@ -88,7 +79,7 @@ export async function DELETE(
       .from('event_design_items')
       .delete()
       .eq('id', itemId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) throw error
 

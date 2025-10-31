@@ -8,12 +8,10 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const params = await context.params
     const userId = params.id
     const supabase = createServerSupabaseClient()
@@ -23,7 +21,7 @@ export async function GET(
       .from('user_pay_rate_history')
       .select('*')
       .eq('user_id', userId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('effective_date', { ascending: false })
 
     if (payRateError) {
@@ -35,7 +33,7 @@ export async function GET(
       .from('user_role_history')
       .select('*')
       .eq('user_id', userId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('effective_date', { ascending: false })
 
     if (roleError) {
@@ -63,7 +61,7 @@ export async function GET(
         )
       `)
       .eq('user_id', userId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (eventError) {

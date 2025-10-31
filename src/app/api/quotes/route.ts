@@ -1,17 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const opportunityId = searchParams.get('opportunity_id')
@@ -24,7 +18,7 @@ export async function GET(request: NextRequest) {
         contacts!quotes_contact_id_fkey(first_name, last_name),
         opportunities!quotes_opportunity_id_fkey(name)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (status) {
@@ -66,14 +60,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Generate quote number if not provided
     if (!body.quote_number) {
       const { data: lastQuote } = await supabase
         .from('quotes')
         .select('quote_number')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
@@ -113,7 +105,7 @@ export async function POST(request: NextRequest) {
     const totalAmount = subtotal + taxAmount
 
     const quoteData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       opportunity_id: body.opportunity_id,
       account_id: body.account_id,
       contact_id: body.contact_id || null,
@@ -144,7 +136,7 @@ export async function POST(request: NextRequest) {
     // Insert line items if provided
     if (lineItems.length > 0) {
       const lineItemsData = lineItems.map((item: any) => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         quote_id: quote.id,
         item_type: item.item_type,
         package_id: item.package_id || null,

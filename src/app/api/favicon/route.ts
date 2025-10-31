@@ -5,12 +5,10 @@ import { fetchFavicon, getFallbackFavicon } from '@/lib/favicon-fetcher'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { websiteUrl } = await request.json()
     
     if (!websiteUrl || typeof websiteUrl !== 'string') {

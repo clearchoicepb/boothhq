@@ -1,26 +1,20 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const filterType = searchParams.get('filterType') || 'all'
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     let query = supabase
       .from('accounts')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (filterType !== 'all') {
@@ -62,14 +56,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[ACCOUNTS POST] Getting tenant database client for tenant:', session.user.tenantId)
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     console.log('[ACCOUNTS POST] Got tenant database client, inserting account...')
 
     const { data, error } = await supabase
       .from('accounts')
       .insert({
         ...body,
-        tenant_id: session.user.tenantId
+        tenant_id: dataSourceTenantId
       })
       .select()
       .single()
