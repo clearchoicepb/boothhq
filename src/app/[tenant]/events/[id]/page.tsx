@@ -54,6 +54,8 @@ import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
 import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewTab'
 import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
 import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCommunicationsTab'
+import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
+import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 
 export default function EventDetailPage() {
@@ -610,6 +612,9 @@ export default function EventDetailPage() {
             onDelete={handleDelete}
           />
 
+          {/* Sticky Event Context Bar - Shows key info across all tabs */}
+          <StickyEventContext event={event} />
+
           {/* Core Tasks Banner - Dismissible */}
           <CoreTasksBanner
             eventId={eventId}
@@ -808,6 +813,15 @@ export default function EventDetailPage() {
         </Tabs>
           </div>
         </div>
+
+        {/* Floating Quick Actions - Accessible from all tabs */}
+        <FloatingQuickActions
+          eventId={event.id}
+          accountId={event.account_id}
+          contactId={event.contact_id}
+          tenantSubdomain={tenantSubdomain}
+          canCreate={canManageEvents}
+        />
       </AppLayout>
 
       {/* Add/Edit Staff Modal */}
