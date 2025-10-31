@@ -141,10 +141,13 @@ interface EventDetailProviderProps {
 export function EventDetailProvider({
   children,
   event,
-  eventDates,
+  eventDates = [],
   loading,
   onEventUpdate
 }: EventDetailProviderProps) {
+  // Ensure eventDates is always an array
+  const safeEventDates = eventDates || []
+
   // Modal state
   const [modals, setModals] = useState<ModalState>({
     isTaskModalOpen: false,
@@ -303,7 +306,7 @@ export function EventDetailProvider({
   const value: EventDetailContextValue = {
     // Event data
     event,
-    eventDates,
+    eventDates: safeEventDates,
     loading,
 
     // Modal state

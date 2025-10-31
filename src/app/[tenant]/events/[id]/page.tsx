@@ -85,7 +85,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   const context = useEventDetail()
 
   // Destructure for easier access - Core Data
-  const { event, eventDates, loading: localLoading } = eventData
+  const { event, eventDates = [], loading: localLoading } = eventData || {}
   const { accounts, contacts, locations, paymentStatusOptions } = references
 
   // Destructure for easier access - Context (Modal + Editing state)
@@ -1005,12 +1005,23 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
 export default function EventDetailPage() {
   const params = useParams()
   const eventId = params.id as string
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const tenantSubdomain = params.tenant as string
 
   // Fetch core event data for context provider
   const eventData = useEventData(eventId, session, tenantSubdomain)
-  const { event, eventDates, loading } = eventData
+  const { event, eventDates = [], loading } = eventData || {}
+
+  // Show loading state while data is being fetched
+  if (status === 'loading' || !eventData) {
+    return (
+      <AccessGuard module="events">
+        <AppLayout>
+          <LoadingState />
+        </AppLayout>
+      </AccessGuard>
+    )
+  }
 
   return (
     <EventDetailProvider
