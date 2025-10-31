@@ -174,6 +174,7 @@ export default function EventsPage() {
   // Preview modal state
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [previewEventId, setPreviewEventId] = useState<string | null>(null)
+  const [previewEventDate, setPreviewEventDate] = useState<EventDate | null>(null)
 
   // Load view preference from localStorage on mount
   useEffect(() => {
@@ -193,9 +194,10 @@ export default function EventsPage() {
     setCurrentView(newView)
   }
 
-  // Handler for opening preview modal
-  const handleOpenPreview = (eventId: string) => {
+  // Handler for opening preview modal with specific event date
+  const handleOpenPreview = (eventId: string, eventDate?: EventDate) => {
     setPreviewEventId(eventId)
+    setPreviewEventDate(eventDate || null)
     setPreviewModalOpen(true)
   }
 
@@ -203,6 +205,7 @@ export default function EventsPage() {
   const handleClosePreview = () => {
     setPreviewModalOpen(false)
     setPreviewEventId(null)
+    setPreviewEventDate(null)
   }
 
   // Handler for expanding/collapsing rows
@@ -608,7 +611,7 @@ export default function EventsPage() {
                       <React.Fragment key={displayId}>
                       <tr
                         className={`hover:bg-gray-50 cursor-pointer ${priority.border}`}
-                        onClick={() => handleOpenPreview(originalEventId)}
+                        onClick={() => handleOpenPreview(originalEventId, currentEventDate)}
                       >
                         {/* Expand/Collapse Button */}
                         <td className="px-2 py-4 text-center">
@@ -881,7 +884,7 @@ export default function EventsPage() {
                 <div
                   key={displayId}
                   className={`bg-white rounded-lg shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg cursor-pointer ${priority.border}`}
-                  onClick={() => handleOpenPreview(originalEventId)}
+                  onClick={() => handleOpenPreview(originalEventId, currentEventDate)}
                 >
                   {/* Priority Header Banner */}
                   {priorityLevel !== 'none' && (
@@ -1074,6 +1077,7 @@ export default function EventsPage() {
           onClose={handleClosePreview}
           eventId={previewEventId}
           tenantSubdomain={tenantSubdomain}
+          selectedEventDate={previewEventDate}
         />
       )}
     </AppLayout>
