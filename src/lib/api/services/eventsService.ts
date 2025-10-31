@@ -216,6 +216,34 @@ class EventsService {
   async generateInvoice(eventId: string, data: any): Promise<any> {
     return apiClient.post(`/api/events/${eventId}/generate-invoice`, data)
   }
+
+  /**
+   * Update an event date
+   */
+  async updateEventDate(eventDateId: string, data: any): Promise<any> {
+    return apiClient.put(`/api/event-dates/${eventDateId}`, data)
+  }
+
+  /**
+   * Create event staff assignment
+   */
+  async createStaffAssignment(data: any): Promise<any> {
+    return apiClient.post('/api/event-staff', data)
+  }
+
+  /**
+   * Update event staff assignment
+   */
+  async updateStaffAssignment(staffId: string, data: any): Promise<any> {
+    return apiClient.put(`/api/event-staff/${staffId}`, data)
+  }
+
+  /**
+   * Delete event staff assignment
+   */
+  async deleteStaffAssignment(staffId: string): Promise<void> {
+    return apiClient.delete(`/api/event-staff/${staffId}`)
+  }
 }
 
 // Export singleton instance

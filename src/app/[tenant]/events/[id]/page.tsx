@@ -57,6 +57,7 @@ import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCom
 import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
 import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
+import { eventsService } from '@/lib/api/services/eventsService'
 
 export default function EventDetailPage() {
   const { data: session, status } = useSession()
@@ -223,26 +224,16 @@ export default function EventDetailPage() {
 
   const handleSaveAccountContact = async () => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          account_id: editAccountId || null,
-          primary_contact_id: editContactId || null,
-          contact_id: editContactId || null, // Keep for backward compatibility
-          event_planner_id: editEventPlannerId || null
-        }),
+      await eventsService.update(eventId, {
+        account_id: editAccountId || null,
+        primary_contact_id: editContactId || null,
+        contact_id: editContactId || null, // Keep for backward compatibility
+        event_planner_id: editEventPlannerId || null
       })
 
-      if (response.ok) {
-        await eventData.fetchEvent()
-        finishEditingAccountContact()
-        toast.success('Account and contact updated successfully')
-      } else {
-        toast.error('Failed to update account/contact')
-      }
+      await eventData.fetchEvent()
+      finishEditingAccountContact()
+      toast.success('Account and contact updated successfully')
     } catch (error) {
       console.error('Error updating account/contact:', error)
       toast.error('Error updating account/contact')
@@ -282,23 +273,15 @@ export default function EventDetailPage() {
     if (!selectedEventDate) return
 
     try {
-      const response = await fetch(`/api/event-dates/${selectedEventDate.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editEventDateData),
-      })
+      const updatedEventDate = await eventsService.updateEventDate(
+        selectedEventDate.id,
+        editEventDateData
+      )
 
-      if (response.ok) {
-        await eventData.fetchEventDates()
-        const updatedEventDate = await response.json()
-        setSelectedEventDate(updatedEventDate)
-        finishEditingEventDate()
-        toast.success('Event date updated successfully')
-      } else {
-        toast.error('Failed to update event date')
-      }
+      await eventData.fetchEventDates()
+      setSelectedEventDate(updatedEventDate)
+      finishEditingEventDate()
+      toast.success('Event date updated successfully')
     } catch (error) {
       console.error('Error updating event date:', error)
       toast.error('Error updating event date')
@@ -307,21 +290,11 @@ export default function EventDetailPage() {
 
   const handleUpdatePaymentStatus = async (newStatus: string) => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ payment_status: newStatus }),
-      })
+      await eventsService.update(eventId, { payment_status: newStatus })
 
-      if (response.ok) {
-        await eventData.fetchEvent()
-        finishEditingPaymentStatus()
-        toast.success('Payment status updated successfully')
-      } else {
-        toast.error('Failed to update payment status')
-      }
+      await eventData.fetchEvent()
+      finishEditingPaymentStatus()
+      toast.success('Payment status updated successfully')
     } catch (error) {
       console.error('Error updating payment status:', error)
       toast.error('Error updating payment status')
@@ -330,21 +303,11 @@ export default function EventDetailPage() {
 
   const handleSaveDescription = async () => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ description: editedDescription }),
-      })
+      await eventsService.update(eventId, { description: editedDescription })
 
-      if (response.ok) {
-        await eventData.fetchEvent()
-        finishEditingDescription()
-        toast.success('Description updated successfully')
-      } else {
-        toast.error('Failed to update event scope/details')
-      }
+      await eventData.fetchEvent()
+      finishEditingDescription()
+      toast.success('Description updated successfully')
     } catch (error) {
       console.error('Error updating event scope/details:', error)
       toast.error('Error updating event scope/details')
@@ -450,15 +413,13 @@ export default function EventDetailPage() {
 
         // Delete all existing assignments
         for (const assignment of existingAssignments) {
-          await fetch(`/api/event-staff/${assignment.id}`, { method: 'DELETE' })
+          await eventsService.deleteStaffAssignment(assignment.id)
         }
       }
 
       // For Operations roles: create/update single record
       if (selectedRole?.type === 'operations') {
         console.log('[CLIENT-STAFF] Processing OPERATIONS role...')
-        const url = isEditing ? `/api/event-staff/${editingStaffId}` : '/api/event-staff'
-        const method = isEditing ? 'PUT' : 'POST'
 
         const requestBody: any = {
           staff_role_id: selectedStaffRoleId,
@@ -473,21 +434,17 @@ export default function EventDetailPage() {
           requestBody.event_date_id = null
         }
 
-        console.log('[CLIENT-STAFF] Making request:', method, url)
         console.log('[CLIENT-STAFF] Request body:', requestBody)
 
-        const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-        })
+        try {
+          const responseData = isEditing
+            ? await eventsService.updateStaffAssignment(editingStaffId, requestBody)
+            : await eventsService.createStaffAssignment(requestBody)
 
-        console.log('[CLIENT-STAFF] Response status:', response.status)
-        const responseData = await response.json()
-        console.log('[CLIENT-STAFF] Response data:', responseData)
-
-        if (!response.ok) {
-          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${responseData.error || 'Unknown error'}`)
+          console.log('[CLIENT-STAFF] Response data:', responseData)
+        } catch (error: any) {
+          console.error('[CLIENT-STAFF] Error:', error)
+          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${error.message || 'Unknown error'}`)
           return
         }
       } else {
@@ -506,25 +463,19 @@ export default function EventDetailPage() {
             notes: staffNotes || null
           }
 
-          console.log('[CLIENT-STAFF] Making POST request for date:', dateTime.dateId)
+          console.log('[CLIENT-STAFF] Creating staff assignment for date:', dateTime.dateId)
           console.log('[CLIENT-STAFF] Request body:', requestBody)
 
-          const response = await fetch('/api/event-staff', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-          })
-
-          console.log('[CLIENT-STAFF] Response status:', response.status)
-          const responseData = await response.json()
-          console.log('[CLIENT-STAFF] Response data:', responseData)
-
-          if (!response.ok) {
+          try {
+            const responseData = await eventsService.createStaffAssignment(requestBody)
+            console.log('[CLIENT-STAFF] Response data:', responseData)
+          } catch (error: any) {
+            console.error('[CLIENT-STAFF] Error:', error)
             // Check for duplicate constraint error
-            if (responseData.code === '23505' || responseData.details?.includes('already exists')) {
+            if (error.code === '23505' || error.message?.includes('already exists')) {
               toast.error(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
             } else {
-              toast.error(`Failed to add staff for date: ${responseData.error || 'Unknown error'}`)
+              toast.error(`Failed to add staff for date: ${error.message || 'Unknown error'}`)
             }
             return
           }
