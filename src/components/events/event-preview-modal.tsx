@@ -35,6 +35,18 @@ export function EventPreviewModal({
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
+  // Debug: Log what date we're supposed to show
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[PREVIEW MODAL] Opening with:', {
+        eventId,
+        selectedEventDate,
+        hasSelectedDate: !!selectedEventDate,
+        selectedDateValue: selectedEventDate?.event_date
+      })
+    }
+  }, [isOpen, eventId, selectedEventDate])
+
   useEffect(() => {
     if (isOpen && eventId) {
       fetchEventDetails()

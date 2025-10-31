@@ -590,6 +590,7 @@ export default function EventsPage() {
                     const currentEventDate = event._currentEventDate
                     const displayId = event._displayId || event.id
                     const originalEventId = event._originalEventId || event.id
+                    const eventDateCount = event.event_dates?.length || 0
 
                     const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
                     const displayLocation = currentEventDate?.locations?.name || event.location || 'No location'
@@ -867,6 +868,7 @@ export default function EventsPage() {
               const currentEventDate = event._currentEventDate
               const displayId = event._displayId || event.id
               const originalEventId = event._originalEventId || event.id
+              const eventDateCount = event.event_dates?.length || 0
 
               const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
               const displayLocation = currentEventDate?.locations?.name || event.location || 'No location'
