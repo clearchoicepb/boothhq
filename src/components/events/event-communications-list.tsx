@@ -1,6 +1,8 @@
 import { Plus, Mail, MessageSquare, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDistanceToNow } from 'date-fns'
+import { EmptyState } from './detail/shared/EmptyState'
+import { SkeletonList } from './detail/shared/SkeletonLoader'
 
 interface EventCommunicationsListProps {
   communications: any[]
@@ -40,17 +42,16 @@ export function EventCommunicationsList({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-6">Communications</h2>
+        <SkeletonList count={4} />
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex justify-between items-center mb-4">
+    <div>
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold text-gray-900">Communications</h2>
         {canCreate && (
           <div className="flex gap-2">
@@ -71,11 +72,14 @@ export function EventCommunicationsList({
       </div>
 
       {communications.length === 0 ? (
-        <div className="text-center py-12">
-          <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No communications yet</h3>
-          <p className="mt-1 text-sm text-gray-500">Start communicating with your contacts.</p>
-        </div>
+        <EmptyState
+          icon={MessageSquare}
+          title="No communications yet"
+          description="Keep track of all emails, calls, and messages related to this event. Log communications manually or send emails and SMS directly."
+          actionLabel={canCreate ? "Log Communication" : undefined}
+          onAction={canCreate ? onNewCommunication : undefined}
+          variant="subtle"
+        />
       ) : (
         <>
           <div className="space-y-4">

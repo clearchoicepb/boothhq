@@ -1,5 +1,7 @@
 import { Clock, User } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { EmptyState } from './detail/shared/EmptyState'
+import { SkeletonList } from './detail/shared/SkeletonLoader'
 
 interface EventActivitiesListProps {
   activities: any[]
@@ -18,9 +20,8 @@ export function EventActivitiesList({
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-6">Activity Timeline</h2>
+        <SkeletonList count={5} />
       </div>
     )
   }
@@ -28,11 +29,14 @@ export function EventActivitiesList({
   if (!activities || activities.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center py-12">
-          <Clock className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No activities yet</h3>
-          <p className="mt-1 text-sm text-gray-500">Activity will appear here as it happens.</p>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-6">Activity Timeline</h2>
+        <EmptyState
+          icon={Clock}
+          title="No activities yet"
+          description="Activity will appear here as actions are taken on this event. Updates, changes, and communications will be logged automatically."
+          variant="subtle"
+          size="sm"
+        />
       </div>
     )
   }
