@@ -40,6 +40,9 @@ interface ConnectionPoolConfig {
   maxClients: number;
   enableMetrics: boolean;
   useNextjsCache: boolean; // Enable Next.js cache for serverless
+  configCacheTTL?: number; // Config cache TTL in milliseconds
+  clientCacheTTL?: number; // Client cache TTL in milliseconds
+  cacheCleanupInterval?: number; // Cleanup interval in milliseconds
 }
 
 /**
@@ -79,9 +82,10 @@ export class DataSourceManager {
   // Client cache: "tenant_id-anon" or "tenant_id-service" -> Supabase client
   private clientCache = new Map<string, ClientCacheEntry>();
 
-  // Cache TTLs
-  private readonly CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  private readonly CLIENT_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  // Cache TTLs (configurable)
+  private readonly CONFIG_CACHE_TTL: number;
+  private readonly CLIENT_CACHE_TTL: number;
+  private readonly CACHE_CLEANUP_INTERVAL: number;
 
   // Connection pool configuration
   private readonly poolConfig: ConnectionPoolConfig;
@@ -100,7 +104,16 @@ export class DataSourceManager {
       maxClients: config?.maxClients ?? 50, // Default: 50 max clients
       enableMetrics: config?.enableMetrics ?? true,
       useNextjsCache: config?.useNextjsCache ?? true, // Default: enabled for serverless
+      configCacheTTL: config?.configCacheTTL ?? 5 * 60 * 1000, // Default: 5 minutes
+      clientCacheTTL: config?.clientCacheTTL ?? 60 * 60 * 1000, // Default: 1 hour
+      cacheCleanupInterval: config?.cacheCleanupInterval ?? 10 * 60 * 1000, // Default: 10 minutes
     };
+
+    // Initialize TTL values from config
+    this.CONFIG_CACHE_TTL = this.poolConfig.configCacheTTL!;
+    this.CLIENT_CACHE_TTL = this.poolConfig.clientCacheTTL!;
+    this.CACHE_CLEANUP_INTERVAL = this.poolConfig.cacheCleanupInterval!;
+
     this.startCacheCleanup();
   }
 
@@ -584,7 +597,7 @@ export class DataSourceManager {
 
   /**
    * Start periodic cache cleanup
-   * Removes expired entries every 10 minutes
+   * Removes expired entries at configurable intervals
    */
   private startCacheCleanup(): void {
     setInterval(() => {
@@ -603,7 +616,7 @@ export class DataSourceManager {
           this.clientCache.delete(key);
         }
       }
-    }, 10 * 60 * 1000); // Every 10 minutes
+    }, this.CACHE_CLEANUP_INTERVAL);
   }
 
   /**
@@ -665,6 +678,15 @@ const poolConfig: Partial<ConnectionPoolConfig> = {
     : 50,
   enableMetrics: process.env.DATA_SOURCE_ENABLE_METRICS !== 'false', // Default: true
   useNextjsCache: process.env.DATA_SOURCE_USE_NEXTJS_CACHE !== 'false', // Default: true (serverless-friendly)
+  configCacheTTL: process.env.DATA_SOURCE_CONFIG_CACHE_TTL
+    ? parseInt(process.env.DATA_SOURCE_CONFIG_CACHE_TTL, 10)
+    : undefined, // Default: 5 minutes (300000 ms)
+  clientCacheTTL: process.env.DATA_SOURCE_CLIENT_CACHE_TTL
+    ? parseInt(process.env.DATA_SOURCE_CLIENT_CACHE_TTL, 10)
+    : undefined, // Default: 1 hour (3600000 ms)
+  cacheCleanupInterval: process.env.DATA_SOURCE_CACHE_CLEANUP_INTERVAL
+    ? parseInt(process.env.DATA_SOURCE_CACHE_CLEANUP_INTERVAL, 10)
+    : undefined, // Default: 10 minutes (600000 ms)
 };
 
 // Export singleton instance with configuration
