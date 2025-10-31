@@ -106,9 +106,18 @@ function explodeMultiDateEvents(events: Event[]): Event[] {
   for (const event of events) {
     const eventDates = event.event_dates || []
 
-    // If event has no dates or only 1 date, keep as-is
-    if (eventDates.length <= 1) {
+    // If event has no dates, keep as-is
+    if (eventDates.length === 0) {
       explodedEvents.push(event)
+      continue
+    }
+
+    // If event has only 1 date, keep as-is but add _currentEventDate for consistency
+    if (eventDates.length === 1) {
+      explodedEvents.push({
+        ...event,
+        _currentEventDate: eventDates[0] // Set current date for preview modal
+      })
       continue
     }
 
