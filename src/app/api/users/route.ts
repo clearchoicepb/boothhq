@@ -6,10 +6,10 @@ import bcrypt from 'bcryptjs'
 
 export async function GET(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
     // Query Tenant DB for users (users table is now in Tenant DB)
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
     // Get all users for the current tenant
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
     }
 
-    return NextResponse.json({ users })
+    return NextResponse.json(users || [])
   } catch (error) {
     console.error('Error in GET /api/users:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
