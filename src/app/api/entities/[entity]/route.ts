@@ -7,14 +7,15 @@ export async function GET(
   { params }: { params: Promise<{ entity: string }> }
 ) {
   const { entity } = await params
-  
-  try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
+    const config = getEntityConfig(entity)
     const { searchParams } = new URL(request.url)
-    
+
     // Extract filters and pagination params
     const search = searchParams.get('search') || undefined
     const status = searchParams.get('status') || undefined
