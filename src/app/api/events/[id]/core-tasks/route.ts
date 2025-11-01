@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET - Fetch core task completion status for an event
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
+    const eventId = params.id
+
     // Fetch completion records with template details
     const { data: completions, error } = await supabase
       .from('event_core_task_completion')
@@ -45,15 +48,15 @@ export async function GET(
 // PATCH - Update completion status of a core task
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    const { id: eventId } = await params
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
+    const eventId = params.id
 
     const body = await request.json()
     const { completion_id, is_completed } = body
