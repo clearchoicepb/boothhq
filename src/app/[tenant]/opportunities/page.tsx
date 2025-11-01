@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
@@ -70,7 +70,14 @@ function OpportunitiesPageContent() {
   const [pendingCloseStage, setPendingCloseStage] = useState<'closed_won' | 'closed_lost' | null>(null)
   const [opportunityToClose, setOpportunityToClose] = useState<OpportunityWithRelations | null>(null)
 
-  // Custom hooks for data management
+  // Apply client-side filters first (to get filter state)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStage, setFilterStage] = useState<string>('all')
+  const [filterOwner, setFilterOwner] = useState<string>('all')
+  const [dateFilter, setDateFilter] = useState<string>('all')
+  const [dateType, setDateType] = useState<'created' | 'closed' | 'event'>('created')
+
+  // Custom hooks for data management - NOW PASSES ACTUAL FILTERS TO BACKEND
   const {
     opportunities,
     setOpportunities,
@@ -85,46 +92,55 @@ function OpportunitiesPageContent() {
   } = useOpportunitiesData({
     session,
     tenant,
-    filterStage: 'all',
-    filterOwner: 'all',
+    filterStage,      // Pass actual stage filter to backend
+    filterOwner,      // Pass actual owner filter to backend
     currentView,
     currentPage: 1,
     itemsPerPage: itemsPerPage,
   })
 
-  // Apply client-side filters
+  // Apply client-side filters (search and date only - stage/owner done server-side)
   const {
-    searchTerm,
-    setSearchTerm,
-    filterStage,
-    setFilterStage,
-    filterOwner,
-    setFilterOwner,
-    dateFilter,
-    setDateFilter,
-    dateType,
-    setDateType,
     filteredOpportunities,
-    clearAllFilters,
-  } = useOpportunityFilters(opportunities)
+  } = useOpportunityFilters({ opportunities, searchTerm, filterStage, filterOwner, dateFilter, dateType })
+
+  // Clear all filters function
+  const clearAllFilters = useCallback(() => {
+    setSearchTerm('')
+    setFilterStage('all')
+    setFilterOwner('all')
+    setDateFilter('all')
+  }, [])
+
+  // Helper function to get the earliest date from an opportunity
+  const getEarliestDate = (opp: OpportunityWithRelations): number | null => {
+    if (opp.event_dates && Array.isArray(opp.event_dates) && opp.event_dates.length > 0) {
+      const dates = opp.event_dates
+        .map((ed: any) => ed.event_date)
+        .filter(Boolean)
+        .map((d: string) => new Date(d).getTime())
+      return dates.length > 0 ? Math.min(...dates) : null
+    }
+    return opp.event_date ? new Date(opp.event_date).getTime() : null
+  }
 
   // Apply sorting to filtered opportunities
   const sortedOpportunities = [...filteredOpportunities].sort((a, b) => {
     switch (sortBy) {
       case 'event_date_asc':
-        const dateA = a.event_dates?.[0]?.event_date || a.event_date
-        const dateB = b.event_dates?.[0]?.event_date || b.event_date
+        const dateA = getEarliestDate(a)
+        const dateB = getEarliestDate(b)
         if (!dateA && !dateB) return 0
-        if (!dateA) return 1
+        if (!dateA) return 1  // Push null dates to end
         if (!dateB) return -1
-        return new Date(dateA).getTime() - new Date(dateB).getTime()
+        return dateA - dateB
       case 'event_date_desc':
-        const dateA2 = a.event_dates?.[0]?.event_date || a.event_date
-        const dateB2 = b.event_dates?.[0]?.event_date || b.event_date
+        const dateA2 = getEarliestDate(a)
+        const dateB2 = getEarliestDate(b)
         if (!dateA2 && !dateB2) return 0
-        if (!dateA2) return 1
+        if (!dateA2) return 1  // Push null dates to end
         if (!dateB2) return -1
-        return new Date(dateB2).getTime() - new Date(dateA2).getTime()
+        return dateB2 - dateA2
       case 'created_asc':
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       case 'created_desc':
