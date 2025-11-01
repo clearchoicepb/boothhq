@@ -12,7 +12,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksService } from '@/lib/api/services/tasksService'
 import type { TaskInsert, TaskUpdate, TaskWithRelations } from '@/types/tasks'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 /**
  * Hook for creating a new task
