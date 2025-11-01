@@ -15,8 +15,9 @@ export async function GET(
       .from('tasks')
       .select(`
         *,
-        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
+        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
+        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
@@ -53,6 +54,12 @@ export async function PATCH(
       status,
       priority,
       dueDate,
+      department,
+      taskType,
+      entityType,
+      entityId,
+      eventDateId,
+      completedAt,
     } = body
 
     const updateData: any = {
@@ -75,6 +82,12 @@ export async function PATCH(
     }
     if (priority !== undefined) updateData.priority = priority
     if (dueDate !== undefined) updateData.due_date = dueDate
+    if (department !== undefined) updateData.department = department
+    if (taskType !== undefined) updateData.task_type = taskType
+    if (entityType !== undefined) updateData.entity_type = entityType
+    if (entityId !== undefined) updateData.entity_id = entityId
+    if (eventDateId !== undefined) updateData.event_date_id = eventDateId
+    if (completedAt !== undefined) updateData.completed_at = completedAt
 
     const { data: task, error: updateError } = await supabase
       .from('tasks')
@@ -83,8 +96,9 @@ export async function PATCH(
       .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
-        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
+        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
+        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
       `)
       .single()
 
