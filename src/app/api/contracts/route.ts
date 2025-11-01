@@ -71,11 +71,10 @@ export async function POST(request: NextRequest) {
 // Get contracts for an entity
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const { searchParams } = new URL(request.url)
     const opportunityId = searchParams.get('opportunityId')

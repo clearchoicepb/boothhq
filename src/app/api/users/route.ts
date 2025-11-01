@@ -34,8 +34,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('=== CREATE USER API START ===')
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
       console.error('[Create User] No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

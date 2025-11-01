@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id')
     const eventDateId = searchParams.get('event_date_id')
 
-    console.log('[EVENT-STAFF-GET] Starting query for tenant:', session.user.tenantId, 'eventId:', eventId)
+    console.log('[EVENT-STAFF-GET] Starting query for tenant:', dataSourceTenantId, 'eventId:', eventId)
 
     let query = supabase
       .from('event_staff_assignments')
@@ -69,14 +69,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('[EVENT-STAFF-POST] ========== START POST REQUEST ==========')
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
       console.log('[EVENT-STAFF-POST] Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('[EVENT-STAFF-POST] User authenticated:', session.user.email, 'Tenant:', session.user.tenantId)
+    console.log('[EVENT-STAFF-POST] User authenticated:', session.user.email, 'Tenant:', dataSourceTenantId)
 
     const body = await request.json()
     console.log('[EVENT-STAFF-POST] Request body received:', JSON.stringify(body, null, 2))

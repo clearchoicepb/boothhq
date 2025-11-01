@@ -41,11 +41,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     let body
     try {
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
-    console.log('[ACCOUNTS POST] Getting tenant database client for tenant:', session.user.tenantId)
+    console.log('[ACCOUNTS POST] Getting tenant database client for tenant:', dataSourceTenantId)
     console.log('[ACCOUNTS POST] Got tenant database client, inserting account...')
 
     const { data, error } = await supabase

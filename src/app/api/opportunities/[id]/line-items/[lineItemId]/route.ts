@@ -37,7 +37,7 @@ export async function PUT(
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
+    await updateOpportunityAmount(supabase, params.id, dataSourceTenantId)
 
     return NextResponse.json(data)
   } catch (error) {
@@ -51,11 +51,10 @@ export async function DELETE(
   { params }: { params: { id: string; lineItemId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const { error } = await supabase
       .from('opportunity_line_items')
@@ -70,7 +69,7 @@ export async function DELETE(
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
+    await updateOpportunityAmount(supabase, params.id, dataSourceTenantId)
 
     return NextResponse.json({ success: true })
   } catch (error) {

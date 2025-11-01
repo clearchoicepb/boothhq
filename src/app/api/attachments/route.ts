@@ -54,7 +54,10 @@ export async function GET(request: NextRequest) {
 // POST - Upload new attachment
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
     // Generate unique file path
     const fileExt = file.name.split('.').pop()
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-    const storagePath = `${session.user.tenantId}/${entityType}/${entityId}/${fileName}`
+    const storagePath = `${dataSourceTenantId}/${entityType}/${entityId}/${fileName}`
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage

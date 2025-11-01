@@ -13,7 +13,7 @@ export async function GET(
 
   const { supabase, dataSourceTenantId, session } = context
     // Query Tenant DB for user
-    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
+    const { } = await import('@/lib/supabase-client')
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -40,7 +40,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
     const { id } = await params
 
     if (!session?.user) {
@@ -166,7 +169,10 @@ export async function DELETE(
 ) {
   try {
     console.log('=== DELETE USER API START ===')
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
     const { id } = await params
     
     console.log('[Delete User] Attempting to delete user:', id)

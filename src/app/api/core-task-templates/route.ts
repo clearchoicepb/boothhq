@@ -28,11 +28,10 @@ export async function GET(request: NextRequest) {
 // POST - Create a new core task template
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
     const { task_name, display_order } = body
@@ -67,11 +66,10 @@ export async function POST(request: NextRequest) {
 // PATCH - Update core task templates (bulk reorder or update)
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
     const { templates } = body // Array of { id, task_name, display_order, is_active }

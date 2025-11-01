@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // Get tenant connection info for debugging
     const { dataSourceManager } = await import('@/lib/data-sources')
-    const connectionInfo = await dataSourceManager.getTenantConnectionInfo(session.user.tenantId)
+    const connectionInfo = await dataSourceManager.getTenantConnectionInfo(dataSourceTenantId)
     console.log('[Locations API GET] Database connection info:', {
       url: connectionInfo.url,
       region: connectionInfo.region,
@@ -70,11 +70,14 @@ export async function POST(request: NextRequest) {
   try {
     console.log('=== LOCATION CREATE API START ===')
 
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
     console.log('[Locations API] Session user:', session?.user ? {
       id: session.user.id,
       email: session.user.email,
-      tenantId: session.user.tenantId
+      tenantId: dataSourceTenantId
     } : 'No session')
 
     if (!session?.user) {
@@ -85,11 +88,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('[Locations API] Request body:', JSON.stringify(body, null, 2))
 
-    console.log('[Locations API] Getting tenant database client for tenant:', session.user.tenantId)
+    console.log('[Locations API] Getting tenant database client for tenant:', dataSourceTenantId)
 
     // Get tenant connection info for debugging
     const { dataSourceManager } = await import('@/lib/data-sources')
-    const connectionInfo = await dataSourceManager.getTenantConnectionInfo(session.user.tenantId)
+    const connectionInfo = await dataSourceManager.getTenantConnectionInfo(dataSourceTenantId)
     console.log('[Locations API] Database connection info:', {
       url: connectionInfo.url,
       region: connectionInfo.region,
