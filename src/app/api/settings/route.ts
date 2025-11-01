@@ -2,10 +2,10 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
     // Get all settings for this tenant
     const { data: settings, error } = await supabase
       .from('tenant_settings')
@@ -48,10 +48,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    , { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
     const { settings } = body
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Convert nested settings object to flat array of key-value pairs
     const settingsArray: Array<{tenant_id: string, setting_key: string, setting_value: any}> = []
-    
+
     const flattenSettings = (obj: any, prefix = '') => {
       for (const [key, value] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key

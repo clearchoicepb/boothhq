@@ -5,11 +5,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
-    const supabase = getTenantDatabaseClient()
+    const { supabase, dataSourceTenantId, session } = context
     const eventId = params.id
 
     // Fetch the original event

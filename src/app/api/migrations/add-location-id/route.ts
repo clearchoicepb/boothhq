@@ -1,15 +1,12 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 export async function POST() {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
-    const supabase = createServerSupabaseClient()
+    const { supabase, dataSourceTenantId, session } = context
 
     console.log('🚀 Starting migration: add_location_id_to_events')
 

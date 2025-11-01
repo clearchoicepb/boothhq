@@ -16,12 +16,10 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user using NextAuth
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
-      )
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const searchParams = request.nextUrl.searchParams
     const stage = searchParams.get('stage')
