@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-options'
-import { createClient } from '@/utils/supabase/server'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { enrichTaskWithUrgency } from '@/types/tasks'
 import type { TaskDashboardData, TaskWithRelations } from '@/types/tasks'
 
@@ -18,11 +16,10 @@ import type { TaskDashboardData, TaskWithRelations } from '@/types/tasks'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
     const searchParams = request.nextUrl.searchParams
     const department = searchParams.get('department')
     const assignedTo = searchParams.get('assignedTo')
@@ -34,8 +31,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
-
     // Build query for tasks
     let query = supabase
       .from('tasks')
@@ -46,7 +41,7 @@ export async function GET(request: NextRequest) {
         created_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
       `
       )
-      .eq('tenant_id', session.user.tenant_id)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('department', department)
       .in('status', ['pending', 'in_progress']) // Only show active tasks on dashboard
 
