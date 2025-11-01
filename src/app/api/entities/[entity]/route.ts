@@ -90,10 +90,12 @@ export async function GET(
     const orderDirection = config.defaultOrder?.direction || 'desc'
     query = query.order(orderBy, { ascending: orderDirection === 'asc' })
 
-    // Apply pagination
-    const from = (page - 1) * limit
-    const to = from + limit - 1
-    query = query.range(from, to)
+    // Apply pagination - SKIP if pipeline view (need all opportunities for drag-and-drop)
+    if (!pipelineView) {
+      const from = (page - 1) * limit
+      const to = from + limit - 1
+      query = query.range(from, to)
+    }
 
     // Execute both queries in parallel
     const [{ data, error }, { count, error: countError }] = await Promise.all([
@@ -115,14 +117,15 @@ export async function GET(
 
     // Calculate pagination metadata
     const total = count || 0
-    const totalPages = Math.ceil(total / limit)
-    const hasMore = page < totalPages
+    const actualLimit = pipelineView ? total : limit // In pipeline view, limit = total
+    const totalPages = pipelineView ? 1 : Math.ceil(total / limit)
+    const hasMore = !pipelineView && page < totalPages
 
     const response = NextResponse.json({
       data: transformedData || [],
       pagination: {
-        page,
-        limit,
+        page: pipelineView ? 1 : page,
+        limit: actualLimit,
         total,
         totalPages,
         hasMore

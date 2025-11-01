@@ -8,18 +8,16 @@ interface DateRange {
 }
 
 interface UseOpportunityFiltersReturn {
-  searchTerm: string
-  setSearchTerm: React.Dispatch<React.SetStateAction<string>>
-  filterStage: string
-  setFilterStage: React.Dispatch<React.SetStateAction<string>>
-  filterOwner: string
-  setFilterOwner: React.Dispatch<React.SetStateAction<string>>
-  dateFilter: string
-  setDateFilter: React.Dispatch<React.SetStateAction<string>>
-  dateType: 'created' | 'closed' | 'event'
-  setDateType: React.Dispatch<React.SetStateAction<'created' | 'closed' | 'event'>>
   filteredOpportunities: OpportunityWithRelations[]
-  clearAllFilters: () => void
+}
+
+interface UseOpportunityFiltersParams {
+  opportunities: OpportunityWithRelations[]
+  searchTerm: string
+  filterStage: string
+  filterOwner: string
+  dateFilter: string
+  dateType: 'created' | 'closed' | 'event'
 }
 
 /**
@@ -136,57 +134,44 @@ function isOpportunityInDateRange(
 
 /**
  * Custom hook for managing opportunity filters
- * 
- * @param opportunities - Array of opportunities to filter
- * @returns Filter state, setters, filtered opportunities, and utility functions
+ *
+ * NOTE: Stage and Owner filtering are now done server-side for better performance.
+ * This hook only applies client-side filters for search term and date range.
+ *
+ * @param params - Filter parameters
+ * @returns Filtered opportunities
  */
-export function useOpportunityFilters(
-  opportunities: OpportunityWithRelations[]
-): UseOpportunityFiltersReturn {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterStage, setFilterStage] = useState<string>('all')
-  const [filterOwner, setFilterOwner] = useState<string>('all')
-  const [dateFilter, setDateFilter] = useState<string>('all')
-  const [dateType, setDateType] = useState<'created' | 'closed' | 'event'>('created')
-
-  // Filter opportunities based on all filter criteria
+export function useOpportunityFilters({
+  opportunities,
+  searchTerm,
+  filterStage,
+  filterOwner,
+  dateFilter,
+  dateType
+}: UseOpportunityFiltersParams): UseOpportunityFiltersReturn {
+  // Filter opportunities based on CLIENT-SIDE filter criteria only
+  // (Stage and Owner are filtered server-side via API)
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter(opportunity => {
-      const matchesSearch = opportunity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      // Search filter (client-side only)
+      const matchesSearch = !searchTerm ||
+                           opportunity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (opportunity.description && opportunity.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
                            (opportunity.account_name && opportunity.account_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
                            (opportunity.contact_name && opportunity.contact_name.toLowerCase().includes(searchTerm.toLowerCase()))
-      
-      const matchesStage = filterStage === 'all' || opportunity.stage === filterStage
-      
-      const matchesDate = isOpportunityInDateRange(opportunity, dateFilter, dateType)
-      
-      return matchesSearch && matchesStage && matchesDate
-    })
-  }, [opportunities, searchTerm, filterStage, dateFilter, dateType])
 
-  // Clear all filters
-  const clearAllFilters = useCallback(() => {
-    setSearchTerm('')
-    setFilterStage('all')
-    setFilterOwner('all')
-    setDateFilter('all')
-    toast('Filters cleared', { icon: '✨', duration: 2000 })
-  }, [])
+      // Date filter (client-side only)
+      const matchesDate = isOpportunityInDateRange(opportunity, dateFilter, dateType)
+
+      // Note: Stage and Owner filters are applied server-side, so we don't filter here
+      // The opportunities array already has the correct stage/owner filtering applied
+
+      return matchesSearch && matchesDate
+    })
+  }, [opportunities, searchTerm, dateFilter, dateType])
 
   return {
-    searchTerm,
-    setSearchTerm,
-    filterStage,
-    setFilterStage,
-    filterOwner,
-    setFilterOwner,
-    dateFilter,
-    setDateFilter,
-    dateType,
-    setDateType,
     filteredOpportunities,
-    clearAllFilters,
   }
 }
 

@@ -8,6 +8,13 @@ export interface OpportunityWithRelations extends Opportunity {
   account_type: 'individual' | 'company' | null
   contact_name: string | null
   owner_name?: string | null
+  event_dates?: Array<{
+    event_date: string
+    start_time?: string | null
+    end_time?: string | null
+    location_id?: string | null
+    notes?: string | null
+  }>
 }
 
 interface UseOpportunitiesDataProps {
