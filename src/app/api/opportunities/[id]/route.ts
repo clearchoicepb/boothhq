@@ -2,13 +2,14 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const { data, error } = await supabase
       .from('opportunities')
       .select(`
@@ -18,7 +19,7 @@ export async function GET(
         leads!opportunities_lead_id_fkey(first_name, last_name, phone, email),
         event_dates(*)
       `)
-      .eq('id', (await params).id)
+      .eq('id', params.id)
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
@@ -156,7 +157,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from('opportunities')
       .update(updateData)
-      .eq('id', (await params).id)
+      .eq('id', params.id)
       .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
@@ -169,7 +170,7 @@ export async function PUT(
     // Handle event dates if provided
     if (event_dates && Array.isArray(event_dates)) {
       // Delete existing event dates for this opportunity
-      const opportunityId = (await params).id
+      const opportunityId = params.id
       await supabase
         .from('event_dates')
         .delete()
@@ -208,18 +209,19 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
 
     const { error } = await supabase
       .from('opportunities')
       .delete()
-      .eq('id', (await params).id)
+      .eq('id', params.id)
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
