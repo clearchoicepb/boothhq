@@ -4,10 +4,10 @@ import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const stageFilter = searchParams.get('stage') || 'all'
 
