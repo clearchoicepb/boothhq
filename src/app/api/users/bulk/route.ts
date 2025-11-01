@@ -1,15 +1,13 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { isAdmin, type UserRole } from '@/lib/roles'
 
 export async function POST(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
     // Check if user has admin role
     if (!isAdmin(session.user.role as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -23,8 +21,6 @@ export async function POST(request: NextRequest) {
         error: 'Invalid request: action and userIds array required'
       }, { status: 400 })
     }
-
-    const supabase = createServerSupabaseClient()
 
     let result
 

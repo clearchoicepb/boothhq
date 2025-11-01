@@ -1,20 +1,17 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
-    const params = await context.params
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const userId = params.id
-    const supabase = createServerSupabaseClient()
 
     // Fetch pay rate history
     const { data: payRateHistory, error: payRateError } = await supabase

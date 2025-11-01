@@ -116,18 +116,16 @@ export async function POST(request: Request) {
         error: 'Confirmation required. Send { "confirm": "yes-create-test-data" } in request body.'
       }, { status: 400 })
     }
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
-    const supabase = createServerSupabaseClient()
-    const tenantId = session.user.tenantId
+    const { supabase, dataSourceTenantId, session } = context
 
     // Get all users in tenant for owner assignment
     const { data: users } = await supabase
       .from('tenant_users')
       .select('user_id')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     const userIds = users?.map(u => u.user_id) || [session.user.id]
 
