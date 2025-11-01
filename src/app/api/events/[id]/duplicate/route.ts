@@ -1,20 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = getTenantDatabaseClient()
+    const { supabase, dataSourceTenantId, session } = context
     const eventId = params.id
 
     // Fetch the original event
@@ -22,7 +16,7 @@ export async function POST(
       .from('events')
       .select('*')
       .eq('id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (fetchError || !originalEvent) {

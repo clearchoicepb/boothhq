@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 /**
@@ -11,16 +9,15 @@ export async function GET(request: NextRequest) {
   try {
     console.log('=== TENANT CONFIG DEBUG START ===')
 
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     console.log('[Debug] Session user:', {
       id: session.user.id,
       email: session.user.email,
-      tenantId: session.user.tenantId,
+      tenantId: dataSourceTenantId,
       tenantName: session.user.tenantName
     })
 
@@ -30,7 +27,7 @@ export async function GET(request: NextRequest) {
     const { data: tenant, error } = await appDb
       .from('tenants')
       .select('id, name, subdomain, data_source_url, data_source_region, tenant_id_in_data_source, status')
-      .eq('id', session.user.tenantId)
+      .eq('id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -38,15 +35,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Failed to fetch tenant configuration',
         details: error.message,
-        tenantId: session.user.tenantId
+        tenantId: dataSourceTenantId
       }, { status: 500 })
     }
 
     if (!tenant) {
-      console.error('[Debug] Tenant not found:', session.user.tenantId)
+      console.error('[Debug] Tenant not found:', dataSourceTenantId)
       return NextResponse.json({
         error: 'Tenant not found',
-        tenantId: session.user.tenantId
+        tenantId: dataSourceTenantId
       }, { status: 404 })
     }
 
@@ -67,7 +64,7 @@ export async function GET(request: NextRequest) {
     if (tenant.data_source_url) {
       try {
         const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-        const tenantDb = await getTenantDatabaseClient(session.user.tenantId)
+        const tenantDb = await getTenantDatabaseClient(dataSourceTenantId)
 
         // Try a simple query
         const { data: testData, error: testError } = await tenantDb

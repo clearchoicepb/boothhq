@@ -1,16 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
     const { to, message, opportunity_id, account_id, contact_id, lead_id, event_id } = body
 
@@ -19,13 +14,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Phone number and message are required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Get Twilio credentials from settings (fallback to environment variables)
     const { data: settings } = await supabase
       .from('settings')
       .select('integrations')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     let accountSid = process.env.TWILIO_ACCOUNT_SID
@@ -73,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Log the communication in the database
     const communicationData: any = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       created_by: session.user.id,
       communication_type: 'sms',
       direction: 'outbound',

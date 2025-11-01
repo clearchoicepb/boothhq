@@ -30,6 +30,32 @@ interface ConfigCacheEntry {
 interface ClientCacheEntry {
   client: SupabaseClient<Database>;
   expiry: number;
+  createdAt: number;
+}
+
+/**
+ * Connection pool configuration
+ */
+interface ConnectionPoolConfig {
+  maxClients: number;
+  enableMetrics: boolean;
+  useNextjsCache: boolean; // Enable Next.js cache for serverless
+  configCacheTTL?: number; // Config cache TTL in milliseconds
+  clientCacheTTL?: number; // Client cache TTL in milliseconds
+  cacheCleanupInterval?: number; // Cleanup interval in milliseconds
+}
+
+/**
+ * Tenant config data from database (before decryption)
+ */
+interface TenantConfigData {
+  id: string;
+  data_source_url: string;
+  data_source_anon_key: string;
+  data_source_service_key: string;
+  data_source_region: string | null;
+  connection_pool_config: any;
+  tenant_id_in_data_source: string | null;
 }
 
 /**
@@ -56,21 +82,48 @@ export class DataSourceManager {
   // Client cache: "tenant_id-anon" or "tenant_id-service" -> Supabase client
   private clientCache = new Map<string, ClientCacheEntry>();
 
-  // Cache TTLs
-  private readonly CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  private readonly CLIENT_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  // Cache TTLs (configurable)
+  private readonly CONFIG_CACHE_TTL: number;
+  private readonly CLIENT_CACHE_TTL: number;
+  private readonly CACHE_CLEANUP_INTERVAL: number;
 
-  private constructor() {
+  // Connection pool configuration
+  private readonly poolConfig: ConnectionPoolConfig;
+
+  // Metrics tracking
+  private metrics = {
+    totalClientsCreated: 0,
+    poolExhaustedCount: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+  };
+
+  private constructor(config?: Partial<ConnectionPoolConfig>) {
     // Private constructor for singleton pattern
+    this.poolConfig = {
+      maxClients: config?.maxClients ?? 50, // Default: 50 max clients
+      enableMetrics: config?.enableMetrics ?? true,
+      useNextjsCache: config?.useNextjsCache ?? true, // Default: enabled for serverless
+      configCacheTTL: config?.configCacheTTL ?? 5 * 60 * 1000, // Default: 5 minutes
+      clientCacheTTL: config?.clientCacheTTL ?? 60 * 60 * 1000, // Default: 1 hour
+      cacheCleanupInterval: config?.cacheCleanupInterval ?? 10 * 60 * 1000, // Default: 10 minutes
+    };
+
+    // Initialize TTL values from config
+    this.CONFIG_CACHE_TTL = this.poolConfig.configCacheTTL!;
+    this.CLIENT_CACHE_TTL = this.poolConfig.clientCacheTTL!;
+    this.CACHE_CLEANUP_INTERVAL = this.poolConfig.cacheCleanupInterval!;
+
     this.startCacheCleanup();
   }
 
   /**
    * Get singleton instance
+   * @param config - Optional connection pool configuration (only used on first initialization)
    */
-  static getInstance(): DataSourceManager {
+  static getInstance(config?: Partial<ConnectionPoolConfig>): DataSourceManager {
     if (!DataSourceManager.instance) {
-      DataSourceManager.instance = new DataSourceManager();
+      DataSourceManager.instance = new DataSourceManager(config);
     }
     return DataSourceManager.instance;
   }
@@ -81,6 +134,7 @@ export class DataSourceManager {
    * @param tenantId - The tenant UUID
    * @param useServiceRole - Whether to use service role key (bypasses RLS)
    * @returns Supabase client connected to tenant's data database
+   * @throws Error if connection pool is exhausted
    */
   async getClientForTenant(
     tenantId: string,
@@ -91,7 +145,26 @@ export class DataSourceManager {
     // Check client cache
     const cached = this.clientCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) {
+      if (this.poolConfig.enableMetrics) {
+        this.metrics.cacheHits++;
+      }
       return cached.client;
+    }
+
+    if (this.poolConfig.enableMetrics) {
+      this.metrics.cacheMisses++;
+    }
+
+    // Check connection pool limit
+    const activeClients = this.clientCache.size;
+    if (activeClients >= this.poolConfig.maxClients) {
+      if (this.poolConfig.enableMetrics) {
+        this.metrics.poolExhaustedCount++;
+      }
+      throw new Error(
+        `Connection pool exhausted: ${activeClients}/${this.poolConfig.maxClients} clients active. ` +
+        `Consider increasing maxClients or reducing tenant load.`
+      );
     }
 
     // Fetch tenant connection config
@@ -116,39 +189,29 @@ export class DataSourceManager {
       },
     });
 
+    if (this.poolConfig.enableMetrics) {
+      this.metrics.totalClientsCreated++;
+    }
+
     // Cache the client
     this.clientCache.set(cacheKey, {
       client,
       expiry: Date.now() + this.CLIENT_CACHE_TTL,
+      createdAt: Date.now(),
     });
 
     return client;
   }
 
   /**
-   * Fetch tenant's connection configuration from APPLICATION database
-   *
-   * IMPORTANT: This always queries the APPLICATION database, not tenant data
+   * Fetch tenant config from database (raw data, before decryption)
+   * This is the inner function that gets wrapped by Next.js cache
    *
    * @param tenantId - The tenant UUID
-   * @returns Connection config and tenant ID in data source
-   * @throws Error if tenant not found or missing configuration
+   * @returns Raw tenant config data from database
+   * @throws Error if tenant not found
    */
-  private async getTenantConnectionConfig(tenantId: string): Promise<{
-    config: TenantConnectionConfig;
-    tenantIdInDataSource: string;
-  }> {
-    // Check config cache
-    const cached = this.configCache.get(tenantId);
-    if (cached && cached.expiry > Date.now()) {
-      return {
-        config: cached.config,
-        tenantIdInDataSource: cached.tenantIdInDataSource,
-      };
-    }
-
-    // Query APPLICATION database for tenant metadata
-    // This uses the main application Supabase connection
+  private async fetchTenantConfigFromDatabase(tenantId: string): Promise<TenantConfigData> {
     const appDb = createServerSupabaseClient();
 
     const { data: tenant, error } = await appDb
@@ -175,6 +238,65 @@ export class DataSourceManager {
       throw new Error(`Tenant ${tenantId} has no data source configured`);
     }
 
+    return tenant as TenantConfigData;
+  }
+
+  /**
+   * Fetch tenant's connection configuration from APPLICATION database
+   *
+   * IMPORTANT: This always queries the APPLICATION database, not tenant data
+   *
+   * Uses a two-tier caching strategy:
+   * 1. In-memory cache (fastest, per-instance)
+   * 2. Next.js cache (persistent, serverless-friendly)
+   *
+   * @param tenantId - The tenant UUID
+   * @returns Connection config and tenant ID in data source
+   * @throws Error if tenant not found or missing configuration
+   */
+  private async getTenantConnectionConfig(tenantId: string): Promise<{
+    config: TenantConnectionConfig;
+    tenantIdInDataSource: string;
+  }> {
+    // Tier 1: Check in-memory cache (fastest)
+    const cached = this.configCache.get(tenantId);
+    if (cached && cached.expiry > Date.now()) {
+      return {
+        config: cached.config,
+        tenantIdInDataSource: cached.tenantIdInDataSource,
+      };
+    }
+
+    // Tier 2: Fetch from database with Next.js cache (if enabled)
+    let tenant: TenantConfigData;
+
+    if (this.poolConfig.useNextjsCache) {
+      // Use Next.js cache for serverless environments
+      // This cache persists across function invocations and is shared between instances
+      try {
+        // Dynamic import to avoid issues with client-side imports
+        const { unstable_cache } = await import('next/cache');
+
+        const getCachedTenantConfig = unstable_cache(
+          async (id: string) => this.fetchTenantConfigFromDatabase(id),
+          ['tenant-config', tenantId],
+          {
+            revalidate: 300, // Revalidate every 5 minutes
+            tags: [`tenant-config-${tenantId}`],
+          }
+        );
+
+        tenant = await getCachedTenantConfig(tenantId);
+      } catch (error) {
+        // Fallback to direct fetch if Next.js cache is not available
+        console.warn('Next.js cache not available, falling back to direct fetch:', error);
+        tenant = await this.fetchTenantConfigFromDatabase(tenantId);
+      }
+    } else {
+      // Direct database fetch (no Next.js cache)
+      tenant = await this.fetchTenantConfigFromDatabase(tenantId);
+    }
+
     // Decrypt sensitive keys
     const config: TenantConnectionConfig = {
       supabaseUrl: tenant.data_source_url,
@@ -184,7 +306,7 @@ export class DataSourceManager {
       poolConfig: tenant.connection_pool_config as any,
     };
 
-    // Cache the config
+    // Store in Tier 1 cache (in-memory)
     this.configCache.set(tenantId, {
       config,
       tenantIdInDataSource: tenant.tenant_id_in_data_source || tenantId,
@@ -353,14 +475,28 @@ export class DataSourceManager {
   /**
    * Clear all caches for a specific tenant
    *
-   * Call this when tenant configuration changes
+   * Call this when tenant configuration changes.
+   * Clears both in-memory cache and Next.js cache (if enabled).
    *
    * @param tenantId - The tenant UUID
    */
-  clearTenantCache(tenantId: string): void {
+  async clearTenantCache(tenantId: string): Promise<void> {
+    // Clear in-memory caches
     this.configCache.delete(tenantId);
     this.clientCache.delete(`${tenantId}-anon`);
     this.clientCache.delete(`${tenantId}-service`);
+
+    // Invalidate Next.js cache (if enabled)
+    if (this.poolConfig.useNextjsCache) {
+      try {
+        // Dynamic import to avoid issues with client-side imports
+        const { revalidateTag } = await import('next/cache');
+        revalidateTag(`tenant-config-${tenantId}`);
+      } catch (error) {
+        // revalidateTag may fail in non-serverless environments or client-side
+        console.warn(`Failed to revalidate Next.js cache for tenant ${tenantId}:`, error);
+      }
+    }
   }
 
   /**
@@ -461,7 +597,7 @@ export class DataSourceManager {
 
   /**
    * Start periodic cache cleanup
-   * Removes expired entries every 10 minutes
+   * Removes expired entries at configurable intervals
    */
   private startCacheCleanup(): void {
     setInterval(() => {
@@ -480,25 +616,81 @@ export class DataSourceManager {
           this.clientCache.delete(key);
         }
       }
-    }, 10 * 60 * 1000); // Every 10 minutes
+    }, this.CACHE_CLEANUP_INTERVAL);
   }
 
   /**
-   * Get cache statistics for monitoring
+   * Get cache and connection pool statistics for monitoring
    */
   getCacheStats(): {
     configCacheSize: number;
     clientCacheSize: number;
+    maxClients: number;
+    poolUtilization: number;
+    totalClientsCreated: number;
+    poolExhaustedCount: number;
+    cacheHitRate: number;
+    cacheHits: number;
+    cacheMisses: number;
   } {
+    const totalRequests = this.metrics.cacheHits + this.metrics.cacheMisses;
+    const cacheHitRate = totalRequests > 0
+      ? (this.metrics.cacheHits / totalRequests) * 100
+      : 0;
+
     return {
       configCacheSize: this.configCache.size,
       clientCacheSize: this.clientCache.size,
+      maxClients: this.poolConfig.maxClients,
+      poolUtilization: (this.clientCache.size / this.poolConfig.maxClients) * 100,
+      totalClientsCreated: this.metrics.totalClientsCreated,
+      poolExhaustedCount: this.metrics.poolExhaustedCount,
+      cacheHitRate: Math.round(cacheHitRate * 100) / 100,
+      cacheHits: this.metrics.cacheHits,
+      cacheMisses: this.metrics.cacheMisses,
+    };
+  }
+
+  /**
+   * Get connection pool configuration
+   */
+  getPoolConfig(): ConnectionPoolConfig {
+    return { ...this.poolConfig };
+  }
+
+  /**
+   * Reset metrics (useful for testing or debugging)
+   */
+  resetMetrics(): void {
+    this.metrics = {
+      totalClientsCreated: 0,
+      poolExhaustedCount: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
     };
   }
 }
 
-// Export singleton instance
-export const dataSourceManager = DataSourceManager.getInstance();
+// Initialize with configuration from environment variables (if available)
+const poolConfig: Partial<ConnectionPoolConfig> = {
+  maxClients: process.env.DATA_SOURCE_MAX_CLIENTS
+    ? parseInt(process.env.DATA_SOURCE_MAX_CLIENTS, 10)
+    : 50,
+  enableMetrics: process.env.DATA_SOURCE_ENABLE_METRICS !== 'false', // Default: true
+  useNextjsCache: process.env.DATA_SOURCE_USE_NEXTJS_CACHE !== 'false', // Default: true (serverless-friendly)
+  configCacheTTL: process.env.DATA_SOURCE_CONFIG_CACHE_TTL
+    ? parseInt(process.env.DATA_SOURCE_CONFIG_CACHE_TTL, 10)
+    : undefined, // Default: 5 minutes (300000 ms)
+  clientCacheTTL: process.env.DATA_SOURCE_CLIENT_CACHE_TTL
+    ? parseInt(process.env.DATA_SOURCE_CLIENT_CACHE_TTL, 10)
+    : undefined, // Default: 1 hour (3600000 ms)
+  cacheCleanupInterval: process.env.DATA_SOURCE_CACHE_CLEANUP_INTERVAL
+    ? parseInt(process.env.DATA_SOURCE_CACHE_CLEANUP_INTERVAL, 10)
+    : undefined, // Default: 10 minutes (600000 ms)
+};
+
+// Export singleton instance with configuration
+export const dataSourceManager = DataSourceManager.getInstance(poolConfig);
 
 // Export convenience function
 export async function getTenantClient(

@@ -8,6 +8,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import { eventsService } from '@/lib/api/services/eventsService'
 
 interface Event {
   id: string
@@ -88,13 +89,11 @@ export default function EventsCalendarPage() {
   const fetchEvents = async () => {
     try {
       setEventsLoading(true)
-      const response = await fetch('/api/events?status=all&type=all')
-      if (response.ok) {
-        const data = await response.json()
-        setEvents(data)
-      } else {
-        console.error('Failed to fetch events:', response.status, response.statusText)
-      }
+      const data = await eventsService.list({
+        status: 'all',
+        type: 'all'
+      })
+      setEvents(data as Event[])
     } catch (error) {
       console.error('Error fetching events:', error)
     } finally {

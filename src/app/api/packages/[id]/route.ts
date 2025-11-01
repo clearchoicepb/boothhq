@@ -1,28 +1,21 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Fetch a single package
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: package_data, error } = await supabase
       .from('packages')
       .select('*')
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error || !package_data) {
@@ -42,11 +35,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const { id } = await params
     const body = await request.json()
@@ -58,8 +50,6 @@ export async function PUT(
       is_active,
       sort_order,
     } = body
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -76,7 +66,7 @@ export async function PUT(
       .from('packages')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -101,20 +91,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { error: deleteError } = await supabase
       .from('packages')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
       console.error('Error deleting package:', deleteError)

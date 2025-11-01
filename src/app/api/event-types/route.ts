@@ -1,20 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Fetch all event types for tenant (optionally filtered by category)
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   try {
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get('category_id')
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     let query = supabase
       .from('event_types')
@@ -22,7 +16,7 @@ export async function GET(request: Request) {
         *,
         event_categories(id, name, slug, color, icon)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('display_order', { ascending: true })
 
     // Apply category filter if provided
@@ -43,10 +37,10 @@ export async function GET(request: Request) {
 
 // POST - Create new event type
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
 
   // Admin only
   if (session.user.role !== 'admin') {
@@ -65,14 +59,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Event category ID is required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Verify category exists and belongs to tenant
     const { data: category } = await supabase
       .from('event_categories')
       .select('id')
       .eq('id', event_category_id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (!category) {
@@ -86,7 +78,7 @@ export async function POST(request: Request) {
     const { data: maxOrder } = await supabase
       .from('event_types')
       .select('display_order')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('event_category_id', event_category_id)
       .order('display_order', { ascending: false })
       .limit(1)
@@ -97,7 +89,7 @@ export async function POST(request: Request) {
     const { data: eventType, error } = await supabase
       .from('event_types')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_category_id,
         name,
         slug,
@@ -123,10 +115,10 @@ export async function POST(request: Request) {
 
 // PATCH - Batch update (for reordering)
 export async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
 
   if (session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -140,15 +132,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Updates must be an array' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Update each event type
     const promises = updates.map(({ id, ...data }) =>
       supabase
         .from('event_types')
         .update(data)
         .eq('id', id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     )
 
     await Promise.all(promises)

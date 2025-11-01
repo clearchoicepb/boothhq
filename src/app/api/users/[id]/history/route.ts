@@ -1,29 +1,24 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const params = await context.params
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const userId = params.id
-    const supabase = createServerSupabaseClient()
 
     // Fetch pay rate history
     const { data: payRateHistory, error: payRateError } = await supabase
       .from('user_pay_rate_history')
       .select('*')
       .eq('user_id', userId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('effective_date', { ascending: false })
 
     if (payRateError) {
@@ -35,7 +30,7 @@ export async function GET(
       .from('user_role_history')
       .select('*')
       .eq('user_id', userId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('effective_date', { ascending: false })
 
     if (roleError) {
@@ -63,7 +58,7 @@ export async function GET(
         )
       `)
       .eq('user_id', userId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (eventError) {

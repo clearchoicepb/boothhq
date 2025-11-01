@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { EventWithRelations } from './useEventData'
+import { queryKeys } from '@/lib/queryKeys'
 
 async function fetchEvent(eventId: string): Promise<EventWithRelations> {
   const response = await fetch(`/api/events/${eventId}`)
@@ -14,7 +15,7 @@ async function fetchEvent(eventId: string): Promise<EventWithRelations> {
  */
 export function useEventDetail(eventId: string) {
   return useQuery({
-    queryKey: ['event', eventId],
+    queryKey: queryKeys.events.detail(eventId),
     queryFn: () => fetchEvent(eventId),
     staleTime: 30 * 1000,
     enabled: Boolean(eventId),
@@ -40,7 +41,7 @@ export function useUpdateEvent(eventId: string) {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.detail(eventId) })
     }
   })
 }
@@ -62,8 +63,8 @@ export function useDeleteEvent(eventId: string) {
       return true
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] })
-      queryClient.removeQueries({ queryKey: ['event', eventId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.list() })
+      queryClient.removeQueries({ queryKey: queryKeys.events.detail(eventId) })
     }
   })
 }

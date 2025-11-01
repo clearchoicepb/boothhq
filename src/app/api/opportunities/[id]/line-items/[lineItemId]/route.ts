@@ -1,22 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; lineItemId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const updateData: any = {
       item_type: body.item_type,
       package_id: body.package_id || null,
@@ -34,7 +27,7 @@ export async function PUT(
       .update(updateData)
       .eq('id', params.lineItemId)
       .eq('opportunity_id', params.id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -44,7 +37,7 @@ export async function PUT(
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
+    await updateOpportunityAmount(supabase, params.id, dataSourceTenantId)
 
     return NextResponse.json(data)
   } catch (error) {
@@ -58,20 +51,17 @@ export async function DELETE(
   { params }: { params: { id: string; lineItemId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    const { supabase, dataSourceTenantId, session } = context
 
     const { error } = await supabase
       .from('opportunity_line_items')
       .delete()
       .eq('id', params.lineItemId)
       .eq('opportunity_id', params.id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting line item:', error)
@@ -79,7 +69,7 @@ export async function DELETE(
     }
 
     // Update opportunity amount
-    await updateOpportunityAmount(supabase, params.id, session.user.tenantId)
+    await updateOpportunityAmount(supabase, params.id, dataSourceTenantId)
 
     return NextResponse.json({ success: true })
   } catch (error) {

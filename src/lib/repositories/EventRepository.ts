@@ -1,5 +1,6 @@
 import { GenericRepository } from './GenericRepository'
 import type { Event } from '@/lib/supabase-client'
+import { eventValidator } from '@/lib/validators/EventValidator'
 
 export class EventRepository extends GenericRepository<Event> {
   constructor() {
@@ -149,6 +150,9 @@ export class EventRepository extends GenericRepository<Event> {
 
   /**
    * Create event with validation
+   *
+   * Uses EventValidator for business rule validation.
+   * This keeps the repository focused on data access only.
    */
   async createEvent(data: {
     title: string
@@ -161,19 +165,11 @@ export class EventRepository extends GenericRepository<Event> {
     contact_id?: string
     status?: string
   }, tenantId: string): Promise<Event> {
-    // Validate required fields
-    if (!data.title || !data.event_type || !data.start_date) {
-      throw new Error('Title, event type, and start date are required')
-    }
+    // Validate using EventValidator
+    const validationResult = eventValidator.validateCreate(data);
 
-    // Validate date logic
-    if (data.end_date && new Date(data.end_date) < new Date(data.start_date)) {
-      throw new Error('End date cannot be before start date')
-    }
-
-    // Validate start date is not in the past
-    if (new Date(data.start_date) < new Date()) {
-      throw new Error('Start date cannot be in the past')
+    if (!validationResult.isValid) {
+      throw new Error(validationResult.errors.join('; '));
     }
 
     return this.create({
@@ -184,18 +180,26 @@ export class EventRepository extends GenericRepository<Event> {
 
   /**
    * Update event with validation
+   *
+   * Uses EventValidator for business rule validation.
+   * This keeps the repository focused on data access only.
    */
   async updateEvent(id: string, data: Partial<Event>, tenantId: string): Promise<Event> {
-    // Validate date logic if dates are being updated
-    if (data.start_date && data.end_date) {
-      if (new Date(data.end_date) < new Date(data.start_date)) {
-        throw new Error('End date cannot be before start date')
-      }
+    // Optionally fetch existing event for context-aware validation
+    // (e.g., validating end_date against existing start_date)
+    let existingEvent: Event | undefined;
+    try {
+      existingEvent = await this.findById(id, tenantId);
+    } catch (error) {
+      // If event doesn't exist, update will fail anyway
+      // Continue with validation using provided data only
     }
 
-    // If updating start date, validate it's not in the past
-    if (data.start_date && new Date(data.start_date) < new Date()) {
-      throw new Error('Start date cannot be in the past')
+    // Validate using EventValidator
+    const validationResult = eventValidator.validateUpdate(data, existingEvent);
+
+    if (!validationResult.isValid) {
+      throw new Error(validationResult.errors.join('; '));
     }
 
     return this.update(id, data, tenantId)

@@ -1,17 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status') || 'all'
     const boothTypeFilter = searchParams.get('booth_type') || 'all'
@@ -24,7 +18,7 @@ export async function GET(request: NextRequest) {
         assigned_event:events!booths_assigned_to_event_id_fkey(title, start_date, end_date),
         assigned_user:users!booths_assigned_to_user_id_fkey(first_name, last_name)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('booth_name', { ascending: true })
 
     if (statusFilter !== 'all') {
@@ -65,20 +59,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data, error } = await supabase
       .from('booths')
       .insert({
         ...body,
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         created_by: session.user.id
       })
       .select()

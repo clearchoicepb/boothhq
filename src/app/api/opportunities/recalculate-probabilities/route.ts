@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST() {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
+  const { supabase, dataSourceTenantId, session } = context
     // Get settings to check if auto-calculate is enabled
     const { data: settingsData } = await supabase
       .from('tenant_settings')
       .select('setting_key, setting_value')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .like('setting_key', 'opportunities.%')
 
     if (!settingsData || settingsData.length === 0) {
@@ -51,7 +44,7 @@ export async function POST() {
     const { data: opportunities, error: oppError } = await supabase
       .from('opportunities')
       .select('id, stage')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (oppError) {
       console.error('Error fetching opportunities:', oppError)
@@ -82,7 +75,7 @@ export async function POST() {
             .from('opportunities')
             .update({ probability })
             .eq('id', opp.id)
-            .eq('tenant_id', session.user.tenantId)
+            .eq('tenant_id', dataSourceTenantId)
 
           if (!updateError) {
             updateCount++

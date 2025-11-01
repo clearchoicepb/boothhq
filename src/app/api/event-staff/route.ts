@@ -1,22 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
     const eventDateId = searchParams.get('event_date_id')
 
-    console.log('[EVENT-STAFF-GET] Starting query for tenant:', session.user.tenantId, 'eventId:', eventId)
+    console.log('[EVENT-STAFF-GET] Starting query for tenant:', dataSourceTenantId, 'eventId:', eventId)
 
     let query = supabase
       .from('event_staff_assignments')
@@ -41,7 +35,7 @@ export async function GET(request: NextRequest) {
           type
         )
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (eventId) {
@@ -75,23 +69,23 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('[EVENT-STAFF-POST] ========== START POST REQUEST ==========')
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
       console.log('[EVENT-STAFF-POST] Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('[EVENT-STAFF-POST] User authenticated:', session.user.email, 'Tenant:', session.user.tenantId)
+    console.log('[EVENT-STAFF-POST] User authenticated:', session.user.email, 'Tenant:', dataSourceTenantId)
 
     const body = await request.json()
     console.log('[EVENT-STAFF-POST] Request body received:', JSON.stringify(body, null, 2))
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const staffData = {
       ...body,
-      tenant_id: session.user.tenantId
+      tenant_id: dataSourceTenantId
     }
 
     console.log('[EVENT-STAFF-POST] Data to insert:', JSON.stringify(staffData, null, 2))

@@ -1,16 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const entityType = searchParams.get('entityType') // 'lead', 'account', 'contact'
     const entityId = searchParams.get('entityId')
@@ -19,12 +14,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing entityType or entityId' }, { status: 400 })
     }
     
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     const { data, error } = await supabase
       .from('notes')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('entity_type', entityType)
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
@@ -43,20 +36,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data, error } = await supabase
       .from('notes')
       .insert({
         ...body,
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         created_by: session.user.id
       })
       .select()

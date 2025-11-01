@@ -1,7 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 // Realistic data arrays
 const firstNames = [
@@ -118,20 +116,16 @@ export async function POST(request: Request) {
         error: 'Confirmation required. Send { "confirm": "yes-create-test-data" } in request body.'
       }, { status: 400 })
     }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = createServerSupabaseClient()
-    const tenantId = session.user.tenantId
+    const { supabase, dataSourceTenantId, session } = context
 
     // Get all users in tenant for owner assignment
     const { data: users } = await supabase
       .from('tenant_users')
       .select('user_id')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     const userIds = users?.map(u => u.user_id) || [session.user.id]
 
@@ -521,22 +515,19 @@ export async function POST(request: Request) {
 // DELETE endpoint to clean up all seed data (optional, for testing)
 export async function DELETE() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    const supabase = createServerSupabaseClient()
-    const tenantId = session.user.tenantId
+    const { supabase, dataSourceTenantId, session } = context
 
     // Delete in reverse order to respect foreign key constraints
-    await supabase.from('quotes').delete().eq('tenant_id', tenantId)
-    await supabase.from('invoices').delete().eq('tenant_id', tenantId)
-    await supabase.from('events').delete().eq('tenant_id', tenantId)
-    await supabase.from('opportunities').delete().eq('tenant_id', tenantId)
-    await supabase.from('contacts').delete().eq('tenant_id', tenantId)
-    await supabase.from('accounts').delete().eq('tenant_id', tenantId)
-    await supabase.from('leads').delete().eq('tenant_id', tenantId)
+    await supabase.from('quotes').delete().eq('tenant_id', dataSourceTenantId)
+    await supabase.from('invoices').delete().eq('tenant_id', dataSourceTenantId)
+    await supabase.from('events').delete().eq('tenant_id', dataSourceTenantId)
+    await supabase.from('opportunities').delete().eq('tenant_id', dataSourceTenantId)
+    await supabase.from('contacts').delete().eq('tenant_id', dataSourceTenantId)
+    await supabase.from('accounts').delete().eq('tenant_id', dataSourceTenantId)
+    await supabase.from('leads').delete().eq('tenant_id', dataSourceTenantId)
 
     return NextResponse.json({
       success: true,

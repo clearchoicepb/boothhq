@@ -1,17 +1,11 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'all'
 
@@ -23,7 +17,7 @@ export async function GET(request: NextRequest) {
         contacts!invoices_contact_id_fkey(first_name, last_name),
         events!invoices_event_id_fkey(event_type)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (status !== 'all') {
@@ -59,11 +53,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     // Check if request has a body
     const contentLength = request.headers.get('content-length')
@@ -83,14 +76,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Generate invoice number if not provided
     if (!body.invoice_number) {
       const { data: lastInvoice } = await supabase
         .from('invoices')
         .select('invoice_number')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
@@ -107,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     const invoiceData = {
       ...body,
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       subtotal,
       tax_amount: taxAmount,
       total_amount: totalAmount,
@@ -133,7 +124,7 @@ export async function POST(request: NextRequest) {
     if (line_items && line_items.length > 0) {
       const lineItemsData = line_items.map((item: any) => ({
         ...item,
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         invoice_id: invoice.id
       }))
 

@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { createAutoDesignItems } from '@/lib/design-helpers'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      console.error('No session found')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session.user.tenantId) {
-      console.error('No tenantId in session:', session.user)
-      return NextResponse.json({ error: 'No tenant ID found' }, { status: 400 })
-    }
-    
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status') || 'all'
     const typeFilter = searchParams.get('type') || 'all'
@@ -44,7 +33,7 @@ export async function GET(request: NextRequest) {
           locations(id, name, address_line1, city, state)
         )
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('start_date', { ascending: true })
 
     if (statusFilter !== 'all') {
@@ -148,11 +137,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { supabase, dataSourceTenantId, session } = context
 
   try {
     const body = await request.json()
@@ -190,11 +178,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Event category and type are required' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Build insert data with only fields that exist in the events table
     const insertData = {
-      tenant_id: session.user.tenantId,
+      tenant_id: dataSourceTenantId,
       title,
       description: description || null,
       event_category_id,
@@ -235,7 +221,7 @@ export async function POST(request: NextRequest) {
     // Insert event_dates
     if (event_dates && event_dates.length > 0) {
       const eventDatesInsert = event_dates.map((date: any) => ({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: event.id,
         event_date: date.event_date,
         start_time: date.start_time || null,
@@ -257,9 +243,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-create design items for auto-added types
-    if (event.start_date && session.user.tenantId) {
+    if (event.start_date && dataSourceTenantId) {
       try {
-        const designItems = await createAutoDesignItems(event.id, event.start_date, session.user.tenantId, supabase)
+        const designItems = await createAutoDesignItems(event.id, event.start_date, dataSourceTenantId, supabase)
         console.log(`Created ${designItems.length} auto-added design items for event ${event.id}`)
       } catch (error) {
         console.error('Error auto-creating design items:', error)

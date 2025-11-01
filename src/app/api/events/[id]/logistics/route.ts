@@ -1,21 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   try {
     const { id: eventId } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Fetch event with related data (including old location TEXT field for fallback)
     const { data: event, error: eventError} = await supabase
       .from('events')
@@ -39,7 +33,7 @@ export async function GET(
         )
       `)
       .eq('id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (eventError) throw eventError
@@ -67,7 +61,7 @@ export async function GET(
         )
       `)
       .eq('event_id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('event_date', { ascending: true })
 
     if (datesError) throw datesError
@@ -90,7 +84,7 @@ export async function GET(
           )
         `)
         .eq('opportunity_id', event.opportunity_id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       packages = lineItems?.map(item => ({
         id: item.id,
@@ -104,7 +98,7 @@ export async function GET(
       .from('event_custom_items')
       .select('id, item_name, item_type')
       .eq('event_id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     // Fetch booth assignments (equipment)
     const { data: boothAssignments } = await supabase
@@ -123,7 +117,7 @@ export async function GET(
         )
       `)
       .eq('event_id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('assigned_date', { ascending: true })
 
     // Fetch staff assignments
@@ -145,7 +139,7 @@ export async function GET(
         )
       `)
       .eq('event_id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: true })
 
     if (staffError) {

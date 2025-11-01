@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * GET /api/opportunities/stats
  * 
@@ -24,13 +21,10 @@ import { getTenantDatabaseClient } from '@/lib/supabase-client'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const stageFilter = searchParams.get('stage') || 'all'
     const ownerFilter = searchParams.get('owner_id')
@@ -39,7 +33,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('opportunities')
       .select('amount, probability, stage')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
     
     // Apply filters (same as main opportunities query)
     if (stageFilter !== 'all') {

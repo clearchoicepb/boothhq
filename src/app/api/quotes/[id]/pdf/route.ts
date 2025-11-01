@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const params = await context.params
+  const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const quoteId = params.id
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch quote with related data
     const { data: quote, error } = await supabase
@@ -29,7 +22,7 @@ export async function GET(
         opportunities!quotes_opportunity_id_fkey(name)
       `)
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -42,7 +35,7 @@ export async function GET(
       .from('quote_line_items')
       .select('*')
       .eq('quote_id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('sort_order', { ascending: true })
 
     // Update viewed timestamp if status is 'sent'
@@ -51,7 +44,7 @@ export async function GET(
         .from('quotes')
         .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
         .eq('id', quoteId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
     }
 
     // TODO: Implement actual PDF generation using a library like PDFKit or Puppeteer

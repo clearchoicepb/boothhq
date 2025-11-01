@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // Helper to refresh access token if expired
 async function refreshAccessToken(refreshToken: string) {
   const clientId = process.env.GOOGLE_CLIENT_ID
@@ -30,12 +27,10 @@ async function refreshAccessToken(refreshToken: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
     const { to, subject, body: emailBody, opportunity_id, account_id, contact_id, lead_id, event_id } = body
 
@@ -47,8 +42,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's Gmail integration
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: integration, error: integrationError } = await supabase
       .from('user_integrations')
       .select('*')
@@ -131,7 +124,7 @@ export async function POST(request: NextRequest) {
     const { data: communication, error: commError } = await supabase
       .from('communications')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         opportunity_id: opportunity_id || null,
         account_id: account_id || null,
         contact_id: contact_id || null,

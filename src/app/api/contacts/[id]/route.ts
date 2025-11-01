@@ -1,7 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(
@@ -9,15 +7,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
     const { data, error } = await supabase
       .from('contacts')
       .select(`
@@ -34,7 +28,7 @@ export async function GET(
         )
       `)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -101,21 +95,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const { id } = await params
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data, error } = await supabase
       .from('contacts')
       .update(body)
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -133,7 +124,7 @@ export async function PUT(
         .eq('contact_id', id)
         .eq('is_primary', true)
         .is('end_date', null)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .maybeSingle()
       
       // If changing to a different account
@@ -155,7 +146,7 @@ export async function PUT(
           .select('*')
           .eq('contact_id', id)
           .eq('account_id', body.account_id)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
           .maybeSingle()
         
         if (existing) {
@@ -177,7 +168,7 @@ export async function PUT(
               role: body.role || 'Primary Contact',
               is_primary: true,
               start_date: new Date().toISOString().split('T')[0],
-              tenant_id: session.user.tenantId
+              tenant_id: dataSourceTenantId
             })
           
           if (junctionError) {
@@ -204,20 +195,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { error } = await supabase
       .from('contacts')
       .delete()
       .eq('id', id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting contact:', error)

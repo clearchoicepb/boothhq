@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const params = await context.params
+  const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const quoteId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: quote, error } = await supabase
       .from('quotes')
       .select(`
@@ -27,7 +20,7 @@ export async function GET(
         opportunities!quotes_opportunity_id_fkey(name, stage)
       `)
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -40,7 +33,7 @@ export async function GET(
       .from('quote_line_items')
       .select('*')
       .eq('quote_id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('sort_order', { ascending: true })
 
     if (lineItemsError) {
@@ -65,20 +58,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
-    const params = await context.params
+    const params = await routeContext.params
     const quoteId = params.id
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Update quote
     const updateData: any = {}
 
@@ -109,12 +99,12 @@ export async function PUT(
         .from('quote_line_items')
         .delete()
         .eq('quote_id', quoteId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       // Insert new line items
       if (body.line_items.length > 0) {
         const lineItemsData = body.line_items.map((item: any) => ({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           quote_id: quoteId,
           item_type: item.item_type,
           package_id: item.package_id || null,
@@ -146,7 +136,7 @@ export async function PUT(
       .from('quotes')
       .update(updateData)
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -164,25 +154,22 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
-    const params = await context.params
+    const params = await routeContext.params
     const quoteId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Delete quote (line items will be cascade deleted)
     const { error } = await supabase
       .from('quotes')
       .delete()
       .eq('id', quoteId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting quote:', error)

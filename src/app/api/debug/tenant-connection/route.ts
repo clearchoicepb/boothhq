@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId;
+    const tenantId = dataSourceTenantId;
 
     // Test 1: Get connection info (no sensitive keys)
     let connectionInfo;

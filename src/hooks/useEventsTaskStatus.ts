@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
 
 async function fetchTaskStatus(eventIds: string[]): Promise<Record<string, any>> {
   if (eventIds.length === 0) return {}
@@ -17,7 +18,7 @@ async function fetchTaskStatus(eventIds: string[]): Promise<Record<string, any>>
  */
 export function useEventsTaskStatus(eventIds: string[]) {
   return useQuery({
-    queryKey: ['events-task-status', eventIds],
+    queryKey: queryKeys.events.taskStatus(eventIds),
     queryFn: () => fetchTaskStatus(eventIds),
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
     enabled: eventIds.length > 0, // Only run if we have event IDs

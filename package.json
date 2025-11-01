@@ -13,7 +13,8 @@
     "test:coverage": "jest --coverage",
     "test:dual-database": "npx ts-node scripts/test-dual-database-setup.ts",
     "db:test": "npx ts-node scripts/test-dual-database-setup.ts",
-    "db:migrate-data": "npx ts-node scripts/migrate-existing-data.ts"
+    "db:migrate-data": "npx ts-node scripts/migrate-existing-data.ts",
+    "verify:tenant-id": "npx ts-node scripts/verify-tenant-id-usage.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -59,6 +60,9 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^18",

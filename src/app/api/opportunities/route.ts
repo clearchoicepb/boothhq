@@ -1,18 +1,13 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const stageFilter = searchParams.get('stage') || 'all'
 
@@ -23,7 +18,7 @@ export async function GET(request: NextRequest) {
         accounts!opportunities_account_id_fkey(name, account_type),
         contacts!opportunities_contact_id_fkey(first_name, last_name)
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (stageFilter !== 'all') {
@@ -60,15 +55,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Extract event_dates from the request body
     const { event_dates, ...opportunityData } = body
 
@@ -146,7 +138,7 @@ export async function POST(request: NextRequest) {
       const { data: settingsData } = await supabase
         .from('tenant_settings')
         .select('setting_key, setting_value')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .like('setting_key', 'opportunities.%')
 
       if (settingsData) {
@@ -186,7 +178,7 @@ export async function POST(request: NextRequest) {
       .from('opportunities')
       .insert({
         ...cleanedOpportunityData,
-        tenant_id: session.user.tenantId
+        tenant_id: dataSourceTenantId
       })
       .select()
       .single()
@@ -202,7 +194,7 @@ export async function POST(request: NextRequest) {
       const eventDatesData = event_dates
         .filter((date: any) => date.event_date) // Only include dates with event_date filled
         .map((date: any) => ({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           opportunity_id: opportunity.id,
           location_id: date.location_id || null,
           event_date: date.event_date,

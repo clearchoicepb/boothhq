@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
+    const { supabase, dataSourceTenantId, session } = context
     // Get all settings for this tenant
     const { data: settings, error } = await supabase
       .from('tenant_settings')
       .select('setting_key, setting_value')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error fetching settings:', error)
@@ -55,11 +48,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
     const { settings } = body
@@ -68,11 +60,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid settings data' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     // Convert nested settings object to flat array of key-value pairs
     const settingsArray: Array<{tenant_id: string, setting_key: string, setting_value: any}> = []
-    
+
     const flattenSettings = (obj: any, prefix = '') => {
       for (const [key, value] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key
@@ -82,7 +72,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Handle arrays and primitive values
           settingsArray.push({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             setting_key: fullKey,
             setting_value: value
           })

@@ -9,6 +9,7 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { Event as EventType } from '@/lib/supabase-client'
+import { eventsService } from '@/lib/api/services/eventsService'
 
 
 export default function EventEditPage() {
@@ -31,18 +32,10 @@ export default function EventEditPage() {
   const fetchEvent = async () => {
     try {
       setIsLoading(true)
-      
-      const response = await fetch(`/api/events/${eventId}`)
-      
-      if (!response.ok) {
-        console.error('Error fetching event')
-        return
-      }
-
-      const data = await response.json()
-      setEvent(data)
+      const data = await eventsService.getById(eventId)
+      setEvent(data as EventType)
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error fetching event:', error)
     } finally {
       setIsLoading(false)
     }
@@ -51,23 +44,8 @@ export default function EventEditPage() {
   const handleSave = async (eventData: any) => {
     try {
       console.log('Sending event data:', eventData)
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(eventData),
-      })
-
-      const data = await response.json()
-      console.log('Response:', response.status, data)
-
-      if (response.ok) {
-        router.push(`/${tenantSubdomain}/events/${eventId}`)
-      } else {
-        console.error('Update failed:', data)
-        throw new Error(data.error || 'Failed to update event')
-      }
+      await eventsService.update(eventId, eventData)
+      router.push(`/${tenantSubdomain}/events/${eventId}`)
     } catch (error) {
       console.error('Error updating event:', error)
       throw error

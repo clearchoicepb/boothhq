@@ -1,10 +1,7 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET() {
   try {
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Test if we can query the event_custom_items table
     const { data, error, count } = await supabase
       .from('event_custom_items')

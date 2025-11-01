@@ -1,21 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const { data, error } = await supabase
       .from('opportunities')
       .select(`
@@ -25,8 +19,8 @@ export async function GET(
         leads!opportunities_lead_id_fkey(first_name, last_name, phone, email),
         event_dates(*)
       `)
-      .eq('id', (await params).id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('id', params.id)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -58,17 +52,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
     const { event_dates, ...opportunityData } = body
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
-
     // Only allow fields that exist in the current database schema
     const allowedFields = [
       'name', 'description', 'amount', 'stage', 'probability',
@@ -94,7 +84,7 @@ export async function PUT(
       const { data: settingsData } = await supabase
         .from('tenant_settings')
         .select('setting_key, setting_value')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .like('setting_key', 'opportunities.%')
 
       if (settingsData) {
@@ -167,8 +157,8 @@ export async function PUT(
     const { data, error } = await supabase
       .from('opportunities')
       .update(updateData)
-      .eq('id', (await params).id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('id', params.id)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -180,17 +170,17 @@ export async function PUT(
     // Handle event dates if provided
     if (event_dates && Array.isArray(event_dates)) {
       // Delete existing event dates for this opportunity
-      const opportunityId = (await params).id
+      const opportunityId = params.id
       await supabase
         .from('event_dates')
         .delete()
         .eq('opportunity_id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       // Insert new event dates
       if (event_dates.length > 0) {
         const eventDatesToInsert = event_dates.map((date: any) => ({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           opportunity_id: opportunityId,
           location_id: date.location_id || null,
           event_date: date.event_date,
@@ -219,22 +209,20 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+    const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
 
     const { error } = await supabase
       .from('opportunities')
       .delete()
-      .eq('id', (await params).id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('id', params.id)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting opportunity:', error)

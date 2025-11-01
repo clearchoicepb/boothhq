@@ -1,8 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 /**
  * GET /api/opportunities/count-by-stage
  * 
@@ -19,14 +16,10 @@ import { getTenantDatabaseClient } from '@/lib/supabase-client'
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user using NextAuth
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
 
     const searchParams = request.nextUrl.searchParams
     const stage = searchParams.get('stage')
@@ -38,13 +31,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Count opportunities in this stage for the authenticated user's tenant
     const { count, error: countError } = await supabase
       .from('opportunities')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('stage', stage)
 
     if (countError) {

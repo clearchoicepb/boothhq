@@ -1,19 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const { id: leadId } = await params
     const body = await request.json()
     const { 
@@ -23,8 +18,6 @@ export async function POST(
       mailingAddress 
     } = body
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Start a transaction-like process
     try {
       // 1. Get the lead data
@@ -32,7 +25,7 @@ export async function POST(
         .from('leads')
         .select('*')
         .eq('id', leadId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .single()
 
       if (leadError || !lead) {
@@ -52,7 +45,7 @@ export async function POST(
       const { data: account, error: accountError } = await supabase
         .from('accounts')
         .insert({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           name: accountData.name,
           account_type: accountData.account_type || 'individual',
           email: accountData.email,
@@ -81,7 +74,7 @@ export async function POST(
         const { data: newContact, error: contactError } = await supabase
           .from('contacts')
           .insert({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             account_id: account.id,
             first_name: contactData.first_name,
             last_name: contactData.last_name,
@@ -114,7 +107,7 @@ export async function POST(
           updated_at: new Date().toISOString()
         })
         .eq('id', leadId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (leadUpdateError) {
         console.error('Error updating lead:', leadUpdateError)
@@ -136,7 +129,7 @@ export async function POST(
             updated_at: new Date().toISOString()
           })
           .eq('id', opportunityId)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
 
         if (oppUpdateError) {
           console.error('Error updating opportunity:', oppUpdateError)

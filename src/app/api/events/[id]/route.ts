@@ -1,23 +1,16 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const params = await context.params
+  const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const eventId = params.id
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     const { data, error } = await supabase
       .from('events')
@@ -63,7 +56,7 @@ export async function GET(
         )
       `)
       .eq('id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error) {
@@ -116,20 +109,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
-    const params = await context.params
+    const params = await routeContext.params
     const eventId = params.id
     const body = await request.json()
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     console.log('Update event request body:', JSON.stringify(body, null, 2))
 
     // Extract event_dates and other non-table fields for separate handling
@@ -166,7 +156,7 @@ export async function PUT(
       .from('events')
       .update(cleanedEventData)
       .eq('id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
@@ -182,14 +172,14 @@ export async function PUT(
         .from('event_dates')
         .delete()
         .eq('event_id', eventId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       // Insert new event dates
       if (event_dates.length > 0) {
         const datesToInsert = event_dates
           .filter((date: any) => date.event_date) // Only insert dates that have an event_date
           .map((date: any) => ({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             event_id: eventId,
             event_date: date.event_date,
             start_time: date.start_time || null,
@@ -220,24 +210,21 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
-    const params = await context.params
+    const params = await routeContext.params
     const eventId = params.id
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { error } = await supabase
       .from('events')
       .delete()
       .eq('id', eventId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       console.error('Error deleting event:', error)

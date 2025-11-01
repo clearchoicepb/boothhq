@@ -1,17 +1,13 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
 import { stripe } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
     const body = await request.json()
     const { payment_intent_id, invoice_id } = body
 
@@ -19,14 +15,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     // Get invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
       .eq('id', invoice_id)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (invoiceError || !invoice) {
@@ -42,7 +36,7 @@ export async function POST(request: NextRequest) {
         .from('payments')
         .select('id')
         .eq('payment_intent_id', payment_intent_id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .single()
 
       if (!existingPayment) {
@@ -62,7 +56,7 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', invoice.id)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
 
         if (updateError) {
           console.error('Error updating invoice after payment:', updateError)
@@ -73,7 +67,7 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('payments')
           .insert({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             invoice_id: invoice.id,
             amount: paymentAmount,
             payment_method: 'stripe',

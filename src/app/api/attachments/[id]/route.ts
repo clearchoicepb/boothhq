@@ -1,30 +1,24 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Download/view a specific attachment
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    const params = await context.params
+  const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const attachmentId = params.id
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch attachment metadata
     const { data: attachment, error } = await supabase
       .from('attachments')
       .select('*')
       .eq('id', attachmentId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (error || !attachment) {
@@ -63,25 +57,26 @@ export async function GET(
 // DELETE - Remove an attachment
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const attachmentId = params.id
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Fetch attachment to get storage path
     const { data: attachment, error: fetchError } = await supabase
       .from('attachments')
       .select('*')
       .eq('id', attachmentId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (fetchError || !attachment) {
@@ -106,7 +101,7 @@ export async function DELETE(
       .from('attachments')
       .delete()
       .eq('id', attachmentId)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (dbError) {
       console.error('Error deleting from database:', dbError)

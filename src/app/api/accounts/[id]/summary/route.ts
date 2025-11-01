@@ -1,22 +1,15 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const { id } = await params
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
     // Execute all queries in parallel for better performance
     const [eventsResult, invoicesResult, contactsResult] = await Promise.all([
       // Get event count (total_cost column doesn't exist yet - invoicing not ready)
@@ -24,14 +17,14 @@ export async function GET(
         .from('events')
         .select('id', { count: 'exact', head: true })
         .eq('account_id', id)
-        .eq('tenant_id', session.user.tenantId),
+        .eq('tenant_id', dataSourceTenantId),
       
       // Get upcoming invoices total
       supabase
         .from('invoices')
         .select('total_amount')
         .eq('account_id', id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .gte('due_date', new Date().toISOString().split('T')[0])
         .eq('status', 'pending'),
       
@@ -40,7 +33,7 @@ export async function GET(
         .from('contact_accounts')
         .select('*', { count: 'exact', head: true })
         .eq('account_id', id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .is('end_date', null) // Only active relationships
     ])
 

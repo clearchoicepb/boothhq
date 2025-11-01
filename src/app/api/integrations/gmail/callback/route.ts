@@ -1,6 +1,5 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -24,7 +23,6 @@ export async function GET(request: NextRequest) {
     const { userId, tenantId } = JSON.parse(state)
 
     // Get tenant subdomain for redirect
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
     const { data: tenant } = await supabase
       .from('tenants')
       .select('subdomain')

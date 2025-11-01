@@ -1,27 +1,20 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 // GET - Fetch all add-ons
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const activeOnly = searchParams.get('active') === 'true'
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     let query = supabase
       .from('add_ons')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true })
 
@@ -53,11 +46,10 @@ export async function GET(request: NextRequest) {
 // POST - Create a new add-on
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
     const {
@@ -76,12 +68,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-
     const { data: addOn, error: createError } = await supabase
       .from('add_ons')
       .insert({
-        tenant_id: session.user.tenantId,
+        tenant_id: dataSourceTenantId,
         name,
         description,
         price,

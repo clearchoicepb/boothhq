@@ -1,25 +1,18 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const params = await context.params
+  const { supabase, dataSourceTenantId, session } = context
+    const params = await routeContext.params
     const opportunityId = params.id
     const body = await request.json()
     const { eventData = {}, eventDates } = body
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Start a transaction-like process
     try {
@@ -31,7 +24,7 @@ export async function POST(
           event_dates(*)
         `)
         .eq('id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .single()
 
       if (oppError || !opportunity) {
@@ -50,7 +43,7 @@ export async function POST(
           .from('leads')
           .select('*')
           .eq('id', opportunity.lead_id)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
           .single()
 
         if (leadError || !lead) {
@@ -103,7 +96,7 @@ export async function POST(
         const { data: account, error: accountError } = await supabase
           .from('accounts')
           .insert({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             name: conversionData.accountData.name,
             account_type: conversionData.accountData.account_type,
             email: conversionData.accountData.email,
@@ -133,7 +126,7 @@ export async function POST(
           const { data: contact, error: contactError } = await supabase
             .from('contacts')
             .insert({
-              tenant_id: session.user.tenantId,
+              tenant_id: dataSourceTenantId,
               account_id: account.id,
               first_name: conversionData.contactData.first_name,
               last_name: conversionData.contactData.last_name,
@@ -165,7 +158,7 @@ export async function POST(
             updated_at: new Date().toISOString()
           })
           .eq('id', opportunity.lead_id)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
 
         // Update the opportunity with account and contact IDs
         await supabase
@@ -176,7 +169,7 @@ export async function POST(
             updated_at: new Date().toISOString()
           })
           .eq('id', opportunityId)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
 
         console.log('Lead converted successfully to account/contact')
       }
@@ -207,7 +200,7 @@ export async function POST(
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           account_id: accountId,
           contact_id: contactId,
           opportunity_id: opportunity.id,
@@ -246,7 +239,7 @@ export async function POST(
 
       if (opportunityEventDates.length > 0) {
         const eventDatesData = opportunityEventDates.map((date: any) => ({
-          tenant_id: session.user.tenantId,
+          tenant_id: dataSourceTenantId,
           event_id: event.id,
           location_id: date.location_id,
           event_date: date.event_date,
@@ -281,7 +274,7 @@ export async function POST(
           updated_at: new Date().toISOString()
         })
         .eq('id', opportunityId)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (oppUpdateError) {
         console.error('Error updating opportunity:', oppUpdateError)
@@ -298,7 +291,7 @@ export async function POST(
         .select('*')
         .eq('opportunity_id', opportunityId)
         .eq('status', 'accepted')
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
@@ -309,13 +302,13 @@ export async function POST(
           .from('quote_line_items')
           .select('*')
           .eq('quote_id', acceptedQuote.id)
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
 
         // Generate invoice number
         const { data: lastInvoice } = await supabase
           .from('invoices')
           .select('invoice_number')
-          .eq('tenant_id', session.user.tenantId)
+          .eq('tenant_id', dataSourceTenantId)
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
@@ -334,7 +327,7 @@ export async function POST(
         const { data: newInvoice, error: invoiceError } = await supabase
           .from('invoices')
           .insert({
-            tenant_id: session.user.tenantId,
+            tenant_id: dataSourceTenantId,
             account_id: accountId,
             contact_id: contactId,
             opportunity_id: opportunityId,

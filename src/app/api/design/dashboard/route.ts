@@ -1,20 +1,14 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getTenantDatabaseClient } from '@/lib/supabase-client'
-
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.tenantId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
 
+  const { supabase, dataSourceTenantId, session } = context
   try {
     const { searchParams } = new URL(request.url)
     const designerId = searchParams.get('designer_id')
     const status = searchParams.get('status')
-
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
 
     // Build query - Now users table is in Tenant DB, so we can join directly!
     let query = supabase
@@ -31,7 +25,7 @@ export async function GET(request: Request) {
           account:accounts(id, name)
         )
       `)
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('design_deadline', { ascending: true })
 
     // Apply filters
@@ -51,7 +45,7 @@ export async function GET(request: Request) {
     const { data: designStatuses } = await supabase
       .from('design_statuses')
       .select('slug, is_completed')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     // Create a lookup map for completion status
     const completionStatusMap = new Map<string, boolean>()

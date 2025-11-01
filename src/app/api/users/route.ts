@@ -1,27 +1,22 @@
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { ROLES, isAdmin, type UserRole } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
     // Query Tenant DB for users (users table is now in Tenant DB)
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    const supabase = await getTenantDatabaseClient(session.user.tenantId)
-    
     // Get all users for the current tenant
     const { data: users, error } = await supabase
       .from('users')
       .select('*')
-      .eq('tenant_id', session.user.tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -29,7 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
     }
 
-    return NextResponse.json({ users })
+    return NextResponse.json(users || [])
   } catch (error) {
     console.error('Error in GET /api/users:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -39,8 +34,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('=== CREATE USER API START ===')
-    const session = await getServerSession(authOptions)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
+    const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
       console.error('[Create User] No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
