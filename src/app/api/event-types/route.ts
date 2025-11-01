@@ -37,9 +37,10 @@ export async function GET(request: Request) {
 
 // POST - Create new event type
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions)
-  , { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
 
   // Admin only
   if (session.user.role !== 'admin') {
@@ -114,9 +115,10 @@ export async function POST(request: Request) {
 
 // PATCH - Batch update (for reordering)
 export async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions)
-  , { status: 401 })
-  }
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) return context
+
+  const { supabase, dataSourceTenantId, session } = context
 
   if (session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
