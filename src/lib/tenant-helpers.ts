@@ -7,7 +7,8 @@
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getTenantDatabaseClient, getTenantIdInDataSource } from '@/lib/supabase-client';
+import { getTenantDatabaseClient } from '@/lib/supabase-client';
+import { getTenantIdInDataSource } from '@/lib/data-sources';
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
