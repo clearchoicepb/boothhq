@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET - Download/view a specific attachment
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId, session } = context
-    const params = await context.params
+    const params = await routeContext.params
     const attachmentId = params.id
 
     // Fetch attachment metadata
@@ -57,7 +57,7 @@ export async function GET(
 // DELETE - Remove an attachment
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -65,7 +65,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const attachmentId = params.id
 
     // Fetch attachment to get storage path

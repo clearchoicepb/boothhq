@@ -2,14 +2,14 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId, session } = context
-    const params = await context.params
+    const params = await routeContext.params
     const staffAssignmentId = params.id
     const body = await request.json()
     const updateData: any = {}
@@ -66,7 +66,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -75,7 +75,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const staffAssignmentId = params.id
     const { error } = await supabase
       .from('event_staff_assignments')

@@ -2,7 +2,7 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
   const context = await getTenantContext()
@@ -14,7 +14,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const roleId = params.id
     const body = await request.json()
     const updateData: any = {}
@@ -48,7 +48,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -62,7 +62,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const roleId = params.id
     // Check if this role is being used in any staff assignments
     const { data: assignments, error: checkError } = await supabase

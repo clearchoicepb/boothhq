@@ -2,14 +2,14 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId, session } = context
-    const params = await context.params
+    const params = await routeContext.params
     const eventId = params.id
     // Fetch all activity types
     const [communications, tasks, invoices, notes, attachments] = await Promise.all([

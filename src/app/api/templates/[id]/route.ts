@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET - Get single template
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId, session } = context
-    const params = await context.params
+    const params = await routeContext.params
     const templateId = params.id
 
     const { data: template, error } = await supabase
@@ -40,7 +40,7 @@ export async function GET(
 // PUT - Update template
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -48,7 +48,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const templateId = params.id
 
     const body = await request.json()
@@ -90,7 +90,7 @@ export async function PUT(
 // DELETE - Delete template
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -98,7 +98,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const params = await context.params
+    const params = await routeContext.params
     const templateId = params.id
 
     const { error } = await supabase
