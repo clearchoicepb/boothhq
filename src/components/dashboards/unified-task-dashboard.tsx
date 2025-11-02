@@ -44,7 +44,7 @@ import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 // Week 1 Architecture - Use hooks and services
 import { useTaskDashboard } from '@/hooks/useTaskDashboard'
 import { useUpdateTask } from '@/hooks/useTaskActions'
-import { DEPARTMENTS, type DepartmentId } from '@/lib/departments'
+import { DEPARTMENTS, getTaskDepartments, type DepartmentId } from '@/lib/departments'
 import type { TaskWithUrgency } from '@/types/tasks'
 
 // User interface for staff filtering
@@ -53,7 +53,8 @@ interface TenantUser {
   first_name?: string
   last_name?: string
   email: string
-  department?: string
+  department?: string // Legacy: single department (deprecated)
+  departments?: string[] // New: multiple departments
 }
 
 // Helper function to determine if color is light or dark
@@ -166,9 +167,24 @@ export function UnifiedTaskDashboard({
   const displaySubtitle = subtitle || (departmentInfo ? departmentInfo.description : 'Unified task management across all departments')
 
   // Filter users by department if a specific department is selected
+  // Also exclude users who ONLY have "event_staff" department
   const filteredUsers = useMemo(() => {
-    if (!selectedDepartment) return users
-    return users.filter(user => user.department === selectedDepartment)
+    return users.filter(user => {
+      // Get user's departments (support both legacy single department and new array)
+      const userDepartments = user.departments || (user.department ? [user.department] : [])
+
+      // Exclude users who ONLY have event_staff
+      const nonEventStaffDepts = userDepartments.filter(d => d !== 'event_staff')
+      if (nonEventStaffDepts.length === 0) return false
+
+      // If a specific department is selected, check if user belongs to it
+      if (selectedDepartment) {
+        return userDepartments.includes(selectedDepartment)
+      }
+
+      // Otherwise show all users (except event_staff only)
+      return true
+    })
   }, [users, selectedDepartment])
 
   // Helper function to get user name by ID
@@ -351,7 +367,7 @@ export function UnifiedTaskDashboard({
           >
             All Departments
           </button>
-          {Object.values(DEPARTMENTS).map((dept) => (
+          {getTaskDepartments().map((dept) => (
             <button
               key={dept.id}
               onClick={() => setSelectedDepartment(dept.id)}

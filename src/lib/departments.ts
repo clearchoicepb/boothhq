@@ -21,6 +21,7 @@ export type DepartmentId =
   | 'customer_success'
   | 'accounting'
   | 'admin'
+  | 'event_staff' // Special category for event-only staff (not shown in task dashboards)
 
 // Department role levels
 export type DepartmentRole = 'member' | 'supervisor' | 'manager'
@@ -103,6 +104,14 @@ export const DEPARTMENTS: Record<DepartmentId, Department> = {
     color: '#6b7280', // gray-500
     description: 'System management, settings, and user administration',
     abbreviation: 'ADM',
+  },
+  event_staff: {
+    id: 'event_staff',
+    name: 'Event Staff',
+    icon: 'Users',
+    color: '#14b8a6', // teal-500
+    description: 'On-site event staff and brand ambassadors',
+    abbreviation: 'EVT',
   },
 } as const
 
@@ -316,6 +325,10 @@ export const DEPARTMENT_TASK_TYPES: Record<DepartmentId, readonly DepartmentTask
       defaultDueInDays: 1,
     },
   ],
+  event_staff: [
+    // Event staff don't have department-based tasks
+    // They are assigned to specific events via staff roles
+  ],
 } as const
 
 /**
@@ -327,6 +340,25 @@ export const DEPARTMENT_TASK_TYPES: Record<DepartmentId, readonly DepartmentTask
  */
 export function getAllDepartments(): Department[] {
   return Object.values(DEPARTMENTS)
+}
+
+/**
+ * Get departments that should appear in task dashboards
+ * (excludes event_staff which is for organizational purposes only)
+ */
+export function getTaskDepartments(): Department[] {
+  return Object.values(DEPARTMENTS).filter(dept => dept.id !== 'event_staff')
+}
+
+/**
+ * Get all departments as options for form selects
+ * Includes all departments including event_staff
+ */
+export function getDepartmentOptions() {
+  return Object.values(DEPARTMENTS).map(dept => ({
+    value: dept.id,
+    label: dept.name
+  }))
 }
 
 /**
