@@ -11,12 +11,14 @@ export async function GET(request: Request) {
     const status = searchParams.get('status')
 
     // Build query - Now users table is in Tenant DB, so we can join directly!
+    // IMPORTANT: Use explicit FK constraint name to avoid ambiguity
+    // (event_design_items has 3 FKs to users: assigned_designer_id, approved_by, created_by)
     let query = supabase
       .from('event_design_items')
       .select(`
         *,
         design_item_type:design_item_types(id, name, type, due_date_days, urgent_threshold_days, missed_deadline_days),
-        assigned_designer:users(id, first_name, last_name, email),
+        assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, first_name, last_name, email),
         event:events!inner(
           id,
           title,

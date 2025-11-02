@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { enrichTaskWithUrgency } from '@/types/tasks'
 import type { TaskDashboardData, TaskWithRelations } from '@/types/tasks'
+import { canAccessDepartment, type DepartmentId } from '@/lib/departments'
 
 /**
  * GET /api/tasks/dashboard
@@ -13,6 +14,11 @@ import type { TaskDashboardData, TaskWithRelations } from '@/types/tasks'
  * Query params:
  * - department: Department ID (required)
  * - assignedTo: User ID to filter tasks (optional)
+ *
+ * Authorization:
+ * - Managers can access all departments
+ * - Supervisors can access their own department
+ * - Members can access their own department
  */
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +34,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Department is required' },
         { status: 400 }
+      )
+    }
+
+    // Authorization check: Verify user can access this department
+    // Fetch user's department and role from database (may not be in session JWT)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('department, department_role')
+      .eq('id', session.user.id)
+      .single()
+
+    const userDepartment = userData?.department || null
+    const userRole = userData?.department_role || 'member'
+
+    // Check if user has permission to access this department
+    // Managers can access ALL departments
+    // Supervisors can access their own department
+    // Members can access their own department
+    const hasAccess = canAccessDepartment(
+      userDepartment as DepartmentId | null,
+      userRole,
+      department as DepartmentId
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        {
+          error: 'Unauthorized',
+          message: `You do not have permission to access the ${department} department dashboard. Your role: ${userRole}, Your department: ${userDepartment || 'none'}`
+        },
+        { status: 403 }
       )
     }
 
