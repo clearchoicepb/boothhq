@@ -131,6 +131,52 @@ class TasksService {
   }
 
   /**
+   * Create a task from a template
+   *
+   * V1: Manual creation via quick-add buttons
+   * V2: Can be called automatically by automation triggers
+   *
+   * @param templateId - ID of the task template
+   * @param options - Optional overrides and entity linking
+   * @returns Created task with relations
+   *
+   * @example
+   * // Create task from template for an opportunity
+   * const task = await tasksService.createFromTemplate({
+   *   templateId: 'template-123',
+   *   entityType: 'opportunity',
+   *   entityId: 'opp-456',
+   *   assignedTo: 'user-789'
+   * })
+   *
+   * @example
+   * // Override template defaults
+   * const task = await tasksService.createFromTemplate({
+   *   templateId: 'template-123',
+   *   title: 'Custom title',
+   *   priority: 'urgent',
+   *   dueDate: '2025-11-10'
+   * })
+   */
+  async createFromTemplate(options: {
+    templateId: string
+    entityType?: string | null
+    entityId?: string | null
+    eventDateId?: string | null
+    assignedTo?: string | null
+    // Optional overrides to template defaults
+    title?: string
+    priority?: 'low' | 'medium' | 'high' | 'urgent'
+    dueDate?: string | null
+  }): Promise<TaskWithRelations> {
+    const response = await apiClient.post<TaskCreateResponse>(
+      '/api/tasks/from-template',
+      options
+    )
+    return response.task
+  }
+
+  /**
    * Update an existing task
    *
    * @param id - Task ID

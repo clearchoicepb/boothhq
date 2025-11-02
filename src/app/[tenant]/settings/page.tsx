@@ -109,6 +109,14 @@ const settingsSections: SettingsSection[] = [
     category: 'operations'
   },
   {
+    id: 'task-templates',
+    title: 'Task Templates',
+    description: 'Create reusable task templates for quick task creation',
+    icon: CheckCircle2,
+    href: '/task-templates',
+    category: 'operations'
+  },
+  {
     id: 'event-categories',
     title: 'Event Categories',
     description: 'Manage workflow categories (Social vs Corporate events)',
