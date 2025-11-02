@@ -47,22 +47,26 @@ export async function GET(request: NextRequest) {
 
     const userDepartment = userData?.department || null
     const userRole = userData?.department_role || 'member'
+    const systemRole = session.user.role || null // From session JWT
 
     // Check if user has permission to access this department
-    // Managers can access ALL departments
-    // Supervisors can access their own department
-    // Members can access their own department
+    // Authorization hierarchy:
+    // 1. System admins (admin, tenant_admin) can access ALL departments
+    // 2. Department managers can access ALL departments
+    // 3. Supervisors can access their own department
+    // 4. Members can access their own department
     const hasAccess = canAccessDepartment(
       userDepartment as DepartmentId | null,
       userRole,
-      department as DepartmentId
+      department as DepartmentId,
+      systemRole
     )
 
     if (!hasAccess) {
       return NextResponse.json(
         {
           error: 'Unauthorized',
-          message: `You do not have permission to access the ${department} department dashboard. Your role: ${userRole}, Your department: ${userDepartment || 'none'}`
+          message: `You do not have permission to access the ${department} department dashboard. System role: ${systemRole || 'none'}, Department: ${userDepartment || 'none'}, Department role: ${userRole || 'none'}`
         },
         { status: 403 }
       )
