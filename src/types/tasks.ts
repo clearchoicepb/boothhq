@@ -130,6 +130,7 @@ export interface TaskDashboardStats {
   overdue: number
   due_today: number
   due_this_week: number
+  due_this_month: number
   by_priority: {
     low: number
     medium: number

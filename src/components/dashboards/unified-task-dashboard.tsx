@@ -246,7 +246,7 @@ export function UnifiedTaskDashboard({
     overdue: 0,
     due_today: 0,
     due_this_week: 0,
-    completed_last_7_days: 0,
+    due_this_month: 0,
   }
 
   return (
@@ -388,11 +388,11 @@ export function UnifiedTaskDashboard({
           subtitle="Coming up soon"
         />
         <KPICard
-          title="Recently Completed"
-          value={stats.completed_last_7_days || 0}
-          icon={CheckCircle}
-          color="green"
-          subtitle="Last 7 days"
+          title="Due This Month"
+          value={stats.due_this_month || 0}
+          icon={TrendingUp}
+          color="blue"
+          subtitle="Within 30 days"
         />
       </div>
 
