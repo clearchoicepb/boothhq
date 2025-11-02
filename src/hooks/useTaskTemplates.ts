@@ -13,7 +13,7 @@ import {
   type TaskTemplate,
   type CreateTaskTemplateInput,
 } from '@/lib/api/services/taskTemplateService'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 /**
  * Hook to fetch all task templates
