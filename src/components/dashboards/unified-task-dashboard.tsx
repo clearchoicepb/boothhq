@@ -47,6 +47,23 @@ import { useUpdateTask } from '@/hooks/useTaskActions'
 import { DEPARTMENTS, type DepartmentId } from '@/lib/departments'
 import type { TaskWithUrgency } from '@/types/tasks'
 
+// Helper function to determine if color is light or dark
+const getLuminance = (hex: string): number => {
+  const rgb = parseInt(hex.replace('#', ''), 16)
+  const r = (rgb >> 16) & 0xff
+  const g = (rgb >> 8) & 0xff
+  const b = (rgb >> 0) & 0xff
+  // Relative luminance formula
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return lum / 255
+}
+
+const getTextColor = (bgColor: string): string => {
+  const luminance = getLuminance(bgColor)
+  // If luminance > 0.5, use dark text, otherwise use light text
+  return luminance > 0.5 ? '#1f2937' : '#ffffff'
+}
+
 export interface UnifiedTaskDashboardProps {
   /** Department to show tasks for. If null, shows all departments */
   departmentId?: DepartmentId | null
@@ -416,8 +433,8 @@ export function UnifiedTaskDashboard({
         <div className="space-y-4">
           {Object.entries(groupedTasks).map(([group, tasks]) => (
             <div key={group} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-lg font-bold text-gray-900 capitalize">
+              <div className="px-6 py-4 border-b border-gray-200" style={{ backgroundColor: PRIMARY_COLOR }}>
+                <h2 className="text-lg font-bold capitalize" style={{ color: getTextColor(PRIMARY_COLOR) }}>
                   {group.replace(/_/g, ' ')} ({tasks.length})
                 </h2>
               </div>
@@ -425,35 +442,41 @@ export function UnifiedTaskDashboard({
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Task
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Related To
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Due Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Assignee
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Priority
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {tasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        onClick={() => openTaskModal(task)}
-                        onEntityClick={(type, id) => navigateToEntity(type, id)}
-                      />
-                    ))}
+                  <tbody>
+                    {tasks.map((task, index) => {
+                      const bgColor = index % 2 === 0 ? PRIMARY_COLOR : SECONDARY_COLOR
+                      const textColor = getTextColor(bgColor)
+                      return (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          onClick={() => openTaskModal(task)}
+                          onEntityClick={(type, id) => navigateToEntity(type, id)}
+                          bgColor={bgColor}
+                          textColor={textColor}
+                        />
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -538,107 +561,84 @@ interface TaskRowProps {
   task: TaskWithUrgency
   onClick: () => void
   onEntityClick: (entityType: string, entityId: string) => void
+  bgColor: string
+  textColor: string
 }
 
-function TaskRow({ task, onClick, onEntityClick }: TaskRowProps) {
-  const getUrgencyBadge = (urgency: string) => {
-    const badges: Record<string, { bg: string; text: string; label: string }> = {
-      overdue: { bg: 'bg-red-100', text: 'text-red-800', label: 'OVERDUE' },
-      today: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'TODAY' },
-      this_week: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'THIS WEEK' },
-      this_month: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'THIS MONTH' },
-      future: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'FUTURE' },
-      no_due_date: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'NO DATE' },
-    }
-
-    const badge = badges[urgency] || badges.no_due_date
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.bg} ${badge.text}`}>
-        {badge.label}
-      </span>
-    )
-  }
-
-  const getPriorityBadge = (priority: string) => {
-    const badges: Record<string, { bg: string; text: string }> = {
-      urgent: { bg: 'bg-red-100', text: 'text-red-800' },
-      high: { bg: 'bg-orange-100', text: 'text-orange-800' },
-      medium: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-      low: { bg: 'bg-gray-100', text: 'text-gray-800' },
-    }
-
-    const badge = badges[priority] || badges.medium
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.bg} ${badge.text}`}>
-        {priority.toUpperCase()}
-      </span>
-    )
-  }
-
-  const getStatusBadge = (status: string) => {
-    const badges: Record<string, { bg: string; text: string }> = {
-      pending: { bg: 'bg-gray-100', text: 'text-gray-800' },
-      in_progress: { bg: 'bg-blue-100', text: 'text-blue-800' },
-      completed: { bg: 'bg-green-100', text: 'text-green-800' },
-      cancelled: { bg: 'bg-red-100', text: 'text-red-800' },
-    }
-
-    const badge = badges[status] || badges.pending
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.bg} ${badge.text}`}>
-        {status.replace(/_/g, ' ').toUpperCase()}
-      </span>
-    )
-  }
-
+function TaskRow({ task, onClick, onEntityClick, bgColor, textColor }: TaskRowProps) {
   return (
-    <tr className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={onClick}>
-      <td className="px-6 py-4">
+    <tr
+      className="cursor-pointer hover:opacity-90 transition-opacity text-sm"
+      style={{ backgroundColor: bgColor, color: textColor }}
+      onClick={onClick}
+    >
+      <td className="px-4 py-1">
         <div className="flex items-center">
-          {task.urgency === 'overdue' && <AlertCircle className="h-4 w-4 mr-2 text-red-600" />}
-          {task.urgency === 'today' && <Clock className="h-4 w-4 mr-2 text-orange-600" />}
+          {task.urgency === 'overdue' && <AlertCircle className="h-3 w-3 mr-1.5 flex-shrink-0" />}
+          {task.urgency === 'today' && <Clock className="h-3 w-3 mr-1.5 flex-shrink-0" />}
           <div>
-            <div className="font-medium text-gray-900">{task.title}</div>
+            <div className="font-medium">{task.title}</div>
             {task.description && (
-              <div className="text-sm text-gray-500 truncate max-w-md">{task.description}</div>
+              <div className="text-xs opacity-80 truncate max-w-md">{task.description}</div>
             )}
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 py-1 whitespace-nowrap">
         {task.entity_type && task.entity_id ? (
           <button
             onClick={(e) => {
               e.stopPropagation()
               onEntityClick(task.entity_type!, task.entity_id!)
             }}
-            className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
+            className="inline-flex items-center text-xs hover:underline"
+            style={{ color: textColor }}
           >
             {task.entity_type}
             <ExternalLink className="h-3 w-3 ml-1" />
           </button>
         ) : (
-          <span className="text-gray-500 text-sm">-</span>
+          <span className="opacity-50 text-xs">-</span>
         )}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-900">
+      <td className="px-4 py-1 whitespace-nowrap">
         {task.due_date ? (
           <div>
             <div>{new Date(task.due_date).toLocaleDateString()}</div>
-            {task.urgency && <div className="mt-1">{getUrgencyBadge(task.urgency)}</div>}
+            {task.urgency && task.urgency !== 'no_due_date' && (
+              <div className="mt-0.5">
+                <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full" style={{
+                  backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
+                }}>
+                  {task.urgency.replace('_', ' ').toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
         ) : (
-          <span className="text-gray-500">No due date</span>
+          <span className="opacity-50">No due date</span>
         )}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-900">
+      <td className="px-4 py-1 whitespace-nowrap">
         <div className="flex items-center">
-          <User className="h-4 w-4 mr-2 text-gray-400" />
+          <User className="h-3 w-3 mr-1.5 flex-shrink-0" />
           {task.assigned_to || 'Unassigned'}
         </div>
       </td>
-      <td className="px-6 py-4">{getPriorityBadge(task.priority || 'medium')}</td>
-      <td className="px-6 py-4">{getStatusBadge(task.status || 'pending')}</td>
+      <td className="px-4 py-1 whitespace-nowrap">
+        <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{
+          backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
+        }}>
+          {(task.priority || 'medium').toUpperCase()}
+        </span>
+      </td>
+      <td className="px-4 py-1 whitespace-nowrap">
+        <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{
+          backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
+        }}>
+          {(task.status || 'pending').replace(/_/g, ' ').toUpperCase()}
+        </span>
+      </td>
     </tr>
   )
 }
