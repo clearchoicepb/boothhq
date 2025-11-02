@@ -34,10 +34,12 @@ import {
   ListTodo,
   AlertTriangle,
   TrendingUp,
+  Plus,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
+import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 
 // Week 1 Architecture - Use hooks and services
 import { useTaskDashboard } from '@/hooks/useTaskDashboard'
@@ -98,6 +100,7 @@ export function UnifiedTaskDashboard({
   const [taskStatus, setTaskStatus] = useState('')
   const [taskPriority, setTaskPriority] = useState('')
   const [taskNotes, setTaskNotes] = useState('')
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
 
   // Get tenant colors from settings
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
@@ -260,6 +263,18 @@ export function UnifiedTaskDashboard({
           </h1>
           <p className="text-gray-600 mt-1">{displaySubtitle}</p>
         </div>
+
+        {/* Add Task Button - Only show if we have a specific department */}
+        {selectedDepartment && (
+          <button
+            onClick={() => setIsAddTaskModalOpen(true)}
+            className="px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity inline-flex items-center"
+            style={{ backgroundColor: PRIMARY_COLOR }}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Task
+          </button>
+        )}
       </div>
 
       {/* Department Tabs (if enabled) */}
@@ -468,6 +483,17 @@ export function UnifiedTaskDashboard({
           saving={isUpdating}
           primaryColor={PRIMARY_COLOR}
           onNavigateToEntity={navigateToEntity}
+        />
+      )}
+
+      {/* Add Task Modal */}
+      {selectedDepartment && (
+        <AddTaskModal
+          isOpen={isAddTaskModalOpen}
+          onClose={() => setIsAddTaskModalOpen(false)}
+          departmentId={selectedDepartment}
+          userId={userId}
+          primaryColor={PRIMARY_COLOR}
         />
       )}
     </div>
