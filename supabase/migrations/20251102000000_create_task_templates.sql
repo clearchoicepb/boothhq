@@ -41,51 +41,11 @@ CREATE INDEX IF NOT EXISTS idx_task_templates_display_order ON task_templates(te
 -- Enable RLS
 ALTER TABLE task_templates ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
--- Note: These policies work for both app DB (with tenants table) and tenant DB (without tenants table)
--- The auth.uid() refers to the current authenticated user
-
--- SELECT: Users can view templates in their tenant
-CREATE POLICY "Users can view templates in their tenant"
-  ON task_templates FOR SELECT
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM users WHERE id = auth.uid()
-    )
-  );
-
--- INSERT: Only admins can create templates
-CREATE POLICY "Admins can insert templates"
-  ON task_templates FOR INSERT
-  WITH CHECK (
-    tenant_id IN (
-      SELECT tenant_id FROM users
-      WHERE id = auth.uid()
-      AND role IN ('admin', 'tenant_admin')
-    )
-  );
-
--- UPDATE: Only admins can update templates
-CREATE POLICY "Admins can update templates"
-  ON task_templates FOR UPDATE
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM users
-      WHERE id = auth.uid()
-      AND role IN ('admin', 'tenant_admin')
-    )
-  );
-
--- DELETE: Only admins can delete templates
-CREATE POLICY "Admins can delete templates"
-  ON task_templates FOR DELETE
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM users
-      WHERE id = auth.uid()
-      AND role IN ('admin', 'tenant_admin')
-    )
-  );
+-- RLS Policy for tenant isolation
+-- Matches the pattern used in other tables (tasks, etc.)
+-- Uses tenant_id from JWT token for isolation
+CREATE POLICY tenant_isolation_task_templates ON task_templates
+  FOR ALL USING (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
 
 -- Update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_task_templates_updated_at()
