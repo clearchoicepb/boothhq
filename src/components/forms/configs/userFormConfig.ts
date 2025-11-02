@@ -1,5 +1,6 @@
 import { FormConfig } from '../types'
 import { ROLES_WITH_LABELS } from '@/lib/roles'
+import { getDepartmentOptions } from '@/lib/departments'
 
 export const userFormConfig: FormConfig<any> = {
   entity: 'users',
@@ -61,10 +62,12 @@ export const userFormConfig: FormConfig<any> = {
       gridCols: 1
     },
     {
-      name: 'department',
-      type: 'text',
-      label: 'Department',
-      gridCols: 1
+      name: 'departments',
+      type: 'multiSelect',
+      label: 'Departments',
+      options: getDepartmentOptions(),
+      gridCols: 2,
+      placeholder: 'Select one or more departments'
     },
     {
       name: 'employee_type',

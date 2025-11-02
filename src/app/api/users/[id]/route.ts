@@ -70,7 +70,8 @@ export async function PUT(
       state,
       zip_code,
       job_title,
-      department,
+      department, // Legacy single department (deprecated)
+      departments, // New multi-department support
       employee_type,
       pay_rate,
       payroll_info,
@@ -100,7 +101,15 @@ export async function PUT(
     if (state !== undefined) updateData.state = state
     if (zip_code !== undefined) updateData.zip_code = zip_code
     if (job_title !== undefined) updateData.job_title = job_title
-    if (department !== undefined) updateData.department = department
+
+    // Handle departments: prefer new departments array, fall back to legacy department
+    if (departments !== undefined && Array.isArray(departments)) {
+      updateData.departments = departments
+    } else if (department !== undefined) {
+      // Legacy: if single department provided, convert to array
+      updateData.departments = [department]
+    }
+
     if (employee_type !== undefined) updateData.employee_type = employee_type
     if (pay_rate !== undefined) updateData.pay_rate = pay_rate
     if (payroll_info !== undefined) updateData.payroll_info = payroll_info

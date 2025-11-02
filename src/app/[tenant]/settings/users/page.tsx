@@ -32,7 +32,8 @@ interface User {
   state: string | null
   zip_code: string | null
   job_title: string | null
-  department: string | null
+  department: string | null // Legacy single department
+  departments: string[] | null // New multi-department support
   employee_type: 'W2' | '1099' | 'International' | null
   pay_rate: number | null
   payroll_info: any | null
@@ -676,8 +677,24 @@ export default function UsersSettingsPage() {
                           <p className="mt-1 text-sm font-medium text-gray-900">{getRoleLabel(viewingUser.role)}</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-500">Department</label>
-                          <p className="mt-1 text-sm text-gray-900">{viewingUser.department || 'Not assigned'}</p>
+                          <label className="block text-sm font-medium text-gray-500">Departments</label>
+                          <div className="mt-1">
+                            {viewingUser.departments && Array.isArray(viewingUser.departments) && viewingUser.departments.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {viewingUser.departments.map((dept: string) => (
+                                  <span key={dept} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                    {dept.replace('_', ' ').toUpperCase()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : viewingUser.department ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                {viewingUser.department.replace('_', ' ').toUpperCase()}
+                              </span>
+                            ) : (
+                              <p className="text-sm text-gray-500">Not assigned</p>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-500">Custom Permissions</label>

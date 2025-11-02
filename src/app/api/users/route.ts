@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
       state,
       zip_code,
       job_title,
-      department,
+      department, // Legacy single department (deprecated)
+      departments, // New multi-department support
       employee_type,
       pay_rate,
       payroll_info,
@@ -195,33 +196,44 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Create user record in Tenant DB users table with the auth user's ID
     console.log('[Create User] Creating user record in Tenant DB with ID:', authUserId)
+
+    // Prepare insert data
+    const insertData: any = {
+      id: authUserId, // Use the auth user's ID
+      email: normalizedEmail,
+      password_hash,
+      first_name,
+      last_name,
+      role: role || 'user',
+      tenant_id,
+      status: 'active',
+      phone,
+      address_line_1,
+      address_line_2,
+      city,
+      state,
+      zip_code,
+      job_title,
+      employee_type,
+      pay_rate,
+      payroll_info,
+      hire_date,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_contact_relationship
+    }
+
+    // Handle departments: prefer new departments array, fall back to legacy department
+    if (departments && Array.isArray(departments)) {
+      insertData.departments = departments
+    } else if (department) {
+      // Legacy: if single department provided, convert to array
+      insertData.departments = [department]
+    }
+
     const { data: user, error: userError } = await tenantSupabase
       .from('users')
-      .insert({
-        id: authUserId, // Use the auth user's ID
-        email: normalizedEmail,
-        password_hash,
-        first_name,
-        last_name,
-        role: role || 'user',
-        tenant_id,
-        status: 'active',
-        phone,
-        address_line_1,
-        address_line_2,
-        city,
-        state,
-        zip_code,
-        job_title,
-        department,
-        employee_type,
-        pay_rate,
-        payroll_info,
-        hire_date,
-        emergency_contact_name,
-        emergency_contact_phone,
-        emergency_contact_relationship
-      })
+      .insert(insertData)
       .select()
       .single()
 

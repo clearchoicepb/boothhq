@@ -17,7 +17,7 @@
  * - Works for all departments
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
 import { useRouter } from 'next/navigation'
@@ -44,8 +44,18 @@ import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 // Week 1 Architecture - Use hooks and services
 import { useTaskDashboard } from '@/hooks/useTaskDashboard'
 import { useUpdateTask } from '@/hooks/useTaskActions'
-import { DEPARTMENTS, type DepartmentId } from '@/lib/departments'
+import { DEPARTMENTS, getTaskDepartments, type DepartmentId } from '@/lib/departments'
 import type { TaskWithUrgency } from '@/types/tasks'
+
+// User interface for staff filtering
+interface TenantUser {
+  id: string
+  first_name?: string
+  last_name?: string
+  email: string
+  department?: string // Legacy: single department (deprecated)
+  departments?: string[] // New: multiple departments
+}
 
 // Helper function to determine if color is light or dark
 const getLuminance = (hex: string): number => {
@@ -118,10 +128,28 @@ export function UnifiedTaskDashboard({
   const [taskPriority, setTaskPriority] = useState('')
   const [taskNotes, setTaskNotes] = useState('')
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
+  const [users, setUsers] = useState<TenantUser[]>([])
 
   // Get tenant colors from settings
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
   const SECONDARY_COLOR = getSetting('appearance.secondaryColor', '#8b5cf6')
+
+  // Fetch users for staff filtering
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users')
+        if (response.ok) {
+          const data = await response.json()
+          setUsers(data.users || data || [])
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error)
+      }
+    }
+
+    fetchUsers()
+  }, [])
 
   // Week 1 Architecture - Use hooks instead of direct fetch
   const { data: dashboardData, isLoading } = useTaskDashboard(
@@ -137,6 +165,37 @@ export function UnifiedTaskDashboard({
   // Compute display title/subtitle
   const displayTitle = title || (departmentInfo ? `${departmentInfo.name} Tasks` : 'All Tasks')
   const displaySubtitle = subtitle || (departmentInfo ? departmentInfo.description : 'Unified task management across all departments')
+
+  // Filter users by department if a specific department is selected
+  // Also exclude users who ONLY have "event_staff" department
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      // Get user's departments (support both legacy single department and new array)
+      const userDepartments = user.departments || (user.department ? [user.department] : [])
+
+      // Exclude users who ONLY have event_staff
+      const nonEventStaffDepts = userDepartments.filter(d => d !== 'event_staff')
+      if (nonEventStaffDepts.length === 0) return false
+
+      // If a specific department is selected, check if user belongs to it
+      if (selectedDepartment) {
+        return userDepartments.includes(selectedDepartment)
+      }
+
+      // Otherwise show all users (except event_staff only)
+      return true
+    })
+  }, [users, selectedDepartment])
+
+  // Helper function to get user name by ID
+  const getUserName = (userId: string | null | undefined): string => {
+    if (!userId) return 'Unassigned'
+    const user = users.find(u => u.id === userId)
+    if (!user) return 'Unassigned'
+    return user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.email
+  }
 
   // Filter and group tasks
   const filteredTasks = useMemo(() => {
@@ -308,7 +367,7 @@ export function UnifiedTaskDashboard({
           >
             All Departments
           </button>
-          {Object.values(DEPARTMENTS).map((dept) => (
+          {getTaskDepartments().map((dept) => (
             <button
               key={dept.id}
               onClick={() => setSelectedDepartment(dept.id)}
@@ -339,7 +398,13 @@ export function UnifiedTaskDashboard({
           >
             <option value="all">All Assignees</option>
             <option value="unassigned">Unassigned</option>
-            {/* TODO: Load users from tenant */}
+            {filteredUsers.map(user => (
+              <option key={user.id} value={user.id}>
+                {user.first_name && user.last_name
+                  ? `${user.first_name} ${user.last_name}`
+                  : user.email}
+              </option>
+            ))}
           </select>
         )}
 
@@ -474,6 +539,7 @@ export function UnifiedTaskDashboard({
                           onEntityClick={(type, id) => navigateToEntity(type, id)}
                           bgColor={bgColor}
                           textColor={textColor}
+                          getUserName={getUserName}
                         />
                       )
                     })}
@@ -563,9 +629,10 @@ interface TaskRowProps {
   onEntityClick: (entityType: string, entityId: string) => void
   bgColor: string
   textColor: string
+  getUserName: (userId: string | null | undefined) => string
 }
 
-function TaskRow({ task, onClick, onEntityClick, bgColor, textColor }: TaskRowProps) {
+function TaskRow({ task, onClick, onEntityClick, bgColor, textColor, getUserName }: TaskRowProps) {
   return (
     <tr
       className="cursor-pointer hover:opacity-90 transition-opacity text-sm"
@@ -622,7 +689,7 @@ function TaskRow({ task, onClick, onEntityClick, bgColor, textColor }: TaskRowPr
       <td className="px-4 py-1 whitespace-nowrap">
         <div className="flex items-center">
           <User className="h-3 w-3 mr-1.5 flex-shrink-0" />
-          {task.assigned_to || 'Unassigned'}
+          {getUserName(task.assigned_to)}
         </div>
       </td>
       <td className="px-4 py-1 whitespace-nowrap">
