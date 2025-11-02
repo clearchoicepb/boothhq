@@ -38,14 +38,10 @@ CREATE INDEX IF NOT EXISTS idx_task_templates_tenant ON task_templates(tenant_id
 CREATE INDEX IF NOT EXISTS idx_task_templates_department ON task_templates(tenant_id, department) WHERE enabled = true;
 CREATE INDEX IF NOT EXISTS idx_task_templates_display_order ON task_templates(tenant_id, department, display_order);
 
--- Enable RLS
-ALTER TABLE task_templates ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy for tenant isolation
--- Matches the pattern used in other tables (tasks, etc.)
--- Uses tenant_id from JWT token for isolation
-CREATE POLICY tenant_isolation_task_templates ON task_templates
-  FOR ALL USING (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
+-- Note: RLS is NOT enabled for this table
+-- The API layer handles tenant isolation by explicitly filtering on tenant_id
+-- This matches how other tables in the tenant database work
+-- (service role is used for API calls and bypasses RLS anyway)
 
 -- Update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_task_templates_updated_at()
