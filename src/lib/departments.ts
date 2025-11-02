@@ -412,15 +412,30 @@ export function getDepartmentColor(departmentId: DepartmentId, opacity: number =
 }
 
 /**
- * Check if user has permission for department action
- * (Placeholder for future permission system)
+ * Check if user has permission to access a department
+ *
+ * Authorization hierarchy:
+ * 1. System roles (admin, tenant_admin) - full access to everything
+ * 2. Department roles (manager, supervisor, member) - department-based access
+ *
+ * @param userDepartment - User's assigned department (e.g., 'sales', 'design')
+ * @param userRole - User's department role (member, supervisor, manager)
+ * @param targetDepartment - Department being accessed
+ * @param systemRole - User's system role (admin, tenant_admin, sales_rep, etc.)
+ * @returns true if user can access the target department
  */
 export function canAccessDepartment(
   userDepartment: DepartmentId | null,
   userRole: DepartmentRole | null,
-  targetDepartment: DepartmentId
+  targetDepartment: DepartmentId,
+  systemRole?: string | null
 ): boolean {
-  // Managers can access all departments
+  // System admins can access ALL departments
+  if (systemRole === 'admin' || systemRole === 'tenant_admin') {
+    return true
+  }
+
+  // Department managers can access all departments
   if (userRole === 'manager') return true
 
   // Supervisors can access their own department

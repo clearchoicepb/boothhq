@@ -47,22 +47,26 @@ export async function GET(request: NextRequest) {
 
     const userDepartment = userData?.department || null
     const userRole = userData?.department_role || 'member'
+    const systemRole = session.user.role || null // From session JWT
 
     // Check if user has permission to access this department
-    // Managers can access ALL departments
-    // Supervisors can access their own department
-    // Members can access their own department
+    // Authorization hierarchy:
+    // 1. System admins (admin, tenant_admin) can access ALL departments
+    // 2. Department managers can access ALL departments
+    // 3. Supervisors can access their own department
+    // 4. Members can access their own department
     const hasAccess = canAccessDepartment(
       userDepartment as DepartmentId | null,
       userRole,
-      department as DepartmentId
+      department as DepartmentId,
+      systemRole
     )
 
     if (!hasAccess) {
       return NextResponse.json(
         {
           error: 'Unauthorized',
-          message: `You do not have permission to access the ${department} department dashboard. Your role: ${userRole}, Your department: ${userDepartment || 'none'}`
+          message: `You do not have permission to access the ${department} department dashboard. System role: ${systemRole || 'none'}, Department: ${userDepartment || 'none'}, Department role: ${userRole || 'none'}`
         },
         { status: 403 }
       )
@@ -126,12 +130,15 @@ function calculateStats(tasks: TaskWithRelations[]) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const oneWeekFromNow = new Date(today)
   oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7)
+  const oneMonthFromNow = new Date(today)
+  oneMonthFromNow.setDate(oneMonthFromNow.getDate() + 30)
   const sevenDaysAgo = new Date(today)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
   let overdue = 0
   let due_today = 0
   let due_this_week = 0
+  let due_this_month = 0
   let completed_last_7_days = 0
   let total_pending = 0
   let total_in_progress = 0
@@ -162,6 +169,8 @@ function calculateStats(tasks: TaskWithRelations[]) {
         due_today++
       } else if (dueDate < oneWeekFromNow) {
         due_this_week++
+      } else if (dueDate < oneMonthFromNow) {
+        due_this_month++
       }
     }
   })
@@ -171,6 +180,7 @@ function calculateStats(tasks: TaskWithRelations[]) {
     overdue,
     due_today,
     due_this_week,
+    due_this_month,
     completed_last_7_days,
     pending: total_pending,
     in_progress: total_in_progress,
