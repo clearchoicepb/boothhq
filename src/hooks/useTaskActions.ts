@@ -60,6 +60,60 @@ export function useCreateTask() {
 }
 
 /**
+ * Hook for creating a task from a template
+ *
+ * @example
+ * const { createFromTemplate, isPending } = useCreateTaskFromTemplate()
+ *
+ * await createFromTemplate({
+ *   templateId: 'template-123',
+ *   entityType: 'opportunity',
+ *   entityId: 'opp-456',
+ *   assignedTo: userId
+ * })
+ */
+export function useCreateTaskFromTemplate() {
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: (options: {
+      templateId: string
+      entityType?: string | null
+      entityId?: string | null
+      eventDateId?: string | null
+      assignedTo?: string | null
+      title?: string
+      priority?: 'low' | 'medium' | 'high' | 'urgent'
+      dueDate?: string | null
+    }) => tasksService.createFromTemplate(options),
+    onSuccess: (newTask) => {
+      // Invalidate all task queries to refetch with new data
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+
+      // Also invalidate related entity queries if task is linked to an entity
+      if (newTask.entity_type && newTask.entity_id) {
+        queryClient.invalidateQueries({
+          queryKey: ['tasks', 'entity', newTask.entity_type, newTask.entity_id]
+        })
+      }
+
+      toast.success('Task created from template')
+    },
+    onError: (error: any) => {
+      console.error('Failed to create task from template:', error)
+      toast.error(error.message || 'Failed to create task from template')
+    },
+  })
+
+  return {
+    createFromTemplate: mutation.mutateAsync,
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+  }
+}
+
+/**
  * Hook for updating a task
  *
  * @example
@@ -370,6 +424,7 @@ export function useBulkDeleteTasks() {
  */
 export function useTaskActions() {
   const { createTask } = useCreateTask()
+  const { createFromTemplate } = useCreateTaskFromTemplate()
   const { updateTask } = useUpdateTask()
   const { updateStatus } = useUpdateTaskStatus()
   const { reassignTask } = useReassignTask()
@@ -380,6 +435,7 @@ export function useTaskActions() {
 
   return {
     create: createTask,
+    createFromTemplate,
     update: updateTask,
     updateStatus,
     reassign: reassignTask,
