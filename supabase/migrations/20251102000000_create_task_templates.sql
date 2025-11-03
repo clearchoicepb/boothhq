@@ -43,6 +43,16 @@ CREATE INDEX IF NOT EXISTS idx_task_templates_display_order ON task_templates(te
 -- This matches how other tables in the tenant database work
 -- (service role is used for API calls and bypasses RLS anyway)
 
+-- Grant permissions to all roles
+GRANT ALL ON task_templates TO service_role;
+GRANT ALL ON task_templates TO authenticated;
+GRANT ALL ON task_templates TO anon;
+
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
 -- Update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_task_templates_updated_at()
 RETURNS TRIGGER AS $$
