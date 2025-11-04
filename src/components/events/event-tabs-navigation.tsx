@@ -29,11 +29,11 @@ export function EventTabsNavigation({ activeTab, onTabChange }: EventTabsNavigat
   const tabs: EventTab[] = [
     { value: "overview", label: "Overview", icon: Info },
     { value: "planning", label: "Planning", icon: ClipboardList, badge: "New" },
+    { value: "details", label: "Staffing", icon: FileText },
     { value: "financials", label: "Financials", icon: DollarSign },
     { value: "activity", label: "Activity", icon: Activity },
     { value: "communications", label: "Communications", icon: MessageSquare },
     { value: "files", label: "Files", icon: Paperclip },
-    { value: "details", label: "Details", icon: FileText },
   ]
 
   return (
