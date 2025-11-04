@@ -245,15 +245,15 @@ export function formatTime(timeString: string | null | undefined): string {
 
 /**
  * Format a date and time together for display
- * 
+ *
  * @param dateString - Date string in YYYY-MM-DD format
  * @param timeString - Time string in HH:mm or HH:mm:ss format
  * @returns Formatted datetime (e.g., 'Jan 15, 2025 - 2:30 PM')
- * 
+ *
  * @example
  * formatDateTime('2025-01-15', '14:30')
  * // → 'Jan 15, 2025 - 2:30 PM'
- * 
+ *
  * formatDateTime('2025-01-15', null)
  * // → 'Jan 15, 2025'
  */
@@ -263,11 +263,90 @@ export function formatDateTime(
 ): string {
   const datePart = formatDate(dateString)
   const timePart = formatTime(timeString)
-  
+
   if (timePart) {
     return `${datePart} - ${timePart}`
   }
-  
+
   return datePart
+}
+
+/**
+ * Convert a datetime string to datetime-local input format
+ * NO TIMEZONE CONVERSION - preserves the exact time entered/stored
+ *
+ * @param datetimeString - DateTime string in various formats
+ * @returns DateTime string in format YYYY-MM-DDTHH:mm for datetime-local input
+ *
+ * @example
+ * toDateTimeLocalValue('2025-01-15T14:30:00')
+ * // → '2025-01-15T14:30'
+ *
+ * toDateTimeLocalValue('2025-01-15 14:30:00')
+ * // → '2025-01-15T14:30'
+ *
+ * @important This function does NOT convert timezones. Time entered = time displayed.
+ */
+export function toDateTimeLocalValue(datetimeString: string | null | undefined): string {
+  if (!datetimeString) return ''
+
+  try {
+    // Handle different datetime formats and extract the datetime portion
+    let cleaned = datetimeString.trim()
+
+    // If it already has the format YYYY-MM-DDTHH:mm, extract just that
+    const match = cleaned.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/)
+
+    if (match) {
+      return `${match[1]}T${match[2]}`
+    }
+
+    // If it's just a date with no time, return empty to avoid confusion
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+      return ''
+    }
+
+    return ''
+  } catch (error) {
+    console.error('Error converting datetime to local value:', error)
+    return ''
+  }
+}
+
+/**
+ * Format a datetime-local input value for display
+ * NO TIMEZONE CONVERSION - displays the exact time stored
+ *
+ * @param datetimeString - DateTime string in YYYY-MM-DDTHH:mm format
+ * @returns Formatted datetime string (e.g., 'Jan 15, 2025 at 2:30 PM')
+ *
+ * @example
+ * formatDateTimeLocal('2025-01-15T14:30')
+ * // → 'Jan 15, 2025 at 2:30 PM'
+ *
+ * @important This function does NOT convert timezones. Time entered = time displayed.
+ */
+export function formatDateTimeLocal(datetimeString: string | null | undefined): string {
+  if (!datetimeString) return 'Not set'
+
+  try {
+    // Split into date and time components without timezone conversion
+    const match = datetimeString.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/)
+
+    if (match) {
+      const dateStr = match[1]
+      const timeStr = match[2]
+
+      const datePart = formatDate(dateStr)
+      const timePart = formatTime(timeStr)
+
+      return `${datePart} at ${timePart}`
+    }
+
+    return 'Invalid format'
+  } catch (error) {
+    console.error('Error formatting datetime local:', error)
+    return 'Not set'
+  }
 }
 

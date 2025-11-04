@@ -176,6 +176,80 @@ type FieldType =
   | 'password'       // Password input
 ```
 
+## ⏰ DateTime Handling
+
+**IMPORTANT**: The system uses timezone-agnostic datetime handling to prevent timezone conversion issues.
+
+### Why No Timezone Conversion?
+
+The application is designed for event management where times are entered in their local context:
+- Events happen at specific local times (e.g., "5 PM in California")
+- Staff in different timezones (e.g., Philippines) need to enter times exactly as specified by clients
+- **Time entered = Time stored = Time displayed** everywhere in the system
+
+### Implementation Details
+
+1. **Form Input**: Uses HTML5 `datetime-local` input type (never converts timezone)
+   ```typescript
+   {
+     name: 'start_date',
+     type: 'datetime',  // Renders as datetime-local input
+     label: 'Start Date & Time',
+     required: true
+   }
+   ```
+
+2. **Storage**: Store datetime strings in format `YYYY-MM-DDTHH:mm` without timezone
+   ```typescript
+   // Database stores: '2025-01-15T17:00'
+   // This means 5:00 PM - no timezone conversion applied
+   ```
+
+3. **Display**: Use utility functions that preserve the exact time:
+   ```typescript
+   import { formatDateTimeLocal, toDateTimeLocalValue } from '@/lib/utils/date-utils'
+
+   // For display
+   formatDateTimeLocal('2025-01-15T17:00')
+   // → 'Jan 15, 2025 at 5:00 PM'
+
+   // For form input value
+   toDateTimeLocalValue(event.start_date)
+   // → '2025-01-15T17:00'
+   ```
+
+### Usage in Custom Forms
+
+When creating new forms with datetime fields:
+
+```typescript
+// ✅ CORRECT - Uses 'datetime' field type
+{
+  name: 'event_start',
+  type: 'datetime',
+  label: 'Event Start Time',
+  required: true
+}
+
+// ❌ INCORRECT - Don't use Date objects or timezone-aware parsing
+const date = new Date(dateString) // This applies timezone conversion!
+
+// ✅ CORRECT - Use utility functions
+import { toDateTimeLocalValue, formatDateTimeLocal } from '@/lib/utils/date-utils'
+```
+
+### For Developers
+
+**Never use these timezone-converting methods:**
+- `new Date('2025-01-15T17:00')` - Converts to UTC
+- `date.toISOString()` - Converts to UTC
+- Any date library that applies timezone conversion
+
+**Always use these timezone-agnostic utilities:**
+- `toDateTimeLocalValue()` - For form input values
+- `formatDateTimeLocal()` - For display
+- `parseLocalDate()` - For date-only values
+
 ## 🔍 Validation
 
 Built-in validation system:

@@ -233,11 +233,20 @@ export function BaseForm<T extends Record<string, any>>({
           )
 
         case 'date':
-        case 'datetime':
           return (
             <Input
               {...commonProps}
-              type={field.type}
+              type="date"
+            />
+          )
+
+        case 'datetime':
+          // Use datetime-local to prevent timezone conversion
+          // This ensures time entered = time stored = time displayed
+          return (
+            <Input
+              {...commonProps}
+              type="datetime-local"
             />
           )
 
