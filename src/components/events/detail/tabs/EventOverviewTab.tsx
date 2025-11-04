@@ -12,7 +12,6 @@
 'use client'
 
 import { EventKeyMetricsCards } from '../overview/EventKeyMetricsCards'
-import { EventLifecycleProgress } from '../overview/EventLifecycleProgress'
 import { EventAccountContactCard } from '../../event-account-contact-card'
 import { EventDatesCard } from '../../event-dates-card'
 import { EventDescriptionCard } from '../../event-description-card'
@@ -165,9 +164,6 @@ export function EventOverviewTab({
 }: EventOverviewTabProps) {
   return (
     <div className="space-y-6">
-      {/* Event Lifecycle Progress Indicator */}
-      <EventLifecycleProgress event={event} />
-
       {/* Key Metrics: Event Date, Payment Status, Event Value, Status */}
       <EventKeyMetricsCards
         event={event}
