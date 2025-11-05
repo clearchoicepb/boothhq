@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar, Clock, MapPin, User, Edit, X, CheckCircle } from "lucide-react"
 import { EventStatusBadge } from "./event-status-badge"
 import { formatDate, toDateInputValue } from "@/lib/utils/date-utils"
+import { Modal } from "@/components/ui/modal"
 
 interface EventDateDetailModalProps {
   eventDate: any | null
@@ -36,7 +37,7 @@ export function EventDateDetailModal({
   onFieldChange,
   canEdit
 }: EventDateDetailModalProps) {
-  if (!isOpen || !eventDate) return null
+  if (!eventDate) return null
 
   const handleClose = () => {
     onClose()
@@ -46,46 +47,44 @@ export function EventDateDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <Calendar className="h-6 w-6 text-blue-600" />
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {formatDate(eventDate.event_date, {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">Event Date Details</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {!isEditing && canEdit && (
-                <button
-                  onClick={onStartEdit}
-                  className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit event date"
-                >
-                  <Edit className="h-5 w-5" />
-                </button>
-              )}
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={formatDate(eventDate.event_date, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}
+      className="sm:max-w-3xl"
+    >
+      <div className="flex max-h-[80vh] flex-col">
+        <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+          <div className="flex items-center space-x-3">
+            <Calendar className="h-6 w-6 text-blue-600" />
+            <p className="text-sm text-gray-500">Event Date Details</p>
           </div>
+          <div className="flex items-center gap-2">
+            {!isEditing && canEdit && (
+              <button
+                onClick={onStartEdit}
+                className="p-2 text-gray-400 transition-colors hover:text-blue-600"
+                title="Edit event date"
+              >
+                <Edit className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              onClick={handleClose}
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              aria-label="Close event date details"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
 
-          {/* Content */}
-          <div className="space-y-6">
+        <div className="mt-6 flex-1 overflow-y-auto space-y-6">
             {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-2">Event Date</label>
@@ -297,7 +296,7 @@ export function EventDateDetailModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 

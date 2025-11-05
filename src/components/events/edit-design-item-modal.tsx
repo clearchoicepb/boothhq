@@ -1,26 +1,50 @@
 'use client'
 
+interface DesignItemDetails {
+  id: string
+  status: string
+  assigned_designer?: { id: string | null } | null
+  internal_notes?: string | null
+  design_deadline?: string | null
+  design_item_type?: { name?: string | null } | null
+  item_name?: string | null
+}
+
+interface DesignerUser {
+  id: string
+  name?: string | null
+  email?: string | null
+}
+
+interface DesignStatusOption {
+  id: string
+  slug: string
+  name: string
+  is_active: boolean
+}
+
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { X, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Modal } from '@/components/ui/modal'
 
 interface EditDesignItemModalProps {
   eventId: string
-  designItem: any
+  designItem: DesignItemDetails
   onClose: () => void
   onSuccess: () => void
+  isOpen?: boolean
 }
 
-export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }: EditDesignItemModalProps) {
-  const [users, setUsers] = useState([])
-  const [designStatuses, setDesignStatuses] = useState([])
+export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess, isOpen = true }: EditDesignItemModalProps) {
+  const [users, setUsers] = useState<DesignerUser[]>([])
+  const [designStatuses, setDesignStatuses] = useState<DesignStatusOption[]>([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     status: designItem.status,
     assigned_designer_id: designItem.assigned_designer?.id || '',
     internal_notes: designItem.internal_notes || '',
-    design_deadline: designItem.design_deadline
+    design_deadline: designItem.design_deadline ?? ''
   })
 
   useEffect(() => {
@@ -33,18 +57,18 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
       const res = await fetch('/api/users')
       const data = await res.json()
       setUsers(data.users || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
+    } catch (_error) {
+      console.error('Error fetching users:', _error)
     }
   }
 
   const fetchDesignStatuses = async () => {
     try {
       const res = await fetch('/api/design/statuses')
-      const data = await res.json()
-      setDesignStatuses(data.statuses || [])
-    } catch (error) {
-      console.error('Error fetching design statuses:', error)
+      const data = (await res.json()) as { statuses?: DesignStatusOption[] }
+      setDesignStatuses(data.statuses?.filter(Boolean) ?? [])
+    } catch (_error) {
+      console.error('Error fetching design statuses:', _error)
     }
   }
 
@@ -63,7 +87,7 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
 
       toast.success('Design item updated')
       onSuccess()
-    } catch (error) {
+    } catch {
       toast.error('Failed to update design item')
     } finally {
       setLoading(false)
@@ -73,88 +97,95 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
   const itemName = designItem.item_name || designItem.design_item_type?.name || 'Design Item'
 
   // Filter to only show active statuses
-  const activeStatuses = designStatuses.filter((status: any) => status.is_active)
+  const activeStatuses = designStatuses.filter((status) => status.is_active)
 
-  // Check if we're in browser (not SSR)
-  if (typeof window === 'undefined') return null
-
-  return createPortal(
-    <div className="fixed inset-0 bg-gray-900/50 transition-opacity flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full relative z-10">
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">Edit: {itemName}</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Edit: ${itemName}`}
+      className="sm:max-w-lg"
+    >
+      <form onSubmit={handleSubmit} className="max-h-[60vh] space-y-6 overflow-y-auto pr-1">
           {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
+        <div>
+          <label htmlFor="edit-design-status" className="block text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Status</span>
             <select
+              id="edit-design-status"
+              name="status"
+              title="Design Status"
+              aria-label="Design Status"
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
             >
-              {activeStatuses.map((status: any) => (
+              {activeStatuses.map((status) => (
                 <option key={status.id} value={status.slug}>
                   {status.name}
                 </option>
               ))}
             </select>
-          </div>
+          </label>
+        </div>
 
           {/* Assigned Designer */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Assigned Designer
-            </label>
+        <div>
+          <label htmlFor="edit-assigned-designer" className="block text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Assigned Designer</span>
             <select
+              id="edit-assigned-designer"
+              name="assigned_designer_id"
+              title="Assigned Designer"
+              aria-label="Assigned Designer"
               value={formData.assigned_designer_id}
               onChange={(e) => setFormData({ ...formData, assigned_designer_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
             >
               <option value="">Unassigned</option>
-              {users.map((user: any) => (
+              {users.map((user) => (
                 <option key={user.id} value={user.id}>
                   {user.name || user.email}
                 </option>
               ))}
             </select>
-          </div>
+          </label>
+        </div>
 
           {/* Deadline */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Design Deadline
-            </label>
+        <div>
+          <label htmlFor="edit-design-deadline" className="block text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Design Deadline</span>
             <input
+              id="edit-design-deadline"
+              name="design_deadline"
+              title="Design Deadline"
+              aria-label="Design Deadline"
               type="date"
               value={formData.design_deadline}
               onChange={(e) => setFormData({ ...formData, design_deadline: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
             />
-          </div>
+          </label>
+        </div>
 
           {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
+        <div>
+          <label htmlFor="edit-design-notes" className="block text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Notes</span>
             <textarea
+              id="edit-design-notes"
+              name="design_notes"
+              title="Design Notes"
+              aria-label="Design Notes"
               value={formData.internal_notes}
               onChange={(e) => setFormData({ ...formData, internal_notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
               rows={4}
               placeholder="Any special requirements or notes..."
             />
-          </div>
+          </label>
+        </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
@@ -183,8 +214,6 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess }:
             </button>
           </div>
         </form>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   )
 }

@@ -1,20 +1,34 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { X, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Modal } from '@/components/ui/modal'
+
+interface DesignTypeOption {
+  id: string
+  name: string
+  type: string
+  is_active: boolean
+}
+
+interface DesignerUser {
+  id: string
+  name?: string | null
+  email?: string | null
+}
 
 interface AddDesignItemModalProps {
   eventId: string
   eventDate: string
   onClose: () => void
   onSuccess: () => void
+  isOpen?: boolean
 }
 
-export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: AddDesignItemModalProps) {
-  const [designTypes, setDesignTypes] = useState([])
-  const [users, setUsers] = useState([])
+export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isOpen = true }: AddDesignItemModalProps) {
+  const [designTypes, setDesignTypes] = useState<DesignTypeOption[]>([])
+  const [users, setUsers] = useState<DesignerUser[]>([])
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'template' | 'custom'>('template')
 
@@ -37,20 +51,20 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: A
   const fetchDesignTypes = async () => {
     try {
       const res = await fetch('/api/design/types')
-      const data = await res.json()
-      setDesignTypes(data.types || [])
-    } catch (error) {
-      console.error('Error fetching design types:', error)
+      const data = (await res.json()) as { types?: DesignTypeOption[] }
+      setDesignTypes(data.types?.filter(Boolean) ?? [])
+    } catch (_error) {
+      console.error('Error fetching design types:', _error)
     }
   }
 
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/users')
-      const data = await res.json()
-      setUsers(data.users || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
+      const data = (await res.json()) as { users?: DesignerUser[] }
+      setUsers(data.users?.filter(Boolean) ?? [])
+    } catch (_error) {
+      console.error('Error fetching users:', _error)
     }
   }
 
@@ -86,30 +100,21 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: A
 
       toast.success('Design item created')
       onSuccess()
-    } catch (error) {
+    } catch {
       toast.error('Failed to create design item')
     } finally {
       setLoading(false)
     }
   }
 
-  // Check if we're in browser (not SSR)
-  if (typeof window === 'undefined') return null
-
-  return createPortal(
-    <div className="fixed inset-0 bg-gray-900/50 transition-opacity flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative z-10">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">Add Design Item</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add Design Item"
+      className="sm:max-w-2xl"
+    >
+      <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-6 overflow-y-auto pr-1">
           {/* Mode Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -149,54 +154,59 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: A
           </div>
 
           {/* Template Mode */}
-          {mode === 'template' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Design Type *
-              </label>
+        {mode === 'template' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              <span className="mb-2 block">Design Type *</span>
               <select
+                name="design_item_type_id"
+                title="Design Type"
                 value={formData.design_item_type_id}
                 onChange={(e) => setFormData({ ...formData, design_item_type_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
                 required
               >
                 <option value="">Select a design type...</option>
                 {designTypes
-                  .filter((type: any) => type.is_active)
-                  .map((type: any) => (
+                  .filter((type) => type.is_active)
+                  .map((type) => (
                     <option key={type.id} value={type.id}>
                       {type.name} ({type.type === 'physical' ? 'Physical' : 'Digital'})
                     </option>
                   ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Deadline will be calculated automatically based on the type&apos;s settings
-              </p>
-            </div>
-          )}
+            </label>
+            <p className="mt-1 text-xs text-gray-500">
+              Deadline will be calculated automatically based on the type&apos;s settings
+            </p>
+          </div>
+        )}
 
           {/* Custom Mode */}
           {mode === 'custom' && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Item Name *
-                </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                <span className="mb-2 block">Item Name *</span>
                 <input
+                  name="custom_name"
+                  title="Item Name"
                   type="text"
                   value={formData.custom_name}
                   onChange={(e) => setFormData({ ...formData, custom_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
                   placeholder="e.g., Special Event Signage"
                   required
                 />
-              </div>
+              </label>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Type *
-                </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                <span className="mb-2 block">Type *</span>
                 <select
+                  name="custom_type"
+                  title="Custom Type"
                   value={formData.custom_type}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -204,55 +214,62 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: A
                     custom_production_days: e.target.value === 'digital' ? 0 : formData.custom_production_days,
                     custom_shipping_days: e.target.value === 'digital' ? 0 : formData.custom_shipping_days
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
                 >
                   <option value="digital">💻 Digital</option>
                   <option value="physical">📦 Physical</option>
                 </select>
-              </div>
+              </label>
+            </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Design Days *
-                  </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  <span className="mb-2 block">Design Days *</span>
                   <input
+                    name="custom_design_days"
+                    title="Design Days"
                     type="number"
                     min="0"
                     value={formData.custom_design_days}
                     onChange={(e) => setFormData({ ...formData, custom_design_days: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
                     required
                   />
-                </div>
+                </label>
+              </div>
 
                 {formData.custom_type === 'physical' && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Production Days
-                      </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      <span className="mb-2 block">Production Days</span>
                       <input
+                        name="custom_production_days"
+                        title="Production Days"
                         type="number"
                         min="0"
                         value={formData.custom_production_days}
                         onChange={(e) => setFormData({ ...formData, custom_production_days: parseInt(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
                       />
-                    </div>
+                    </label>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Shipping Days
-                      </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      <span className="mb-2 block">Shipping Days</span>
                       <input
+                        name="custom_shipping_days"
+                        title="Shipping Days"
                         type="number"
                         min="0"
                         value={formData.custom_shipping_days}
                         onChange={(e) => setFormData({ ...formData, custom_shipping_days: parseInt(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
                       />
-                    </div>
+                    </label>
+                  </div>
                   </>
                 )}
               </div>
@@ -260,37 +277,41 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: A
           )}
 
           {/* Assigned Designer */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Assign to Designer
-            </label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Assign to Designer</span>
             <select
+              name="assigned_designer_id"
+              title="Assigned Designer"
               value={formData.assigned_designer_id}
               onChange={(e) => setFormData({ ...formData, assigned_designer_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
             >
               <option value="">Unassigned</option>
-              {users.map((user: any) => (
+              {users.map((user) => (
                 <option key={user.id} value={user.id}>
                   {user.name || user.email}
                 </option>
               ))}
             </select>
-          </div>
+          </label>
+        </div>
 
           {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Notes</span>
             <textarea
+              name="design_item_notes"
+              title="Design Item Notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4]"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
               rows={3}
               placeholder="Any special requirements or notes..."
             />
-          </div>
+          </label>
+        </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
@@ -318,9 +339,7 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess }: A
               Cancel
             </button>
           </div>
-        </form>
-      </div>
-    </div>,
-    document.body
+      </form>
+    </Modal>
   )
 }
