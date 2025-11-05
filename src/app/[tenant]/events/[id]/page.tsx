@@ -48,6 +48,7 @@ import { EventActivitiesList } from '@/components/events/event-activities-list'
 import { EventCommunicationsList } from '@/components/events/event-communications-list'
 import { EventStaffList } from '@/components/events/event-staff-list'
 import { EventTabsNavigation } from '@/components/events/event-tabs-navigation'
+import { AssignStaffModal } from '@/components/events/assign-staff-modal'
 import { EventDateDetailModal } from '@/components/events/event-date-detail-modal'
 import { CommunicationDetailModal } from '@/components/events/communication-detail-modal'
 import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
@@ -773,193 +774,30 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
       </AppLayout>
 
       {/* Add/Edit Staff Modal */}
-      {isAddingStaff && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {editingStaffId ? 'Edit Staff Assignment' : 'Assign Staff Member'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setIsAddingStaff(false)
-                    setEditingStaffId(null)
-                    setSelectedUserId('')
-                    setSelectedStaffRoleId('')
-                    setSelectedDateTimes([])
-                    setStaffNotes('')
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {/* User Selection */}
-              <div>
-                <label htmlFor="staff-member-select" className="block text-sm font-medium text-gray-700 mb-2">Staff Member *</label>
-                <select
-                  id="staff-member-select"
-                  name="staff-member"
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                >
-                  <option value="">-- Select User --</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.first_name} {user.last_name} {user.email ? `(${user.email})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Staff Role Selection */}
-              <div>
-                <label htmlFor="staff-role-select" className="block text-sm font-medium text-gray-700 mb-2">Staff Role *</label>
-                <select
-                  id="staff-role-select"
-                  name="staff-role"
-                  value={selectedStaffRoleId}
-                  onChange={(e) => {
-                    setSelectedStaffRoleId(e.target.value)
-                    const role = staffRoles.find(r => r.id === e.target.value)
-                    if (role?.type === 'operations') {
-                      setSelectedDateTimes([])
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                >
-                  <option value="">-- Select Role --</option>
-                  <optgroup label="Operations Team">
-                    {staffRoles.filter(r => r.type === 'operations').map(role => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Event Staff">
-                    {staffRoles.filter(r => r.type === 'event_staff').map(role => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-                {selectedStaffRoleId && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {staffRoles.find(r => r.id === selectedStaffRoleId)?.type === 'operations'
-                      ? 'Operations roles are assigned to the overall event'
-                      : 'Event Staff roles must be assigned to specific event dates'}
-                  </p>
-                )}
-              </div>
-
-              {/* Event Dates Selection - Only show for event_staff roles */}
-              {staffRoles.find(r => r.id === selectedStaffRoleId)?.type === 'event_staff' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Event Dates & Times *</label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Select dates to schedule this staff member. Times auto-populate from event and can be adjusted.
-                  </p>
-                  <div className="space-y-3 max-h-64 overflow-y-auto border border-gray-200 rounded-md p-3">
-                    {eventDates.map(eventDate => {
-                      const isSelected = selectedDateTimes.some(dt => dt.dateId === eventDate.id)
-                      const dateTime = selectedDateTimes.find(dt => dt.dateId === eventDate.id)
-
-                      return (
-                        <div key={eventDate.id} className="border-b border-gray-100 pb-3 last:border-b-0 last:pb-0">
-                          <div className="flex items-start gap-3">
-                            <input
-                              type="checkbox"
-                              id={`date-${eventDate.id}`}
-                              checked={isSelected}
-                              onChange={(e) => handleToggleDate(eventDate.id, e.target.checked)}
-                              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <div className="flex-1">
-                              <label htmlFor={`date-${eventDate.id}`} className="block text-sm font-medium text-gray-900 cursor-pointer">
-                                {formatDate(eventDate.event_date, {
-                                  weekday: 'long',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </label>
-
-                              {isSelected && dateTime && (
-                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                  <div>
-                                    <label className="block text-xs text-gray-600 mb-1">Start Time</label>
-                                    <input
-                                      type="time"
-                                      value={dateTime.startTime}
-                                      onChange={(e) => handleUpdateDateTime(eventDate.id, 'startTime', e.target.value)}
-                                      className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs text-gray-600 mb-1">End Time</label>
-                                    <input
-                                      type="time"
-                                      value={dateTime.endTime}
-                                      onChange={(e) => handleUpdateDateTime(eventDate.id, 'endTime', e.target.value)}
-                                      className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {selectedDateTimes.length === 0 && (
-                    <p className="text-xs text-red-600 mt-2">Please select at least one event date</p>
-                  )}
-                </div>
-              )}
-
-              {/* Notes */}
-              <div>
-                <label htmlFor="staff-notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
-                  id="staff-notes"
-                  name="staff-notes"
-                  value={staffNotes}
-                  onChange={(e) => setStaffNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  placeholder="Any assignment-specific notes or instructions..."
-                />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 sticky bottom-0 bg-white">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddingStaff(false)
-                  setEditingStaffId(null)
-                  setSelectedUserId('')
-                  setSelectedStaffRoleId('')
-                  setSelectedDateTimes([])
-                  setStaffNotes('')
-                }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleAddStaff}>
-                Assign Staff
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AssignStaffModal
+        isOpen={isAddingStaff}
+        onClose={() => {
+          setIsAddingStaff(false)
+          setEditingStaffId(null)
+          setSelectedUserId('')
+          setSelectedStaffRoleId('')
+          setSelectedDateTimes([])
+          setStaffNotes('')
+        }}
+        onSubmit={handleAddStaff}
+        editingStaffId={editingStaffId}
+        selectedUserId={selectedUserId}
+        setSelectedUserId={setSelectedUserId}
+        selectedStaffRoleId={selectedStaffRoleId}
+        setSelectedStaffRoleId={setSelectedStaffRoleId}
+        selectedDateTimes={selectedDateTimes}
+        setSelectedDateTimes={setSelectedDateTimes}
+        staffNotes={staffNotes}
+        setStaffNotes={setStaffNotes}
+        users={users}
+        staffRoles={staffRoles}
+        eventDates={eventDates}
+      />
 
       {/* Create Task Modal */}
       <CreateTaskModal
