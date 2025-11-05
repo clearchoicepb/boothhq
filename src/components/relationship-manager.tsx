@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Link, User, Building2, Target, Calendar, ArrowRight, Plus, Edit2, Trash2 } from 'lucide-react'
+import { Link, User, Building2, Target, Calendar, ArrowRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 
 interface RelatedRecord {
   id: string
@@ -325,88 +326,72 @@ export function RelationshipManager({ recordId, recordType, tenantSubdomain }: R
       )}
 
       {/* Add Relationship Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowAddModal(false)}></div>
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Relationship" className="sm:max-w-lg">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Record Type
+            </label>
+            <select
+              value={newRelationship.type}
+              onChange={(e) => setNewRelationship({ ...newRelationship, type: e.target.value as RelatedRecord['type'] })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Record type"
+            >
+              <option value="contact">Contact</option>
+              <option value="account">Account</option>
+              <option value="opportunity">Opportunity</option>
+              <option value="event">Event</option>
+            </select>
+          </div>
 
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Record ID
+            </label>
+            <input
+              type="text"
+              value={newRelationship.targetId}
+              onChange={(e) => setNewRelationship({ ...newRelationship, targetId: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter record ID"
+            />
+          </div>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Add Relationship
-                </h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Record Type
-                    </label>
-                    <select
-                      value={newRelationship.type}
-                      onChange={(e) => setNewRelationship({ ...newRelationship, type: e.target.value as RelatedRecord['type'] })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      aria-label="Record type"
-                    >
-                      <option value="contact">Contact</option>
-                      <option value="account">Account</option>
-                      <option value="opportunity">Opportunity</option>
-                      <option value="event">Event</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Record ID
-                    </label>
-                    <input
-                      type="text"
-                      value={newRelationship.targetId}
-                      onChange={(e) => setNewRelationship({ ...newRelationship, targetId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter record ID"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Relationship Type
-                    </label>
-                    <select
-                      value={newRelationship.relationship}
-                      onChange={(e) => setNewRelationship({ ...newRelationship, relationship: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      aria-label="Relationship type"
-                    >
-                      <option value="related">Related</option>
-                      <option value="converted_to">Converted to</option>
-                      <option value="belongs_to">Belongs to</option>
-                      <option value="works_for">Works for</option>
-                      <option value="involved_in">Involved in</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAddModal(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleAddRelationship}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Add Relationship
-                  </Button>
-                </div>
-              </div>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Relationship Type
+            </label>
+            <select
+              value={newRelationship.relationship}
+              onChange={(e) => setNewRelationship({ ...newRelationship, relationship: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Relationship type"
+            >
+              <option value="related">Related</option>
+              <option value="converted_to">Converted to</option>
+              <option value="belongs_to">Belongs to</option>
+              <option value="works_for">Works for</option>
+              <option value="involved_in">Involved in</option>
+            </select>
           </div>
         </div>
-      )}
+
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setShowAddModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddRelationship}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Add Relationship
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

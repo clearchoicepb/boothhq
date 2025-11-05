@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, Building2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -235,66 +236,55 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ event, isOpen, onClose, tenantSubdomain }: EventDetailModalProps) {
-  if (!isOpen || !event) return null
+  if (!event) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              ×
-            </Button>
+    <Modal isOpen={isOpen} onClose={onClose} title={event.title} className="sm:max-w-md">
+      <div className="space-y-3">
+        <div className="flex items-center text-sm text-gray-600">
+          <Calendar className="h-4 w-4 mr-2" />
+          {new Date(event.date).toLocaleDateString()}
+        </div>
+
+        {event.start_time && (
+          <div className="flex items-center text-sm text-gray-600">
+            <Clock className="h-4 w-4 mr-2" />
+            {event.start_time}
+            {event.end_time && ` - ${event.end_time}`}
           </div>
+        )}
 
-          <div className="space-y-3">
-            <div className="flex items-center text-sm text-gray-600">
-              <Calendar className="h-4 w-4 mr-2" />
-              {new Date(event.date).toLocaleDateString()}
-            </div>
-
-            {event.start_time && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Clock className="h-4 w-4 mr-2" />
-                {event.start_time}
-                {event.end_time && ` - ${event.end_time}`}
-              </div>
-            )}
-
-            {event.location && (
-              <div className="flex items-center text-sm text-gray-600">
-                <MapPin className="h-4 w-4 mr-2" />
-                {event.location}
-              </div>
-            )}
-
-            {event.account_name && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Building2 className="h-4 w-4 mr-2" />
-                {event.account_name}
-              </div>
-            )}
-
-            {event.contact_name && (
-              <div className="flex items-center text-sm text-gray-600">
-                <User className="h-4 w-4 mr-2" />
-                {event.contact_name}
-              </div>
-            )}
-
-            <div className="pt-3 border-t">
-              <Link
-                href={`/${tenantSubdomain}/${event.type}s/${event.id}`}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                View Details →
-              </Link>
-            </div>
+        {event.location && (
+          <div className="flex items-center text-sm text-gray-600">
+            <MapPin className="h-4 w-4 mr-2" />
+            {event.location}
           </div>
+        )}
+
+        {event.account_name && (
+          <div className="flex items-center text-sm text-gray-600">
+            <Building2 className="h-4 w-4 mr-2" />
+            {event.account_name}
+          </div>
+        )}
+
+        {event.contact_name && (
+          <div className="flex items-center text-sm text-gray-600">
+            <User className="h-4 w-4 mr-2" />
+            {event.contact_name}
+          </div>
+        )}
+
+        <div className="pt-3 border-t">
+          <Link
+            href={`/${tenantSubdomain}/${event.type}s/${event.id}`}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            View Details →
+          </Link>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 

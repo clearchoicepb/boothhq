@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { EntityForm } from '@/components/forms/EntityForm'
 import { User, Building2 } from 'lucide-react'
 
@@ -84,58 +85,42 @@ export function LeadForm({ isOpen, onClose, onSave, editingLead }: LeadFormProps
 
   // Show lead type selection
   return (
-    <div className={`fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 ${isOpen ? 'block' : 'hidden'}`}>
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="mt-3">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Choose Lead Type</h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-              aria-label="Close"
-            >
-              ×
-            </button>
+    <Modal isOpen={isOpen} onClose={handleClose} title="Choose Lead Type" className="sm:max-w-md">
+      <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => handleLeadTypeSelection('personal')}
+          className="w-full p-4 border-2 rounded-lg text-left transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+        >
+          <div className="flex items-center">
+            <User className="h-6 w-6 mr-3 text-gray-400" />
+            <div>
+              <div className="font-medium text-gray-900">Personal</div>
+              <div className="text-sm text-gray-500">Individual customer</div>
+            </div>
           </div>
+        </button>
 
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => handleLeadTypeSelection('personal')}
-              className="w-full p-4 border-2 rounded-lg text-left transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-            >
-              <div className="flex items-center">
-                <User className="h-6 w-6 mr-3 text-gray-400" />
-                <div>
-                  <div className="font-medium text-gray-900">Personal</div>
-                  <div className="text-sm text-gray-500">Individual customer</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleLeadTypeSelection('company')}
-              className="w-full p-4 border-2 rounded-lg text-left transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-            >
-              <div className="flex items-center">
-                <Building2 className="h-6 w-6 mr-3 text-gray-400" />
-                <div>
-                  <div className="font-medium text-gray-900">Company</div>
-                  <div className="text-sm text-gray-500">Business customer</div>
-                </div>
-              </div>
-            </button>
+        <button
+          type="button"
+          onClick={() => handleLeadTypeSelection('company')}
+          className="w-full p-4 border-2 rounded-lg text-left transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+        >
+          <div className="flex items-center">
+            <Building2 className="h-6 w-6 mr-3 text-gray-400" />
+            <div>
+              <div className="font-medium text-gray-900">Company</div>
+              <div className="text-sm text-gray-500">Business customer</div>
+            </div>
           </div>
-
-          <div className="flex justify-end mt-6">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
-        </div>
+        </button>
       </div>
-    </div>
+
+      <div className="flex justify-end mt-6">
+        <Button variant="outline" onClick={handleClose}>
+          Cancel
+        </Button>
+      </div>
+    </Modal>
   )
 }

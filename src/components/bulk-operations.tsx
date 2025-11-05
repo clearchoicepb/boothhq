@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { Select } from '@/components/ui/select'
 import { Trash2, Edit, Tag, Download, XCircle } from 'lucide-react'
 
@@ -249,54 +250,43 @@ export function BulkActionModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">{getActionTitle()}</h3>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              ×
-            </Button>
+    <Modal isOpen={isOpen} onClose={onClose} title={getActionTitle()} className="sm:max-w-md">
+      <div className="space-y-4">
+        {getFormFields() && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {action === 'update_status' ? 'Status' : 
+               action === 'update_stage' ? 'Stage' : 
+               action === 'assign_source' ? 'Source' : 'Value'}
+            </label>
+            {getFormFields()}
           </div>
+        )}
 
-          <div className="space-y-4">
-            {getFormFields() && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {action === 'update_status' ? 'Status' : 
-                   action === 'update_stage' ? 'Stage' : 
-                   action === 'assign_source' ? 'Source' : 'Value'}
-                </label>
-                {getFormFields()}
-              </div>
-            )}
-
-            {action === 'delete' && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <XCircle className="h-5 w-5 text-red-600 mr-2" />
-                  <p className="text-sm text-red-800">
-                    This action cannot be undone. Are you sure you want to delete {itemCount} {entityType}{itemCount !== 1 ? 's' : ''}?
-                  </p>
-                </div>
-              </div>
-            )}
+        {action === 'delete' && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <XCircle className="h-5 w-5 text-red-600 mr-2" />
+              <p className="text-sm text-red-800">
+                This action cannot be undone. Are you sure you want to delete {itemCount} {entityType}{itemCount !== 1 ? 's' : ''}?
+              </p>
+            </div>
           </div>
-
-          <div className="flex justify-end space-x-3 mt-6">
-            <Button variant="outline" onClick={onClose} disabled={isProcessing}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={isProcessing}
-              variant={action === 'delete' ? 'destructive' : 'default'}
-            >
-              {isProcessing ? 'Processing...' : 'Confirm'}
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
-    </div>
+
+      <div className="flex justify-end space-x-3 mt-6">
+        <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleConfirm}
+          disabled={isProcessing}
+          variant={action === 'delete' ? 'destructive' : 'default'}
+        >
+          {isProcessing ? 'Processing...' : 'Confirm'}
+        </Button>
+      </div>
+    </Modal>
   )
 }

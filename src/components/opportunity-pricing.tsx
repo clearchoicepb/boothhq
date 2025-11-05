@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Plus, Edit2, Trash2, Package, PlusCircle } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { DollarSign, Plus, Trash2, Package, PlusCircle } from 'lucide-react'
 
 interface PackageItem {
   id: string
@@ -39,7 +40,7 @@ interface OpportunityPricingProps {
   onAmountUpdate: () => void
 }
 
-export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdate }: OpportunityPricingProps) {
+export function OpportunityPricing({ opportunityId, onAmountUpdate }: OpportunityPricingProps) {
   const params = useParams()
   const tenantSubdomain = params.tenant as string
   const [lineItems, setLineItems] = useState<LineItem[]>([])
@@ -322,8 +323,11 @@ export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdat
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
+                      type="button"
                       onClick={() => handleDelete(item.id)}
                       className="text-gray-400 hover:text-red-600"
+                      title="Delete item"
+                      aria-label="Delete item"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -347,110 +351,122 @@ export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdat
       )}
 
       {/* Add/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Add {modalType === 'package' ? 'Package' : modalType === 'add_on' ? 'Add-on' : 'Custom Item'}
-              </h2>
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={`Add ${modalType === 'package' ? 'Package' : modalType === 'add_on' ? 'Add-on' : 'Custom Item'}`}
+        className="sm:max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Package/Add-on Selection */}
+          {modalType !== 'custom' && (
+            <div>
+              <label htmlFor="item-select" className="block text-sm font-medium text-gray-700 mb-2">
+                Select {modalType === 'package' ? 'Package' : 'Add-on'} *
+              </label>
+              <select
+                id="item-select"
+                name="item_id"
+                title={`Select ${modalType === 'package' ? 'Package' : 'Add-on'}`}
+                value={formData.selectedId}
+                onChange={(e) => {
+                  setFormData({ ...formData, selectedId: e.target.value })
+                  handleItemSelection(e.target.value)
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                required
+              >
+                <option value="">-- Select --</option>
+                {modalType === 'package'
+                  ? packages.map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.name} - ${pkg.base_price.toFixed(2)}
+                      </option>
+                    ))
+                  : addOns.map((addOn) => (
+                      <option key={addOn.id} value={addOn.id}>
+                        {addOn.name} - ${addOn.price.toFixed(2)} / {addOn.unit}
+                      </option>
+                    ))}
+              </select>
             </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Package/Add-on Selection */}
-              {modalType !== 'custom' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select {modalType === 'package' ? 'Package' : 'Add-on'} *
-                  </label>
-                  <select
-                    value={formData.selectedId}
-                    onChange={(e) => {
-                      setFormData({ ...formData, selectedId: e.target.value })
-                      handleItemSelection(e.target.value)
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    required
-                  >
-                    <option value="">-- Select --</option>
-                    {modalType === 'package'
-                      ? packages.map((pkg) => (
-                          <option key={pkg.id} value={pkg.id}>
-                            {pkg.name} - ${pkg.base_price.toFixed(2)}
-                          </option>
-                        ))
-                      : addOns.map((addOn) => (
-                          <option key={addOn.id} value={addOn.id}>
-                            {addOn.name} - ${addOn.price.toFixed(2)} / {addOn.unit}
-                          </option>
-                        ))}
-                  </select>
-                </div>
-              )}
+          {/* Custom Item Name */}
+          {modalType === 'custom' && (
+            <div>
+              <label htmlFor="item-name" className="block text-sm font-medium text-gray-700 mb-2">
+                Item Name *
+              </label>
+              <input
+                id="item-name"
+                name="item_name"
+                title="Item Name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                required
+              />
+            </div>
+          )}
 
-              {/* Custom Item Name */}
-              {modalType === 'custom' && (
+          {/* Description */}
+          {formData.selectedId || modalType === 'custom' ? (
+            <>
+              <div>
+                <label htmlFor="item-description" className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  id="item-description"
+                  name="description"
+                  title="Description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Item Name *
+                  <label htmlFor="item-quantity" className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantity *
                   </label>
                   <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    id="item-quantity"
+                    name="quantity"
+                    title="Quantity"
+                    type="number"
+                    step="0.01"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     required
                   />
                 </div>
-              )}
 
-              {/* Description */}
-              {formData.selectedId || modalType === 'custom' ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                <div>
+                  <label htmlFor="item-price" className="block text-sm font-medium text-gray-700 mb-2">
+                    Unit Price *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500">$</span>
+                    <input
+                      id="item-price"
+                      name="unit_price"
+                      title="Unit Price"
+                      type="number"
+                      step="0.01"
+                      value={formData.unit_price}
+                      onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      required
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Quantity *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.quantity}
-                        onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Unit Price *
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-500">$</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.unit_price}
-                          onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                          className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
+                </div>
+              </div>
 
                   {formData.quantity && formData.unit_price && (
                     <div className="bg-gray-50 p-4 rounded-md">
@@ -463,26 +479,24 @@ export function OpportunityPricing({ opportunityId, currentAmount, onAmountUpdat
                 </>
               ) : null}
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700"
-                  disabled={!formData.selectedId && modalType !== 'custom'}
-                >
-                  Add to Quote
-                </Button>
-              </div>
-            </form>
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!formData.selectedId && modalType !== 'custom'}
+            >
+              Add to Quote
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   )
 }
