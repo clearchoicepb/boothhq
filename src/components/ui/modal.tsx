@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -36,8 +35,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div className="fixed inset-0 bg-gray-900/50 transition-opacity" onClick={onClose} />
-
+        <div className="fixed inset-0 bg-black/10 transition-opacity" onClick={onClose} />
         <div className={cn(
           "relative transform overflow-hidden rounded-lg bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-6xl",
           className
