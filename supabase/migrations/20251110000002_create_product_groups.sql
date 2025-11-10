@@ -36,6 +36,16 @@ BEGIN
   END IF;
 END $$;
 
+-- Grant permissions to all roles
+GRANT ALL ON product_groups TO service_role;
+GRANT ALL ON product_groups TO authenticated;
+GRANT ALL ON product_groups TO anon;
+
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
 -- Add comments
 COMMENT ON TABLE product_groups IS 'Equipment bundles/kits that can be assigned to users or locations';
 COMMENT ON COLUMN product_groups.assigned_to_type IS 'Type of assignment: user or physical_address';

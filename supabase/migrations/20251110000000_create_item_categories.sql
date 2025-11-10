@@ -25,7 +25,17 @@ INSERT INTO item_categories (category_name, sort_order) VALUES
 ON CONFLICT (category_name) DO NOTHING;
 
 -- Create index for performance
-CREATE INDEX idx_item_categories_sort_order ON item_categories(sort_order);
+CREATE INDEX IF NOT EXISTS idx_item_categories_sort_order ON item_categories(sort_order);
+
+-- Grant permissions to all roles
+GRANT ALL ON item_categories TO service_role;
+GRANT ALL ON item_categories TO authenticated;
+GRANT ALL ON item_categories TO anon;
+
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
 
 -- Add comment
 COMMENT ON TABLE item_categories IS 'Predefined equipment categories shared across all tenants';

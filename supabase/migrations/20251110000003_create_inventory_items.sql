@@ -66,6 +66,16 @@ BEGIN
   END IF;
 END $$;
 
+-- Grant permissions to all roles
+GRANT ALL ON inventory_items TO service_role;
+GRANT ALL ON inventory_items TO authenticated;
+GRANT ALL ON inventory_items TO anon;
+
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
 -- Add comments
 COMMENT ON TABLE inventory_items IS 'Comprehensive inventory management with flexible tracking types';
 COMMENT ON COLUMN inventory_items.tracking_type IS 'serial_number for unique items, total_quantity for bulk items';

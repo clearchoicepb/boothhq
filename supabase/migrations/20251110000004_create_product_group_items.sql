@@ -40,6 +40,16 @@ CREATE INDEX IF NOT EXISTS idx_product_group_items_tenant ON product_group_items
 CREATE INDEX IF NOT EXISTS idx_product_group_items_group ON product_group_items(product_group_id);
 CREATE INDEX IF NOT EXISTS idx_product_group_items_item ON product_group_items(inventory_item_id);
 
+-- Grant permissions to all roles
+GRANT ALL ON product_group_items TO service_role;
+GRANT ALL ON product_group_items TO authenticated;
+GRANT ALL ON product_group_items TO anon;
+
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
 -- Add comments
 COMMENT ON TABLE product_group_items IS 'Junction table linking inventory items to product groups';
 COMMENT ON COLUMN product_group_items.date_added IS 'When item was added to the product group';

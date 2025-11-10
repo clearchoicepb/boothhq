@@ -37,6 +37,16 @@ BEGIN
   END IF;
 END $$;
 
+-- Grant permissions to all roles
+GRANT ALL ON physical_addresses TO service_role;
+GRANT ALL ON physical_addresses TO authenticated;
+GRANT ALL ON physical_addresses TO anon;
+
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
 -- Add comments
 COMMENT ON TABLE physical_addresses IS 'Physical warehouse and office locations for inventory assignment';
 COMMENT ON COLUMN physical_addresses.location_name IS 'Friendly name like "Main Warehouse" or "North Office"';
