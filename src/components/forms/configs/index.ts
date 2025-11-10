@@ -8,6 +8,9 @@ import { roleFormConfig } from './roleFormConfig'
 import { leadFormConfig } from './leadFormConfig'
 import { paymentFormConfig } from './paymentFormConfig'
 import { inventoryFormConfig } from './inventoryFormConfig'
+import { inventoryItemFormConfig } from './inventoryItemFormConfig'
+import { physicalAddressFormConfig } from './physicalAddressFormConfig'
+import { productGroupFormConfig } from './productGroupFormConfig'
 import { FormConfig } from '../types'
 
 export const entityConfigs = {
@@ -20,7 +23,10 @@ export const entityConfigs = {
   roles: roleFormConfig,
   leads: leadFormConfig,
   payments: paymentFormConfig,
-  inventory: inventoryFormConfig
+  inventory: inventoryFormConfig,
+  inventory_item: inventoryItemFormConfig,
+  physical_address: physicalAddressFormConfig,
+  product_group: productGroupFormConfig
 } as const
 
 export type EntityType = keyof typeof entityConfigs
@@ -43,5 +49,8 @@ export {
   accountFormConfig,
   eventFormConfig,
   opportunityFormConfig,
-  invoiceFormConfig
+  invoiceFormConfig,
+  inventoryItemFormConfig,
+  physicalAddressFormConfig,
+  productGroupFormConfig
 }

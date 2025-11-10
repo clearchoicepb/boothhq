@@ -77,6 +77,26 @@ export function BaseForm<T extends Record<string, any>>({
     }
   }
 
+  const shouldShowField = useCallback((field: FieldConfig): boolean => {
+    if (!field.conditional) return true
+
+    const { field: condField, operator, value: condValue } = field.conditional
+    const fieldValue = state.data[condField]
+
+    switch (operator) {
+      case 'equals':
+        return fieldValue === condValue
+      case 'not_equals':
+        return fieldValue !== condValue
+      case 'exists':
+        return fieldValue !== null && fieldValue !== undefined && fieldValue !== ''
+      case 'not_exists':
+        return fieldValue === null || fieldValue === undefined || fieldValue === ''
+      default:
+        return true
+    }
+  }, [state.data])
+
   const validateField = useCallback((field: FieldConfig, value: any): string | null => {
     const { validation, required } = field
 
@@ -109,6 +129,9 @@ export function BaseForm<T extends Record<string, any>>({
     const errors: Record<string, string> = {}
 
     config.fields.forEach(field => {
+      // Only validate fields that are currently shown
+      if (!shouldShowField(field)) return
+
       const value = state.data[field.name]
       const error = validateField(field, value)
       if (error) {
@@ -118,15 +141,29 @@ export function BaseForm<T extends Record<string, any>>({
 
     setState(prev => ({ ...prev, errors }))
     return Object.keys(errors).length === 0
-  }, [config.fields, state.data, validateField])
+  }, [config.fields, state.data, validateField, shouldShowField])
 
   const handleFieldChange = useCallback((fieldName: string, value: any) => {
-    setState(prev => ({
-      ...prev,
-      data: { ...prev.data, [fieldName]: value },
-      errors: { ...prev.errors, [fieldName]: '' } // Clear error when user types
-    }))
-  }, [])
+    setState(prev => {
+      const newData = { ...prev.data, [fieldName]: value }
+
+      // If this is a "type" field (e.g., assigned_to_type), clear the corresponding ID field
+      if (fieldName.endsWith('_type')) {
+        const idFieldName = fieldName.replace('_type', '_id')
+        // Check if there's a corresponding ID field in the config
+        const hasIdField = config.fields.some(f => f.name === idFieldName)
+        if (hasIdField) {
+          newData[idFieldName] = null // Clear the ID when type changes
+        }
+      }
+
+      return {
+        ...prev,
+        data: newData,
+        errors: { ...prev.errors, [fieldName]: '' } // Clear error when user types
+      }
+    })
+  }, [config.fields])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -148,6 +185,11 @@ export function BaseForm<T extends Record<string, any>>({
   }
 
   const renderField = (field: FieldConfig) => {
+    // Check if field should be shown based on conditional rules
+    if (!shouldShowField(field)) {
+      return null
+    }
+
     const value = state.data[field.name]
     const error = state.errors[field.name]
     const hasError = !!error
@@ -182,11 +224,33 @@ export function BaseForm<T extends Record<string, any>>({
         case 'select':
           const options = (() => {
             if (typeof field.options === 'string') {
+              // Handle 'dynamic' options that depend on another field
+              let dataKey = field.options
+
+              if (field.options === 'dynamic') {
+                // Special case: options depend on another field value
+                // Look for a field that controls which options to use
+                // Common pattern: assigned_to_type field determines which data to use
+                const typeFieldName = field.name.replace('_id', '_type')
+                const typeValue = state.data[typeFieldName]
+
+                if (typeValue === 'user') {
+                  dataKey = 'users'
+                } else if (typeValue === 'physical_address') {
+                  dataKey = 'physical_addresses'
+                } else if (typeValue === 'product_group') {
+                  dataKey = 'product_groups'
+                } else {
+                  // No valid type selected, return empty options
+                  return []
+                }
+              }
+
               // Dynamic options from related data
-              const relatedData = state.relatedData[field.options] || []
+              const relatedData = state.relatedData[dataKey] || []
 
               // Find the relatedData config for this field
-              const relatedConfig = config.relatedData?.find(rd => rd.key === field.options)
+              const relatedConfig = config.relatedData?.find(rd => rd.key === dataKey)
 
               return relatedData.map((item: any) => {
                 let label = ''
