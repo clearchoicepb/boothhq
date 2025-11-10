@@ -29,7 +29,12 @@ export function EventHeader({
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-            <p className="text-gray-600">Event Details</p>
+            <div className="flex items-center gap-3">
+              <p className="text-gray-600">Event Details</p>
+              <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                ID: {eventId}
+              </span>
+            </div>
           </div>
         </div>
         {canManageEvents && (
