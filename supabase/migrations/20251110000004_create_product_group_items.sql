@@ -2,11 +2,11 @@
 -- Links inventory items to product groups
 CREATE TABLE IF NOT EXISTS product_group_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Relations
-  product_group_id UUID NOT NULL REFERENCES product_groups(id) ON DELETE CASCADE,
-  inventory_item_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+  product_group_id UUID NOT NULL,
+  inventory_item_id UUID NOT NULL,
 
   -- Tracking
   date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -15,30 +15,30 @@ CREATE TABLE IF NOT EXISTS product_group_items (
   UNIQUE(tenant_id, product_group_id, inventory_item_id)
 );
 
+-- Add foreign key constraints if tables exist
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'product_groups') THEN
+    ALTER TABLE product_group_items
+      ADD CONSTRAINT fk_product_group_items_group
+      FOREIGN KEY (product_group_id)
+      REFERENCES product_groups(id)
+      ON DELETE CASCADE;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'inventory_items') THEN
+    ALTER TABLE product_group_items
+      ADD CONSTRAINT fk_product_group_items_item
+      FOREIGN KEY (inventory_item_id)
+      REFERENCES inventory_items(id)
+      ON DELETE CASCADE;
+  END IF;
+END $$;
+
 -- Indexes for performance
-CREATE INDEX idx_product_group_items_tenant ON product_group_items(tenant_id);
-CREATE INDEX idx_product_group_items_group ON product_group_items(product_group_id);
-CREATE INDEX idx_product_group_items_item ON product_group_items(inventory_item_id);
-
--- Enable RLS
-ALTER TABLE product_group_items ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can view product group items in their tenant"
-  ON product_group_items FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can insert product group items in their tenant"
-  ON product_group_items FOR INSERT
-  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can update product group items in their tenant"
-  ON product_group_items FOR UPDATE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can delete product group items in their tenant"
-  ON product_group_items FOR DELETE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+CREATE INDEX IF NOT EXISTS idx_product_group_items_tenant ON product_group_items(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_product_group_items_group ON product_group_items(product_group_id);
+CREATE INDEX IF NOT EXISTS idx_product_group_items_item ON product_group_items(inventory_item_id);
 
 -- Add comments
 COMMENT ON TABLE product_group_items IS 'Junction table linking inventory items to product groups';

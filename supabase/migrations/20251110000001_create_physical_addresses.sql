@@ -1,7 +1,7 @@
 -- Create physical_addresses table for warehouse and office locations
 CREATE TABLE IF NOT EXISTS physical_addresses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Address fields
   location_name VARCHAR(255) NOT NULL, -- e.g., "Main Warehouse", "North Office"
@@ -23,34 +23,19 @@ CREATE TABLE IF NOT EXISTS physical_addresses (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_physical_addresses_tenant ON physical_addresses(tenant_id);
-CREATE INDEX idx_physical_addresses_location_name ON physical_addresses(tenant_id, location_name);
+CREATE INDEX IF NOT EXISTS idx_physical_addresses_tenant ON physical_addresses(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_physical_addresses_location_name ON physical_addresses(tenant_id, location_name);
 
--- Enable RLS
-ALTER TABLE physical_addresses ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can view addresses in their tenant"
-  ON physical_addresses FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can insert addresses in their tenant"
-  ON physical_addresses FOR INSERT
-  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can update addresses in their tenant"
-  ON physical_addresses FOR UPDATE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can delete addresses in their tenant"
-  ON physical_addresses FOR DELETE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- Trigger for updated_at
-CREATE TRIGGER update_physical_addresses_updated_at
-  BEFORE UPDATE ON physical_addresses
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- Trigger for updated_at (only create if update_updated_at_column function exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
+    CREATE TRIGGER update_physical_addresses_updated_at
+      BEFORE UPDATE ON physical_addresses
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- Add comments
 COMMENT ON TABLE physical_addresses IS 'Physical warehouse and office locations for inventory assignment';

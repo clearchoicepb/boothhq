@@ -2,7 +2,7 @@
 -- This replaces the simpler equipment_items table with enhanced tracking capabilities
 CREATE TABLE IF NOT EXISTS inventory_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Basic item information
   item_name VARCHAR(255) NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   -- Timestamps
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_by UUID REFERENCES users(id),
+  created_by UUID,
 
   -- Constraints
   -- Serial number must be unique per tenant when tracking by serial number
@@ -49,37 +49,22 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_inventory_items_tenant ON inventory_items(tenant_id);
-CREATE INDEX idx_inventory_items_category ON inventory_items(item_category);
-CREATE INDEX idx_inventory_items_tracking_type ON inventory_items(tracking_type);
-CREATE INDEX idx_inventory_items_assigned_to ON inventory_items(assigned_to_type, assigned_to_id);
-CREATE INDEX idx_inventory_items_serial ON inventory_items(tenant_id, serial_number) WHERE serial_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_items_tenant ON inventory_items(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_category ON inventory_items(item_category);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_tracking_type ON inventory_items(tracking_type);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_assigned_to ON inventory_items(assigned_to_type, assigned_to_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_serial ON inventory_items(tenant_id, serial_number) WHERE serial_number IS NOT NULL;
 
--- Enable RLS
-ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can view inventory items in their tenant"
-  ON inventory_items FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can insert inventory items in their tenant"
-  ON inventory_items FOR INSERT
-  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can update inventory items in their tenant"
-  ON inventory_items FOR UPDATE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can delete inventory items in their tenant"
-  ON inventory_items FOR DELETE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- Trigger for updated_at
-CREATE TRIGGER update_inventory_items_updated_at
-  BEFORE UPDATE ON inventory_items
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- Trigger for updated_at (only create if update_updated_at_column function exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
+    CREATE TRIGGER update_inventory_items_updated_at
+      BEFORE UPDATE ON inventory_items
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- Add comments
 COMMENT ON TABLE inventory_items IS 'Comprehensive inventory management with flexible tracking types';

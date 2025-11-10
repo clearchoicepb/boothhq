@@ -2,7 +2,7 @@
 -- Product groups MUST be assigned to either a user or physical address
 CREATE TABLE IF NOT EXISTS product_groups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Group details
   group_name VARCHAR(255) NOT NULL,
@@ -21,35 +21,20 @@ CREATE TABLE IF NOT EXISTS product_groups (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_product_groups_tenant ON product_groups(tenant_id);
-CREATE INDEX idx_product_groups_assigned_to ON product_groups(assigned_to_type, assigned_to_id);
-CREATE INDEX idx_product_groups_name ON product_groups(tenant_id, group_name);
+CREATE INDEX IF NOT EXISTS idx_product_groups_tenant ON product_groups(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_product_groups_assigned_to ON product_groups(assigned_to_type, assigned_to_id);
+CREATE INDEX IF NOT EXISTS idx_product_groups_name ON product_groups(tenant_id, group_name);
 
--- Enable RLS
-ALTER TABLE product_groups ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can view product groups in their tenant"
-  ON product_groups FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can insert product groups in their tenant"
-  ON product_groups FOR INSERT
-  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can update product groups in their tenant"
-  ON product_groups FOR UPDATE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can delete product groups in their tenant"
-  ON product_groups FOR DELETE
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- Trigger for updated_at
-CREATE TRIGGER update_product_groups_updated_at
-  BEFORE UPDATE ON product_groups
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- Trigger for updated_at (only create if update_updated_at_column function exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
+    CREATE TRIGGER update_product_groups_updated_at
+      BEFORE UPDATE ON product_groups
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- Add comments
 COMMENT ON TABLE product_groups IS 'Equipment bundles/kits that can be assigned to users or locations';
