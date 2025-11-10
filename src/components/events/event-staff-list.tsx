@@ -1,5 +1,6 @@
-import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User, Calendar, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { formatDate } from '@/lib/utils/date-utils'
 
 interface EventStaffListProps {
   staffAssignments: any[]
@@ -230,13 +231,38 @@ export function EventStaffList({
                 <div className="space-y-3">
                   {eventStaff.map((staff) => (
                     <div key={staff.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         <User className="h-5 w-5 text-gray-400" />
-                        <div>
+                        <div className="flex-1">
                           <p className="font-semibold text-gray-900">
                             {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
                           </p>
                           <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
+
+                          {/* Date and Time Display */}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                            {staff.event_dates && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>
+                                  {formatDate(staff.event_dates.event_date, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            )}
+                            {(staff.start_time || staff.end_time) && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>
+                                  {staff.start_time || '--:--'} - {staff.end_time || '--:--'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
                           {staff.notes && (
                             <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
                           )}
