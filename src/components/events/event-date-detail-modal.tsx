@@ -295,6 +295,12 @@ export function EventDateDetailModal({
           )}
 
           <section className="border-t border-gray-200 pt-4">
+            <div className="mb-3">
+              <span className="text-xs font-medium text-gray-500">Event Date ID:</span>{' '}
+              <span className="text-xs font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                {eventDate.id}
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
               <div>
                 <span className="font-medium">Created:</span>{' '}
