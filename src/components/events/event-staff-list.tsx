@@ -68,7 +68,7 @@ export function EventStaffList({
   }
 
   const operationsStaff = staffAssignments.filter(s => !s.event_date_id && s.staff_roles?.type === 'operations')
-  const eventStaff = staffAssignments.filter(s => !s.event_date_id && s.staff_roles?.type === 'event')
+  const eventStaff = staffAssignments.filter(s => s.event_date_id && s.staff_roles?.type === 'event_staff')
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -175,7 +175,9 @@ export function EventStaffList({
                       <div className="flex items-center gap-3">
                         <User className="h-5 w-5 text-gray-400" />
                         <div>
-                          <p className="font-semibold text-gray-900">{staff.users?.full_name}</p>
+                          <p className="font-semibold text-gray-900">
+                            {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
+                          </p>
                           <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
                           {staff.notes && (
                             <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
@@ -231,7 +233,9 @@ export function EventStaffList({
                       <div className="flex items-center gap-3">
                         <User className="h-5 w-5 text-gray-400" />
                         <div>
-                          <p className="font-semibold text-gray-900">{staff.users?.full_name}</p>
+                          <p className="font-semibold text-gray-900">
+                            {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
+                          </p>
                           <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
                           {staff.notes && (
                             <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
