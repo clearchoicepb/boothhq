@@ -20,6 +20,14 @@ export const inventoryItemFormConfig: FormConfig<any> = {
       gridCols: 1
     },
     {
+      name: 'model',
+      type: 'text',
+      label: 'Model',
+      placeholder: 'e.g., T6, DS620, 10.5", Small',
+      required: false,
+      gridCols: 1
+    },
+    {
       name: 'tracking_type',
       type: 'select',
       label: 'Tracking Type',
