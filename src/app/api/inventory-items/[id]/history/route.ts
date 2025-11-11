@@ -1,37 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { getTenantContext } from '@/lib/tenant-helpers'
+import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/inventory-items/[id]/history - Fetch assignment history for an inventory item
 export async function GET(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
-    const params = await context.params
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    // Get the current user's session
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get user's tenant
-    const { data: membership, error: membershipError } = await supabase
-      .from('user_tenant_memberships')
-      .select('tenant_id')
-      .eq('user_id', session.user.id)
-      .single()
-
-    if (membershipError || !membership) {
-      return NextResponse.json({ error: 'No tenant found' }, { status: 404 })
-    }
-
-    const tenantId = membership.tenant_id
+    const { supabase, dataSourceTenantId } = context
+    const params = await routeContext.params
     const itemId = params.id
 
     // Verify the item belongs to the user's tenant
@@ -39,7 +19,7 @@ export async function GET(
       .from('inventory_items')
       .select('id, item_name')
       .eq('id', itemId)
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .single()
 
     if (itemError || !item) {
@@ -62,19 +42,10 @@ export async function GET(
         expected_return_date,
         changed_by,
         changed_at,
-        change_reason,
-        events:event_id (
-          id,
-          event_name
-        ),
-        users:changed_by (
-          id,
-          first_name,
-          last_name
-        )
+        change_reason
       `)
       .eq('inventory_item_id', itemId)
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .order('changed_at', { ascending: false })
 
     if (historyError) {
@@ -85,32 +56,67 @@ export async function GET(
       )
     }
 
+    // Fetch related event and user data separately
+    const eventIds = [...new Set(history.filter(h => h.event_id).map(h => h.event_id))]
+    const userIds = [...new Set(history.filter(h => h.changed_by).map(h => h.changed_by))]
+
+    // Get events
+    const eventsMap = new Map()
+    if (eventIds.length > 0) {
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, event_name')
+        .in('id', eventIds)
+
+      events?.forEach(event => {
+        eventsMap.set(event.id, event)
+      })
+    }
+
+    // Get users
+    const usersMap = new Map()
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, first_name, last_name')
+        .in('id', userIds)
+
+      users?.forEach(user => {
+        usersMap.set(user.id, user)
+      })
+    }
+
     // Format the response
-    const formattedHistory = history.map((entry: any) => ({
-      id: entry.id,
-      from: {
-        type: entry.assigned_from_type,
-        id: entry.assigned_from_id,
-        name: entry.assigned_from_name || 'Unassigned',
-      },
-      to: {
-        type: entry.assigned_to_type,
-        id: entry.assigned_to_id,
-        name: entry.assigned_to_name || 'Unassigned',
-      },
-      assignmentType: entry.assignment_type,
-      event: entry.events ? {
-        id: entry.events.id,
-        name: entry.events.event_name,
-      } : null,
-      expectedReturnDate: entry.expected_return_date,
-      changedBy: entry.users ? {
-        id: entry.users.id,
-        name: `${entry.users.first_name} ${entry.users.last_name}`,
-      } : null,
-      changedAt: entry.changed_at,
-      reason: entry.change_reason,
-    }))
+    const formattedHistory = history.map((entry: any) => {
+      const event = entry.event_id ? eventsMap.get(entry.event_id) : null
+      const user = entry.changed_by ? usersMap.get(entry.changed_by) : null
+
+      return {
+        id: entry.id,
+        from: {
+          type: entry.assigned_from_type,
+          id: entry.assigned_from_id,
+          name: entry.assigned_from_name || 'Unassigned',
+        },
+        to: {
+          type: entry.assigned_to_type,
+          id: entry.assigned_to_id,
+          name: entry.assigned_to_name || 'Unassigned',
+        },
+        assignmentType: entry.assignment_type,
+        event: event ? {
+          id: event.id,
+          name: event.event_name,
+        } : null,
+        expectedReturnDate: entry.expected_return_date,
+        changedBy: user ? {
+          id: user.id,
+          name: `${user.first_name} ${user.last_name}`,
+        } : null,
+        changedAt: entry.changed_at,
+        reason: entry.change_reason,
+      }
+    })
 
     return NextResponse.json({
       item: {
