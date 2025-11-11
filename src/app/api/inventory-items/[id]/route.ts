@@ -16,7 +16,16 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('inventory_items')
-      .select('*')
+      .select(`
+        *,
+        product_group_items!left(
+          product_group_id,
+          product_groups(
+            id,
+            group_name
+          )
+        )
+      `)
       .eq('id', itemId)
       .eq('tenant_id', dataSourceTenantId)
       .single()
@@ -26,6 +35,15 @@ export async function GET(
         error: 'Failed to fetch inventory item',
         details: error.message
       }, { status: 500 })
+    }
+
+    // Add product group membership from junction table
+    if (data && data.product_group_items && data.product_group_items.length > 0) {
+      const groupItem = data.product_group_items[0]
+      if (groupItem.product_groups) {
+        data.product_group_id = groupItem.product_groups.id
+        data.product_group_name = groupItem.product_groups.group_name
+      }
     }
 
     // Fetch assignment name if assigned
@@ -49,16 +67,6 @@ export async function GET(
 
         if (location) {
           data.assigned_to_name = location.location_name
-        }
-      } else if (data.assigned_to_type === 'product_group') {
-        const { data: group } = await supabase
-          .from('product_groups')
-          .select('group_name')
-          .eq('id', data.assigned_to_id)
-          .single()
-
-        if (group) {
-          data.assigned_to_name = group.group_name
         }
       }
     }
