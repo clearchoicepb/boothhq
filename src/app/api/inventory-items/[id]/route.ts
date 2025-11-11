@@ -105,7 +105,8 @@ export async function PUT(
     const body = await request.json()
 
     // Remove computed fields that aren't in the database
-    const { assigned_to_name, ...updateData } = body
+    // Also extract product_group_id if provided (for managing group membership separately)
+    const { assigned_to_name, product_group_id, ...updateData } = body
 
     // Validate tracking type requirements if being updated
     if (updateData.tracking_type === 'serial_number' && !updateData.serial_number) {
@@ -144,11 +145,13 @@ export async function PUT(
     }
 
     // Handle product group junction table updates
-    if (updateData.assigned_to_type !== undefined || updateData.assigned_to_id !== undefined) {
-      const newGroupId = updateData.assigned_to_type === 'product_group' ? updateData.assigned_to_id : null
+    // Note: product_group_id is managed separately from assigned_to_* fields
+    // Items inherit the group's assignment through database triggers
+    if (product_group_id !== undefined) {
+      const newGroupId = product_group_id // null means remove from group
       const oldGroupId = currentGroupItem?.product_group_id || null
 
-      // If group changed, update junction table
+      // If group membership changed, update junction table
       if (newGroupId !== oldGroupId) {
         // Remove old junction entry if exists
         if (oldGroupId) {

@@ -84,16 +84,26 @@ export const inventoryItemFormConfig: FormConfig<any> = {
       gridCols: 1
     },
     {
+      name: 'product_group_id',
+      type: 'select',
+      label: 'Product Group (Optional)',
+      options: 'product_groups', // Will be populated from product_groups table
+      placeholder: 'Add to a product group...',
+      required: false,
+      gridCols: 2,
+      helpText: 'Items in a group automatically inherit the group\'s location'
+    },
+    {
       name: 'assigned_to_type',
       type: 'select',
-      label: 'Assigned To Type',
+      label: 'Direct Assignment',
       options: [
         { value: '', label: 'Not Assigned' },
         { value: 'user', label: 'User' },
-        { value: 'physical_address', label: 'Physical Address' },
-        { value: 'product_group', label: 'Product Group' }
+        { value: 'physical_address', label: 'Physical Address' }
       ],
-      gridCols: 1
+      gridCols: 1,
+      helpText: 'Leave blank if item is in a product group'
     },
     {
       name: 'assigned_to_id',

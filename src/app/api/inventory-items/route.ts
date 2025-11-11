@@ -160,21 +160,24 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    // Extract product_group_id if provided (for managing group membership separately)
+    const { product_group_id, ...itemFields } = body
+
     // Validate tracking type requirements
-    if (body.tracking_type === 'serial_number' && !body.serial_number) {
+    if (itemFields.tracking_type === 'serial_number' && !itemFields.serial_number) {
       return NextResponse.json({
         error: 'Serial number is required when tracking type is serial_number',
       }, { status: 400 })
     }
 
-    if (body.tracking_type === 'total_quantity' && (!body.total_quantity || body.total_quantity <= 0)) {
+    if (itemFields.tracking_type === 'total_quantity' && (!itemFields.total_quantity || itemFields.total_quantity <= 0)) {
       return NextResponse.json({
         error: 'Total quantity must be greater than 0 when tracking type is total_quantity',
       }, { status: 400 })
     }
 
     const itemData = {
-      ...body,
+      ...itemFields,
       tenant_id: dataSourceTenantId,
       created_by: session.user.id
     }
@@ -193,18 +196,23 @@ export async function POST(request: NextRequest) {
     }
 
     // If assigned to a product group, create junction table entry
-    if (data && body.assigned_to_type === 'product_group' && body.assigned_to_id) {
+    // Note: The trigger will automatically update the item's assigned_to_* fields to match the group
+    if (data && product_group_id) {
       const { error: junctionError } = await supabase
         .from('product_group_items')
         .insert({
-          product_group_id: body.assigned_to_id,
+          product_group_id: product_group_id,
           inventory_item_id: data.id,
           tenant_id: dataSourceTenantId
         })
 
       if (junctionError) {
         console.error('Failed to create product group junction:', junctionError)
-        // Don't fail the whole request, just log it
+        return NextResponse.json({
+          error: 'Failed to add item to product group',
+          details: junctionError.message,
+          code: junctionError.code
+        }, { status: 500 })
       }
     }
 
