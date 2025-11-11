@@ -170,6 +170,29 @@ export async function PUT(
 
         // Add new junction entry if assigning to a group
         if (newGroupId) {
+          // Verify the product group exists first
+          const { data: groupExists, error: groupCheckError } = await supabase
+            .from('product_groups')
+            .select('id')
+            .eq('id', newGroupId)
+            .eq('tenant_id', dataSourceTenantId)
+            .maybeSingle()
+
+          if (groupCheckError) {
+            console.error('Failed to verify product group:', groupCheckError)
+            return NextResponse.json({
+              error: 'Failed to verify product group exists',
+              details: groupCheckError.message
+            }, { status: 500 })
+          }
+
+          if (!groupExists) {
+            return NextResponse.json({
+              error: 'Product group not found',
+              details: `Product group ${newGroupId} does not exist or does not belong to your tenant`
+            }, { status: 404 })
+          }
+
           const { error: insertError } = await supabase
             .from('product_group_items')
             .insert({
@@ -182,7 +205,8 @@ export async function PUT(
             console.error('Failed to insert product group junction:', insertError)
             return NextResponse.json({
               error: 'Failed to add item to product group',
-              details: insertError.message
+              details: insertError.message,
+              code: insertError.code
             }, { status: 500 })
           }
         }
@@ -191,7 +215,12 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('PUT /api/inventory-items/[id] error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, { status: 500 })
   }
 }
 
