@@ -205,6 +205,8 @@ export function InventoryItemsList() {
   const handleSubmit = useCallback(async (data: any) => {
     try {
       if (editingItem) {
+        console.log('Submitting update with data:', data)
+        console.log('Editing item ID:', editingItem.id)
         await updateItem.mutateAsync({ itemId: editingItem.id, itemData: data })
       } else {
         await addItem.mutateAsync(data)
@@ -213,7 +215,8 @@ export function InventoryItemsList() {
       setEditingItem(null)
     } catch (error: any) {
       console.error('Failed to save inventory item:', error)
-      // Error will be shown by the mutation's error state
+      // Temporarily show error to user for debugging
+      alert(`Error saving item: ${error.message}`)
     }
   }, [editingItem, updateItem, addItem])
 
