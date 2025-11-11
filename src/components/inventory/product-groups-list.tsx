@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Edit, Trash2, Package, Users, MapPin } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, Users, MapPin, ChevronDown, ChevronUp, Eye } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
 import {
   useProductGroupsData,
@@ -14,6 +14,8 @@ import {
 export function ProductGroupsList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
+  const [groupDetails, setGroupDetails] = useState<Record<string, any>>({})
 
   // Data hooks
   const { data: groups = [], isLoading } = useProductGroupsData()
@@ -43,6 +45,26 @@ export function ProductGroupsList() {
       await deleteGroup.mutateAsync(groupId)
     } catch (error: any) {
       alert(error.message || 'Failed to delete product group')
+    }
+  }
+
+  const toggleGroupExpansion = async (groupId: string) => {
+    if (expandedGroupId === groupId) {
+      setExpandedGroupId(null)
+    } else {
+      setExpandedGroupId(groupId)
+      // Fetch full details if not already loaded
+      if (!groupDetails[groupId]) {
+        try {
+          const response = await fetch(`/api/product-groups/${groupId}`)
+          if (response.ok) {
+            const data = await response.json()
+            setGroupDetails(prev => ({ ...prev, [groupId]: data }))
+          }
+        } catch (error) {
+          console.error('Failed to fetch group details:', error)
+        }
+      }
     }
   }
 
@@ -99,57 +121,125 @@ export function ProductGroupsList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {groups.map((group: any) => (
-            <div key={group.id} className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start gap-3 flex-1">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Package className="h-5 w-5 text-purple-600" />
+          {groups.map((group: any) => {
+            const isExpanded = expandedGroupId === group.id
+            const details = groupDetails[group.id]
+
+            return (
+              <div key={group.id} className="bg-white rounded-lg border hover:shadow-md transition-shadow">
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Package className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{group.group_name}</h3>
+                        {group.description && (
+                          <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{group.group_name}</h3>
-                    {group.description && (
-                      <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+
+                  <div className="space-y-3 mb-4 border-t pt-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      {getAssignmentIcon(group.assigned_to_type)}
+                      <span className="text-gray-700">
+                        {getAssignmentLabel(group.assigned_to_type)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {group.product_group_items?.length || 0} items
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleGroupExpansion(group.id)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-1" />
+                            Hide Items
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Items
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => openEditModal(group)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(group.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Expanded Items List */}
+                {isExpanded && (
+                  <div className="border-t bg-gray-50 p-4">
+                    {details ? (
+                      details.product_group_items && details.product_group_items.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-gray-500 uppercase mb-3">Items in this group</p>
+                          {details.product_group_items.map((item: any) => (
+                            <div key={item.id} className="bg-white rounded p-3 border border-gray-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm text-gray-900">
+                                    {item.inventory_items?.item_name || 'Unknown Item'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {item.inventory_items?.item_category}
+                                    {item.inventory_items?.serial_number &&
+                                      ` • S/N: ${item.inventory_items.serial_number}`
+                                    }
+                                    {item.inventory_items?.tracking_type === 'total_quantity' &&
+                                      ` • Qty: ${item.inventory_items.total_quantity}`
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <Package className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">No items in this group yet</p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto" />
+                        <p className="text-sm text-gray-500 mt-2">Loading items...</p>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
-
-              <div className="space-y-3 mb-4 border-t pt-4">
-                <div className="flex items-center gap-2 text-sm">
-                  {getAssignmentIcon(group.assigned_to_type)}
-                  <span className="text-gray-700">
-                    {getAssignmentLabel(group.assigned_to_type)}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {group.product_group_items?.length || 0} items
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => openEditModal(group)}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(group.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

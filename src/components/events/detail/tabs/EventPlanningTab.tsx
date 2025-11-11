@@ -13,7 +13,7 @@ import { Palette, Truck, Package, ListTodo, ChevronDown, ChevronUp } from 'lucid
 import { Button } from '@/components/ui/button'
 import { EventDesignItems } from '../../event-design-items'
 import { EventLogistics } from '../../event-logistics'
-import { EventBoothAssignments } from '@/components/event-booth-assignments'
+import { EventInventoryAssignments } from '@/components/inventory/EventInventoryAssignments'
 import { TasksSection } from '@/components/tasks-section'
 import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
 
@@ -160,8 +160,8 @@ export function EventPlanningTab({
               <Package className="h-5 w-5 text-green-600" />
             </div>
             <div className="text-left">
-              <h2 className="text-lg font-semibold text-gray-900">Equipment & Booth Assignments</h2>
-              <p className="text-sm text-gray-500">Booth inventory and assignments</p>
+              <h2 className="text-lg font-semibold text-gray-900">Equipment & Inventory</h2>
+              <p className="text-sm text-gray-500">Manage equipment assignments for this event</p>
             </div>
           </div>
           {isSectionExpanded('equipment') ? (
@@ -172,12 +172,10 @@ export function EventPlanningTab({
         </button>
         {isSectionExpanded('equipment') && (
           <div className="border-t border-gray-100">
-            <div className="p-6">
-              <EventBoothAssignments
-                eventId={eventId}
-                tenantSubdomain={tenantSubdomain}
-              />
-            </div>
+            <EventInventoryAssignments
+              eventId={eventId}
+              tenantSubdomain={tenantSubdomain}
+            />
           </div>
         )}
       </div>

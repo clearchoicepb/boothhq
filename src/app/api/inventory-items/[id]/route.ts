@@ -105,7 +105,34 @@ export async function PUT(
     const body = await request.json()
 
     // Remove computed fields that aren't in the database
-    const { assigned_to_name, ...updateData } = body
+    // Also extract product_group_id if provided (for managing group membership separately)
+    const {
+      assigned_to_name,
+      last_assigned_to,
+      last_changed_at,
+      product_group_id,
+      id,           // Don't allow updating the primary key
+      tenant_id,    // Don't allow changing tenant
+      created_at,   // Don't allow changing creation timestamp
+      created_by,   // Don't allow changing creator
+      updated_at,   // Auto-updated by trigger
+      ...updateData
+    } = body
+
+    // If assigning to a product group, remove direct assignment fields
+    // The database trigger will automatically set them based on the group's assignment
+    if (product_group_id !== undefined && product_group_id !== null && product_group_id !== '') {
+      delete updateData.assigned_to_type
+      delete updateData.assigned_to_id
+    } else {
+      // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
+      if (updateData.assigned_to_type === '') {
+        updateData.assigned_to_type = null
+      }
+      if (updateData.assigned_to_id === '') {
+        updateData.assigned_to_id = null
+      }
+    }
 
     // Validate tracking type requirements if being updated
     if (updateData.tracking_type === 'serial_number' && !updateData.serial_number) {
@@ -120,19 +147,21 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    // Check if item is in a product group - if so, prevent changing assignment
-    const { data: groupItem } = await supabase
+    // Get current product group assignment if any
+    const { data: currentGroupItem } = await supabase
       .from('product_group_items')
       .select('product_group_id')
       .eq('inventory_item_id', itemId)
       .eq('tenant_id', dataSourceTenantId)
       .maybeSingle()
 
-    if (groupItem && (updateData.assigned_to_type !== undefined || updateData.assigned_to_id !== undefined)) {
-      return NextResponse.json({
-        error: 'Cannot change assignment of items in product groups. Remove from group first or change the product groups assignment.',
-      }, { status: 400 })
-    }
+    // Log the update data for debugging
+    console.log('Updating inventory item:', {
+      itemId,
+      product_group_id,
+      updateData,
+      currentGroupId: currentGroupItem?.product_group_id
+    })
 
     const { data, error } = await supabase
       .from('inventory_items')
@@ -143,15 +172,102 @@ export async function PUT(
       .single()
 
     if (error) {
+      console.error('Failed to update inventory item:', {
+        error,
+        errorCode: error.code,
+        errorHint: error.hint,
+        errorDetails: error.details,
+        itemId,
+        updateData
+      })
       return NextResponse.json({
         error: 'Failed to update inventory item',
-        details: error.message
+        details: error.message,
+        code: error.code,
+        hint: error.hint
       }, { status: 500 })
+    }
+
+    // Handle product group junction table updates
+    // Note: product_group_id is managed separately from assigned_to_* fields
+    // Items inherit the group's assignment through database triggers
+    if (product_group_id !== undefined) {
+      const newGroupId = product_group_id // null means remove from group
+      const oldGroupId = currentGroupItem?.product_group_id || null
+
+      // If group membership changed, update junction table
+      if (newGroupId !== oldGroupId) {
+        // Remove old junction entry if exists
+        if (oldGroupId) {
+          const { error: deleteError } = await supabase
+            .from('product_group_items')
+            .delete()
+            .eq('product_group_id', oldGroupId)
+            .eq('inventory_item_id', itemId)
+            .eq('tenant_id', dataSourceTenantId)
+
+          if (deleteError) {
+            console.error('Failed to delete old product group junction:', deleteError)
+            return NextResponse.json({
+              error: 'Failed to remove item from old product group',
+              details: deleteError.message
+            }, { status: 500 })
+          }
+        }
+
+        // Add new junction entry if assigning to a group
+        if (newGroupId) {
+          // Verify the product group exists first
+          const { data: groupExists, error: groupCheckError } = await supabase
+            .from('product_groups')
+            .select('id')
+            .eq('id', newGroupId)
+            .eq('tenant_id', dataSourceTenantId)
+            .maybeSingle()
+
+          if (groupCheckError) {
+            console.error('Failed to verify product group:', groupCheckError)
+            return NextResponse.json({
+              error: 'Failed to verify product group exists',
+              details: groupCheckError.message
+            }, { status: 500 })
+          }
+
+          if (!groupExists) {
+            return NextResponse.json({
+              error: 'Product group not found',
+              details: `Product group ${newGroupId} does not exist or does not belong to your tenant`
+            }, { status: 404 })
+          }
+
+          const { error: insertError } = await supabase
+            .from('product_group_items')
+            .insert({
+              product_group_id: newGroupId,
+              inventory_item_id: itemId,
+              tenant_id: dataSourceTenantId
+            })
+
+          if (insertError) {
+            console.error('Failed to insert product group junction:', insertError)
+            return NextResponse.json({
+              error: 'Failed to add item to product group',
+              details: insertError.message,
+              code: insertError.code
+            }, { status: 500 })
+          }
+        }
+      }
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('PUT /api/inventory-items/[id] error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, { status: 500 })
   }
 }
 
