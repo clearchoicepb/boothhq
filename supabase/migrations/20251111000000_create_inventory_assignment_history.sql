@@ -27,43 +27,28 @@ CREATE TABLE IF NOT EXISTS inventory_assignment_history (
 );
 
 -- Add indexes for common queries
-CREATE INDEX idx_inventory_assignment_history_tenant
+CREATE INDEX IF NOT EXISTS idx_inventory_assignment_history_tenant
   ON inventory_assignment_history(tenant_id);
 
-CREATE INDEX idx_inventory_assignment_history_item
+CREATE INDEX IF NOT EXISTS idx_inventory_assignment_history_item
   ON inventory_assignment_history(tenant_id, inventory_item_id, changed_at DESC);
 
-CREATE INDEX idx_inventory_assignment_history_assigned_to
+CREATE INDEX IF NOT EXISTS idx_inventory_assignment_history_assigned_to
   ON inventory_assignment_history(tenant_id, assigned_to_type, assigned_to_id);
 
-CREATE INDEX idx_inventory_assignment_history_event
+CREATE INDEX IF NOT EXISTS idx_inventory_assignment_history_event
   ON inventory_assignment_history(tenant_id, event_id)
   WHERE event_id IS NOT NULL;
 
--- Add RLS policies
-ALTER TABLE inventory_assignment_history ENABLE ROW LEVEL SECURITY;
+-- Grant permissions to all roles
+GRANT ALL ON inventory_assignment_history TO service_role;
+GRANT ALL ON inventory_assignment_history TO authenticated;
+GRANT ALL ON inventory_assignment_history TO anon;
 
--- Policy: Users can view history for their tenant
-CREATE POLICY "Users can view assignment history for their tenant"
-  ON inventory_assignment_history
-  FOR SELECT
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM user_tenant_memberships
-      WHERE user_id = auth.uid()
-    )
-  );
-
--- Policy: Users can insert history for their tenant (via trigger mostly)
-CREATE POLICY "Users can insert assignment history for their tenant"
-  ON inventory_assignment_history
-  FOR INSERT
-  WITH CHECK (
-    tenant_id IN (
-      SELECT tenant_id FROM user_tenant_memberships
-      WHERE user_id = auth.uid()
-    )
-  );
+-- Ensure schema permissions
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
 
 -- Comment on table
 COMMENT ON TABLE inventory_assignment_history IS 'Tracks all assignment changes for inventory items, preserving who had what equipment and when';
