@@ -43,12 +43,12 @@ export async function GET(
       } else if (data.assigned_to_type === 'physical_address') {
         const { data: location } = await supabase
           .from('physical_addresses')
-          .select('address_name')
+          .select('location_name')
           .eq('id', data.assigned_to_id)
           .single()
 
         if (location) {
-          data.assigned_to_name = location.address_name
+          data.assigned_to_name = location.location_name
         }
       } else if (data.assigned_to_type === 'product_group') {
         const { data: group } = await supabase

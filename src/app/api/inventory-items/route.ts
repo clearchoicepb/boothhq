@@ -80,11 +80,11 @@ export async function GET(request: NextRequest) {
       if (locationIds.length > 0) {
         const { data: locations } = await supabase
           .from('physical_addresses')
-          .select('id, address_name')
+          .select('id, location_name')
           .in('id', locationIds)
 
         locations?.forEach(location => {
-          locationsMap.set(location.id, location.address_name)
+          locationsMap.set(location.id, location.location_name)
         })
       }
 
