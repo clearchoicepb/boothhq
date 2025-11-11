@@ -45,6 +45,7 @@ export async function GET(
 
     return NextResponse.json(data)
   } catch (error) {
+    console.error('Error fetching product group:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -100,6 +101,7 @@ export async function PUT(
     // The database trigger will automatically cascade the assignment change to all items
     return NextResponse.json(data)
   } catch (error) {
+    console.error('Error updating product group:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -136,6 +138,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error('Error deleting product group:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

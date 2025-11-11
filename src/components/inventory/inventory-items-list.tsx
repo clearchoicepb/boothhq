@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, Search, Filter, CheckSquare, Square, Package2, RotateCcw, Printer } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
@@ -87,30 +87,32 @@ export function InventoryItemsList() {
   })
 
   // Bulk selection handlers
-  const toggleItemSelection = (itemId: string) => {
-    const newSelected = new Set(selectedItems)
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId)
-    } else {
-      newSelected.add(itemId)
-    }
-    setSelectedItems(newSelected)
-  }
+  const toggleItemSelection = useCallback((itemId: string) => {
+    setSelectedItems(prev => {
+      const newSelected = new Set(prev)
+      if (newSelected.has(itemId)) {
+        newSelected.delete(itemId)
+      } else {
+        newSelected.add(itemId)
+      }
+      return newSelected
+    })
+  }, [])
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = useCallback(() => {
     if (selectedItems.size === sortedAndGroupedItems.length) {
       setSelectedItems(new Set())
     } else {
       setSelectedItems(new Set(sortedAndGroupedItems.map((item: any) => item.id)))
     }
-  }
+  }, [selectedItems.size, sortedAndGroupedItems])
 
-  const handleBulkCheckout = () => {
+  const handleBulkCheckout = useCallback(() => {
     if (selectedItems.size === 0) return
     setIsBulkCheckoutModalOpen(true)
-  }
+  }, [selectedItems.size])
 
-  const handleBulkReturn = async () => {
+  const handleBulkReturn = useCallback(async () => {
     if (selectedItems.size === 0) return
 
     if (!confirm(`Mark ${selectedItems.size} items as returned?`)) return
@@ -134,11 +136,12 @@ export function InventoryItemsList() {
       setSelectedItems(new Set())
       setBulkMode(false)
     } catch (error: any) {
-      alert(error.message || 'Failed to mark items as returned')
+      console.error('Failed to mark items as returned:', error)
+      // Error will be shown by the mutation's error state
     }
-  }
+  }, [selectedItems, items, updateItem])
 
-  const handlePrintPackingList = () => {
+  const handlePrintPackingList = useCallback(() => {
     if (selectedItems.size === 0) return
 
     const selectedItemsData = items.filter((item: any) => selectedItems.has(item.id))
@@ -197,9 +200,9 @@ export function InventoryItemsList() {
 
     printWindow.document.write(content)
     printWindow.document.close()
-  }
+  }, [selectedItems, items])
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = useCallback(async (data: any) => {
     try {
       if (editingItem) {
         await updateItem.mutateAsync({ itemId: editingItem.id, itemData: data })
@@ -210,31 +213,33 @@ export function InventoryItemsList() {
       setEditingItem(null)
     } catch (error: any) {
       console.error('Failed to save inventory item:', error)
-      alert(error.message || 'Failed to save inventory item')
+      // Show user-friendly error
+      alert(`Failed to save: ${error.message}`)
     }
-  }
+  }, [editingItem, updateItem, addItem])
 
-  const handleDelete = async (itemId: string) => {
+  const handleDelete = useCallback(async (itemId: string) => {
     if (!confirm('Are you sure you want to delete this inventory item?')) return
 
     try {
       await deleteItem.mutateAsync(itemId)
     } catch (error: any) {
-      alert(error.message || 'Failed to delete inventory item')
+      console.error('Failed to delete inventory item:', error)
+      // Error will be shown by the mutation's error state
     }
-  }
+  }, [deleteItem])
 
-  const openCreateModal = () => {
+  const openCreateModal = useCallback(() => {
     setEditingItem(null)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const openEditModal = (item: any) => {
+  const openEditModal = useCallback((item: any) => {
     setEditingItem(item)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const formatAssignment = (item: any) => {
+  const formatAssignment = useCallback((item: any) => {
     if (!item.assigned_to_type || !item.assigned_to_id) {
       return <span className="text-gray-400">Unassigned</span>
     }
@@ -255,15 +260,9 @@ export function InventoryItemsList() {
             <span className="text-sm">{name}</span>
           </>
         )}
-        {item.assigned_to_type === 'product_group' && (
-          <>
-            <span>📦</span>
-            <span className="text-sm">{name}</span>
-          </>
-        )}
       </div>
     )
-  }
+  }, [])
 
   return (
     <div className="space-y-4">

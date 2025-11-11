@@ -108,6 +108,8 @@ export function useUpdateInventoryItem() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] })
       queryClient.invalidateQueries({ queryKey: ['inventory-items', variables.itemId] })
+      // Also invalidate product groups cache since item membership may have changed
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] })
     }
   })
 }
