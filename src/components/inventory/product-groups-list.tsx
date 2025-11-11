@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, Package, Users, MapPin, ChevronDown, ChevronUp, Eye, X, PlusCircle } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
 import {
   useProductGroupsData,
+  useProductGroupData,
   useAddProductGroup,
   useUpdateProductGroup,
   useDeleteProductGroup,
@@ -13,25 +14,32 @@ import {
   useRemoveItemFromProductGroup
 } from '@/hooks/useProductGroupsData'
 import { useInventoryItemsData } from '@/hooks/useInventoryItemsData'
+import { useQueryClient } from '@tanstack/react-query'
 
 export function ProductGroupsList() {
+  const queryClient = useQueryClient()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
-  const [groupDetails, setGroupDetails] = useState<Record<string, any>>({})
   const [isAddingItems, setIsAddingItems] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string>('')
 
   // Data hooks
   const { data: groups = [], isLoading } = useProductGroupsData()
   const { data: allInventoryItems = [] } = useInventoryItemsData()
+
+  // Fetch details for expanded group using React Query
+  const { data: groupDetails, isLoading: isLoadingDetails } = useProductGroupData(expandedGroupId || '', {
+    enabled: Boolean(expandedGroupId)
+  })
+
   const addGroup = useAddProductGroup()
   const updateGroup = useUpdateProductGroup()
   const deleteGroup = useDeleteProductGroup()
   const addItemToGroup = useAddItemToProductGroup()
   const removeItemFromGroup = useRemoveItemFromProductGroup()
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = useCallback(async (data: any) => {
     try {
       if (editingGroup) {
         await updateGroup.mutateAsync({ groupId: editingGroup.id, groupData: data })
@@ -42,83 +50,65 @@ export function ProductGroupsList() {
       setEditingGroup(null)
     } catch (error: any) {
       console.error('Failed to save product group:', error)
-      alert(error.message || 'Failed to save product group')
+      // Error will be shown by the mutation's error state
     }
-  }
+  }, [editingGroup, updateGroup, addGroup])
 
-  const handleDelete = async (groupId: string) => {
+  const handleDelete = useCallback(async (groupId: string) => {
     if (!confirm('Are you sure you want to delete this product group? Items in this group will become unassigned.')) return
 
     try {
       await deleteGroup.mutateAsync(groupId)
     } catch (error: any) {
-      alert(error.message || 'Failed to delete product group')
+      console.error('Failed to delete product group:', error)
+      // Error will be shown by the mutation's error state
     }
-  }
+  }, [deleteGroup])
 
-  const toggleGroupExpansion = async (groupId: string) => {
+  const toggleGroupExpansion = useCallback((groupId: string) => {
     if (expandedGroupId === groupId) {
       setExpandedGroupId(null)
     } else {
       setExpandedGroupId(groupId)
-      // Fetch full details if not already loaded
-      if (!groupDetails[groupId]) {
-        try {
-          const response = await fetch(`/api/product-groups/${groupId}`)
-          if (response.ok) {
-            const data = await response.json()
-            setGroupDetails(prev => ({ ...prev, [groupId]: data }))
-          }
-        } catch (error) {
-          console.error('Failed to fetch group details:', error)
-        }
-      }
+      // React Query will automatically fetch details when expandedGroupId changes
     }
-  }
+  }, [expandedGroupId])
 
-  const openCreateModal = () => {
+  const openCreateModal = useCallback(() => {
     setEditingGroup(null)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const openEditModal = (group: any) => {
+  const openEditModal = useCallback((group: any) => {
     setEditingGroup(group)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const handleAddItemToGroup = async (groupId: string) => {
+  const handleAddItemToGroup = useCallback(async (groupId: string) => {
     if (!selectedItemId) return
 
     try {
       await addItemToGroup.mutateAsync({ groupId, inventoryItemId: selectedItemId })
       setSelectedItemId('')
       setIsAddingItems(null)
-      // Refresh group details
-      const response = await fetch(`/api/product-groups/${groupId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setGroupDetails(prev => ({ ...prev, [groupId]: data }))
-      }
+      // React Query mutations already invalidate the cache
     } catch (error: any) {
-      alert(error.message || 'Failed to add item to group')
+      console.error('Failed to add item to group:', error)
+      // Error will be shown by the mutation's error state
     }
-  }
+  }, [selectedItemId, addItemToGroup])
 
-  const handleRemoveItemFromGroup = async (groupId: string, inventoryItemId: string) => {
+  const handleRemoveItemFromGroup = useCallback(async (groupId: string, inventoryItemId: string) => {
     if (!confirm('Remove this item from the group?')) return
 
     try {
       await removeItemFromGroup.mutateAsync({ groupId, inventoryItemId })
-      // Refresh group details
-      const response = await fetch(`/api/product-groups/${groupId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setGroupDetails(prev => ({ ...prev, [groupId]: data }))
-      }
+      // React Query mutations already invalidate the cache
     } catch (error: any) {
-      alert(error.message || 'Failed to remove item from group')
+      console.error('Failed to remove item from group:', error)
+      // Error will be shown by the mutation's error state
     }
-  }
+  }, [removeItemFromGroup])
 
   const getAssignmentIcon = (assignedToType: string) => {
     if (assignedToType === 'user') return <Users className="h-5 w-5 text-blue-600" />
@@ -165,7 +155,7 @@ export function ProductGroupsList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map((group: any) => {
             const isExpanded = expandedGroupId === group.id
-            const details = groupDetails[group.id]
+            const details = isExpanded ? groupDetails : null
 
             return (
               <div key={group.id} className="bg-white rounded-lg border hover:shadow-md transition-shadow">
@@ -240,7 +230,12 @@ export function ProductGroupsList() {
                 {/* Expanded Items List */}
                 {isExpanded && (
                   <div className="border-t bg-gray-50 p-4">
-                    {details ? (
+                    {isLoadingDetails ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto" />
+                        <p className="text-sm text-gray-500 mt-2">Loading items...</p>
+                      </div>
+                    ) : details ? (
                       <>
                         {/* Add Item Section */}
                         <div className="mb-4 bg-white rounded-lg p-3 border border-purple-200">
@@ -319,12 +314,7 @@ export function ProductGroupsList() {
                           </div>
                         )}
                       </>
-                    ) : (
-                      <div className="text-center py-4">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto" />
-                        <p className="text-sm text-gray-500 mt-2">Loading items...</p>
-                      </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>

@@ -36,12 +36,12 @@ export function useProductGroupsData() {
 /**
  * Fetches a single product group with React Query
  */
-export function useProductGroupData(groupId: string) {
+export function useProductGroupData(groupId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['product-groups', groupId],
     queryFn: () => fetchProductGroup(groupId),
     staleTime: 30 * 1000,
-    enabled: Boolean(groupId),
+    enabled: options?.enabled !== undefined ? options.enabled : Boolean(groupId),
   })
 }
 

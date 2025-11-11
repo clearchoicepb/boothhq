@@ -48,6 +48,7 @@ export async function POST(
     // The database trigger will automatically assign the item to the group's location
     return NextResponse.json(data)
   } catch (error) {
+    console.error('Error adding item to product group:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -93,6 +94,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error('Error removing item from product group:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
