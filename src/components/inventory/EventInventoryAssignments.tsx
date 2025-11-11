@@ -29,9 +29,11 @@ interface EventInventoryAssignmentsProps {
 export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInventoryAssignmentsProps) {
   const [assignedItems, setAssignedItems] = useState<InventoryItem[]>([])
   const [availableItems, setAvailableItems] = useState<InventoryItem[]>([])
+  const [availableProductGroups, setAvailableProductGroups] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isAssigning, setIsAssigning] = useState(false)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -51,6 +53,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         const data = await inventoryRes.json()
         setAssignedItems(data.assigned || [])
         setAvailableItems(data.available || [])
+        setAvailableProductGroups(data.available_product_groups || [])
       }
     } catch (error) {
       console.error('Error fetching inventory:', error)
@@ -60,7 +63,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
   }
 
   const handleAssignItems = async () => {
-    if (selectedItems.size === 0) return
+    if (selectedItems.size === 0 && selectedGroups.size === 0) return
 
     try {
       const response = await fetch(`/api/events/${eventId}/inventory`, {
@@ -68,12 +71,14 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           inventory_item_ids: Array.from(selectedItems),
+          product_group_ids: Array.from(selectedGroups),
           create_checkout_task: true
         })
       })
 
       if (response.ok) {
         setSelectedItems(new Set())
+        setSelectedGroups(new Set())
         setIsAssigning(false)
         setSearchQuery('')
         await fetchData()
@@ -107,6 +112,16 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
       newSelection.add(itemId)
     }
     setSelectedItems(newSelection)
+  }
+
+  const toggleGroupSelection = (groupId: string) => {
+    const newSelection = new Set(selectedGroups)
+    if (newSelection.has(groupId)) {
+      newSelection.delete(groupId)
+    } else {
+      newSelection.add(groupId)
+    }
+    setSelectedGroups(newSelection)
   }
 
   const toggleStaffExpanded = (staffId: string) => {
@@ -150,6 +165,17 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
       item.item_category.toLowerCase().includes(query) ||
       (item.serial_number && item.serial_number.toLowerCase().includes(query)) ||
       (item.assigned_to_name && item.assigned_to_name.toLowerCase().includes(query))
+    )
+  })
+
+  // Filter available product groups by search query
+  const filteredAvailableGroups = availableProductGroups.filter(group => {
+    if (!searchQuery) return true
+    const query = searchQuery.toLowerCase()
+    return (
+      group.group_name.toLowerCase().includes(query) ||
+      (group.description && group.description.toLowerCase().includes(query)) ||
+      (group.assigned_to_name && group.assigned_to_name.toLowerCase().includes(query))
     )
   })
 
@@ -347,6 +373,47 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
             </div>
 
             <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+              {/* Product Groups Section */}
+              {filteredAvailableGroups.length > 0 && (
+                <div className="border-b border-gray-200">
+                  <div className="bg-purple-50 px-3 py-2 flex items-center space-x-2">
+                    <Package className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-900">Product Groups</span>
+                    <span className="text-xs text-purple-700">({filteredAvailableGroups.length} groups)</span>
+                  </div>
+                  {filteredAvailableGroups.map(group => (
+                    <div key={group.id} className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100">
+                      <div className="flex items-center space-x-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedGroups.has(group.id)}
+                          onChange={() => toggleGroupSelection(group.id)}
+                          className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-900">{group.group_name}</span>
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                              {group.product_group_items?.length || 0} items
+                            </span>
+                          </div>
+                          {group.description && (
+                            <div className="text-sm text-gray-600 mt-0.5">{group.description}</div>
+                          )}
+                          {group.assigned_to_name && (
+                            <div className="flex items-center text-xs text-gray-500 mt-1">
+                              {group.assigned_to_type === 'user' && <User className="h-3 w-3 mr-1" />}
+                              {group.assigned_to_type === 'physical_address' && <Warehouse className="h-3 w-3 mr-1" />}
+                              {group.assigned_to_name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Staff Equipment Section */}
               {Object.keys(itemsByStaff).length > 0 && (
                 <div className="border-b border-gray-200">
@@ -405,7 +472,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
                 </div>
               )}
 
-              {filteredAvailableItems.length === 0 && (
+              {filteredAvailableItems.length === 0 && filteredAvailableGroups.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   <Package className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                   <p>No available equipment found</p>
@@ -416,10 +483,13 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
               )}
             </div>
 
-            {selectedItems.size > 0 && (
+            {(selectedItems.size > 0 || selectedGroups.size > 0) && (
               <div className="mt-3 flex items-center justify-between">
                 <span className="text-sm text-gray-600">
-                  {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+                  {selectedItems.size > 0 && `${selectedItems.size} item${selectedItems.size !== 1 ? 's' : ''}`}
+                  {selectedItems.size > 0 && selectedGroups.size > 0 && ' and '}
+                  {selectedGroups.size > 0 && `${selectedGroups.size} group${selectedGroups.size !== 1 ? 's' : ''}`}
+                  {' selected'}
                 </span>
                 <Button onClick={handleAssignItems}>
                   Assign to Event

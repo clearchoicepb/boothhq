@@ -40,7 +40,8 @@ export function InventoryItemsList() {
     const matchesSearch = searchTerm === '' ||
       item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.item_category?.toLowerCase().includes(searchTerm.toLowerCase())
+      item.item_category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.product_group_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesCategory = categoryFilter === 'all' || item.item_category === categoryFilter
     const matchesTrackingType = trackingTypeFilter === 'all' || item.tracking_type === trackingTypeFilter
@@ -67,6 +68,24 @@ export function InventoryItemsList() {
     return matchesSearch && matchesCategory && matchesTrackingType && matchesStatus
   })
 
+  // Sort and group items: by product group, then category, then item name
+  const sortedAndGroupedItems = [...filteredItems].sort((a: any, b: any) => {
+    // First, group by product group (items without group come last)
+    const groupA = a.product_group_name || 'zzz_no_group'
+    const groupB = b.product_group_name || 'zzz_no_group'
+    if (groupA !== groupB) {
+      return groupA.localeCompare(groupB)
+    }
+
+    // Then by category
+    if (a.item_category !== b.item_category) {
+      return a.item_category.localeCompare(b.item_category)
+    }
+
+    // Finally by item name
+    return a.item_name.localeCompare(b.item_name)
+  })
+
   // Bulk selection handlers
   const toggleItemSelection = (itemId: string) => {
     const newSelected = new Set(selectedItems)
@@ -79,10 +98,10 @@ export function InventoryItemsList() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedItems.size === filteredItems.length) {
+    if (selectedItems.size === sortedAndGroupedItems.length) {
       setSelectedItems(new Set())
     } else {
-      setSelectedItems(new Set(filteredItems.map((item: any) => item.id)))
+      setSelectedItems(new Set(sortedAndGroupedItems.map((item: any) => item.id)))
     }
   }
 
@@ -360,7 +379,7 @@ export function InventoryItemsList() {
       {/* Items Table */}
       {isLoading ? (
         <div className="text-center py-12">Loading inventory items...</div>
-      ) : filteredItems.length === 0 ? (
+      ) : sortedAndGroupedItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border">
           <p className="text-gray-500">No inventory items found</p>
           <Button onClick={openCreateModal} className="mt-4">
@@ -377,15 +396,16 @@ export function InventoryItemsList() {
                   <th className="px-4 py-3 w-12">
                     <input
                       type="checkbox"
-                      checked={selectedItems.size === filteredItems.length && filteredItems.length > 0}
+                      checked={selectedItems.size === sortedAndGroupedItems.length && sortedAndGroupedItems.length > 0}
                       onChange={toggleSelectAll}
                       className="rounded"
                     />
                   </th>
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Group</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial/Qty</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Location</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Assigned To</th>
@@ -393,7 +413,7 @@ export function InventoryItemsList() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filteredItems.map((item: any) => (
+              {sortedAndGroupedItems.map((item: any) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   {bulkMode && (
                     <td className="px-4 py-4">
@@ -414,17 +434,27 @@ export function InventoryItemsList() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge
-                      assignmentType={item.assignment_type}
-                      assignedToType={item.assigned_to_type}
-                      assignedToName={item.assigned_to_name}
-                    />
+                    {item.product_group_name ? (
+                      <div className="flex items-center gap-1">
+                        <Package2 className="h-3.5 w-3.5 text-purple-600" />
+                        <span className="text-sm text-purple-700 font-medium">{item.product_group_name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No group</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">{item.item_category}</div>
                     <div className="text-xs text-gray-500">
                       {item.tracking_type === 'serial_number' ? 'Serial #' : 'Quantity'}
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge
+                      assignmentType={item.assignment_type}
+                      assignedToType={item.assigned_to_type}
+                      assignedToName={item.assigned_to_name}
+                    />
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">

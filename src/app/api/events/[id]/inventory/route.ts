@@ -32,6 +32,7 @@ export async function GET(
 
     let assignedInventory = []
     let availableInventory = []
+    let availableProductGroups = []
 
     // Fetch inventory already assigned to this event
     const { data: assigned, error: assignedError } = await supabase
@@ -50,7 +51,7 @@ export async function GET(
 
     assignedInventory = assigned || []
 
-    // If include_available, fetch warehouse items and staff equipment
+    // If include_available, fetch warehouse items, staff equipment, and product groups
     if (includeAvailable) {
       // Get all staff assigned to this event
       const { data: eventStaff } = await supabase
@@ -130,6 +131,42 @@ export async function GET(
           return true
         })
       }
+
+      // Fetch available product groups
+      const { data: allGroups } = await supabase
+        .from('product_groups')
+        .select(`
+          *,
+          product_group_items (
+            id,
+            inventory_item_id
+          )
+        `)
+        .eq('tenant_id', dataSourceTenantId)
+        .order('group_name', { ascending: true })
+
+      if (allGroups) {
+        availableProductGroups = allGroups.filter((group: any) => {
+          // Include warehouse product groups
+          if (group.assigned_to_type === 'physical_address') {
+            return true
+          }
+          // Include staff product groups if staff is on this event
+          if (group.assigned_to_type === 'user' && group.assigned_to_id && eventStaffIds.includes(group.assigned_to_id)) {
+            return true
+          }
+          return false
+        })
+      }
+
+      // Apply search filter to product groups if provided
+      if (search && availableProductGroups.length > 0) {
+        const searchLower = search.toLowerCase()
+        availableProductGroups = availableProductGroups.filter((group: any) =>
+          group.group_name.toLowerCase().includes(searchLower) ||
+          (group.description && group.description.toLowerCase().includes(searchLower))
+        )
+      }
     }
 
     // Enrich both assigned and available inventory with names
@@ -200,6 +237,53 @@ export async function GET(
       })
     }
 
+    // Enrich product groups with assignment names
+    if (availableProductGroups.length > 0) {
+      const groupUserIds = [...new Set(
+        availableProductGroups.filter((group: any) => group.assigned_to_type === 'user' && group.assigned_to_id)
+          .map((group: any) => group.assigned_to_id)
+      )]
+      const groupLocationIds = [...new Set(
+        availableProductGroups.filter((group: any) => group.assigned_to_type === 'physical_address' && group.assigned_to_id)
+          .map((group: any) => group.assigned_to_id)
+      )]
+
+      // Fetch users
+      const groupUsersMap = new Map()
+      if (groupUserIds.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, first_name, last_name')
+          .in('id', groupUserIds)
+
+        users?.forEach((user: any) => {
+          groupUsersMap.set(user.id, `${user.first_name} ${user.last_name}`)
+        })
+      }
+
+      // Fetch locations
+      const groupLocationsMap = new Map()
+      if (groupLocationIds.length > 0) {
+        const { data: locations } = await supabase
+          .from('physical_addresses')
+          .select('id, location_name')
+          .in('id', groupLocationIds)
+
+        locations?.forEach((location: any) => {
+          groupLocationsMap.set(location.id, location.location_name)
+        })
+      }
+
+      // Add assignment names to groups
+      availableProductGroups.forEach((group: any) => {
+        if (group.assigned_to_type === 'user' && group.assigned_to_id) {
+          group.assigned_to_name = groupUsersMap.get(group.assigned_to_id) || 'Unknown User'
+        } else if (group.assigned_to_type === 'physical_address' && group.assigned_to_id) {
+          group.assigned_to_name = groupLocationsMap.get(group.assigned_to_id) || 'Unknown Location'
+        }
+      })
+    }
+
     // Group assigned inventory by staff member
     const inventoryByStaff = new Map()
     assignedInventory.forEach((item: any) => {
@@ -220,8 +304,10 @@ export async function GET(
       event,
       assigned: assignedInventory,
       available: availableInventory,
+      available_product_groups: availableProductGroups,
       total_assigned: assignedInventory.length,
       total_available: availableInventory.length,
+      total_available_groups: availableProductGroups.length,
       by_staff: Array.from(inventoryByStaff.values())
     })
   } catch (error) {
@@ -249,11 +335,30 @@ export async function POST(
 
     const eventId = params.id
     const body = await request.json()
-    const { inventory_item_ids, expected_return_date, create_checkout_task } = body
+    const { inventory_item_ids, product_group_ids, expected_return_date, create_checkout_task } = body
 
-    if (!inventory_item_ids || !Array.isArray(inventory_item_ids) || inventory_item_ids.length === 0) {
+    let allItemIds = [...(inventory_item_ids || [])]
+
+    // If product groups are provided, fetch all items in those groups
+    if (product_group_ids && Array.isArray(product_group_ids) && product_group_ids.length > 0) {
+      const { data: groupItems } = await supabase
+        .from('product_group_items')
+        .select('inventory_item_id')
+        .in('product_group_id', product_group_ids)
+        .eq('tenant_id', dataSourceTenantId)
+
+      if (groupItems && groupItems.length > 0) {
+        const groupItemIds = groupItems.map((gi: any) => gi.inventory_item_id)
+        allItemIds = [...allItemIds, ...groupItemIds]
+      }
+    }
+
+    // Remove duplicates
+    allItemIds = [...new Set(allItemIds)]
+
+    if (allItemIds.length === 0) {
       return NextResponse.json({
-        error: 'inventory_item_ids array is required'
+        error: 'inventory_item_ids or product_group_ids array is required'
       }, { status: 400 })
     }
 
@@ -280,7 +385,7 @@ export async function POST(
         expected_return_date: expected_return_date || event.start_date,
         updated_at: new Date().toISOString()
       })
-      .in('id', inventory_item_ids)
+      .in('id', allItemIds)
       .eq('tenant_id', dataSourceTenantId)
       .select()
 

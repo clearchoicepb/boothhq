@@ -17,7 +17,16 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('inventory_items')
-      .select('*')
+      .select(`
+        *,
+        product_group_items!left(
+          product_group_id,
+          product_groups(
+            id,
+            group_name
+          )
+        )
+      `)
       .eq('tenant_id', dataSourceTenantId)
       .order('item_name', { ascending: true })
 
@@ -101,7 +110,7 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      // Add assignment names to items
+      // Add assignment names to items and product group membership
       data.forEach(item => {
         if (item.assigned_to_type && item.assigned_to_id) {
           if (item.assigned_to_type === 'user') {
@@ -110,6 +119,15 @@ export async function GET(request: NextRequest) {
             item.assigned_to_name = locationsMap.get(item.assigned_to_id) || 'Unknown Location'
           } else if (item.assigned_to_type === 'product_group') {
             item.assigned_to_name = groupsMap.get(item.assigned_to_id) || 'Unknown Group'
+          }
+        }
+
+        // Add product group membership from junction table
+        if (item.product_group_items && item.product_group_items.length > 0) {
+          const groupItem = item.product_group_items[0] // An item should only be in one group
+          if (groupItem.product_groups) {
+            item.product_group_id = groupItem.product_groups.id
+            item.product_group_name = groupItem.product_groups.group_name
           }
         }
       })

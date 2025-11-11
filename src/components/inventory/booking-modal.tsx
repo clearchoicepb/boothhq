@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
 import { useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
 
 interface BookingModalProps {
@@ -92,29 +92,13 @@ export function BookingModal({ isOpen, onClose, items, dateRange }: BookingModal
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Book Equipment</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Assign {items.length} item{items.length !== 1 ? 's' : ''} to event
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Book Equipment (${items.length} item${items.length !== 1 ? 's' : ''})`}
+    >
+      <div className="max-h-[70vh] overflow-y-auto">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {error}
@@ -201,25 +185,23 @@ export function BookingModal({ isOpen, onClose, items, dateRange }: BookingModal
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleBook}
-            disabled={loading}
-          >
-            {loading ? 'Booking...' : `Book ${items.length} Item${items.length !== 1 ? 's' : ''}`}
-          </Button>
-        </div>
       </div>
-    </div>
+
+      <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end gap-3">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleBook}
+          disabled={loading}
+        >
+          {loading ? 'Booking...' : `Book ${items.length} Item${items.length !== 1 ? 's' : ''}`}
+        </Button>
+      </div>
+    </Modal>
   )
 }
