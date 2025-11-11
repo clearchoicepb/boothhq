@@ -75,8 +75,8 @@ export async function GET(
 
       if (allItems) {
         availableInventory = allItems.filter((item: any) => {
-          // Include warehouse items
-          if (item.assigned_to_type === 'physical_address' && item.assignment_type === 'warehouse') {
+          // Include warehouse items (any item assigned to physical_address)
+          if (item.assigned_to_type === 'physical_address') {
             return true
           }
           // Include staff equipment if staff is on this event (including long_term_staff)
