@@ -13,6 +13,9 @@ import {
 import { useItemCategoriesData } from '@/hooks/useItemCategoriesData'
 import { usePhysicalAddressesData } from '@/hooks/usePhysicalAddressesData'
 import { useProductGroupsData } from '@/hooks/useProductGroupsData'
+import { StatusBadge } from './status-badge'
+import { AssignmentHistory } from './assignment-history'
+import { format } from 'date-fns'
 
 export function InventoryItemsList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -174,11 +177,11 @@ export function InventoryItemsList() {
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tracking</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial/Qty</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Assigned To</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -186,41 +189,82 @@ export function InventoryItemsList() {
               {filteredItems.map((item: any) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{item.item_name}</div>
+                    <div>
+                      <div className="font-medium text-gray-900">{item.item_name}</div>
+                      {item.model && (
+                        <div className="text-xs text-gray-500 mt-0.5">{item.model}</div>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.item_category}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      item.tracking_type === 'serial_number'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}>
+                    <StatusBadge
+                      assignmentType={item.assignment_type}
+                      assignedToType={item.assigned_to_type}
+                      assignedToName={item.assigned_to_name}
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">{item.item_category}</div>
+                    <div className="text-xs text-gray-500">
                       {item.tracking_type === 'serial_number' ? 'Serial #' : 'Quantity'}
-                    </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {item.tracking_type === 'serial_number' ? item.serial_number : `${item.total_quantity} units`}
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      {item.tracking_type === 'serial_number'
+                        ? item.serial_number
+                        : `${item.total_quantity} units`}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      ${item.item_value?.toLocaleString() || '0'}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    ${item.item_value?.toLocaleString() || '0'}
+                  <td className="px-6 py-4">
+                    <div className="text-sm">
+                      {formatAssignment(item)}
+                    </div>
+                    {item.expected_return_date && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Returns: {format(new Date(item.expected_return_date), 'MMM d')}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-6 py-4">{formatAssignment(item)}</td>
+                  <td className="px-6 py-4">
+                    {item.last_assigned_to ? (
+                      <div>
+                        <div className="text-sm text-gray-600">{item.last_assigned_to}</div>
+                        {item.last_changed_at && (
+                          <div className="text-xs text-gray-400">
+                            {format(new Date(item.last_changed_at), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No history</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditModal(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(item)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                      <AssignmentHistory
+                        itemId={item.id}
+                        itemName={item.item_name}
+                      />
                     </div>
                   </td>
                 </tr>

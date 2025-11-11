@@ -113,6 +113,32 @@ export async function GET(request: NextRequest) {
           }
         }
       })
+
+      // Fetch last assignment history for each item (who had it before current assignment)
+      const itemIds = data.map(item => item.id)
+      const { data: historyData } = await supabase
+        .from('inventory_assignment_history')
+        .select('inventory_item_id, assigned_from_name, assigned_to_name, changed_at')
+        .in('inventory_item_id', itemIds)
+        .eq('tenant_id', dataSourceTenantId)
+        .order('changed_at', { ascending: false })
+
+      // Create a map of item ID to their most recent history entry
+      const historyMap = new Map()
+      historyData?.forEach(entry => {
+        if (!historyMap.has(entry.inventory_item_id)) {
+          historyMap.set(entry.inventory_item_id, entry)
+        }
+      })
+
+      // Add last assignment info to items
+      data.forEach(item => {
+        const history = historyMap.get(item.id)
+        if (history) {
+          item.last_assigned_to = history.assigned_from_name
+          item.last_changed_at = history.changed_at
+        }
+      })
     }
 
     return NextResponse.json(data)
