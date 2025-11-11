@@ -34,6 +34,8 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set())
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [groupDetails, setGroupDetails] = useState<Record<string, any>>({})
 
   useEffect(() => {
     fetchData()
@@ -117,6 +119,28 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
     setExpandedStaff(newExpanded)
   }
 
+  const toggleGroupExpanded = async (groupId: string) => {
+    const newExpanded = new Set(expandedGroups)
+    if (newExpanded.has(groupId)) {
+      newExpanded.delete(groupId)
+    } else {
+      newExpanded.add(groupId)
+      // Fetch full details if not already loaded
+      if (!groupDetails[groupId]) {
+        try {
+          const response = await fetch(`/api/product-groups/${groupId}`)
+          if (response.ok) {
+            const data = await response.json()
+            setGroupDetails(prev => ({ ...prev, [groupId]: data }))
+          }
+        } catch (error) {
+          console.error('Failed to fetch group details:', error)
+        }
+      }
+    }
+    setExpandedGroups(newExpanded)
+  }
+
   // Filter available items by search query
   const filteredAvailableItems = availableItems.filter(item => {
     if (!searchQuery) return true
@@ -162,59 +186,105 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
     return acc
   }, {} as Record<string, { staffName: string; items: InventoryItem[] }>)
 
-  const renderItemRow = (item: InventoryItem, isSelectable: boolean = false, isAssigned: boolean = false) => (
-    <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100">
-      <div className="flex items-center space-x-3 flex-1">
-        {isSelectable && (
-          <input
-            type="checkbox"
-            checked={selectedItems.has(item.id)}
-            onChange={() => toggleItemSelection(item.id)}
-            className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-          />
-        )}
-        <div className="flex-1">
-          <div className="flex items-center space-x-2">
-            <span className="font-medium text-gray-900">{item.item_name}</span>
-            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-              {item.item_category}
-            </span>
-          </div>
-          <div className="text-sm text-gray-600 mt-0.5">
-            {item.tracking_type === 'serial_number' && item.serial_number && (
-              <span>S/N: {item.serial_number}</span>
+  const renderItemRow = (item: InventoryItem, isSelectable: boolean = false, isAssigned: boolean = false) => {
+    const isProductGroup = item.assigned_to_type === 'product_group'
+    const isGroupExpanded = isProductGroup && item.assigned_to_id && expandedGroups.has(item.assigned_to_id)
+    const groupDetail = isProductGroup && item.assigned_to_id ? groupDetails[item.assigned_to_id] : null
+
+    return (
+      <div key={item.id}>
+        <div className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100">
+          <div className="flex items-center space-x-3 flex-1">
+            {isSelectable && (
+              <input
+                type="checkbox"
+                checked={selectedItems.has(item.id)}
+                onChange={() => toggleItemSelection(item.id)}
+                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+              />
             )}
-            {item.tracking_type === 'total_quantity' && item.total_quantity && (
-              <span>Qty: {item.total_quantity}</span>
-            )}
-            {item.model && <span className="ml-2">Model: {item.model}</span>}
-          </div>
-          {!isAssigned && item.assigned_to_name && (
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              {item.assigned_to_type === 'user' && <User className="h-3 w-3 mr-1" />}
-              {item.assigned_to_type === 'physical_address' && <Warehouse className="h-3 w-3 mr-1" />}
-              {item.assigned_to_name}
-              {item.assignment_type === 'long_term_staff' && (
-                <span className="ml-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
-                  Long-term
+            <div className="flex-1">
+              <div className="flex items-center space-x-2">
+                <span className="font-medium text-gray-900">{item.item_name}</span>
+                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                  {item.item_category}
                 </span>
+                {isProductGroup && (
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                    In Group
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-gray-600 mt-0.5">
+                {item.tracking_type === 'serial_number' && item.serial_number && (
+                  <span>S/N: {item.serial_number}</span>
+                )}
+                {item.tracking_type === 'total_quantity' && item.total_quantity && (
+                  <span>Qty: {item.total_quantity}</span>
+                )}
+                {item.model && <span className="ml-2">Model: {item.model}</span>}
+              </div>
+              {!isAssigned && item.assigned_to_name && (
+                <div className="flex items-center text-xs text-gray-500 mt-1">
+                  {item.assigned_to_type === 'user' && <User className="h-3 w-3 mr-1" />}
+                  {item.assigned_to_type === 'physical_address' && <Warehouse className="h-3 w-3 mr-1" />}
+                  {item.assigned_to_type === 'product_group' && <Package className="h-3 w-3 mr-1" />}
+                  {item.assigned_to_name}
+                  {item.assignment_type === 'long_term_staff' && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                      Long-term
+                    </span>
+                  )}
+                  {isProductGroup && item.assigned_to_id && (
+                    <button
+                      onClick={() => toggleGroupExpanded(item.assigned_to_id!)}
+                      className="ml-2 text-purple-600 hover:text-purple-800 underline"
+                    >
+                      {isGroupExpanded ? 'Hide' : 'View'} group items
+                    </button>
+                  )}
+                </div>
               )}
             </div>
+          </div>
+          {isAssigned && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleRemoveItem(item.id)}
+              className="ml-2"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
         </div>
+
+        {/* Expanded Product Group Items */}
+        {isGroupExpanded && (
+          <div className="bg-purple-50 px-6 py-3 border-b border-purple-100">
+            {groupDetail ? (
+              groupDetail.product_group_items && groupDetail.product_group_items.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-purple-900 mb-2">Items in "{item.assigned_to_name}":</p>
+                  {groupDetail.product_group_items.map((groupItem: any) => (
+                    <div key={groupItem.id} className="text-xs text-purple-800 pl-4">
+                      • {groupItem.inventory_items?.item_name || 'Unknown'}
+                      {' '}({groupItem.inventory_items?.item_category})
+                      {groupItem.inventory_items?.serial_number && ` - S/N: ${groupItem.inventory_items.serial_number}`}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-purple-600">No items in this group</p>
+              )
+            ) : (
+              <p className="text-xs text-purple-600">Loading group items...</p>
+            )}
+          </div>
+        )}
       </div>
-      {isAssigned && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleRemoveItem(item.id)}
-          className="ml-2"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
-  )
+    )
+  }
 
   if (loading) {
     return (
