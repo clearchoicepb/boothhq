@@ -7,9 +7,10 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { InventoryItemsList } from '@/components/inventory/inventory-items-list'
 import { PhysicalAddressesList } from '@/components/inventory/physical-addresses-list'
 import { ProductGroupsList } from '@/components/inventory/product-groups-list'
-import { Package, MapPin, Boxes } from 'lucide-react'
+import { AvailabilityChecker } from '@/components/inventory/availability-checker'
+import { Package, MapPin, Boxes, CalendarSearch } from 'lucide-react'
 
-type TabType = 'items' | 'addresses' | 'groups'
+type TabType = 'items' | 'addresses' | 'groups' | 'availability'
 
 export default function ComprehensiveInventoryPage() {
   const { data: session, status } = useSession()
@@ -42,6 +43,12 @@ export default function ComprehensiveInventoryPage() {
       label: 'Inventory Items',
       icon: Package,
       description: 'Individual equipment and supplies'
+    },
+    {
+      id: 'availability' as TabType,
+      label: 'Check Availability',
+      icon: CalendarSearch,
+      description: 'Check equipment for events'
     },
     {
       id: 'addresses' as TabType,
@@ -101,6 +108,7 @@ export default function ComprehensiveInventoryPage() {
         {/* Tab Content */}
         <div className="mt-6">
           {activeTab === 'items' && <InventoryItemsList />}
+          {activeTab === 'availability' && <AvailabilityChecker />}
           {activeTab === 'addresses' && <PhysicalAddressesList />}
           {activeTab === 'groups' && <ProductGroupsList />}
         </div>

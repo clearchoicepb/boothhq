@@ -108,6 +108,35 @@ export const inventoryItemFormConfig: FormConfig<any> = {
       }
     },
     {
+      name: 'assignment_type',
+      type: 'select',
+      label: 'Assignment Type',
+      options: [
+        { value: '', label: 'Not Specified' },
+        { value: 'warehouse', label: 'Warehouse Storage' },
+        { value: 'long_term_staff', label: 'Long-term Staff (Months)' },
+        { value: 'event_checkout', label: 'Event Checkout (Weekend)' }
+      ],
+      gridCols: 1,
+      conditional: {
+        field: 'assigned_to_type',
+        operator: 'not_equals',
+        value: ''
+      }
+    },
+    {
+      name: 'expected_return_date',
+      type: 'date',
+      label: 'Expected Return Date',
+      placeholder: 'When should this item be returned?',
+      gridCols: 1,
+      conditional: {
+        field: 'assignment_type',
+        operator: 'equals',
+        value: 'event_checkout'
+      }
+    },
+    {
       name: 'item_notes',
       type: 'textarea',
       label: 'Item Notes',

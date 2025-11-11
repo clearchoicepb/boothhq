@@ -63,6 +63,23 @@ export async function GET(
       }
     }
 
+    // Fetch assignment history summary (most recent entry)
+    if (data) {
+      const { data: historyData } = await supabase
+        .from('inventory_assignment_history')
+        .select('assigned_from_name, assigned_to_name, changed_at')
+        .eq('inventory_item_id', itemId)
+        .eq('tenant_id', dataSourceTenantId)
+        .order('changed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (historyData) {
+        data.last_assigned_to = historyData.assigned_from_name
+        data.last_changed_at = historyData.changed_at
+      }
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
