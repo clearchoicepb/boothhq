@@ -46,6 +46,75 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Fetch related names for assignments
+    if (data && data.length > 0) {
+      // Get unique IDs for each assignment type
+      const userIds = [...new Set(
+        data.filter(item => item.assigned_to_type === 'user' && item.assigned_to_id)
+          .map(item => item.assigned_to_id)
+      )]
+      const locationIds = [...new Set(
+        data.filter(item => item.assigned_to_type === 'physical_address' && item.assigned_to_id)
+          .map(item => item.assigned_to_id)
+      )]
+      const groupIds = [...new Set(
+        data.filter(item => item.assigned_to_type === 'product_group' && item.assigned_to_id)
+          .map(item => item.assigned_to_id)
+      )]
+
+      // Fetch users
+      const usersMap = new Map()
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, first_name, last_name')
+          .in('id', userIds)
+
+        users?.forEach(user => {
+          usersMap.set(user.id, `${user.first_name} ${user.last_name}`)
+        })
+      }
+
+      // Fetch physical addresses (locations)
+      const locationsMap = new Map()
+      if (locationIds.length > 0) {
+        const { data: locations } = await supabase
+          .from('physical_addresses')
+          .select('id, address_name')
+          .in('id', locationIds)
+
+        locations?.forEach(location => {
+          locationsMap.set(location.id, location.address_name)
+        })
+      }
+
+      // Fetch product groups
+      const groupsMap = new Map()
+      if (groupIds.length > 0) {
+        const { data: groups } = await supabase
+          .from('product_groups')
+          .select('id, group_name')
+          .in('id', groupIds)
+
+        groups?.forEach(group => {
+          groupsMap.set(group.id, group.group_name)
+        })
+      }
+
+      // Add assignment names to items
+      data.forEach(item => {
+        if (item.assigned_to_type && item.assigned_to_id) {
+          if (item.assigned_to_type === 'user') {
+            item.assigned_to_name = usersMap.get(item.assigned_to_id) || 'Unknown User'
+          } else if (item.assigned_to_type === 'physical_address') {
+            item.assigned_to_name = locationsMap.get(item.assigned_to_id) || 'Unknown Location'
+          } else if (item.assigned_to_type === 'product_group') {
+            item.assigned_to_name = groupsMap.get(item.assigned_to_id) || 'Unknown Group'
+          }
+        }
+      })
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

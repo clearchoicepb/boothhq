@@ -28,6 +28,41 @@ export async function GET(
       }, { status: 500 })
     }
 
+    // Fetch assignment name if assigned
+    if (data && data.assigned_to_type && data.assigned_to_id) {
+      if (data.assigned_to_type === 'user') {
+        const { data: user } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('id', data.assigned_to_id)
+          .single()
+
+        if (user) {
+          data.assigned_to_name = `${user.first_name} ${user.last_name}`
+        }
+      } else if (data.assigned_to_type === 'physical_address') {
+        const { data: location } = await supabase
+          .from('physical_addresses')
+          .select('address_name')
+          .eq('id', data.assigned_to_id)
+          .single()
+
+        if (location) {
+          data.assigned_to_name = location.address_name
+        }
+      } else if (data.assigned_to_type === 'product_group') {
+        const { data: group } = await supabase
+          .from('product_groups')
+          .select('group_name')
+          .eq('id', data.assigned_to_id)
+          .single()
+
+        if (group) {
+          data.assigned_to_name = group.group_name
+        }
+      }
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

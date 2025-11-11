@@ -80,12 +80,29 @@ export function InventoryItemsList() {
       return <span className="text-gray-400">Unassigned</span>
     }
 
+    const name = item.assigned_to_name || 'Unknown'
+
     return (
-      <span className="text-sm">
-        {item.assigned_to_type === 'user' && '👤 User'}
-        {item.assigned_to_type === 'physical_address' && '📍 Location'}
-        {item.assigned_to_type === 'product_group' && '📦 Group'}
-      </span>
+      <div className="flex items-center gap-2">
+        {item.assigned_to_type === 'user' && (
+          <>
+            <span>👤</span>
+            <span className="text-sm">{name}</span>
+          </>
+        )}
+        {item.assigned_to_type === 'physical_address' && (
+          <>
+            <span>📍</span>
+            <span className="text-sm">{name}</span>
+          </>
+        )}
+        {item.assigned_to_type === 'product_group' && (
+          <>
+            <span>📦</span>
+            <span className="text-sm">{name}</span>
+          </>
+        )}
+      </div>
     )
   }
 
