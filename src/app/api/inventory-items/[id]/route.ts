@@ -106,7 +106,18 @@ export async function PUT(
 
     // Remove computed fields that aren't in the database
     // Also extract product_group_id if provided (for managing group membership separately)
-    const { assigned_to_name, product_group_id, ...updateData } = body
+    const {
+      assigned_to_name,
+      last_assigned_to,
+      last_changed_at,
+      product_group_id,
+      id,           // Don't allow updating the primary key
+      tenant_id,    // Don't allow changing tenant
+      created_at,   // Don't allow changing creation timestamp
+      created_by,   // Don't allow changing creator
+      updated_at,   // Auto-updated by trigger
+      ...updateData
+    } = body
 
     // If assigning to a product group, remove direct assignment fields
     // The database trigger will automatically set them based on the group's assignment
