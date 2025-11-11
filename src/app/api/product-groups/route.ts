@@ -48,6 +48,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
+    if (body.assigned_to_type === '') {
+      body.assigned_to_type = null
+    }
+    if (body.assigned_to_id === '') {
+      body.assigned_to_id = null
+    }
+
     // Validate that assigned_to_id is provided
     if (!body.assigned_to_id || !body.assigned_to_type) {
       return NextResponse.json({

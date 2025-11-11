@@ -67,6 +67,14 @@ export async function PUT(
     const groupId = params.id
     const body = await request.json()
 
+    // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
+    if (body.assigned_to_type === '') {
+      body.assigned_to_type = null
+    }
+    if (body.assigned_to_id === '') {
+      body.assigned_to_id = null
+    }
+
     // Validate that assigned_to_id is provided if being updated
     if (body.assigned_to_id !== undefined && !body.assigned_to_id) {
       return NextResponse.json({
