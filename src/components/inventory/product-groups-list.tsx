@@ -2,26 +2,34 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Edit, Trash2, Package, Users, MapPin, ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, Users, MapPin, ChevronDown, ChevronUp, Eye, X, PlusCircle } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
 import {
   useProductGroupsData,
   useAddProductGroup,
   useUpdateProductGroup,
-  useDeleteProductGroup
+  useDeleteProductGroup,
+  useAddItemToProductGroup,
+  useRemoveItemFromProductGroup
 } from '@/hooks/useProductGroupsData'
+import { useInventoryItemsData } from '@/hooks/useInventoryItemsData'
 
 export function ProductGroupsList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
   const [groupDetails, setGroupDetails] = useState<Record<string, any>>({})
+  const [isAddingItems, setIsAddingItems] = useState<string | null>(null)
+  const [selectedItemId, setSelectedItemId] = useState<string>('')
 
   // Data hooks
   const { data: groups = [], isLoading } = useProductGroupsData()
+  const { data: allInventoryItems = [] } = useInventoryItemsData()
   const addGroup = useAddProductGroup()
   const updateGroup = useUpdateProductGroup()
   const deleteGroup = useDeleteProductGroup()
+  const addItemToGroup = useAddItemToProductGroup()
+  const removeItemFromGroup = useRemoveItemFromProductGroup()
 
   const handleSubmit = async (data: any) => {
     try {
@@ -76,6 +84,40 @@ export function ProductGroupsList() {
   const openEditModal = (group: any) => {
     setEditingGroup(group)
     setIsModalOpen(true)
+  }
+
+  const handleAddItemToGroup = async (groupId: string) => {
+    if (!selectedItemId) return
+
+    try {
+      await addItemToGroup.mutateAsync({ groupId, inventoryItemId: selectedItemId })
+      setSelectedItemId('')
+      setIsAddingItems(null)
+      // Refresh group details
+      const response = await fetch(`/api/product-groups/${groupId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setGroupDetails(prev => ({ ...prev, [groupId]: data }))
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to add item to group')
+    }
+  }
+
+  const handleRemoveItemFromGroup = async (groupId: string, inventoryItemId: string) => {
+    if (!confirm('Remove this item from the group?')) return
+
+    try {
+      await removeItemFromGroup.mutateAsync({ groupId, inventoryItemId })
+      // Refresh group details
+      const response = await fetch(`/api/product-groups/${groupId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setGroupDetails(prev => ({ ...prev, [groupId]: data }))
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to remove item from group')
+    }
   }
 
   const getAssignmentIcon = (assignedToType: string) => {
@@ -199,36 +241,84 @@ export function ProductGroupsList() {
                 {isExpanded && (
                   <div className="border-t bg-gray-50 p-4">
                     {details ? (
-                      details.product_group_items && details.product_group_items.length > 0 ? (
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-gray-500 uppercase mb-3">Items in this group</p>
-                          {details.product_group_items.map((item: any) => (
-                            <div key={item.id} className="bg-white rounded p-3 border border-gray-200">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm text-gray-900">
-                                    {item.inventory_items?.item_name || 'Unknown Item'}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {item.inventory_items?.item_category}
-                                    {item.inventory_items?.serial_number &&
-                                      ` • S/N: ${item.inventory_items.serial_number}`
-                                    }
-                                    {item.inventory_items?.tracking_type === 'total_quantity' &&
-                                      ` • Qty: ${item.inventory_items.total_quantity}`
-                                    }
-                                  </p>
+                      <>
+                        {/* Add Item Section */}
+                        <div className="mb-4 bg-white rounded-lg p-3 border border-purple-200">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={isAddingItems === group.id ? selectedItemId : ''}
+                              onChange={(e) => {
+                                setIsAddingItems(group.id)
+                                setSelectedItemId(e.target.value)
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                              <option value="">Select an item to add...</option>
+                              {allInventoryItems
+                                .filter((item: any) =>
+                                  // Filter out items already in this group
+                                  !details.product_group_items?.some((gi: any) => gi.inventory_item_id === item.id)
+                                )
+                                .map((item: any) => (
+                                  <option key={item.id} value={item.id}>
+                                    {item.item_name} ({item.item_category})
+                                  </option>
+                                ))}
+                            </select>
+                            <Button
+                              size="sm"
+                              onClick={() => handleAddItemToGroup(group.id)}
+                              disabled={!selectedItemId || isAddingItems !== group.id}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Items List */}
+                        {details.product_group_items && details.product_group_items.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-gray-500 uppercase mb-3">
+                              {details.product_group_items.length} item{details.product_group_items.length !== 1 ? 's' : ''} in this group
+                            </p>
+                            {details.product_group_items.map((item: any) => (
+                              <div key={item.id} className="bg-white rounded p-3 border border-gray-200">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm text-gray-900">
+                                      {item.inventory_items?.item_name || 'Unknown Item'}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {item.inventory_items?.item_category}
+                                      {item.inventory_items?.serial_number &&
+                                        ` • S/N: ${item.inventory_items.serial_number}`
+                                      }
+                                      {item.inventory_items?.tracking_type === 'total_quantity' &&
+                                        ` • Qty: ${item.inventory_items.total_quantity}`
+                                      }
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4">
-                          <Package className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500">No items in this group yet</p>
-                        </div>
-                      )
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <Package className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm text-gray-500">No items in this group yet</p>
+                            <p className="text-xs text-gray-400 mt-1">Use the dropdown above to add items</p>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="text-center py-4">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto" />
