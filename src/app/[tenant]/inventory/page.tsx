@@ -8,9 +8,10 @@ import { InventoryItemsList } from '@/components/inventory/inventory-items-list'
 import { PhysicalAddressesList } from '@/components/inventory/physical-addresses-list'
 import { ProductGroupsList } from '@/components/inventory/product-groups-list'
 import { AvailabilityChecker } from '@/components/inventory/availability-checker'
-import { Package, MapPin, Boxes, CalendarSearch } from 'lucide-react'
+import { WeekendPrepDashboard } from '@/components/inventory/weekend-prep-dashboard'
+import { Package, MapPin, Boxes, CalendarSearch, CalendarDays } from 'lucide-react'
 
-type TabType = 'items' | 'addresses' | 'groups' | 'availability'
+type TabType = 'items' | 'addresses' | 'groups' | 'availability' | 'weekend-prep'
 
 export default function ComprehensiveInventoryPage() {
   const { data: session, status } = useSession()
@@ -43,6 +44,12 @@ export default function ComprehensiveInventoryPage() {
       label: 'Inventory Items',
       icon: Package,
       description: 'Individual equipment and supplies'
+    },
+    {
+      id: 'weekend-prep' as TabType,
+      label: 'Weekend Prep',
+      icon: CalendarDays,
+      description: 'Upcoming events and returns'
     },
     {
       id: 'availability' as TabType,
@@ -108,6 +115,7 @@ export default function ComprehensiveInventoryPage() {
         {/* Tab Content */}
         <div className="mt-6">
           {activeTab === 'items' && <InventoryItemsList />}
+          {activeTab === 'weekend-prep' && <WeekendPrepDashboard />}
           {activeTab === 'availability' && <AvailabilityChecker />}
           {activeTab === 'addresses' && <PhysicalAddressesList />}
           {activeTab === 'groups' && <ProductGroupsList />}
