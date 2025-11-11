@@ -108,12 +108,19 @@ export async function PUT(
     // Also extract product_group_id if provided (for managing group membership separately)
     const { assigned_to_name, product_group_id, ...updateData } = body
 
-    // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
-    if (updateData.assigned_to_type === '') {
-      updateData.assigned_to_type = null
-    }
-    if (updateData.assigned_to_id === '') {
-      updateData.assigned_to_id = null
+    // If assigning to a product group, remove direct assignment fields
+    // The database trigger will automatically set them based on the group's assignment
+    if (product_group_id !== undefined && product_group_id !== null && product_group_id !== '') {
+      delete updateData.assigned_to_type
+      delete updateData.assigned_to_id
+    } else {
+      // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
+      if (updateData.assigned_to_type === '') {
+        updateData.assigned_to_type = null
+      }
+      if (updateData.assigned_to_id === '') {
+        updateData.assigned_to_id = null
+      }
     }
 
     // Validate tracking type requirements if being updated

@@ -163,12 +163,19 @@ export async function POST(request: NextRequest) {
     // Extract product_group_id if provided (for managing group membership separately)
     const { product_group_id, ...itemFields } = body
 
-    // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
-    if (itemFields.assigned_to_type === '') {
-      itemFields.assigned_to_type = null
-    }
-    if (itemFields.assigned_to_id === '') {
-      itemFields.assigned_to_id = null
+    // If assigning to a product group, remove direct assignment fields
+    // The database trigger will automatically set them based on the group's assignment
+    if (product_group_id !== undefined && product_group_id !== null && product_group_id !== '') {
+      delete itemFields.assigned_to_type
+      delete itemFields.assigned_to_id
+    } else {
+      // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
+      if (itemFields.assigned_to_type === '') {
+        itemFields.assigned_to_type = null
+      }
+      if (itemFields.assigned_to_id === '') {
+        itemFields.assigned_to_id = null
+      }
     }
 
     // Validate tracking type requirements
