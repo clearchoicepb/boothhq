@@ -120,19 +120,13 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    // Check if item is in a product group - if so, prevent changing assignment
-    const { data: groupItem } = await supabase
+    // Get current product group assignment if any
+    const { data: currentGroupItem } = await supabase
       .from('product_group_items')
       .select('product_group_id')
       .eq('inventory_item_id', itemId)
       .eq('tenant_id', dataSourceTenantId)
       .maybeSingle()
-
-    if (groupItem && (updateData.assigned_to_type !== undefined || updateData.assigned_to_id !== undefined)) {
-      return NextResponse.json({
-        error: 'Cannot change assignment of items in product groups. Remove from group first or change the product groups assignment.',
-      }, { status: 400 })
-    }
 
     const { data, error } = await supabase
       .from('inventory_items')
@@ -147,6 +141,36 @@ export async function PUT(
         error: 'Failed to update inventory item',
         details: error.message
       }, { status: 500 })
+    }
+
+    // Handle product group junction table updates
+    if (updateData.assigned_to_type !== undefined || updateData.assigned_to_id !== undefined) {
+      const newGroupId = updateData.assigned_to_type === 'product_group' ? updateData.assigned_to_id : null
+      const oldGroupId = currentGroupItem?.product_group_id || null
+
+      // If group changed, update junction table
+      if (newGroupId !== oldGroupId) {
+        // Remove old junction entry if exists
+        if (oldGroupId) {
+          await supabase
+            .from('product_group_items')
+            .delete()
+            .eq('product_group_id', oldGroupId)
+            .eq('inventory_item_id', itemId)
+            .eq('tenant_id', dataSourceTenantId)
+        }
+
+        // Add new junction entry if assigning to a group
+        if (newGroupId) {
+          await supabase
+            .from('product_group_items')
+            .insert({
+              product_group_id: newGroupId,
+              inventory_item_id: itemId,
+              tenant_id: dataSourceTenantId
+            })
+        }
+      }
     }
 
     return NextResponse.json(data)

@@ -192,6 +192,22 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // If assigned to a product group, create junction table entry
+    if (data && body.assigned_to_type === 'product_group' && body.assigned_to_id) {
+      const { error: junctionError } = await supabase
+        .from('product_group_items')
+        .insert({
+          product_group_id: body.assigned_to_id,
+          inventory_item_id: data.id,
+          tenant_id: dataSourceTenantId
+        })
+
+      if (junctionError) {
+        console.error('Failed to create product group junction:', junctionError)
+        // Don't fail the whole request, just log it
+      }
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
