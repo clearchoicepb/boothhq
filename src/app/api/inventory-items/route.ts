@@ -163,6 +163,14 @@ export async function POST(request: NextRequest) {
     // Extract product_group_id if provided (for managing group membership separately)
     const { product_group_id, ...itemFields } = body
 
+    // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
+    if (itemFields.assigned_to_type === '') {
+      itemFields.assigned_to_type = null
+    }
+    if (itemFields.assigned_to_id === '') {
+      itemFields.assigned_to_id = null
+    }
+
     // Validate tracking type requirements
     if (itemFields.tracking_type === 'serial_number' && !itemFields.serial_number) {
       return NextResponse.json({
