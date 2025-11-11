@@ -16,7 +16,7 @@ export async function GET(
     // Verify event exists and belongs to tenant
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('id, event_name, event_date')
+      .select('id, title, start_date')
       .eq('id', eventId)
       .eq('tenant_id', dataSourceTenantId)
       .single()

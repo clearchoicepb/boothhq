@@ -34,9 +34,8 @@ interface WeekendPrepData {
 
 interface EventSummary {
   id: string
-  event_name: string
-  event_date: string
-  event_time?: string
+  title: string
+  start_date: string
   inventory_count: number
   inventory: any[]
   all_ready: boolean
@@ -87,7 +86,7 @@ export function WeekendPrepDashboard() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Equipment Checklist - ${event.event_name}</title>
+        <title>Equipment Checklist - ${event.title}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           h1 { color: #333; margin-bottom: 10px; }
@@ -104,9 +103,8 @@ export function WeekendPrepDashboard() {
       <body>
         <h1>Equipment Checklist</h1>
         <div class="meta">
-          <div><strong>Event:</strong> ${event.event_name}</div>
-          <div><strong>Date:</strong> ${format(new Date(event.event_date), 'EEEE, MMM d, yyyy')}</div>
-          ${event.event_time ? `<div><strong>Time:</strong> ${event.event_time}</div>` : ''}
+          <div><strong>Event:</strong> ${event.title}</div>
+          <div><strong>Date:</strong> ${format(new Date(event.start_date), 'EEEE, MMM d, yyyy')}</div>
           <div><strong>Total Items:</strong> ${event.inventory.length}</div>
           <div><strong>Printed:</strong> ${format(new Date(), 'MMM d, yyyy h:mm a')}</div>
         </div>
@@ -279,7 +277,7 @@ export function WeekendPrepDashboard() {
                             href={`/events/${event.id}`}
                             className="text-lg font-medium text-gray-900 hover:text-blue-600"
                           >
-                            {event.event_name}
+                            {event.title}
                           </Link>
                           {event.all_ready ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
@@ -294,8 +292,7 @@ export function WeekendPrepDashboard() {
                           )}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {format(new Date(event.event_date), 'EEEE, MMM d, yyyy')}
-                          {event.event_time && ` at ${event.event_time}`}
+                          {format(new Date(event.start_date), 'EEEE, MMM d, yyyy')}
                         </div>
                         <div className="text-sm text-gray-500 mt-1">
                           Equipment: {event.inventory_count} items

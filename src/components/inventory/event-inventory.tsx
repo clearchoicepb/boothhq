@@ -25,8 +25,8 @@ interface EventInventoryProps {
 interface EventInventoryData {
   event: {
     id: string
-    event_name: string
-    event_date: string
+    title: string
+    start_date: string
   }
   inventory: any[]
   total_items: number
@@ -86,7 +86,7 @@ export function EventInventory({
     const itemsToPrint = staffMember ? staffMember.items : (data?.inventory || [])
     const title = staffMember
       ? `Packing List - ${staffMember.staff_name}`
-      : `Equipment List - ${data?.event.event_name || eventName || 'Event'}`
+      : `Equipment List - ${data?.event.title || eventName || 'Event'}`
 
     const printWindow = window.open('', '', 'width=800,height=600')
     if (!printWindow) return
@@ -112,8 +112,8 @@ export function EventInventory({
       <body>
         <h1>${title}</h1>
         <div class="meta">
-          <div><strong>Event:</strong> ${data?.event.event_name || eventName || 'Unknown'}</div>
-          ${eventDate || data?.event.event_date ? `<div><strong>Date:</strong> ${format(new Date(eventDate || data?.event.event_date || ''), 'EEEE, MMM d, yyyy')}</div>` : ''}
+          <div><strong>Event:</strong> ${data?.event.title || eventName || 'Unknown'}</div>
+          ${eventDate || data?.event.start_date ? `<div><strong>Date:</strong> ${format(new Date(eventDate || data?.event.start_date || ''), 'EEEE, MMM d, yyyy')}</div>` : ''}
           <div><strong>Total Items:</strong> ${itemsToPrint.length}</div>
           ${staffMember ? `<div><strong>Staff Member:</strong> ${staffMember.staff_name}</div>` : ''}
           <div><strong>Printed:</strong> ${format(new Date(), 'MMM d, yyyy h:mm a')}</div>

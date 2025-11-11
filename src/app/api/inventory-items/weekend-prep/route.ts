@@ -32,11 +32,11 @@ export async function GET(request: NextRequest) {
     // Fetch events happening this weekend
     const { data: events, error: eventsError } = await supabase
       .from('events')
-      .select('id, event_name, event_date, event_time, status')
+      .select('id, title, start_date, status')
       .eq('tenant_id', dataSourceTenantId)
-      .gte('event_date', weekendStart.toISOString().split('T')[0])
-      .lte('event_date', weekendEnd.toISOString().split('T')[0])
-      .order('event_date', { ascending: true })
+      .gte('start_date', weekendStart.toISOString())
+      .lte('start_date', weekendEnd.toISOString())
+      .order('start_date', { ascending: true })
 
     if (eventsError) {
       console.error('Error fetching events:', eventsError)
