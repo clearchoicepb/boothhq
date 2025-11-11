@@ -1,8 +1,9 @@
 -- Add assignment tracking fields to inventory_items
 ALTER TABLE inventory_items
   ADD COLUMN IF NOT EXISTS assignment_type TEXT CHECK (assignment_type IN ('long_term_staff', 'event_checkout', 'warehouse', NULL)),
-  ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS expected_return_date DATE;
+  ADD COLUMN IF NOT EXISTS event_id UUID,
+  ADD COLUMN IF NOT EXISTS expected_return_date DATE,
+  ADD COLUMN IF NOT EXISTS model VARCHAR(100);
 
 -- Add index for event lookups
 CREATE INDEX IF NOT EXISTS idx_inventory_items_event

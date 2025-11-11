@@ -1,8 +1,8 @@
 -- Create inventory_assignment_history table to track all assignment changes
 CREATE TABLE IF NOT EXISTS inventory_assignment_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  inventory_item_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id UUID NOT NULL,
+  inventory_item_id UUID NOT NULL,
 
   -- Assignment details (capturing the state at time of change)
   assigned_from_type TEXT, -- null for initial creation, otherwise 'user', 'physical_address', 'product_group', or 'unassigned'
@@ -15,15 +15,15 @@ CREATE TABLE IF NOT EXISTS inventory_assignment_history (
 
   -- Assignment type for tracking purpose
   assignment_type TEXT, -- 'long_term_staff', 'event_checkout', 'warehouse', or null
-  event_id UUID REFERENCES events(id) ON DELETE SET NULL, -- optional link to event
+  event_id UUID, -- optional link to event
   expected_return_date DATE, -- for event checkouts
 
   -- Metadata
-  changed_by UUID REFERENCES users(id) ON DELETE SET NULL, -- who made the change
-  changed_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  changed_by UUID, -- who made the change
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   change_reason TEXT, -- optional notes about why the change was made
 
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Add indexes for common queries
