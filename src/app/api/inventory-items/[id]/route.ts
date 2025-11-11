@@ -111,6 +111,7 @@ export async function PUT(
       last_assigned_to,
       last_changed_at,
       product_group_id,
+      product_group_items, // Relationship field, not a column
       id,           // Don't allow updating the primary key
       tenant_id,    // Don't allow changing tenant
       created_at,   // Don't allow changing creation timestamp
