@@ -62,7 +62,7 @@ function escapeSQL(str) {
   return str.replace(/'/g, "''");
 }
 
-function generateInsertStatement(row, tenantId) {
+function generateInsertStatement(row, tenantId, duplicateSerials) {
   const [itemId, location, device, model, status, serialNumber, internet, memoryCard, printerCover, notes, eidNumber] = row;
 
   // Skip header row and empty rows
@@ -78,15 +78,18 @@ function generateInsertStatement(row, tenantId) {
   const category = mapCategory(device);
 
   // Determine tracking type
-  const isSerialNumber = serialNumber && serialNumber !== 'N/A' && serialNumber !== '';
-  const trackingType = isSerialNumber ? 'serial_number' : 'total_quantity';
+  // If serial number exists, is not N/A, and is NOT a duplicate, use serial tracking
+  const hasSerial = serialNumber && serialNumber !== 'N/A' && serialNumber !== '';
+  const isDuplicate = hasSerial && duplicateSerials.has(serialNumber);
+  const useSerialTracking = hasSerial && !isDuplicate;
+  const trackingType = useSerialTracking ? 'serial_number' : 'total_quantity';
 
   // Prepare values
   const itemName = escapeSQL(itemId);
   const itemCategory = category;
   const itemModel = escapeSQL(model);
-  const serial = isSerialNumber ? `'${escapeSQL(serialNumber)}'` : 'NULL';
-  const quantity = isSerialNumber ? 'NULL' : '1';
+  const serial = useSerialTracking ? `'${escapeSQL(serialNumber)}'` : 'NULL';
+  const quantity = useSerialTracking ? 'NULL' : '1';
   const itemNotes = notes && notes !== '' ? `'${escapeSQL(notes)}'` : 'NULL';
 
   return `('${tenantId}', '${itemName}', '${itemCategory}', ${itemModel ? `'${itemModel}'` : 'NULL'}, '${trackingType}', ${serial}, ${quantity}, '2024-01-01', 0.00, 'physical_address', '${WESTLAKE_WAREHOUSE_ID}', ${itemNotes})`;
@@ -101,6 +104,38 @@ function main() {
 
   console.log(`Found ${lines.length} lines in CSV`);
 
+  // First pass: identify duplicate serial numbers
+  const serialCounts = new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const row = parseCSVLine(line);
+    const [itemId, location, device, model, status, serialNumber] = row;
+
+    // Skip header, empty rows, and TRASH items
+    if (itemId === 'Item ID' || !itemId || itemId.trim() === '' || location === 'TRASH' || status === 'TRASH') {
+      continue;
+    }
+
+    // Count serial numbers (ignore N/A and empty)
+    if (serialNumber && serialNumber !== 'N/A' && serialNumber !== '') {
+      serialCounts.set(serialNumber, (serialCounts.get(serialNumber) || 0) + 1);
+    }
+  }
+
+  // Identify duplicates
+  const duplicateSerials = new Set();
+  for (const [serial, count] of serialCounts.entries()) {
+    if (count > 1) {
+      duplicateSerials.add(serial);
+      console.log(`  Found duplicate serial: "${serial}" (appears ${count} times - will use quantity tracking)`);
+    }
+  }
+
+  console.log(`\nIdentified ${duplicateSerials.size} duplicate serial numbers`);
+
+  // Second pass: generate INSERT statements
   const insertStatements = [];
   let skipped = 0;
 
@@ -109,7 +144,7 @@ function main() {
     if (!line) continue;
 
     const row = parseCSVLine(line);
-    const statement = generateInsertStatement(row, 'YOUR_TENANT_ID');
+    const statement = generateInsertStatement(row, 'YOUR_TENANT_ID', duplicateSerials);
 
     if (statement) {
       insertStatements.push(statement);

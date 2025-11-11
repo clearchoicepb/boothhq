@@ -1,24 +1,13 @@
--- ✅ READY TO RUN - Full Inventory Import Script
--- Generated: 2025-11-11T00:23:10.889Z
+-- Auto-generated Inventory Import Script
+-- Generated: 2025-11-11T00:41:31.537Z
 -- Source: Inventory Sheet - Inventory.csv
 --
--- Configuration:
---   Tenant ID: 5f98f4c0-5254-4c61-8633-55ea049c7f18
---   Warehouse: Westlake OH Warehouse (1bf13de1-6148-4919-8978-dd9f7252f298)
---   Items to import: 161
+-- BEFORE RUNNING:
+-- 1. Replace '5f98f4c0-5254-4c61-8633-55ea049c7f18' with your actual tenant ID
+-- 2. Verify Westlake OH Warehouse address exists with ID: 1bf13de1-6148-4919-8978-dd9f7252f298
+-- 3. Make sure you've run the model and category migrations first
 --
--- What this script does:
---   - Imports all 161 inventory items from the CSV file
---   - Maps categories (360 Podium → Custom Experience, Battery Pack → Misc Item, etc.)
---   - Sets tracking type based on serial numbers (serial_number vs total_quantity)
---   - Assigns all items to Westlake OH Warehouse
---   - Preserves notes from the CSV
---
--- INSTRUCTIONS:
---   1. Copy this entire script
---   2. Open Supabase SQL Editor
---   3. Paste and run
---   4. Check the verification queries at the end to confirm success
+-- To get your tenant ID, run: SELECT id FROM tenants LIMIT 1;
 
 BEGIN;
 
@@ -63,20 +52,20 @@ INSERT INTO inventory_items (
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BW2', 'Backdrop', 'Black/ White', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BW3', 'Backdrop', 'Black/ White', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'GS1', 'Backdrop', 'Gold Sequin', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B101', 'Misc Item', 'Small Battery', 'serial_number', 'HX120S2', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B112', 'Misc Item', '360 Battery', 'serial_number', 'BP-150WS', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B109', 'Misc Item', '360 Battery', 'serial_number', 'BP-150WS', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B113', 'Misc Item', 'Small Battery', 'serial_number', 'HX120S2', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B101', 'Misc Item', 'Small Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B112', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B109', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B113', 'Misc Item', 'Small Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BD108', 'Backdrop Stand', '8x8', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B103', 'Misc Item', 'Small Battery', 'serial_number', 'K-MP806', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B114', 'Misc Item', '360 Battery', 'serial_number', 'BP-150WS', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B111', 'Misc Item', '360 Battery', 'serial_number', 'BP-150WS', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B110', 'Misc Item', '360 Battery', 'serial_number', 'BP-95', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B116', 'Misc Item', '360 Battery', 'serial_number', 'BP-95', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B106', 'Misc Item', 'Large Battery', 'serial_number', 'A1268', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B108', 'Misc Item', '360 Battery', 'serial_number', 'BP-150WS', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B107', 'Misc Item', '360 Battery', 'serial_number', 'BP-150WS', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B105', 'Misc Item', 'Large Battery', 'serial_number', 'A1268', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B114', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B111', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B110', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B116', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B106', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B108', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B107', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B105', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'WW1', 'Backdrop', 'White Wood/ White', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BD101', 'Backdrop Stand', '8x10', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'MISSING 1 POLE FROM BRIDGETTE'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BD106 - FRAME NEEDS MARKED', 'Backdrop Stand', '7x7', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'SEQUINS ONLY'),
@@ -84,10 +73,10 @@ INSERT INTO inventory_items (
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BD107', 'Backdrop Stand', '8x8', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'BD109', 'Backdrop Stand', '8x8', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B102', 'Misc Item', 'Small Battery', 'serial_number', 'SA-130', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B104', 'Misc Item', 'Large Battery', 'serial_number', 'A1268', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B104', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B125', 'Misc Item', 'Small Battery', 'serial_number', '621 Magnetic', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B122', 'Misc Item', 'Large Battery', 'serial_number', '24SEW37-SU00094', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B124', 'Misc Item', 'Small Battery', 'serial_number', 'HX120S2', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B122', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B124', 'Misc Item', 'Small Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C101', 'Camera', 'T6', 'serial_number', '332073051549', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C105', 'Camera', 'R100', 'serial_number', '102070001458', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C111', 'Camera', 'T6', 'serial_number', '212073095406', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
@@ -95,11 +84,11 @@ INSERT INTO inventory_items (
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C107', 'Camera', 'T6', 'serial_number', '432074050278', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C104', 'Camera', 'T7', 'serial_number', '412075050389', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C107', 'Camera', 'T7', 'serial_number', '412075050392', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'Cracked sreen; fully functional'),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B118', 'Misc Item', 'Large Battery', 'serial_number', 'Anker 335', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B119', 'Misc Item', 'Large Battery', 'serial_number', 'Anker 335', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B118', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B119', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B120', 'Misc Item', 'Large Battery', 'serial_number', 'RP-BP41', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B121', 'Misc Item', 'Large Battery', 'serial_number', '24SEW37-SU00094', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B123', 'Misc Item', 'Large Battery', 'serial_number', '24SEW37-SU00094', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B121', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B123', 'Misc Item', 'Large Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C109', 'Camera', 'T6', 'serial_number', '2073012224', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'HOT SPOTS, ONLY USE IF WE ARE FUCKED'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C103', 'Camera', 'T6', 'serial_number', '202073098568', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C108', 'Camera', 'T7', 'serial_number', '412075050391', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
@@ -110,7 +99,7 @@ INSERT INTO inventory_items (
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C117', 'Camera', 'R8', 'serial_number', '272022006099', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C118', 'Camera', 'T6', 'serial_number', '342073011593', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C122', 'Camera', 'T6', 'serial_number', '4402074039239', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'giving ella problems, needs tested before it goes back out'),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS103', 'Misc Item', 'Mifi', 'serial_number', 'MiFi', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'not connect to Inseego Ap'),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS103', 'Misc Item', 'Mifi', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'not connect to Inseego Ap'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS106', 'Misc Item', 'Mifi', 'serial_number', '990018891815239', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS107', 'Misc Item', 'Mifi', 'serial_number', '990018891773834', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '6/9/25: 264.6 down, 6.8 up'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS104', 'Misc Item', 'Mifi', 'serial_number', '990018891815205', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
@@ -123,10 +112,10 @@ INSERT INTO inventory_items (
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F109', 'Lighting', 'DB400', 'serial_number', 'DB04010939', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F110', 'Lighting', 'DB800', 'serial_number', 'DB08011720', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F111', 'Lighting', 'MS300', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F112', 'Lighting', 'MS300', 'serial_number', 'unknown', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F113', 'Lighting', 'MS300', 'serial_number', 'unknown', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS101', 'Misc Item', 'Mifi', 'serial_number', 'MiFi', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'not connect to Inseego Ap'),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS102', 'Misc Item', 'Mifi', 'serial_number', 'MiFi', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '6-9-25: 180.1 down, 4.31 up (not connect to Inseego Ap)'),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F112', 'Lighting', 'MS300', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'F113', 'Lighting', 'MS300', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS101', 'Misc Item', 'Mifi', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'not connect to Inseego Ap'),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS102', 'Misc Item', 'Mifi', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '6-9-25: 180.1 down, 4.31 up (not connect to Inseego Ap)'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS114', 'Misc Item', 'Mifi', 'serial_number', '990018891761292', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '6/9/25: 288.3 down, 0.51 up (from Anthony''s house)'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS111', 'Misc Item', 'Mifi', 'serial_number', '990018891774113', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '6/9/25: 214.0 down, 10.0 up'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'HS110', 'Misc Item', 'Mifi', 'serial_number', '990018891773727', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '6/9/25: 240.4 down, 5.7 up'),
@@ -172,7 +161,7 @@ INSERT INTO inventory_items (
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'P119', 'Printer', 'QW410', 'serial_number', 'QW4C08006449', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C110', 'Camera', 'T6', 'serial_number', '332073032583', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'C102', 'Camera', 'R100', 'serial_number', '162031006479', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
-('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B117', 'Misc Item', '360 Battery', 'serial_number', 'BP-95', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
+('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'B117', 'Misc Item', '360 Battery', 'total_quantity', NULL, 1, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', NULL),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'IPAD110', 'iPad', '10.5', 'serial_number', 'J60TJN62VW', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'won''t connect to Orca'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'IPAD112', 'iPad', '10.5', 'serial_number', 'Q5PHPWNWTN', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', 'WON''T CONNECT'),
 ('5f98f4c0-5254-4c61-8633-55ea049c7f18', 'IPAD113', 'iPad', '10.5', 'serial_number', 'DF6CVF2X17', NULL, '2024-01-01', 0.00, 'physical_address', '1bf13de1-6148-4919-8978-dd9f7252f298', '440-453-5294'),
@@ -200,58 +189,16 @@ INSERT INTO inventory_items (
 
 COMMIT;
 
--- ========================================
--- VERIFICATION QUERIES
--- ========================================
-
--- 1. Check total items imported
-SELECT COUNT(*) as total_items_imported
-FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18';
--- Expected: 161 items
-
--- 2. Check breakdown by category
+-- Verify import
 SELECT
   item_category,
   COUNT(*) as count
 FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'  -- Replace with your tenant ID
 GROUP BY item_category
 ORDER BY count DESC;
 
--- 3. Check tracking type distribution
-SELECT
-  tracking_type,
-  COUNT(*) as count
+-- Check total count
+SELECT COUNT(*) as total_items
 FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
-GROUP BY tracking_type;
-
--- 4. Check assignment to warehouse
-SELECT
-  COUNT(*) as items_assigned_to_warehouse
-FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
-  AND assigned_to_type = 'physical_address'
-  AND assigned_to_id = '1bf13de1-6148-4919-8978-dd9f7252f298';
--- Expected: 161 items
-
--- 5. Check items with notes
-SELECT
-  COUNT(*) as items_with_notes
-FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
-  AND item_notes IS NOT NULL;
-
--- 6. Sample of imported items
-SELECT
-  item_name,
-  item_category,
-  model,
-  tracking_type,
-  serial_number,
-  item_notes
-FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
-ORDER BY item_name
-LIMIT 10;
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18';  -- Replace with your tenant ID
