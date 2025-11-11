@@ -152,23 +152,39 @@ export async function PUT(
       if (newGroupId !== oldGroupId) {
         // Remove old junction entry if exists
         if (oldGroupId) {
-          await supabase
+          const { error: deleteError } = await supabase
             .from('product_group_items')
             .delete()
             .eq('product_group_id', oldGroupId)
             .eq('inventory_item_id', itemId)
             .eq('tenant_id', dataSourceTenantId)
+
+          if (deleteError) {
+            console.error('Failed to delete old product group junction:', deleteError)
+            return NextResponse.json({
+              error: 'Failed to remove item from old product group',
+              details: deleteError.message
+            }, { status: 500 })
+          }
         }
 
         // Add new junction entry if assigning to a group
         if (newGroupId) {
-          await supabase
+          const { error: insertError } = await supabase
             .from('product_group_items')
             .insert({
               product_group_id: newGroupId,
               inventory_item_id: itemId,
               tenant_id: dataSourceTenantId
             })
+
+          if (insertError) {
+            console.error('Failed to insert product group junction:', insertError)
+            return NextResponse.json({
+              error: 'Failed to add item to product group',
+              details: insertError.message
+            }, { status: 500 })
+          }
         }
       }
     }
