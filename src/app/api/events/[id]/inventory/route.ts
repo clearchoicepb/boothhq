@@ -59,7 +59,7 @@ export async function GET(
         .eq('tenant_id', dataSourceTenantId)
         .eq('event_id', eventId)
 
-      const eventStaffIds = eventStaff?.map(s => s.user_id) || []
+      const eventStaffIds = eventStaff?.map((s: { user_id: string }) => s.user_id) || []
 
       // Build query for available items
       let availableQuery = supabase
@@ -74,7 +74,7 @@ export async function GET(
       const { data: allItems } = await availableQuery
 
       if (allItems) {
-        availableInventory = allItems.filter(item => {
+        availableInventory = allItems.filter((item: any) => {
           // Include warehouse items
           if (item.assigned_to_type === 'physical_address' && item.assignment_type === 'warehouse') {
             return true
@@ -94,7 +94,7 @@ export async function GET(
       // Apply search filter if provided
       if (search && availableInventory.length > 0) {
         const searchLower = search.toLowerCase()
-        availableInventory = availableInventory.filter(item =>
+        availableInventory = availableInventory.filter((item: any) =>
           item.item_name.toLowerCase().includes(searchLower) ||
           item.item_category.toLowerCase().includes(searchLower) ||
           (item.serial_number && item.serial_number.toLowerCase().includes(searchLower))
@@ -104,8 +104,8 @@ export async function GET(
       // Fetch product groups for available items
       const groupIds = [...new Set(
         availableInventory
-          .filter(item => item.assigned_to_type === 'product_group' && item.assigned_to_id)
-          .map(item => item.assigned_to_id)
+          .filter((item: any) => item.assigned_to_type === 'product_group' && item.assigned_to_id)
+          .map((item: any) => item.assigned_to_id)
       )]
 
       if (groupIds.length > 0) {
@@ -114,10 +114,10 @@ export async function GET(
           .select('id, group_name, assigned_to_type, assigned_to_id')
           .in('id', groupIds)
 
-        const groupsMap = new Map(groups?.map(g => [g.id, g]) || [])
+        const groupsMap = new Map(groups?.map((g: any) => [g.id, g]) || [])
 
         // Filter out items in product groups that don't meet availability criteria
-        availableInventory = availableInventory.filter(item => {
+        availableInventory = availableInventory.filter((item: any) => {
           if (item.assigned_to_type === 'product_group' && item.assigned_to_id) {
             const group = groupsMap.get(item.assigned_to_id)
             if (!group) return false
@@ -137,16 +137,16 @@ export async function GET(
 
     if (allInventory.length > 0) {
       const userIds = [...new Set(
-        allInventory.filter(item => item.assigned_to_type === 'user' && item.assigned_to_id)
-          .map(item => item.assigned_to_id)
+        allInventory.filter((item: any) => item.assigned_to_type === 'user' && item.assigned_to_id)
+          .map((item: any) => item.assigned_to_id)
       )]
       const locationIds = [...new Set(
-        allInventory.filter(item => item.assigned_to_type === 'physical_address' && item.assigned_to_id)
-          .map(item => item.assigned_to_id)
+        allInventory.filter((item: any) => item.assigned_to_type === 'physical_address' && item.assigned_to_id)
+          .map((item: any) => item.assigned_to_id)
       )]
       const groupIds = [...new Set(
-        allInventory.filter(item => item.assigned_to_type === 'product_group' && item.assigned_to_id)
-          .map(item => item.assigned_to_id)
+        allInventory.filter((item: any) => item.assigned_to_type === 'product_group' && item.assigned_to_id)
+          .map((item: any) => item.assigned_to_id)
       )]
 
       // Fetch users
@@ -157,7 +157,7 @@ export async function GET(
           .select('id, first_name, last_name')
           .in('id', userIds)
 
-        users?.forEach(user => {
+        users?.forEach((user: any) => {
           usersMap.set(user.id, `${user.first_name} ${user.last_name}`)
         })
       }
@@ -170,7 +170,7 @@ export async function GET(
           .select('id, location_name')
           .in('id', locationIds)
 
-        locations?.forEach(location => {
+        locations?.forEach((location: any) => {
           locationsMap.set(location.id, location.location_name)
         })
       }
@@ -183,13 +183,13 @@ export async function GET(
           .select('id, group_name')
           .in('id', groupIds)
 
-        groups?.forEach(group => {
+        groups?.forEach((group: any) => {
           groupsMap.set(group.id, group.group_name)
         })
       }
 
       // Add assignment names
-      allInventory.forEach(item => {
+      allInventory.forEach((item: any) => {
         if (item.assigned_to_type === 'user' && item.assigned_to_id) {
           item.assigned_to_name = usersMap.get(item.assigned_to_id) || 'Unknown User'
         } else if (item.assigned_to_type === 'physical_address' && item.assigned_to_id) {
@@ -202,7 +202,7 @@ export async function GET(
 
     // Group assigned inventory by staff member
     const inventoryByStaff = new Map()
-    assignedInventory.forEach(item => {
+    assignedInventory.forEach((item: any) => {
       if (item.assigned_to_type === 'user' && item.assigned_to_id) {
         const staffId = item.assigned_to_id
         if (!inventoryByStaff.has(staffId)) {

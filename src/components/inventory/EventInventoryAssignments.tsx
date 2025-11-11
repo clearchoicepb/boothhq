@@ -130,12 +130,12 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
   })
 
   // Group available items by assignment
-  const staffItems = filteredAvailableItems.filter(item => item.assigned_to_type === 'user')
-  const warehouseItems = filteredAvailableItems.filter(item => item.assigned_to_type === 'physical_address')
-  const unassignedItems = filteredAvailableItems.filter(item => !item.assigned_to_id)
+  const staffItems = filteredAvailableItems.filter((item: InventoryItem) => item.assigned_to_type === 'user')
+  const warehouseItems = filteredAvailableItems.filter((item: InventoryItem) => item.assigned_to_type === 'physical_address')
+  const unassignedItems = filteredAvailableItems.filter((item: InventoryItem) => !item.assigned_to_id)
 
   // Group staff items by staff member
-  const itemsByStaff = staffItems.reduce((acc, item) => {
+  const itemsByStaff = staffItems.reduce((acc: Record<string, { staffName: string; items: InventoryItem[] }>, item: InventoryItem) => {
     const key = item.assigned_to_id || 'unassigned'
     if (!acc[key]) {
       acc[key] = {
@@ -148,7 +148,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
   }, {} as Record<string, { staffName: string; items: InventoryItem[] }>)
 
   // Group assigned items by staff
-  const assignedByStaff = assignedItems.reduce((acc, item) => {
+  const assignedByStaff = assignedItems.reduce((acc: Record<string, { staffName: string; items: InventoryItem[] }>, item: InventoryItem) => {
     if (item.assigned_to_type === 'user' && item.assigned_to_id) {
       const key = item.assigned_to_id
       if (!acc[key]) {
