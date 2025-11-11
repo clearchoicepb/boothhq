@@ -1,7 +1,7 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 
-// GET /api/events/[id]/inventory - Get all inventory assigned to an event
+// GET /api/events/[id]/inventory - Get all inventory assigned to an event or available inventory
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -12,6 +12,9 @@ export async function GET(
 
     const { supabase, dataSourceTenantId } = context
     const eventId = params.id
+    const { searchParams } = new URL(request.url)
+    const includeAvailable = searchParams.get('include_available') === 'true'
+    const search = searchParams.get('search')
 
     // Verify event exists and belongs to tenant
     const { data: event, error: eventError } = await supabase
@@ -27,29 +30,122 @@ export async function GET(
       }, { status: 404 })
     }
 
-    // Fetch inventory assigned to this event
-    const { data: inventory, error: inventoryError } = await supabase
+    let assignedInventory = []
+    let availableInventory = []
+
+    // Fetch inventory already assigned to this event
+    const { data: assigned, error: assignedError } = await supabase
       .from('inventory_items')
       .select('*')
       .eq('tenant_id', dataSourceTenantId)
       .eq('event_id', eventId)
       .order('item_name', { ascending: true })
 
-    if (inventoryError) {
+    if (assignedError) {
       return NextResponse.json({
-        error: 'Failed to fetch event inventory',
-        details: inventoryError.message
+        error: 'Failed to fetch assigned inventory',
+        details: assignedError.message
       }, { status: 500 })
     }
 
-    // Enrich with user/location names
-    if (inventory && inventory.length > 0) {
+    assignedInventory = assigned || []
+
+    // If include_available, fetch warehouse items and staff equipment
+    if (includeAvailable) {
+      // Get all staff assigned to this event
+      const { data: eventStaff } = await supabase
+        .from('event_staff_assignments')
+        .select('user_id')
+        .eq('tenant_id', dataSourceTenantId)
+        .eq('event_id', eventId)
+
+      const eventStaffIds = eventStaff?.map(s => s.user_id) || []
+
+      // Build query for available items
+      let availableQuery = supabase
+        .from('inventory_items')
+        .select('*, product_group_items!left(product_group_id)')
+        .eq('tenant_id', dataSourceTenantId)
+        .is('event_id', null) // Not already assigned to an event
+
+      // Filter: warehouse items OR staff items (if staff is on this event)
+      // We'll filter in code since Supabase doesn't support complex OR conditions easily
+
+      const { data: allItems } = await availableQuery
+
+      if (allItems) {
+        availableInventory = allItems.filter(item => {
+          // Include warehouse items
+          if (item.assigned_to_type === 'physical_address' && item.assignment_type === 'warehouse') {
+            return true
+          }
+          // Include staff equipment if staff is on this event (including long_term_staff)
+          if (item.assigned_to_type === 'user' && item.assigned_to_id && eventStaffIds.includes(item.assigned_to_id)) {
+            return true
+          }
+          // Include unassigned items
+          if (!item.assigned_to_id) {
+            return true
+          }
+          return false
+        })
+      }
+
+      // Apply search filter if provided
+      if (search && availableInventory.length > 0) {
+        const searchLower = search.toLowerCase()
+        availableInventory = availableInventory.filter(item =>
+          item.item_name.toLowerCase().includes(searchLower) ||
+          item.item_category.toLowerCase().includes(searchLower) ||
+          (item.serial_number && item.serial_number.toLowerCase().includes(searchLower))
+        )
+      }
+
+      // Fetch product groups for available items
+      const groupIds = [...new Set(
+        availableInventory
+          .filter(item => item.assigned_to_type === 'product_group' && item.assigned_to_id)
+          .map(item => item.assigned_to_id)
+      )]
+
+      if (groupIds.length > 0) {
+        const { data: groups } = await supabase
+          .from('product_groups')
+          .select('id, group_name, assigned_to_type, assigned_to_id')
+          .in('id', groupIds)
+
+        const groupsMap = new Map(groups?.map(g => [g.id, g]) || [])
+
+        // Filter out items in product groups that don't meet availability criteria
+        availableInventory = availableInventory.filter(item => {
+          if (item.assigned_to_type === 'product_group' && item.assigned_to_id) {
+            const group = groupsMap.get(item.assigned_to_id)
+            if (!group) return false
+
+            // Check if group assignment makes it available
+            if (group.assigned_to_type === 'physical_address') return true
+            if (group.assigned_to_type === 'user' && eventStaffIds.includes(group.assigned_to_id)) return true
+            return false
+          }
+          return true
+        })
+      }
+    }
+
+    // Enrich both assigned and available inventory with names
+    const allInventory = [...assignedInventory, ...availableInventory]
+
+    if (allInventory.length > 0) {
       const userIds = [...new Set(
-        inventory.filter(item => item.assigned_to_type === 'user' && item.assigned_to_id)
+        allInventory.filter(item => item.assigned_to_type === 'user' && item.assigned_to_id)
           .map(item => item.assigned_to_id)
       )]
       const locationIds = [...new Set(
-        inventory.filter(item => item.assigned_to_type === 'physical_address' && item.assigned_to_id)
+        allInventory.filter(item => item.assigned_to_type === 'physical_address' && item.assigned_to_id)
+          .map(item => item.assigned_to_id)
+      )]
+      const groupIds = [...new Set(
+        allInventory.filter(item => item.assigned_to_type === 'product_group' && item.assigned_to_id)
           .map(item => item.assigned_to_id)
       )]
 
@@ -79,19 +175,34 @@ export async function GET(
         })
       }
 
+      // Fetch groups
+      const groupsMap = new Map()
+      if (groupIds.length > 0) {
+        const { data: groups } = await supabase
+          .from('product_groups')
+          .select('id, group_name')
+          .in('id', groupIds)
+
+        groups?.forEach(group => {
+          groupsMap.set(group.id, group.group_name)
+        })
+      }
+
       // Add assignment names
-      inventory.forEach(item => {
+      allInventory.forEach(item => {
         if (item.assigned_to_type === 'user' && item.assigned_to_id) {
           item.assigned_to_name = usersMap.get(item.assigned_to_id) || 'Unknown User'
         } else if (item.assigned_to_type === 'physical_address' && item.assigned_to_id) {
           item.assigned_to_name = locationsMap.get(item.assigned_to_id) || 'Unknown Location'
+        } else if (item.assigned_to_type === 'product_group' && item.assigned_to_id) {
+          item.assigned_to_name = groupsMap.get(item.assigned_to_id) || 'Unknown Group'
         }
       })
     }
 
-    // Group by staff member
+    // Group assigned inventory by staff member
     const inventoryByStaff = new Map()
-    inventory?.forEach(item => {
+    assignedInventory.forEach(item => {
       if (item.assigned_to_type === 'user' && item.assigned_to_id) {
         const staffId = item.assigned_to_id
         if (!inventoryByStaff.has(staffId)) {
@@ -107,18 +218,145 @@ export async function GET(
 
     return NextResponse.json({
       event,
-      inventory: inventory || [],
-      total_items: inventory?.length || 0,
-      by_staff: Array.from(inventoryByStaff.values()),
-      ready_count: inventory?.filter(item =>
-        item.assignment_type === 'event_checkout' && item.assigned_to_type === 'user'
-      ).length || 0,
-      needs_prep_count: inventory?.filter(item =>
-        item.assignment_type !== 'event_checkout' || item.assigned_to_type !== 'user'
-      ).length || 0
+      assigned: assignedInventory,
+      available: availableInventory,
+      total_assigned: assignedInventory.length,
+      total_available: availableInventory.length,
+      by_staff: Array.from(inventoryByStaff.values())
     })
   } catch (error) {
     console.error('Event inventory error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+// POST /api/events/[id]/inventory - Assign inventory item to event
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const eventId = params.id
+    const body = await request.json()
+    const { inventory_item_ids, expected_return_date, create_checkout_task } = body
+
+    if (!inventory_item_ids || !Array.isArray(inventory_item_ids) || inventory_item_ids.length === 0) {
+      return NextResponse.json({
+        error: 'inventory_item_ids array is required'
+      }, { status: 400 })
+    }
+
+    // Verify event exists
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('id, title, start_date')
+      .eq('id', eventId)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (eventError || !event) {
+      return NextResponse.json({
+        error: 'Event not found'
+      }, { status: 404 })
+    }
+
+    // Update inventory items
+    const { data: updatedItems, error: updateError } = await supabase
+      .from('inventory_items')
+      .update({
+        event_id: eventId,
+        assignment_type: 'event_checkout',
+        expected_return_date: expected_return_date || event.start_date,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', inventory_item_ids)
+      .eq('tenant_id', dataSourceTenantId)
+      .select()
+
+    if (updateError) {
+      return NextResponse.json({
+        error: 'Failed to assign inventory',
+        details: updateError.message
+      }, { status: 500 })
+    }
+
+    // Create checkout task if requested
+    if (create_checkout_task) {
+      // TODO: Create task in tasks system
+      // For now, we'll skip this and implement it when we have task API
+    }
+
+    return NextResponse.json({
+      success: true,
+      assigned_count: updatedItems?.length || 0,
+      items: updatedItems
+    })
+  } catch (error) {
+    console.error('Assign inventory error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+// DELETE /api/events/[id]/inventory - Remove inventory assignment from event
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId } = context
+    const eventId = params.id
+    const { searchParams } = new URL(request.url)
+    const itemIds = searchParams.get('item_ids')?.split(',') || []
+
+    if (itemIds.length === 0) {
+      return NextResponse.json({
+        error: 'item_ids parameter is required'
+      }, { status: 400 })
+    }
+
+    // Remove event assignment (keep other assignments intact)
+    const { error: updateError } = await supabase
+      .from('inventory_items')
+      .update({
+        event_id: null,
+        assignment_type: null,
+        expected_return_date: null,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', itemIds)
+      .eq('event_id', eventId)
+      .eq('tenant_id', dataSourceTenantId)
+
+    if (updateError) {
+      return NextResponse.json({
+        error: 'Failed to remove inventory assignment',
+        details: updateError.message
+      }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      removed_count: itemIds.length
+    })
+  } catch (error) {
+    console.error('Remove inventory error:', error)
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
