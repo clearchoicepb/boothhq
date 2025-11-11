@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, Filter, CheckSquare, Square, Package2, RotateCcw, Printer } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
 import {
   useInventoryItemsData,
@@ -15,7 +15,8 @@ import { usePhysicalAddressesData } from '@/hooks/usePhysicalAddressesData'
 import { useProductGroupsData } from '@/hooks/useProductGroupsData'
 import { StatusBadge } from './status-badge'
 import { AssignmentHistory } from './assignment-history'
-import { format } from 'date-fns'
+import { BulkCheckoutModal } from './bulk-checkout-modal'
+import { format, isWithinInterval, addDays, startOfWeek, endOfWeek } from 'date-fns'
 
 export function InventoryItemsList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -23,6 +24,10 @@ export function InventoryItemsList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setcategoryFilter] = useState<string>('all')
   const [trackingTypeFilter, setTrackingTypeFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [isBulkCheckoutModalOpen, setIsBulkCheckoutModalOpen] = useState(false)
 
   // Data hooks
   const { data: items = [], isLoading } = useInventoryItemsData()
@@ -40,8 +45,140 @@ export function InventoryItemsList() {
     const matchesCategory = categoryFilter === 'all' || item.item_category === categoryFilter
     const matchesTrackingType = trackingTypeFilter === 'all' || item.tracking_type === trackingTypeFilter
 
-    return matchesSearch && matchesCategory && matchesTrackingType
+    // Status filter logic
+    let matchesStatus = true
+    if (statusFilter === 'available') {
+      matchesStatus = !item.assigned_to_id || item.assignment_type === 'warehouse'
+    } else if (statusFilter === 'due_this_week') {
+      if (item.expected_return_date) {
+        const returnDate = new Date(item.expected_return_date)
+        const today = new Date()
+        const weekEnd = endOfWeek(today)
+        matchesStatus = returnDate >= today && returnDate <= weekEnd
+      } else {
+        matchesStatus = false
+      }
+    } else if (statusFilter === 'checked_out') {
+      matchesStatus = item.assignment_type === 'event_checkout'
+    } else if (statusFilter === 'long_term') {
+      matchesStatus = item.assignment_type === 'long_term_staff'
+    }
+
+    return matchesSearch && matchesCategory && matchesTrackingType && matchesStatus
   })
+
+  // Bulk selection handlers
+  const toggleItemSelection = (itemId: string) => {
+    const newSelected = new Set(selectedItems)
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId)
+    } else {
+      newSelected.add(itemId)
+    }
+    setSelectedItems(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredItems.length) {
+      setSelectedItems(new Set())
+    } else {
+      setSelectedItems(new Set(filteredItems.map((item: any) => item.id)))
+    }
+  }
+
+  const handleBulkCheckout = () => {
+    if (selectedItems.size === 0) return
+    setIsBulkCheckoutModalOpen(true)
+  }
+
+  const handleBulkReturn = async () => {
+    if (selectedItems.size === 0) return
+
+    if (!confirm(`Mark ${selectedItems.size} items as returned?`)) return
+
+    try {
+      for (const itemId of selectedItems) {
+        const item = items.find((i: any) => i.id === itemId)
+        if (item) {
+          await updateItem.mutateAsync({
+            itemId,
+            itemData: {
+              assigned_to_type: 'physical_address',
+              assigned_to_id: item.assigned_to_id, // Keep same warehouse if was assigned to one
+              assignment_type: 'warehouse',
+              event_id: null,
+              expected_return_date: null
+            }
+          })
+        }
+      }
+      setSelectedItems(new Set())
+      setBulkMode(false)
+    } catch (error: any) {
+      alert(error.message || 'Failed to mark items as returned')
+    }
+  }
+
+  const handlePrintPackingList = () => {
+    if (selectedItems.size === 0) return
+
+    const selectedItemsData = items.filter((item: any) => selectedItems.has(item.id))
+
+    // Create printable content
+    const printWindow = window.open('', '', 'width=800,height=600')
+    if (!printWindow) return
+
+    const content = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Packing List</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #333; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+          th { background-color: #f5f5f5; }
+          .checkbox { width: 30px; }
+          @media print {
+            button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Equipment Packing List</h1>
+        <p><strong>Date:</strong> ${format(new Date(), 'MMM d, yyyy')}</p>
+        <p><strong>Total Items:</strong> ${selectedItemsData.length}</p>
+        <table>
+          <thead>
+            <tr>
+              <th class="checkbox">☐</th>
+              <th>Item Name</th>
+              <th>Category</th>
+              <th>Serial / Qty</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${selectedItemsData.map((item: any) => `
+              <tr>
+                <td class="checkbox">☐</td>
+                <td>${item.item_name}${item.model ? ` (${item.model})` : ''}</td>
+                <td>${item.item_category}</td>
+                <td>${item.tracking_type === 'serial_number' ? item.serial_number : `${item.total_quantity} units`}</td>
+                <td>${item.item_notes || ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; font-size: 16px;">Print</button>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(content)
+    printWindow.document.close()
+  }
 
   const handleSubmit = async (data: any) => {
     try {
@@ -117,15 +254,63 @@ export function InventoryItemsList() {
           <h2 className="text-2xl font-bold">Inventory Items</h2>
           <p className="text-gray-600">Manage individual equipment and supplies</p>
         </div>
-        <Button onClick={openCreateModal}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={bulkMode ? "default" : "outline"}
+            onClick={() => {
+              setBulkMode(!bulkMode)
+              setSelectedItems(new Set())
+            }}
+          >
+            {bulkMode ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+            {bulkMode ? 'Exit Bulk Mode' : 'Bulk Mode'}
+          </Button>
+          <Button onClick={openCreateModal}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {bulkMode && selectedItems.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-blue-900 font-medium">
+              {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrintPackingList}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print List
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkReturn}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Mark Returned
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkCheckout}
+              >
+                <Package2 className="h-4 w-4 mr-2" />
+                Checkout
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="flex gap-4 items-center bg-white p-4 rounded-lg border">
-        <div className="flex-1 relative">
+      <div className="flex gap-4 items-center bg-white p-4 rounded-lg border flex-wrap">
+        <div className="flex-1 min-w-[200px] relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -135,6 +320,18 @@ export function InventoryItemsList() {
             className="w-full pl-10 pr-4 py-2 border rounded-lg"
           />
         </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="all">All Status</option>
+          <option value="available">Available</option>
+          <option value="checked_out">Event Checkout</option>
+          <option value="long_term">Long-term Staff</option>
+          <option value="due_this_week">Due Back This Week</option>
+        </select>
 
         <select
           value={categoryFilter}
@@ -176,6 +373,16 @@ export function InventoryItemsList() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
+                {bulkMode && (
+                  <th className="px-4 py-3 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.size === filteredItems.length && filteredItems.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded"
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
@@ -188,6 +395,16 @@ export function InventoryItemsList() {
             <tbody className="divide-y">
               {filteredItems.map((item: any) => (
                 <tr key={item.id} className="hover:bg-gray-50">
+                  {bulkMode && (
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                        className="rounded"
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div>
                       <div className="font-medium text-gray-900">{item.item_name}</div>
@@ -274,7 +491,7 @@ export function InventoryItemsList() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Edit Modal */}
       <EntityForm
         entity="inventory_item"
         isOpen={isModalOpen}
@@ -286,6 +503,17 @@ export function InventoryItemsList() {
         initialData={editingItem || undefined}
         title={editingItem ? 'Edit Inventory Item' : 'New Inventory Item'}
         submitLabel={editingItem ? 'Update Item' : 'Create Item'}
+      />
+
+      {/* Bulk Checkout Modal */}
+      <BulkCheckoutModal
+        isOpen={isBulkCheckoutModalOpen}
+        onClose={() => {
+          setIsBulkCheckoutModalOpen(false)
+          setSelectedItems(new Set())
+          setBulkMode(false)
+        }}
+        items={items.filter((item: any) => selectedItems.has(item.id))}
       />
     </div>
   )
