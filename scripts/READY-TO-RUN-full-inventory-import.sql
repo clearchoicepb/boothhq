@@ -1,13 +1,24 @@
--- Auto-generated Inventory Import Script
+-- ✅ READY TO RUN - Full Inventory Import Script
 -- Generated: 2025-11-11T00:23:10.889Z
 -- Source: Inventory Sheet - Inventory.csv
 --
--- BEFORE RUNNING:
--- 1. Replace '5f98f4c0-5254-4c61-8633-55ea049c7f18' with your actual tenant ID
--- 2. Verify Westlake OH Warehouse address exists with ID: 1bf13de1-6148-4919-8978-dd9f7252f298
--- 3. Make sure you've run the model and category migrations first
+-- Configuration:
+--   Tenant ID: 5f98f4c0-5254-4c61-8633-55ea049c7f18
+--   Warehouse: Westlake OH Warehouse (1bf13de1-6148-4919-8978-dd9f7252f298)
+--   Items to import: 161
 --
--- To get your tenant ID, run: SELECT id FROM tenants LIMIT 1;
+-- What this script does:
+--   - Imports all 161 inventory items from the CSV file
+--   - Maps categories (360 Podium → Custom Experience, Battery Pack → Misc Item, etc.)
+--   - Sets tracking type based on serial numbers (serial_number vs total_quantity)
+--   - Assigns all items to Westlake OH Warehouse
+--   - Preserves notes from the CSV
+--
+-- INSTRUCTIONS:
+--   1. Copy this entire script
+--   2. Open Supabase SQL Editor
+--   3. Paste and run
+--   4. Check the verification queries at the end to confirm success
 
 BEGIN;
 
@@ -189,16 +200,58 @@ INSERT INTO inventory_items (
 
 COMMIT;
 
--- Verify import
+-- ========================================
+-- VERIFICATION QUERIES
+-- ========================================
+
+-- 1. Check total items imported
+SELECT COUNT(*) as total_items_imported
+FROM inventory_items
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18';
+-- Expected: 161 items
+
+-- 2. Check breakdown by category
 SELECT
   item_category,
   COUNT(*) as count
 FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'  -- Replace with your tenant ID
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
 GROUP BY item_category
 ORDER BY count DESC;
 
--- Check total count
-SELECT COUNT(*) as total_items
+-- 3. Check tracking type distribution
+SELECT
+  tracking_type,
+  COUNT(*) as count
 FROM inventory_items
-WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18';  -- Replace with your tenant ID
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
+GROUP BY tracking_type;
+
+-- 4. Check assignment to warehouse
+SELECT
+  COUNT(*) as items_assigned_to_warehouse
+FROM inventory_items
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
+  AND assigned_to_type = 'physical_address'
+  AND assigned_to_id = '1bf13de1-6148-4919-8978-dd9f7252f298';
+-- Expected: 161 items
+
+-- 5. Check items with notes
+SELECT
+  COUNT(*) as items_with_notes
+FROM inventory_items
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
+  AND item_notes IS NOT NULL;
+
+-- 6. Sample of imported items
+SELECT
+  item_name,
+  item_category,
+  model,
+  tracking_type,
+  serial_number,
+  item_notes
+FROM inventory_items
+WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18'
+ORDER BY item_name
+LIMIT 10;
