@@ -80,234 +80,332 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
   // Set font
   doc.setFont('helvetica')
 
-  // Company Header - with logo if available
-  let headerYPos = 30
+  // Page dimensions and column setup
+  const pageWidth = 210 // A4 width in mm
+  const margin = 20
+  const contentWidth = pageWidth - (margin * 2) // 170mm
 
+  // Column positions (matching 46%, 18%, 18%, 18%)
+  const col1X = margin // Item - starts at left margin
+  const col1Width = contentWidth * 0.46 // 78.2mm
+  const col2X = margin + (contentWidth * 0.46) + 5 // Qty
+  const col3X = margin + (contentWidth * 0.64) + 5 // Unit Price
+  const col4X = margin + (contentWidth * 0.82) + 5 // Amount
+  const rightEdge = pageWidth - margin
+
+  let yPos = 25
+
+  // === HEADER SECTION ===
+  // Company Logo (left side)
   if (companyInfo.logoUrl) {
     try {
       const logoBase64 = await loadImageAsBase64(companyInfo.logoUrl)
       if (logoBase64) {
-        // Add logo image - max height of 20mm, auto width
-        doc.addImage(logoBase64, 'PNG', 20, 15, 0, 20, undefined, 'FAST')
-        headerYPos = 40 // Adjust text position if logo is present
+        doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 16, undefined, 'FAST')
       }
     } catch (error) {
       console.error('Error adding logo to PDF:', error)
-      // Fall back to text-only header
     }
   }
 
-  // Company name (smaller if logo is present)
-  if (companyInfo.logoUrl) {
-    doc.setFontSize(16)
-  } else {
-    doc.setFontSize(24)
-  }
+  // Invoice Title and Number (right side)
+  doc.setFontSize(24)
   doc.setFont('helvetica', 'bold')
-  doc.text(companyInfo.name, 20, headerYPos)
+  doc.text('INVOICE', rightEdge, yPos + 8, { align: 'right' })
 
-  // Company contact info - positioned below logo/name
-  const contactYStart = headerYPos + 10
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.text(companyInfo.address, 20, contactYStart)
-  doc.text(`Phone: ${companyInfo.phone}`, 20, contactYStart + 5)
-  doc.text(`Email: ${companyInfo.email}`, 20, contactYStart + 10)
-  
-  // Invoice Title and Number
-  doc.setFontSize(20)
-  doc.setFont('helvetica', 'bold')
-  doc.text('INVOICE', 150, 30)
-  
   doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Invoice #: ${invoice.invoice_number}`, 150, 40)
-  doc.text(`Date: ${formatDate(invoice.issue_date)}`, 150, 45)
-  doc.text(`Due Date: ${formatDate(invoice.due_date)}`, 150, 50)
-  doc.text(`Status: ${invoice.status.toUpperCase()}`, 150, 55)
-  
-  // Bill To Section
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'bold')
-  doc.text('BILL TO:', 20, 70)
+  doc.text(`#${invoice.invoice_number}`, rightEdge, yPos + 15, { align: 'right' })
 
+  yPos += 35
+
+  // === BILLING INFORMATION (Two Column Layout) ===
+  const billingYStart = yPos
+
+  // Left Column - Bill To
+  doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
-  let yPos = 78
+  doc.setTextColor(100, 100, 100)
+  doc.text('BILL TO', margin, yPos)
+
+  yPos += 6
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+
   if (invoice.account_name) {
-    doc.text(invoice.account_name, 20, yPos)
-    yPos += 6
+    doc.text(invoice.account_name, margin, yPos)
+    yPos += 5
   }
 
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
+
   if (invoice.contact_name && invoice.account_name) {
-    doc.text(`Attn: ${invoice.contact_name}`, 20, yPos)
+    doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
     yPos += 5
   } else if (invoice.contact_name) {
-    doc.text(invoice.contact_name, 20, yPos)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(invoice.contact_name, margin, yPos)
     yPos += 5
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
   }
 
   if (invoice.opportunity_name) {
-    doc.text(`RE: ${invoice.opportunity_name}`, 20, yPos)
+    doc.text(`RE: ${invoice.opportunity_name}`, margin, yPos)
     yPos += 5
   }
-  
-  // Line Items Table Header
-  yPos = 110
-  doc.setFontSize(9)
+
+  // Right Column - Dates
+  let rightColY = billingYStart
+  const rightColX = margin + (contentWidth * 0.55)
+
+  doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
-  doc.text('ITEM', 20, yPos)
-  doc.text('QTY', 110, yPos, { align: 'right' })
-  doc.text('UNIT PRICE', 140, yPos, { align: 'right' })
-  doc.text('AMOUNT', 180, yPos, { align: 'right' })
+  doc.setTextColor(100, 100, 100)
+  doc.text('ISSUE DATE', rightColX, rightColY)
+  rightColY += 5
 
-  // Draw line under header
-  doc.setLineWidth(0.5)
-  doc.line(20, yPos + 2, 190, yPos + 2)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(formatDate(invoice.issue_date), rightColX, rightColY)
+  rightColY += 8
 
-  // Line Items
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(100, 100, 100)
+  doc.text('DUE DATE', rightColX, rightColY)
+  rightColY += 5
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(formatDate(invoice.due_date), rightColX, rightColY)
+
+  // Add spacing after billing section
+  yPos = Math.max(yPos, rightColY) + 10
+
+  // Border line under billing section
+  doc.setDrawColor(229, 229, 229)
+  doc.setLineWidth(0.3)
+  doc.line(margin, yPos, rightEdge, yPos)
+
+  yPos += 12
+
+  // === LINE ITEMS TABLE ===
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('ITEM', col1X, yPos)
+  doc.text('QTY', col2X + 15, yPos, { align: 'right' })
+  doc.text('UNIT PRICE', col3X + 15, yPos, { align: 'right' })
+  doc.text('AMOUNT', rightEdge, yPos, { align: 'right' })
+
+  // Header border (heavier line)
+  doc.setDrawColor(0, 0, 0)
+  doc.setLineWidth(0.8)
+  doc.line(margin, yPos + 2, rightEdge, yPos + 2)
+
   yPos += 10
-  doc.setFont('helvetica', 'normal')
 
-  invoice.line_items.forEach((item) => {
-    if (yPos > 240) {
+  // === LINE ITEMS ===
+  doc.setTextColor(0, 0, 0)
+
+  invoice.line_items.forEach((item, index) => {
+    if (yPos > 250) {
       doc.addPage()
-      yPos = 20
+      yPos = 30
     }
+
+    const itemStartY = yPos
 
     // Item name (bold)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
-    doc.text(item.name, 20, yPos)
-    yPos += 5
+    const itemName = doc.splitTextToSize(item.name, col1Width - 2)
+    doc.text(itemName, col1X, yPos)
+    yPos += itemName.length * 4
 
     // Description (smaller, if exists)
     if (item.description) {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
-      const descLines = doc.splitTextToSize(item.description, 80)
-      doc.text(descLines, 20, yPos)
-      yPos += (descLines.length * 4)
+      doc.setTextColor(100, 100, 100)
+      const descLines = doc.splitTextToSize(item.description, col1Width - 2)
+      doc.text(descLines, col1X, yPos + 1)
+      yPos += descLines.length * 3.5
+      doc.setTextColor(0, 0, 0)
     }
-
-    // Reset position for quantity, price, and total on the same line as name
-    const itemYPos = yPos - (item.description ? (doc.splitTextToSize(item.description, 80).length * 4) + 5 : 5)
-
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text(item.quantity.toString(), 110, itemYPos, { align: 'right' })
-    doc.text(formatCurrency(item.unit_price), 140, itemYPos, { align: 'right' })
-    doc.text(formatCurrency(item.total_price), 180, itemYPos, { align: 'right' })
 
     // Taxable indicator
     if (item.taxable === false) {
       doc.setFontSize(7)
-      doc.setTextColor(100, 100, 100)
-      doc.text('(Non-taxable)', 20, yPos + 3)
-      doc.setTextColor(0, 0, 0)
+      doc.setTextColor(80, 80, 80)
+      doc.text('Non-taxable', col1X, yPos + 2)
       yPos += 4
+      doc.setTextColor(0, 0, 0)
     }
 
+    // Quantity, Unit Price, and Amount (aligned to first line)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(item.quantity.toString(), col2X + 15, itemStartY, { align: 'right' })
+    doc.text(formatCurrency(item.unit_price), col3X + 15, itemStartY, { align: 'right' })
+
+    doc.setFont('helvetica', 'bold')
+    doc.text(formatCurrency(item.total_price), rightEdge, itemStartY, { align: 'right' })
+
+    // Add spacing between items
     yPos += 8
+
+    // Draw subtle separator line between items
+    if (index < invoice.line_items.length - 1) {
+      doc.setDrawColor(240, 240, 240)
+      doc.setLineWidth(0.1)
+      doc.line(margin, yPos - 3, rightEdge, yPos - 3)
+    }
   })
-  
-  // Totals Section
-  yPos += 10
+
+  // === TOTALS SECTION ===
+  yPos += 8
+  const totalsX = rightEdge - 70 // Right-aligned totals container
+
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('Subtotal:', 140, yPos)
-  doc.text(formatCurrency(invoice.subtotal), 180, yPos, { align: 'right' })
+  doc.setTextColor(70, 70, 70)
+  doc.text('Subtotal:', totalsX, yPos)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(formatCurrency(invoice.subtotal), rightEdge, yPos, { align: 'right' })
   yPos += 7
 
   if (invoice.tax_amount && invoice.tax_amount > 0) {
-    doc.text(`Tax (${((invoice.tax_rate || 0) * 100).toFixed(2)}%):`, 140, yPos)
-    doc.text(formatCurrency(invoice.tax_amount), 180, yPos, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(70, 70, 70)
+    doc.text(`Tax (${((invoice.tax_rate || 0) * 100).toFixed(2)}%):`, totalsX, yPos)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    doc.text(formatCurrency(invoice.tax_amount), rightEdge, yPos, { align: 'right' })
     yPos += 7
   }
 
   // Draw line before total
+  doc.setDrawColor(0, 0, 0)
   doc.setLineWidth(0.8)
-  doc.line(140, yPos, 190, yPos)
+  doc.line(totalsX, yPos, rightEdge, yPos)
   yPos += 8
 
+  // Total
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Total Due:', 140, yPos)
-  doc.text(formatCurrency(invoice.total_amount), 180, yPos, { align: 'right' })
-  yPos += 10
-  
+  doc.setTextColor(0, 0, 0)
+  doc.text('Total:', totalsX, yPos)
+  doc.setFontSize(14)
+  doc.text(formatCurrency(invoice.total_amount), rightEdge, yPos, { align: 'right' })
+
+  // Paid amount and balance due
   if (invoice.paid_amount && invoice.paid_amount > 0) {
+    yPos += 7
+
+    // Border above paid amount
+    doc.setDrawColor(200, 200, 200)
+    doc.setLineWidth(0.3)
+    doc.line(totalsX, yPos, rightEdge, yPos)
+    yPos += 7
+
+    doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.text('Amount Paid:', 140, yPos)
-    doc.text(formatCurrency(invoice.paid_amount), 170, yPos)
-    yPos += 8
-    
+    doc.setTextColor(70, 70, 70)
+    doc.text('Amount Paid:', totalsX, yPos)
+
     doc.setFont('helvetica', 'bold')
-    doc.text('Balance Due:', 140, yPos)
-    doc.text(formatCurrency(invoice.balance_amount), 170, yPos)
+    doc.setTextColor(34, 139, 34) // Green color
+    doc.text(`-${formatCurrency(invoice.paid_amount)}`, rightEdge, yPos, { align: 'right' })
+    yPos += 7
+
+    // Heavy border before balance due
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(0.8)
+    doc.line(totalsX, yPos, rightEdge, yPos)
+    yPos += 8
+
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    doc.text('Balance Due:', totalsX, yPos)
+
+    doc.setFontSize(14)
+    doc.setTextColor(52, 125, 196) // Blue color
+    doc.text(formatCurrency(invoice.balance_amount), rightEdge, yPos, { align: 'right' })
   }
-  
-  // Notes and Terms Section
+
+  doc.setTextColor(0, 0, 0) // Reset color
+
+  // === NOTES AND TERMS SECTION ===
   if (invoice.notes || invoice.terms) {
     yPos += 15
 
     // Draw separator line
+    doc.setDrawColor(229, 229, 229)
     doc.setLineWidth(0.3)
-    doc.line(20, yPos, 190, yPos)
+    doc.line(margin, yPos, rightEdge, yPos)
     yPos += 10
 
     const hasNotes = !!invoice.notes
     const hasTerms = !!invoice.terms
+    const columnWidth = contentWidth / 2 - 5
 
     if (hasNotes && hasTerms) {
       // Two columns
-      doc.setFontSize(9)
+      doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
-      doc.text('NOTES', 20, yPos)
-      doc.text('TERMS & CONDITIONS', 110, yPos)
+      doc.setTextColor(0, 0, 0)
+      doc.text('NOTES', margin, yPos)
+      doc.text('TERMS & CONDITIONS', margin + columnWidth + 10, yPos)
 
       yPos += 6
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
+      doc.setTextColor(70, 70, 70)
 
-      const notesLines = doc.splitTextToSize(invoice.notes, 80)
-      const termsLines = doc.splitTextToSize(invoice.terms, 80)
+      const notesLines = doc.splitTextToSize(invoice.notes, columnWidth)
+      const termsLines = doc.splitTextToSize(invoice.terms, columnWidth)
 
-      doc.text(notesLines, 20, yPos)
-      doc.text(termsLines, 110, yPos)
+      doc.text(notesLines, margin, yPos)
+      doc.text(termsLines, margin + columnWidth + 10, yPos)
     } else if (hasNotes) {
-      // Notes only
-      doc.setFontSize(9)
+      // Notes only (full width)
+      doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
-      doc.text('NOTES', 20, yPos)
+      doc.setTextColor(0, 0, 0)
+      doc.text('NOTES', margin, yPos)
 
       yPos += 6
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
-      const notesLines = doc.splitTextToSize(invoice.notes, 170)
-      doc.text(notesLines, 20, yPos)
+      doc.setTextColor(70, 70, 70)
+      const notesLines = doc.splitTextToSize(invoice.notes, contentWidth)
+      doc.text(notesLines, margin, yPos)
     } else if (hasTerms) {
-      // Terms only
-      doc.setFontSize(9)
+      // Terms only (full width)
+      doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
-      doc.text('TERMS & CONDITIONS', 20, yPos)
+      doc.setTextColor(0, 0, 0)
+      doc.text('TERMS & CONDITIONS', margin, yPos)
 
       yPos += 6
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
-      const termsLines = doc.splitTextToSize(invoice.terms, 170)
-      doc.text(termsLines, 20, yPos)
+      doc.setTextColor(70, 70, 70)
+      const termsLines = doc.splitTextToSize(invoice.terms, contentWidth)
+      doc.text(termsLines, margin, yPos)
     }
   }
-  
-  // Footer
-  const pageHeight = doc.internal.pageSize.height
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Thank you for your business!', 20, pageHeight - 20)
-  doc.text(`Generated on ${new Date().toLocaleDateString()}`, 20, pageHeight - 15)
   
   // Convert to buffer
   const pdfBuffer = Buffer.from(doc.output('arraybuffer'))

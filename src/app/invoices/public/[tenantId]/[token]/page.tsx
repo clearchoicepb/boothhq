@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, Building2, Mail, Phone, Calendar, Hash, AlertCircle } from 'lucide-react'
+import { CreditCard, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface InvoiceLineItem {
@@ -198,220 +197,182 @@ export default function PublicInvoicePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          {tenant.logoUrl ? (
-            <>
-              <div className="flex justify-center mb-4">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Payment CTA Banner - Mobile & Desktop */}
+        {canPay && (
+          <div className="mb-6 bg-blue-600 text-white rounded-lg shadow-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <p className="font-semibold text-lg">Amount Due: {formatCurrency(balanceAmount)}</p>
+              <p className="text-sm text-blue-100">Click to pay your invoice securely online</p>
+            </div>
+            <Button
+              onClick={handlePayNow}
+              size="lg"
+              className="bg-white text-blue-600 hover:bg-gray-100 font-semibold"
+            >
+              <CreditCard className="mr-2 h-5 w-5" />
+              Pay Now
+            </Button>
+          </div>
+        )}
+
+        {/* Invoice Preview */}
+        <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 mb-6">
+          {/* Header with Logo and Invoice Info */}
+          <div className="flex justify-between items-start mb-12">
+            {/* Company Logo */}
+            <div>
+              {tenant.logoUrl ? (
                 <img
                   src={tenant.logoUrl}
                   alt={`${tenant.name} Logo`}
-                  className="h-20 w-auto object-contain"
+                  className="h-16 w-auto object-contain mb-4"
                 />
+              ) : (
+                <div className="h-16 flex items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#347dc4]">{tenant.name}</h2>
+                </div>
+              )}
+            </div>
+
+            {/* Invoice Title and Number */}
+            <div className="text-right">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">INVOICE</h1>
+              <p className="text-lg text-gray-600">#{invoice.invoice_number}</p>
+              <Badge className={`${getStatusColor(invoice.status)} text-white mt-2`}>
+                {getStatusLabel(invoice.status)}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Billing Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12 pb-8 border-b border-gray-200">
+            {/* Bill To */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bill To</h3>
+              <div className="text-gray-900">
+                {invoice.accounts && (
+                  <>
+                    <p className="text-lg font-bold mb-1">{invoice.accounts.name}</p>
+                    {invoice.accounts.email && (
+                      <p className="text-sm text-gray-600">{invoice.accounts.email}</p>
+                    )}
+                    {invoice.accounts.phone && (
+                      <p className="text-sm text-gray-600">{invoice.accounts.phone}</p>
+                    )}
+                  </>
+                )}
+                {invoice.contacts && !invoice.accounts && (
+                  <>
+                    <p className="text-lg font-bold mb-1">
+                      {invoice.contacts.first_name} {invoice.contacts.last_name}
+                    </p>
+                    {invoice.contacts.email && (
+                      <p className="text-sm text-gray-600">{invoice.contacts.email}</p>
+                    )}
+                    {invoice.contacts.phone && (
+                      <p className="text-sm text-gray-600">{invoice.contacts.phone}</p>
+                    )}
+                  </>
+                )}
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{tenant.name}</h2>
-            </>
-          ) : (
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{tenant.name}</h1>
+            </div>
+
+            {/* Invoice Dates */}
+            <div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</p>
+                  <p className="text-base font-semibold text-gray-900">{formatDate(invoice.issue_date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</p>
+                  <p className="text-base font-semibold text-gray-900">{formatDate(invoice.due_date)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Line Items */}
+          <div className="mb-8">
+            <table className="min-w-full table-fixed">
+              <colgroup>
+                <col className="w-[46%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b-2 border-gray-900">
+                  <th className="text-left py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Item</th>
+                  <th className="text-right py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Qty</th>
+                  <th className="text-right py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Unit Price</th>
+                  <th className="text-right py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {invoice.line_items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="py-4 pr-4">
+                      <p className="font-bold text-gray-900">{item.description}</p>
+                      {item.taxable === false && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 mt-1">
+                          Non-taxable
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 text-right text-gray-900">{item.quantity}</td>
+                    <td className="py-4 text-right text-gray-900">${item.unit_price.toFixed(2)}</td>
+                    <td className="py-4 text-right font-semibold text-gray-900">${item.total_price.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals */}
+          <div className="flex justify-end mb-8">
+            <div className="w-80">
+              <div className="space-y-3">
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-700">Subtotal:</span>
+                  <span className="font-semibold text-gray-900 text-lg">${invoice.subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-700">Tax:</span>
+                  <span className="font-semibold text-gray-900 text-lg">${invoice.tax_amount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-4 border-t-2 border-gray-900">
+                  <span className="text-xl font-bold text-gray-900">Total:</span>
+                  <span className="text-2xl font-bold text-gray-900">${invoice.total_amount.toFixed(2)}</span>
+                </div>
+                {(invoice.paid_amount || 0) > 0 && (
+                  <>
+                    <div className="flex justify-between py-2 border-t border-gray-300">
+                      <span className="text-gray-700">Amount Paid:</span>
+                      <span className="font-semibold text-green-600 text-lg">-${invoice.paid_amount?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-4 border-t-2 border-gray-900">
+                      <span className="text-xl font-bold text-gray-900">Balance Due:</span>
+                      <span className="text-2xl font-bold text-[#347dc4]">${balanceAmount.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {invoice.notes && (
+            <div className="border-t border-gray-200 pt-8 mt-8">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Notes</h4>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{invoice.notes}</p>
+            </div>
           )}
-          <p className="text-gray-600">Invoice #{invoice.invoice_number}</p>
         </div>
 
-        {/* Main Invoice Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <CardTitle className="text-2xl">Invoice Details</CardTitle>
-                  <Badge className={getStatusColor(invoice.status)}>
-                    {getStatusLabel(invoice.status)}
-                  </Badge>
-                </div>
-                <CardDescription>
-                  View and pay your invoice
-                </CardDescription>
-              </div>
-              {canPay && (
-                <Button
-                  onClick={handlePayNow}
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  Pay Now - {formatCurrency(balanceAmount)}
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Invoice Info Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Hash className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">Invoice Number</p>
-                  <p className="font-semibold">{invoice.invoice_number}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">Issue Date</p>
-                  <p className="font-semibold">{formatDate(invoice.issue_date)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">Due Date</p>
-                  <p className="font-semibold">{formatDate(invoice.due_date)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200"></div>
-
-            {/* Bill To Section */}
-            {(invoice.accounts || invoice.contacts) && (
-              <>
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Bill To
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    {invoice.accounts && (
-                      <>
-                        <p className="font-semibold">{invoice.accounts.name}</p>
-                        {invoice.accounts.email && (
-                          <p className="flex items-center gap-2 text-gray-600">
-                            <Mail className="h-4 w-4" />
-                            {invoice.accounts.email}
-                          </p>
-                        )}
-                        {invoice.accounts.phone && (
-                          <p className="flex items-center gap-2 text-gray-600">
-                            <Phone className="h-4 w-4" />
-                            {invoice.accounts.phone}
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {invoice.contacts && !invoice.accounts && (
-                      <>
-                        <p className="font-semibold">
-                          {invoice.contacts.first_name} {invoice.contacts.last_name}
-                        </p>
-                        {invoice.contacts.email && (
-                          <p className="flex items-center gap-2 text-gray-600">
-                            <Mail className="h-4 w-4" />
-                            {invoice.contacts.email}
-                          </p>
-                        )}
-                        {invoice.contacts.phone && (
-                          <p className="flex items-center gap-2 text-gray-600">
-                            <Phone className="h-4 w-4" />
-                            {invoice.contacts.phone}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="border-t border-gray-200"></div>
-              </>
-            )}
-
-            {/* Line Items */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Items</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b text-left text-sm text-gray-600">
-                      <th className="pb-2 font-semibold">Description</th>
-                      <th className="pb-2 font-semibold text-center">Qty</th>
-                      <th className="pb-2 font-semibold text-right">Price</th>
-                      <th className="pb-2 font-semibold text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.line_items.map((item) => (
-                      <tr key={item.id} className="border-b">
-                        <td className="py-3">{item.description}</td>
-                        <td className="py-3 text-center">{item.quantity}</td>
-                        <td className="py-3 text-right">{formatCurrency(item.unit_price)}</td>
-                        <td className="py-3 text-right font-semibold">{formatCurrency(item.total_price)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200"></div>
-
-            {/* Totals */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax</span>
-                <span className="font-semibold">{formatCurrency(invoice.tax_amount)}</span>
-              </div>
-              <div className="border-t border-gray-200"></div>
-              <div className="flex justify-between text-lg">
-                <span className="font-bold">Total</span>
-                <span className="font-bold">{formatCurrency(invoice.total_amount)}</span>
-              </div>
-
-              {invoice.paid_amount !== undefined && invoice.paid_amount > 0 && (
-                <>
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Paid Amount</span>
-                    <span className="font-semibold">-{formatCurrency(invoice.paid_amount)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold text-blue-600">
-                    <span>Balance Due</span>
-                    <span>{formatCurrency(balanceAmount)}</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Notes */}
-            {invoice.notes && (
-              <>
-                <div className="border-t border-gray-200"></div>
-                <div>
-                  <h3 className="text-sm font-semibold mb-2 text-gray-600">Notes</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
-                </div>
-              </>
-            )}
-
-            {/* Payment CTA for mobile */}
-            {canPay && (
-              <div className="sm:hidden">
-                <Button
-                  onClick={handlePayNow}
-                  size="lg"
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  Pay Now - {formatCurrency(balanceAmount)}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Footer */}
-        <div className="text-center text-sm text-gray-600">
+        <div className="text-center text-sm text-gray-600 py-4">
           <p>If you have any questions about this invoice, please contact {tenant.name}.</p>
         </div>
       </div>
