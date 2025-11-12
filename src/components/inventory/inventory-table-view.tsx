@@ -37,7 +37,7 @@ export function InventoryTableView({
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
+    estimateSize: () => 72,
     overscan: 10
   })
 
@@ -46,30 +46,49 @@ export function InventoryTableView({
     .filter(col => col.visible)
     .sort((a, b) => a.order - b.order)
 
+  // Calculate column widths for consistent alignment
+  const getColumnWidth = (columnId: string): string => {
+    switch (columnId) {
+      case 'item_name': return '250px'
+      case 'model': return '150px'
+      case 'product_group': return '180px'
+      case 'category': return '150px'
+      case 'status': return '180px'
+      case 'serial_qty': return '150px'
+      case 'value': return '120px'
+      case 'current_location': return '200px'
+      case 'last_assigned': return '180px'
+      case 'purchase_date': return '140px'
+      case 'notes': return '200px'
+      case 'actions': return '140px'
+      default: return '150px'
+    }
+  }
+
   const renderCell = (item: any, columnId: string) => {
     switch (columnId) {
       case 'item_name':
         return (
-          <div>
-            <div className="font-medium text-gray-900">{item.item_name}</div>
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 truncate">{item.item_name}</div>
             {item.model && (
-              <div className="text-xs text-gray-500 mt-0.5">{item.model}</div>
+              <div className="text-xs text-gray-500 mt-0.5 truncate">{item.model}</div>
             )}
           </div>
         )
 
       case 'model':
         return item.model ? (
-          <span className="text-sm text-gray-600">{item.model}</span>
+          <span className="text-sm text-gray-600 truncate block">{item.model}</span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         )
 
       case 'product_group':
         return item.product_group_name ? (
-          <div className="flex items-center gap-1">
-            <Package2 className="h-3.5 w-3.5 text-purple-600" />
-            <span className="text-sm text-purple-700 font-medium">
+          <div className="flex items-center gap-1 min-w-0">
+            <Package2 className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+            <span className="text-sm text-purple-700 font-medium truncate">
               {item.product_group_name}
             </span>
           </div>
@@ -79,8 +98,8 @@ export function InventoryTableView({
 
       case 'category':
         return (
-          <div>
-            <div className="text-sm text-gray-900">{item.item_category}</div>
+          <div className="min-w-0">
+            <div className="text-sm text-gray-900 truncate">{item.item_category}</div>
             <div className="text-xs text-gray-500">
               {item.tracking_type === 'serial_number' ? 'Serial #' : 'Quantity'}
             </div>
@@ -98,12 +117,10 @@ export function InventoryTableView({
 
       case 'serial_qty':
         return (
-          <div>
-            <div className="text-sm text-gray-900">
-              {item.tracking_type === 'serial_number'
-                ? item.serial_number
-                : `${item.total_quantity} units`}
-            </div>
+          <div className="text-sm text-gray-900 truncate">
+            {item.tracking_type === 'serial_number'
+              ? item.serial_number
+              : `${item.total_quantity} units`}
           </div>
         )
 
@@ -116,25 +133,25 @@ export function InventoryTableView({
 
       case 'current_location':
         return (
-          <div className="text-sm">
+          <div className="text-sm min-w-0">
             {item.assigned_to_type && item.assigned_to_id ? (
               <div>
                 {item.assigned_to_type === 'user' && (
-                  <div className="flex items-center gap-1">
-                    <span>👤</span>
-                    <span>{item.assigned_to_name}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="flex-shrink-0">👤</span>
+                    <span className="truncate">{item.assigned_to_name}</span>
                   </div>
                 )}
                 {item.assigned_to_type === 'physical_address' && (
-                  <div className="flex items-center gap-1">
-                    <span>📍</span>
-                    <span>{item.assigned_to_name}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="flex-shrink-0">📍</span>
+                    <span className="truncate">{item.assigned_to_name}</span>
                   </div>
                 )}
                 {item.assigned_to_type === 'product_group' && (
-                  <div className="flex items-center gap-1">
-                    <Package2 className="h-3.5 w-3.5" />
-                    <span>{item.assigned_to_name}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <Package2 className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{item.assigned_to_name}</span>
                   </div>
                 )}
                 {item.expected_return_date && (
@@ -151,8 +168,8 @@ export function InventoryTableView({
 
       case 'last_assigned':
         return item.last_assigned_to ? (
-          <div>
-            <div className="text-sm text-gray-600">{item.last_assigned_to}</div>
+          <div className="min-w-0">
+            <div className="text-sm text-gray-600 truncate">{item.last_assigned_to}</div>
             {item.last_changed_at && (
               <div className="text-xs text-gray-400">
                 {format(new Date(item.last_changed_at), 'MMM d, yyyy')}
@@ -174,7 +191,7 @@ export function InventoryTableView({
 
       case 'notes':
         return item.item_notes ? (
-          <div className="text-xs text-gray-600 line-clamp-2 max-w-xs">
+          <div className="text-xs text-gray-600 line-clamp-2">
             {item.item_notes}
           </div>
         ) : (
@@ -223,32 +240,29 @@ export function InventoryTableView({
 
   return (
     <div className="bg-white rounded-lg border overflow-hidden">
-      {/* Table Header */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b sticky top-0 z-10">
-            <tr>
-              {bulkMode && (
-                <th className="px-4 py-3 w-12">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={onToggleSelectAll}
-                    className="rounded"
-                  />
-                </th>
-              )}
-              {visibleColumns.map((column) => (
-                <th
-                  key={column.id}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                >
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-        </table>
+      {/* Table Header - Using div-based layout for perfect alignment */}
+      <div className="border-b bg-gray-50">
+        <div className="flex items-center min-w-full">
+          {bulkMode && (
+            <div className="px-4 py-3 flex-shrink-0" style={{ width: '60px' }}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={onToggleSelectAll}
+                className="rounded"
+              />
+            </div>
+          )}
+          {visibleColumns.map((column) => (
+            <div
+              key={column.id}
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase flex-shrink-0"
+              style={{ width: getColumnWidth(column.id) }}
+            >
+              {column.label}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Virtualized Table Body */}
@@ -264,46 +278,44 @@ export function InventoryTableView({
             position: 'relative'
           }}
         >
-          <table className="w-full">
-            <tbody>
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const item = items[virtualRow.index]
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const item = items[virtualRow.index]
 
-                return (
-                  <tr
-                    key={virtualRow.key}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`,
-                      display: 'table',
-                      tableLayout: 'fixed'
-                    }}
-                    className="hover:bg-gray-50 border-b"
+            return (
+              <div
+                key={virtualRow.key}
+                className="flex items-center border-b hover:bg-gray-50 transition-colors min-w-full"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`
+                }}
+              >
+                {bulkMode && onToggleSelection && selectedItems && (
+                  <div className="px-4 py-4 flex-shrink-0" style={{ width: '60px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.has(item.id)}
+                      onChange={() => onToggleSelection(item.id)}
+                      className="rounded"
+                    />
+                  </div>
+                )}
+                {visibleColumns.map((column) => (
+                  <div
+                    key={column.id}
+                    className="px-4 py-4 flex-shrink-0 overflow-hidden"
+                    style={{ width: getColumnWidth(column.id) }}
                   >
-                    {bulkMode && onToggleSelection && selectedItems && (
-                      <td className="px-4 py-4 w-12">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.has(item.id)}
-                          onChange={() => onToggleSelection(item.id)}
-                          className="rounded"
-                        />
-                      </td>
-                    )}
-                    {visibleColumns.map((column) => (
-                      <td key={column.id} className="px-6 py-4">
-                        {renderCell(item, column.id)}
-                      </td>
-                    ))}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                    {renderCell(item, column.id)}
+                  </div>
+                ))}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
