@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
-import { Plus, CheckSquare, Square, RotateCcw, Printer, Download, Settings, Grid3x3, List, Table, Bookmark } from 'lucide-react'
+import { Plus, CheckSquare, Square, RotateCcw, Printer, Download, Settings, Bookmark } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
 import {
   useInventoryItemsData,
@@ -22,22 +22,17 @@ import { SavedViewsModal, useDefaultView } from './saved-views-modal'
 import { ColumnCustomizationModal, useColumnPreferences } from './column-customization-modal'
 import { ExportModal } from './export-modal'
 import { InventoryTableView } from './inventory-table-view'
-import { InventoryCardView } from './inventory-card-view'
-import { InventoryListView } from './inventory-list-view'
 import { groupAndSortInventoryItems } from './inventory-grouping'
 
-type ViewMode = 'table' | 'card' | 'list'
-
 export function InventoryItemsListEnterprise() {
-  // View mode state
-  const [viewMode, setViewMode] = useState<ViewMode>('table')
+  // View state
   const { columns, saveColumns } = useColumnPreferences()
   const defaultView = useDefaultView()
 
   // Filter state
   const [filters, setFilters] = useState<InventoryFilterState>({
     page: 1,
-    limit: 50,
+    limit: 250,
     sort: 'item_name',
     order: 'asc',
     ...defaultView
@@ -71,7 +66,7 @@ export function InventoryItemsListEnterprise() {
   const items = response?.data || []
   const pagination = response?.pagination || {
     page: 1,
-    limit: 50,
+    limit: 250,
     total: 0,
     totalPages: 0,
     hasMore: false
@@ -282,16 +277,14 @@ export function InventoryItemsListEnterprise() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          {viewMode === 'table' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsColumnModalOpen(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Columns
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsColumnModalOpen(true)}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Columns
+          </Button>
           <Button
             variant={bulkMode ? 'default' : 'outline'}
             size="sm"
@@ -370,36 +363,8 @@ export function InventoryItemsListEnterprise() {
         counts={counts}
       />
 
-      {/* View Mode Selector */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2 bg-white rounded-lg border p-1">
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-          >
-            <Table className="h-4 w-4 mr-2" />
-            Table
-          </Button>
-          <Button
-            variant={viewMode === 'card' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('card')}
-          >
-            <Grid3x3 className="h-4 w-4 mr-2" />
-            Card
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="h-4 w-4 mr-2" />
-            List
-          </Button>
-        </div>
-
-        {/* Pagination Info */}
+      {/* Pagination Info */}
+      <div className="flex items-center justify-end">
         <div className="text-sm text-gray-600">
           Showing {items.length > 0 ? ((pagination.page - 1) * pagination.limit) + 1 : 0} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
         </div>
@@ -412,42 +377,18 @@ export function InventoryItemsListEnterprise() {
         </div>
       ) : (
         <>
-          {/* Views */}
-          {viewMode === 'table' && (
-            <InventoryTableView
-              sections={groupedSections}
-              columns={columns}
-              onEdit={openEditModal}
-              onDelete={handleDelete}
-              bulkMode={bulkMode}
-              selectedItems={selectedItems}
-              onToggleSelection={toggleItemSelection}
-              onToggleSelectAll={toggleSelectAll}
-              allSelected={selectedItems.size === items.length && items.length > 0}
-            />
-          )}
-
-          {viewMode === 'card' && (
-            <InventoryCardView
-              items={items}
-              onEdit={openEditModal}
-              onDelete={handleDelete}
-              bulkMode={bulkMode}
-              selectedItems={selectedItems}
-              onToggleSelection={toggleItemSelection}
-            />
-          )}
-
-          {viewMode === 'list' && (
-            <InventoryListView
-              items={items}
-              onEdit={openEditModal}
-              onDelete={handleDelete}
-              bulkMode={bulkMode}
-              selectedItems={selectedItems}
-              onToggleSelection={toggleItemSelection}
-            />
-          )}
+          {/* Table View */}
+          <InventoryTableView
+            sections={groupedSections}
+            columns={columns}
+            onEdit={openEditModal}
+            onDelete={handleDelete}
+            bulkMode={bulkMode}
+            selectedItems={selectedItems}
+            onToggleSelection={toggleItemSelection}
+            onToggleSelectAll={toggleSelectAll}
+            allSelected={selectedItems.size === items.length && items.length > 0}
+          />
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
