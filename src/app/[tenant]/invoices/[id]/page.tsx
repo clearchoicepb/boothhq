@@ -254,7 +254,7 @@ export default function InvoiceDetailPage() {
                 </Button>
               )}
               {invoice.status === 'draft' && invoice.event_id && (
-                <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials`}>
+                <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials&invoice=${invoice.id}`}>
                   <Button variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit

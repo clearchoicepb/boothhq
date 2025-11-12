@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,9 @@ export function EventInvoices({
   canEdit,
   onRefresh
 }: EventInvoicesProps) {
+  const searchParams = useSearchParams()
+  const invoiceIdFromUrl = searchParams?.get('invoice')
+
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null)
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false)
   const [creatingInvoice, setCreatingInvoice] = useState(false)
@@ -55,6 +59,17 @@ export function EventInvoices({
     notes: '',
     terms: ''
   })
+
+  // Auto-expand invoice from URL parameter (for edit button routing)
+  useEffect(() => {
+    if (invoiceIdFromUrl && invoices.length > 0) {
+      // Check if the invoice exists in the list before expanding
+      const invoiceExists = invoices.some(inv => inv.id === invoiceIdFromUrl)
+      if (invoiceExists) {
+        setExpandedInvoiceId(invoiceIdFromUrl)
+      }
+    }
+  }, [invoiceIdFromUrl, invoices])
 
   const handleCreateInvoice = async () => {
     if (!accountId) {
