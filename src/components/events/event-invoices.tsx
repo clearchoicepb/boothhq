@@ -115,7 +115,13 @@ export function EventInvoices({
 
       if (!response.ok) throw new Error('Failed to delete invoice')
 
-      onRefresh()
+      // Close the invoice if it's currently expanded
+      if (expandedInvoiceId === invoiceId) {
+        setExpandedInvoiceId(null)
+      }
+
+      // Wait for refresh to complete
+      await onRefresh()
     } catch (error) {
       console.error('Error deleting invoice:', error)
       alert('Failed to delete invoice')
@@ -243,10 +249,13 @@ export function EventInvoices({
                     <div className="bg-white rounded-lg p-4">
                       <h3 className="text-sm font-medium text-gray-700 mb-4">Line Items</h3>
                       <LineItemsManager
+                        key={`invoice-${invoice.id}-${expandedInvoiceId}`}
                         parentType="invoice"
                         parentId={invoice.id}
                         editable={canEdit && invoice.status === 'draft'}
-                        onUpdate={onRefresh}
+                        onUpdate={async () => {
+                          await onRefresh()
+                        }}
                       />
                     </div>
 
