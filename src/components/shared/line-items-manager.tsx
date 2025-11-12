@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { DollarSign, Plus, Trash2, Package, PlusCircle } from 'lucide-react'
+import { DollarSign, Plus, Trash2, Package, PlusCircle, Edit } from 'lucide-react'
 
 interface PackageItem {
   id: string
@@ -109,6 +109,20 @@ export function LineItemsManager({
       quantity: '1',
       unit_price: '',
       taxable: true,
+    })
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (item: LineItem) => {
+    setEditingItem(item)
+    setModalType(item.item_type)
+    setFormData({
+      selectedId: item.package_id || item.add_on_id || '',
+      name: item.name,
+      description: item.description || '',
+      quantity: item.quantity.toString(),
+      unit_price: item.unit_price.toString(),
+      taxable: item.taxable !== false,
     })
     setIsModalOpen(true)
   }
@@ -321,15 +335,26 @@ export function LineItemsManager({
                   </td>
                   {editable && (
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item.id)}
-                        className="text-gray-400 hover:text-red-600"
-                        title="Delete item"
-                        aria-label="Delete item"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(item)}
+                          className="text-gray-400 hover:text-blue-600"
+                          title="Edit item"
+                          aria-label="Edit item"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          className="text-gray-400 hover:text-red-600"
+                          title="Delete item"
+                          aria-label="Delete item"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -355,12 +380,24 @@ export function LineItemsManager({
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title={`Add ${modalType === 'package' ? 'Package' : modalType === 'add_on' ? 'Add-on' : 'Custom Item'}`}
+          title={`${editingItem ? 'Edit' : 'Add'} ${modalType === 'package' ? 'Package' : modalType === 'add_on' ? 'Add-on' : 'Custom Item'}`}
           className="sm:max-w-2xl"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Show item name when editing */}
+            {editingItem && modalType !== 'custom' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {modalType === 'package' ? 'Package' : 'Add-on'}
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-900">
+                  {formData.name}
+                </div>
+              </div>
+            )}
+
             {/* Package/Add-on Selection */}
-            {modalType !== 'custom' && (
+            {modalType !== 'custom' && !editingItem && (
               <div>
                 <label htmlFor="item-select" className="block text-sm font-medium text-gray-700 mb-2">
                   Select {modalType === 'package' ? 'Package' : 'Add-on'} *
@@ -413,7 +450,7 @@ export function LineItemsManager({
             )}
 
             {/* Description */}
-            {formData.selectedId || modalType === 'custom' ? (
+            {editingItem || formData.selectedId || modalType === 'custom' ? (
               <>
                 <div>
                   <label htmlFor="item-description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -508,9 +545,9 @@ export function LineItemsManager({
               <Button
                 type="submit"
                 className="bg-blue-600 hover:bg-blue-700"
-                disabled={!formData.selectedId && modalType !== 'custom'}
+                disabled={!editingItem && !formData.selectedId && modalType !== 'custom'}
               >
-                Add Item
+                {editingItem ? 'Update Item' : 'Add Item'}
               </Button>
             </div>
           </form>
