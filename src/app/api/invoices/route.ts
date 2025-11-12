@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
   const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'all'
+    const eventId = searchParams.get('event_id')
+    const accountId = searchParams.get('account_id')
 
     let query = supabase
       .from('invoices')
@@ -19,6 +21,16 @@ export async function GET(request: NextRequest) {
       `)
       .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
+
+    // Filter by event_id if provided
+    if (eventId) {
+      query = query.eq('event_id', eventId)
+    }
+
+    // Filter by account_id if provided
+    if (accountId) {
+      query = query.eq('account_id', accountId)
+    }
 
     if (status !== 'all') {
       query = query.eq('status', status)

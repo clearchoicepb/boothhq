@@ -7,7 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X } from 'lucide-react'
+import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign } from 'lucide-react'
 
 interface InvoiceLineItem {
   id: string
@@ -17,6 +17,16 @@ interface InvoiceLineItem {
   unit_price: number
   total: number
   taxable?: boolean
+}
+
+interface Payment {
+  id: string
+  amount: number
+  payment_method: string
+  payment_intent_id: string
+  status: string
+  processed_at: string
+  created_at: string
 }
 
 interface Invoice {
@@ -33,6 +43,8 @@ interface Invoice {
   tax_amount: number
   tax_rate: number
   total_amount: number
+  paid_amount: number
+  balance_amount: number
   notes: string | null
   terms: string | null
   opportunity_name: string | null
@@ -63,6 +75,7 @@ export default function InvoiceDetailPage() {
   }, [])
 
   const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [payments, setPayments] = useState<Payment[]>([])
   const [localLoading, setLocalLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
 
@@ -83,6 +96,18 @@ export default function InvoiceDetailPage() {
 
       const data = await response.json()
       setInvoice(data)
+
+      // Fetch payments for this invoice
+      try {
+        const paymentsResponse = await fetch(`/api/invoices/${invoiceId}/payments`)
+        if (paymentsResponse.ok) {
+          const paymentsData = await paymentsResponse.json()
+          setPayments(paymentsData)
+        }
+      } catch (error) {
+        console.error('Error fetching payments:', error)
+        // Don't fail if payments can't be fetched
+      }
     } catch (error) {
       console.error('Error fetching invoice:', error)
     } finally {
@@ -243,15 +268,26 @@ export default function InvoiceDetailPage() {
                   Send Invoice
                 </Button>
               )}
-              {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                <Button
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={handleMarkAsPaid}
-                  disabled={updating}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Mark as Paid
-                </Button>
+              {invoice.status !== 'paid' && (
+                <>
+                  <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/pay`}>
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Pay Now
+                    </Button>
+                  </Link>
+                  {(invoice.status === 'sent' || invoice.status === 'overdue') && invoice.balance_amount > 0 && (
+                    <Button
+                      variant="outline"
+                      className="text-green-600 border-green-600 hover:bg-green-50"
+                      onClick={handleMarkAsPaid}
+                      disabled={updating}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </Button>
+                  )}
+                </>
               )}
               {invoice.status === 'draft' && invoice.event_id && (
                 <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials&invoice=${invoice.id}`}>
@@ -385,9 +421,21 @@ export default function InvoiceDetailPage() {
                   <span className="font-semibold text-gray-900 text-lg">${(invoice.tax_amount || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-4 border-t-2 border-gray-900">
-                  <span className="text-xl font-bold text-gray-900">Total Due:</span>
-                  <span className="text-2xl font-bold text-[#347dc4]">${(invoice.total_amount || 0).toFixed(2)}</span>
+                  <span className="text-xl font-bold text-gray-900">Total:</span>
+                  <span className="text-2xl font-bold text-gray-900">${(invoice.total_amount || 0).toFixed(2)}</span>
                 </div>
+                {(invoice.paid_amount > 0 || invoice.balance_amount !== invoice.total_amount) && (
+                  <>
+                    <div className="flex justify-between py-2 border-t border-gray-300">
+                      <span className="text-gray-700">Amount Paid:</span>
+                      <span className="font-semibold text-green-600 text-lg">-${(invoice.paid_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-4 border-t-2 border-gray-900">
+                      <span className="text-xl font-bold text-gray-900">Balance Due:</span>
+                      <span className="text-2xl font-bold text-[#347dc4]">${(invoice.balance_amount || 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -412,6 +460,60 @@ export default function InvoiceDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Payment History */}
+        {payments.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <DollarSign className="h-5 w-5 text-green-600 mr-2" />
+              <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
+            </div>
+            <div className="space-y-3">
+              {payments.map((payment) => (
+                <div key={payment.id} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      ${payment.amount.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(payment.processed_at || payment.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xs text-gray-500 capitalize">{payment.payment_method}</span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      payment.status === 'completed'
+                        ? 'bg-green-100 text-green-800'
+                        : payment.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t-2 border-gray-900">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-900">Total Paid:</span>
+                <span className="text-lg font-bold text-green-600">${(invoice.paid_amount || 0).toFixed(2)}</span>
+              </div>
+              {invoice.balance_amount > 0 && (
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm font-semibold text-gray-900">Remaining Balance:</span>
+                  <span className="text-lg font-bold text-[#347dc4]">${(invoice.balance_amount || 0).toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Metadata */}
         <div className="bg-white rounded-lg shadow p-6">
