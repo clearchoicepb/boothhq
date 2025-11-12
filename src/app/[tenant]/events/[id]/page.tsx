@@ -129,6 +129,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   // Custom Hooks - State Management (Batch 2)
   const tabs = useEventTabs(eventId, session, tenant)
   const staff = useEventStaff(eventId, session, tenant)
+  const editing = useEventEditing()
 
   // Context - Replaces useEventModals and useEventEditing hooks
   const context = useEventDetail()
@@ -172,8 +173,9 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   const [selectedEventDate, setSelectedEventDate] = useState<any>(null)
   const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
   const [activeEventDateTab, setActiveEventDateTab] = useState('details')
-  const [isEditingEventDate, setIsEditingEventDate] = useState(false)
-  const [editEventDateData, setEditEventDateData] = useState<any>({})
+
+  // Event date editing state from useEventEditing hook
+  const { isEditingEventDate, editEventDateData, setEditEventDateData, startEditingEventDate, cancelEditingEventDate, finishEditingEventDate } = editing
 
   // Destructure for easier access - Staff
   const {
