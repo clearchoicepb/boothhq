@@ -36,9 +36,16 @@ export async function GET(
     }
 
     // Check if invoice can be paid
-    if (invoice.status === 'paid') {
+    if (invoice.status === 'draft') {
       return NextResponse.json(
-        { error: 'Invoice is already paid' },
+        { error: 'Invoice not available' },
+        { status: 404 }
+      );
+    }
+
+    if (invoice.status === 'paid_in_full') {
+      return NextResponse.json(
+        { error: 'Invoice is already paid in full' },
         { status: 400 }
       );
     }
@@ -182,7 +189,14 @@ export async function POST(
     const currentPaidAmount = invoice.paid_amount || 0;
     const newPaidAmount = currentPaidAmount + paymentAmountUSD;
     const newBalanceAmount = invoice.total_amount - newPaidAmount;
-    const newStatus = newBalanceAmount <= 0 ? 'paid' : invoice.status;
+
+    // Determine new status based on payment
+    let newStatus = invoice.status;
+    if (newBalanceAmount <= 0.01) { // Account for floating point precision
+      newStatus = 'paid_in_full';
+    } else if (newPaidAmount > 0) {
+      newStatus = 'partially_paid';
+    }
 
     // Update invoice with payment
     const { error: updateError } = await supabase

@@ -61,6 +61,14 @@ export async function GET(
       );
     }
 
+    // Don't allow viewing DRAFT invoices publicly
+    if (invoice.status === 'draft') {
+      return NextResponse.json(
+        { error: 'Invoice not available' },
+        { status: 404 }
+      );
+    }
+
     // Fetch line items separately
     const { data: lineItems, error: lineItemsError } = await supabase
       .from('invoice_line_items')

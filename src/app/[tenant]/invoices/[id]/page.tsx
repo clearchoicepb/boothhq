@@ -166,16 +166,39 @@ export default function InvoiceDetailPage() {
       const response = await fetch(`/api/invoices/${invoiceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid' })
+        body: JSON.stringify({ status: 'paid_in_full' })
       })
 
       if (!response.ok) throw new Error('Failed to update invoice')
-      
+
       alert('Invoice marked as paid!')
       fetchInvoice()
     } catch (error) {
       console.error('Error updating invoice:', error)
       alert('Failed to update invoice')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleActivateInvoice = async () => {
+    if (!confirm('Activate this invoice? It will be available for payment via the public link.')) return
+
+    try {
+      setUpdating(true)
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'no_payments_received' })
+      })
+
+      if (!response.ok) throw new Error('Failed to activate invoice')
+
+      alert('Invoice activated successfully!')
+      fetchInvoice()
+    } catch (error) {
+      console.error('Error activating invoice:', error)
+      alert('Failed to activate invoice')
     } finally {
       setUpdating(false)
     }
@@ -223,16 +246,37 @@ export default function InvoiceDetailPage() {
     switch (status) {
       case 'draft':
         return 'bg-gray-100 text-gray-800'
-      case 'sent':
+      case 'no_payments_received':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'partially_paid':
         return 'bg-blue-100 text-blue-800'
-      case 'paid':
+      case 'paid_in_full':
         return 'bg-green-100 text-green-800'
-      case 'overdue':
+      case 'past_due':
         return 'bg-red-100 text-red-800'
       case 'cancelled':
         return 'bg-gray-100 text-gray-600'
       default:
         return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'Draft'
+      case 'no_payments_received':
+        return 'No Payments Received'
+      case 'partially_paid':
+        return 'Partially Paid'
+      case 'paid_in_full':
+        return 'Paid in Full'
+      case 'past_due':
+        return 'Past Due'
+      case 'cancelled':
+        return 'Cancelled'
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1)
     }
   }
 
@@ -276,7 +320,7 @@ export default function InvoiceDetailPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{invoice.invoice_number}</h1>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                  {getStatusLabel(invoice.status)}
                 </span>
               </div>
             </div>
@@ -305,12 +349,22 @@ export default function InvoiceDetailPage() {
                 Download PDF
               </Button>
               {invoice.status === 'draft' && (
-                <Button variant="outline" onClick={handleSendInvoice} disabled={updating}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Invoice
-                </Button>
+                <>
+                  <Button
+                    onClick={handleActivateInvoice}
+                    disabled={updating}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Save & Activate
+                  </Button>
+                  <Button variant="outline" onClick={handleSendInvoice} disabled={updating}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Invoice
+                  </Button>
+                </>
               )}
-              {invoice.status !== 'paid' && (
+              {invoice.status !== 'paid_in_full' && invoice.status !== 'draft' && (
                 <>
                   <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/pay`}>
                     <Button className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -318,7 +372,7 @@ export default function InvoiceDetailPage() {
                       Pay Now
                     </Button>
                   </Link>
-                  {(invoice.status === 'sent' || invoice.status === 'overdue') && invoice.balance_amount > 0 && (
+                  {(invoice.status === 'no_payments_received' || invoice.status === 'partially_paid' || invoice.status === 'past_due') && invoice.balance_amount > 0 && (
                     <Button
                       variant="outline"
                       className="text-green-600 border-green-600 hover:bg-green-50"

@@ -102,11 +102,13 @@ export default function PublicInvoicePage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid':
-        return 'bg-green-500'
-      case 'sent':
+      case 'no_payments_received':
+        return 'bg-yellow-500'
+      case 'partially_paid':
         return 'bg-blue-500'
-      case 'overdue':
+      case 'paid_in_full':
+        return 'bg-green-500'
+      case 'past_due':
         return 'bg-red-500'
       case 'draft':
         return 'bg-gray-500'
@@ -114,6 +116,25 @@ export default function PublicInvoicePage() {
         return 'bg-gray-400'
       default:
         return 'bg-gray-500'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'no_payments_received':
+        return 'NO PAYMENTS RECEIVED'
+      case 'partially_paid':
+        return 'PARTIALLY PAID'
+      case 'paid_in_full':
+        return 'PAID IN FULL'
+      case 'past_due':
+        return 'PAST DUE'
+      case 'draft':
+        return 'DRAFT'
+      case 'cancelled':
+        return 'CANCELLED'
+      default:
+        return status.toUpperCase()
     }
   }
 
@@ -171,7 +192,7 @@ export default function PublicInvoicePage() {
   }
 
   const balanceAmount = invoice.balance_amount ?? invoice.total_amount
-  const canPay = invoice.status !== 'paid' && invoice.status !== 'cancelled' && balanceAmount > 0
+  const canPay = invoice.status !== 'paid_in_full' && invoice.status !== 'cancelled' && balanceAmount > 0
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -190,7 +211,7 @@ export default function PublicInvoicePage() {
                 <div className="flex items-center gap-3 mb-2">
                   <CardTitle className="text-2xl">Invoice Details</CardTitle>
                   <Badge className={getStatusColor(invoice.status)}>
-                    {invoice.status.toUpperCase()}
+                    {getStatusLabel(invoice.status)}
                   </Badge>
                 </div>
                 <CardDescription>

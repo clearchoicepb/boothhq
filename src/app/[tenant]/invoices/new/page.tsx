@@ -57,7 +57,7 @@ export default function NewInvoicePage() {
     event_id: '',
     issue_date: new Date().toISOString().split('T')[0],
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
-    status: 'sent', // Default to 'sent' (live) instead of 'draft'
+    status: 'draft', // Start as draft until saved
     tax_rate: 0.08, // 8% default tax rate
     payment_terms: 'Net 30',
     notes: ''
@@ -235,9 +235,9 @@ export default function NewInvoicePage() {
     return { subtotal, taxAmount, totalAmount }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, statusOverride?: string) => {
     e.preventDefault()
-    
+
     if (!formData.account_id) {
       alert('Please select an account')
       return
@@ -250,11 +250,12 @@ export default function NewInvoicePage() {
 
     try {
       setLocalLoading(true)
-      
+
       const { subtotal, taxAmount, totalAmount } = calculateTotals()
-      
+
       const invoiceData = {
         ...formData,
+        status: statusOverride || formData.status,
         line_items: lineItems.map(item => ({
           description: item.description,
           quantity: item.quantity,
@@ -620,16 +621,39 @@ export default function NewInvoicePage() {
                   Cancel
                 </Button>
               </Link>
-              <Button type="submit" disabled={localLoading}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={(e) => handleSubmit(e, 'draft')}
+                disabled={localLoading}
+              >
                 {localLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating...
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                    Saving...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Create Invoice
+                    Save as Draft
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                onClick={(e) => handleSubmit(e, 'no_payments_received')}
+                disabled={localLoading}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {localLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save & Activate
                   </>
                 )}
               </Button>
