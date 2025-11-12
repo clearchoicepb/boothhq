@@ -73,7 +73,7 @@ export default function ComprehensiveInventoryPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto pt-6 pb-12">
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
