@@ -43,7 +43,7 @@ import { EventInformationCard } from '@/components/events/event-information-card
 import { EventDatesCard } from '@/components/events/event-dates-card'
 import { EventAccountContactCard } from '@/components/events/event-account-contact-card'
 import { EventDescriptionCard } from '@/components/events/event-description-card'
-import { EventInvoicesList } from '@/components/events/event-invoices-list'
+import { EventInvoices } from '@/components/events/event-invoices'
 import { EventActivitiesList } from '@/components/events/event-activities-list'
 import { EventCommunicationsList } from '@/components/events/event-communications-list'
 import { EventStaffList } from '@/components/events/event-staff-list'
@@ -644,14 +644,16 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
 
           {/* Financials Tab (renamed from Invoices) */}
           <TabsContent value="financials" className="mt-0">
-            <EventInvoicesList
-              invoices={invoices}
-              loading={loadingInvoices}
+            <EventInvoices
               eventId={eventId}
               accountId={event.account_id}
               contactId={event.contact_id}
+              invoices={invoices}
+              loading={loadingInvoices}
               tenantSubdomain={tenantSubdomain}
               canCreate={canManageEvents}
+              canEdit={canManageEvents}
+              onRefresh={refetchInvoices}
             />
           </TabsContent>
 
