@@ -13,6 +13,8 @@ export async function PUT(
     const params = await routeContext.params
     const body = await request.json()
 
+    console.log('[Update Line Item] Received taxable value:', body.taxable, 'type:', typeof body.taxable)
+
     const updateData: any = {
       item_type: body.item_type,
       package_id: body.package_id || null,
@@ -25,6 +27,8 @@ export async function PUT(
       sort_order: body.sort_order || 0,
       taxable: body.taxable !== undefined ? body.taxable : true
     }
+
+    console.log('[Update Line Item] Setting taxable to:', updateData.taxable, 'type:', typeof updateData.taxable)
 
     const { data, error } = await supabase
       .from('invoice_line_items')
@@ -97,12 +101,26 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
     .eq('invoice_id', invoiceId)
     .eq('tenant_id', tenantId)
 
+  console.log('[Invoice Totals] Line items:', lineItems?.map(item => ({
+    total_price: item.total_price,
+    taxable: item.taxable,
+    taxableType: typeof item.taxable
+  })))
+
   const subtotal = lineItems?.reduce((sum: number, item: any) => sum + parseFloat(item.total_price), 0) || 0
 
-  // Calculate taxable subtotal (only items where taxable = true)
+  // Calculate taxable subtotal (exclude items explicitly marked as non-taxable)
   const taxableSubtotal = lineItems?.reduce((sum: number, item: any) => {
-    return sum + (item.taxable !== false ? parseFloat(item.total_price) : 0)
+    // Only exclude from tax if explicitly set to false
+    if (item.taxable === false) {
+      console.log('[Invoice Totals] Excluding non-taxable item:', item.total_price)
+      return sum
+    }
+    console.log('[Invoice Totals] Including taxable item:', item.total_price)
+    return sum + parseFloat(item.total_price)
   }, 0) || 0
+
+  console.log('[Invoice Totals] Subtotal:', subtotal, 'Taxable Subtotal:', taxableSubtotal)
 
   // Get current tax rate
   const { data: invoice } = await supabase

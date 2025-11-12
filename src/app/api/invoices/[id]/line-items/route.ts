@@ -105,9 +105,13 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
 
   const subtotal = lineItems?.reduce((sum: number, item: any) => sum + parseFloat(item.total_price), 0) || 0
 
-  // Calculate taxable subtotal (only items where taxable = true)
+  // Calculate taxable subtotal (exclude items explicitly marked as non-taxable)
   const taxableSubtotal = lineItems?.reduce((sum: number, item: any) => {
-    return sum + (item.taxable !== false ? parseFloat(item.total_price) : 0)
+    // Only exclude from tax if explicitly set to false
+    if (item.taxable === false) {
+      return sum
+    }
+    return sum + parseFloat(item.total_price)
   }, 0) || 0
 
   // Get current tax rate
