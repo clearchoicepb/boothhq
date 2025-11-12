@@ -46,22 +46,22 @@ export function InventoryTableView({
     .filter(col => col.visible)
     .sort((a, b) => a.order - b.order)
 
-  // Calculate column widths for consistent alignment
-  const getColumnWidth = (columnId: string): string => {
+  // Calculate column flex properties for responsive sizing
+  const getColumnStyle = (columnId: string): React.CSSProperties => {
     switch (columnId) {
-      case 'item_name': return '140px'
-      case 'model': return '120px'
-      case 'product_group': return '150px'
-      case 'category': return '130px'
-      case 'status': return '150px'
-      case 'serial_qty': return '110px'
-      case 'value': return '90px'
-      case 'current_location': return '160px'
-      case 'last_assigned': return '140px'
-      case 'purchase_date': return '110px'
-      case 'notes': return '180px'
-      case 'actions': return '120px'
-      default: return '120px'
+      case 'item_name': return { flex: '1 1 140px', minWidth: '120px' }
+      case 'model': return { flex: '0.8 1 120px', minWidth: '100px' }
+      case 'product_group': return { flex: '1.2 1 150px', minWidth: '130px' }
+      case 'category': return { flex: '1.1 1 170px', minWidth: '150px' } // 30% larger
+      case 'status': return { flex: '1 1 150px', minWidth: '130px' }
+      case 'serial_qty': return { flex: '0.8 1 110px', minWidth: '100px' }
+      case 'value': return { flex: '0.6 1 90px', minWidth: '80px' }
+      case 'current_location': return { flex: '1.2 1 160px', minWidth: '140px' }
+      case 'last_assigned': return { flex: '1 1 140px', minWidth: '120px' }
+      case 'purchase_date': return { flex: '0.8 1 110px', minWidth: '100px' }
+      case 'notes': return { flex: '1.4 1 180px', minWidth: '150px' }
+      case 'actions': return { flex: '0 0 120px', minWidth: '120px' } // Fixed width
+      default: return { flex: '1 1 120px', minWidth: '100px' }
     }
   }
 
@@ -256,8 +256,8 @@ export function InventoryTableView({
           {visibleColumns.map((column) => (
             <div
               key={column.id}
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase flex-shrink-0"
-              style={{ width: getColumnWidth(column.id) }}
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              style={getColumnStyle(column.id)}
             >
               {column.label}
             </div>
@@ -307,8 +307,8 @@ export function InventoryTableView({
                 {visibleColumns.map((column) => (
                   <div
                     key={column.id}
-                    className="px-4 py-4 flex-shrink-0 overflow-hidden"
-                    style={{ width: getColumnWidth(column.id) }}
+                    className="px-4 py-4 overflow-hidden"
+                    style={getColumnStyle(column.id)}
                   >
                     {renderCell(item, column.id)}
                   </div>
