@@ -227,8 +227,13 @@ export default function InvoiceDetailPage() {
       return
     }
 
+    if (!session?.user?.tenantId) {
+      alert('Tenant information is not available')
+      return
+    }
+
     try {
-      const publicUrl = `${window.location.origin}/invoices/public/${invoice.public_token}`
+      const publicUrl = `${window.location.origin}/invoices/public/${session.user.tenantId}/${invoice.public_token}`
       await navigator.clipboard.writeText(publicUrl)
       setLinkCopied(true)
 
