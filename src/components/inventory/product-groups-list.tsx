@@ -25,7 +25,8 @@ export function ProductGroupsList() {
 
   // Data hooks
   const { data: groups = [], isLoading } = useProductGroupsData()
-  const { data: allInventoryItems = [] } = useInventoryItemsData()
+  const { data: inventoryResponse } = useInventoryItemsData()
+  const allInventoryItems = inventoryResponse?.data || []
 
   // Fetch details for expanded group using React Query
   const { data: groupDetails, isLoading: isLoadingDetails } = useProductGroupData(expandedGroupId || '', {
