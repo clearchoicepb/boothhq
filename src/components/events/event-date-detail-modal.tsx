@@ -16,7 +16,11 @@ type EventStaffAssignment = {
   id: string
   event_date_id: string
   role?: string | null
-  users?: { name?: string | null }
+  users?: {
+    first_name?: string | null
+    last_name?: string | null
+    name?: string | null
+  }
 }
 
 type EventDate = {
@@ -281,15 +285,22 @@ export function EventDateDetailModal({
               {staffForDate.length === 0 ? (
                 <p className="text-sm italic text-gray-500">No staff assigned to this date</p>
               ) : (
-                staffForDate.map((staff) => (
-                  <div key={staff.id} className="flex items-center gap-2 rounded-md bg-gray-50 p-2">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{staff.users?.name || 'Unknown User'}</p>
-                      {staff.role && <p className="text-xs text-gray-600">{staff.role}</p>}
+                staffForDate.map((staff) => {
+                  const userName = staff.users?.name ||
+                                   (staff.users?.first_name && staff.users?.last_name
+                                     ? `${staff.users.first_name} ${staff.users.last_name}`.trim()
+                                     : staff.users?.first_name || staff.users?.last_name || 'Unknown User')
+
+                  return (
+                    <div key={staff.id} className="flex items-center gap-2 rounded-md bg-gray-50 p-2">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{userName}</p>
+                        {staff.role && <p className="text-xs text-gray-600">{staff.role}</p>}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </section>
           )}
