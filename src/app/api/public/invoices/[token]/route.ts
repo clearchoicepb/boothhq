@@ -83,26 +83,20 @@ export async function GET(
       );
     }
 
-    // Fetch tenant info for display
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id, name, subdomain')
-      .eq('id', invoice.tenant_id)
-      .single();
-
-    if (tenantError) {
-      return NextResponse.json(
-        { error: 'Failed to fetch tenant information' },
-        { status: 500 }
-      );
-    }
+    // Note: In multi-database architecture, tenants table is in application DB
+    // For now, we'll return tenant_id and let the frontend handle it
+    // Or you can add tenant info from an environment variable or config
 
     return NextResponse.json({
       invoice: {
         ...invoice,
         line_items: lineItems || [],
       },
-      tenant,
+      tenant: {
+        id: invoice.tenant_id,
+        name: process.env.TENANT_NAME || 'Invoice Payment',
+        subdomain: process.env.TENANT_SUBDOMAIN || '',
+      },
     });
 
   } catch (error) {
