@@ -53,7 +53,10 @@ export async function PUT(
       total: data.total_price
     }
 
-    return NextResponse.json(normalizedData)
+    const response = NextResponse.json(normalizedData)
+    // Invalidate cache after mutation
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -86,7 +89,10 @@ export async function DELETE(
     // Update invoice totals
     await updateInvoiceTotals(supabase, params.id, dataSourceTenantId)
 
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
+    // Invalidate cache after mutation
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

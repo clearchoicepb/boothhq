@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,7 @@ export function EventInvoices({
   canEdit,
   onRefresh
 }: EventInvoicesProps) {
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const invoiceIdFromUrl = searchParams?.get('invoice')
 
@@ -108,6 +110,10 @@ export function EventInvoices({
 
       const invoice = await response.json()
 
+      // Invalidate all invoice-related queries to force refetch
+      await queryClient.invalidateQueries({ queryKey: ['event-invoices', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+
       // Wait for refresh to complete before expanding and closing modal
       await onRefresh()
       setIsCreatingInvoice(false)
@@ -134,6 +140,10 @@ export function EventInvoices({
       if (expandedInvoiceId === invoiceId) {
         setExpandedInvoiceId(null)
       }
+
+      // Invalidate all invoice-related queries to force refetch
+      await queryClient.invalidateQueries({ queryKey: ['event-invoices', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
 
       // Wait for refresh to complete
       await onRefresh()

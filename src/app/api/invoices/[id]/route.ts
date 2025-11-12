@@ -75,7 +75,10 @@ export async function GET(
       }))
     }
 
-    return NextResponse.json(transformedInvoice)
+    const response = NextResponse.json(transformedInvoice)
+    // Use short-lived cache to ensure fresh data after mutations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -157,7 +160,10 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json(invoice)
+    const response = NextResponse.json(invoice)
+    // Invalidate cache after mutation
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -194,7 +200,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 })
     }
 
-    return NextResponse.json({ message: 'Invoice deleted successfully' })
+    const response = NextResponse.json({ message: 'Invoice deleted successfully' })
+    // Invalidate cache after mutation
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

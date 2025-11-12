@@ -34,7 +34,10 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    const response = NextResponse.json(data || [])
+    // Use short-lived cache to ensure fresh data after mutations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

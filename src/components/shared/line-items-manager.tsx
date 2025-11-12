@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { DollarSign, Plus, Trash2, Package, PlusCircle, Edit } from 'lucide-react'
@@ -52,6 +53,7 @@ export function LineItemsManager({
   showActions = false,
   onGenerateQuote
 }: LineItemsManagerProps) {
+  const queryClient = useQueryClient()
   const params = useParams()
   const tenantSubdomain = params.tenant as string
   const [lineItems, setLineItems] = useState<LineItem[]>([])
@@ -185,6 +187,13 @@ export function LineItemsManager({
       })
 
       if (response.ok) {
+        // Invalidate invoice/opportunity/quote queries to force refetch
+        if (parentType === 'invoice') {
+          await queryClient.invalidateQueries({ queryKey: ['event-invoices'] })
+          await queryClient.invalidateQueries({ queryKey: ['account-invoices'] })
+          await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+        }
+
         await fetchData()
         if (onUpdate) await onUpdate()
         setIsModalOpen(false)
@@ -208,6 +217,13 @@ export function LineItemsManager({
       })
 
       if (response.ok) {
+        // Invalidate invoice/opportunity/quote queries to force refetch
+        if (parentType === 'invoice') {
+          await queryClient.invalidateQueries({ queryKey: ['event-invoices'] })
+          await queryClient.invalidateQueries({ queryKey: ['account-invoices'] })
+          await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+        }
+
         await fetchData()
         if (onUpdate) onUpdate()
       }

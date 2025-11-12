@@ -32,7 +32,10 @@ export async function GET(
       unit_price: item.unit_price
     }))
 
-    return NextResponse.json(normalizedData)
+    const response = NextResponse.json(normalizedData)
+    // Use short-lived cache to ensure fresh data after mutations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -88,7 +91,10 @@ export async function POST(
       total: data.total_price
     }
 
-    return NextResponse.json(normalizedData)
+    const response = NextResponse.json(normalizedData)
+    // Invalidate cache after mutation
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
