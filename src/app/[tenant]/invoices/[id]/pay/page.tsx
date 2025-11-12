@@ -200,6 +200,14 @@ export default function InvoicePaymentPage() {
 
       const data = await response.json()
       setInvoice(data.invoice)
+
+      // Check if invoice has a balance
+      if (data.invoice.balance_amount <= 0) {
+        alert('Invoice does not have a balance')
+        router.push(`/${tenantSubdomain}/invoices/${invoiceId}`)
+        return
+      }
+
       setClientSecret(data.client_secret)
 
       // Load Stripe with tenant-specific publishable key

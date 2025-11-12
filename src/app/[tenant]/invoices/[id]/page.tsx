@@ -268,7 +268,7 @@ export default function InvoiceDetailPage() {
                   Send Invoice
                 </Button>
               )}
-              {(invoice.status === 'sent' || invoice.status === 'overdue') && invoice.balance_amount > 0 && (
+              {invoice.status !== 'paid' && (
                 <>
                   <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/pay`}>
                     <Button className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -276,15 +276,17 @@ export default function InvoiceDetailPage() {
                       Pay Now
                     </Button>
                   </Link>
-                  <Button
-                    variant="outline"
-                    className="text-green-600 border-green-600 hover:bg-green-50"
-                    onClick={handleMarkAsPaid}
-                    disabled={updating}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Paid
-                  </Button>
+                  {(invoice.status === 'sent' || invoice.status === 'overdue') && invoice.balance_amount > 0 && (
+                    <Button
+                      variant="outline"
+                      className="text-green-600 border-green-600 hover:bg-green-50"
+                      onClick={handleMarkAsPaid}
+                      disabled={updating}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </Button>
+                  )}
                 </>
               )}
               {invoice.status === 'draft' && invoice.event_id && (

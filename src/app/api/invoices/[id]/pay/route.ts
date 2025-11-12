@@ -164,6 +164,11 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
+    // Check if invoice has a balance
+    if (invoice.balance_amount <= 0) {
+      return NextResponse.json({ error: 'Invoice does not have a balance' }, { status: 400 })
+    }
+
     // Get tenant-specific Stripe configuration
     const stripeConfig = await getTenantStripeConfig(supabase, dataSourceTenantId)
     const tenantStripe = getTenantStripe(stripeConfig.secretKey)
