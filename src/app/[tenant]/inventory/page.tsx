@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
-import { InventoryItemsList } from '@/components/inventory/inventory-items-list'
+import { InventoryItemsListEnterprise } from '@/components/inventory/inventory-items-list-enterprise'
 import { PhysicalAddressesList } from '@/components/inventory/physical-addresses-list'
 import { ProductGroupsList } from '@/components/inventory/product-groups-list'
 import { AvailabilityChecker } from '@/components/inventory/availability-checker'
@@ -114,7 +114,7 @@ export default function ComprehensiveInventoryPage() {
 
         {/* Tab Content */}
         <div className="mt-6">
-          {activeTab === 'items' && <InventoryItemsList />}
+          {activeTab === 'items' && <InventoryItemsListEnterprise />}
           {activeTab === 'weekend-prep' && <WeekendPrepDashboard />}
           {activeTab === 'availability' && <AvailabilityChecker />}
           {activeTab === 'addresses' && <PhysicalAddressesList />}
