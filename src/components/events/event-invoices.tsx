@@ -78,7 +78,11 @@ export function EventInvoices({
           contact_id: contactId,
           issue_date: new Date().toISOString().split('T')[0],
           due_date: dueDate.toISOString().split('T')[0],
+          subtotal: 0,
           tax_rate: parseFloat(newInvoiceData.tax_rate),
+          tax_amount: 0,
+          total_amount: 0,
+          balance_amount: 0,
           status: 'draft',
           notes: newInvoiceData.notes || null,
           terms: newInvoiceData.terms || null,
@@ -89,9 +93,10 @@ export function EventInvoices({
 
       const invoice = await response.json()
 
+      // Wait for refresh to complete before expanding and closing modal
+      await onRefresh()
       setIsCreatingInvoice(false)
       setExpandedInvoiceId(invoice.id) // Auto-expand the new invoice
-      onRefresh()
     } catch (error) {
       console.error('Error creating invoice:', error)
       alert('Failed to create invoice')
@@ -190,7 +195,7 @@ export function EventInvoices({
                       {invoice.status}
                     </span>
                     <div className="font-semibold text-gray-900">
-                      ${parseFloat(invoice.total_amount.toString()).toFixed(2)}
+                      ${(invoice.total_amount || 0).toFixed(2)}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Link
@@ -229,7 +234,7 @@ export function EventInvoices({
                         </div>
                         <div>
                           <span className="text-gray-500">Tax Rate:</span>
-                          <span className="ml-2 text-gray-900">{(invoice.tax_rate * 100).toFixed(2)}%</span>
+                          <span className="ml-2 text-gray-900">{((invoice.tax_rate || 0) * 100).toFixed(2)}%</span>
                         </div>
                       </div>
                     </div>
@@ -251,15 +256,15 @@ export function EventInvoices({
                         <div className="w-64 space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Subtotal:</span>
-                            <span className="text-gray-900">${parseFloat(invoice.subtotal.toString()).toFixed(2)}</span>
+                            <span className="text-gray-900">${(invoice.subtotal || 0).toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Tax ({(invoice.tax_rate * 100).toFixed(2)}%):</span>
-                            <span className="text-gray-900">${parseFloat(invoice.tax_amount.toString()).toFixed(2)}</span>
+                            <span className="text-gray-600">Tax ({((invoice.tax_rate || 0) * 100).toFixed(2)}%):</span>
+                            <span className="text-gray-900">${(invoice.tax_amount || 0).toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-lg font-bold border-t pt-2">
                             <span className="text-gray-900">Total:</span>
-                            <span className="text-[#347dc4]">${parseFloat(invoice.total_amount.toString()).toFixed(2)}</span>
+                            <span className="text-[#347dc4]">${(invoice.total_amount || 0).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>

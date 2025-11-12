@@ -25,7 +25,14 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch line items' }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    // Normalize field names: total_price -> total for consistency with opportunities/quotes
+    const normalizedData = (data || []).map((item: any) => ({
+      ...item,
+      total: item.total_price,
+      unit_price: item.unit_price
+    }))
+
+    return NextResponse.json(normalizedData)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -74,7 +81,13 @@ export async function POST(
     // Update invoice totals
     await updateInvoiceTotals(supabase, invoiceId, dataSourceTenantId)
 
-    return NextResponse.json(data)
+    // Normalize field names for response
+    const normalizedData = {
+      ...data,
+      total: data.total_price
+    }
+
+    return NextResponse.json(normalizedData)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

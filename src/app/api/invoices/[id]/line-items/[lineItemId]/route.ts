@@ -42,7 +42,13 @@ export async function PUT(
     // Update invoice totals
     await updateInvoiceTotals(supabase, params.id, dataSourceTenantId)
 
-    return NextResponse.json(data)
+    // Normalize field names for response
+    const normalizedData = {
+      ...data,
+      total: data.total_price
+    }
+
+    return NextResponse.json(normalizedData)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
