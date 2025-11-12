@@ -68,19 +68,20 @@ export async function PUT(
     const groupId = params.id
     const body = await request.json()
 
+    // Validate assignment fields before converting empty strings
+    // Only validate if explicitly trying to change/clear the assignment
+    if ('assigned_to_id' in body && !body.assigned_to_id) {
+      return NextResponse.json({
+        error: 'Product groups must be assigned to a user or physical address',
+      }, { status: 400 })
+    }
+
     // Convert empty strings to NULL for assignment fields (database constraint requires NULL, not '')
     if (body.assigned_to_type === '') {
       body.assigned_to_type = null
     }
     if (body.assigned_to_id === '') {
       body.assigned_to_id = null
-    }
-
-    // Validate that assigned_to_id is provided if being updated
-    if (body.assigned_to_id !== undefined && !body.assigned_to_id) {
-      return NextResponse.json({
-        error: 'Product groups must be assigned to a user or physical address',
-      }, { status: 400 })
     }
 
     const { data, error } = await supabase

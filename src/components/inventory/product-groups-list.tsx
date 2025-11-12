@@ -21,7 +21,6 @@ export function ProductGroupsList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
-  const [isAddingItems, setIsAddingItems] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string>('')
 
   // Data hooks
@@ -68,8 +67,10 @@ export function ProductGroupsList() {
   const toggleGroupExpansion = useCallback((groupId: string) => {
     if (expandedGroupId === groupId) {
       setExpandedGroupId(null)
+      setSelectedItemId('') // Clear selection when collapsing
     } else {
       setExpandedGroupId(groupId)
+      setSelectedItemId('') // Clear selection when switching groups
       // React Query will automatically fetch details when expandedGroupId changes
     }
   }, [expandedGroupId])
@@ -89,8 +90,7 @@ export function ProductGroupsList() {
 
     try {
       await addItemToGroup.mutateAsync({ groupId, inventoryItemId: selectedItemId })
-      setSelectedItemId('')
-      setIsAddingItems(null)
+      setSelectedItemId('') // Clear selection after adding
       // React Query mutations already invalidate the cache
     } catch (error: any) {
       console.error('Failed to add item to group:', error)
@@ -241,11 +241,8 @@ export function ProductGroupsList() {
                         <div className="mb-4 bg-white rounded-lg p-3 border border-purple-200">
                           <div className="flex items-center gap-2">
                             <select
-                              value={isAddingItems === group.id ? selectedItemId : ''}
-                              onChange={(e) => {
-                                setIsAddingItems(group.id)
-                                setSelectedItemId(e.target.value)
-                              }}
+                              value={selectedItemId}
+                              onChange={(e) => setSelectedItemId(e.target.value)}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
                             >
                               <option value="">Select an item to add...</option>
@@ -263,10 +260,10 @@ export function ProductGroupsList() {
                             <Button
                               size="sm"
                               onClick={() => handleAddItemToGroup(group.id)}
-                              disabled={!selectedItemId || isAddingItems !== group.id}
+                              disabled={!selectedItemId || addItemToGroup.isPending}
                             >
                               <PlusCircle className="h-4 w-4 mr-1" />
-                              Add
+                              {addItemToGroup.isPending ? 'Adding...' : 'Add'}
                             </Button>
                           </div>
                         </div>
@@ -277,34 +274,62 @@ export function ProductGroupsList() {
                             <p className="text-xs font-medium text-gray-500 uppercase mb-3">
                               {details.product_group_items.length} item{details.product_group_items.length !== 1 ? 's' : ''} in this group
                             </p>
-                            {details.product_group_items.map((item: any) => (
-                              <div key={item.id} className="bg-white rounded p-3 border border-gray-200">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <p className="font-medium text-sm text-gray-900">
-                                      {item.inventory_items?.item_name || 'Unknown Item'}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {item.inventory_items?.item_category}
-                                      {item.inventory_items?.serial_number &&
-                                        ` • S/N: ${item.inventory_items.serial_number}`
-                                      }
-                                      {item.inventory_items?.tracking_type === 'total_quantity' &&
-                                        ` • Qty: ${item.inventory_items.total_quantity}`
-                                      }
-                                    </p>
+                            {details.product_group_items.map((item: any) => {
+                              // Handle case where inventory item might have been deleted
+                              if (!item.inventory_items) {
+                                return (
+                                  <div key={item.id} className="bg-red-50 rounded p-3 border border-red-200">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <p className="font-medium text-sm text-red-900">
+                                          Item Not Found (Deleted)
+                                        </p>
+                                        <p className="text-xs text-red-600">
+                                          This item may have been deleted. Remove it from this group.
+                                        </p>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
+                                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
-                                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
+                                )
+                              }
+
+                              return (
+                                <div key={item.id} className="bg-white rounded p-3 border border-gray-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <p className="font-medium text-sm text-gray-900">
+                                        {item.inventory_items.item_name || 'Unknown Item'}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {item.inventory_items.item_category}
+                                        {item.inventory_items.serial_number &&
+                                          ` • S/N: ${item.inventory_items.serial_number}`
+                                        }
+                                        {item.inventory_items.tracking_type === 'total_quantity' &&
+                                          ` • Qty: ${item.inventory_items.total_quantity}`
+                                        }
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
+                                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
                           <div className="text-center py-4">
