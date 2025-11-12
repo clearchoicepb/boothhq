@@ -49,19 +49,19 @@ export function InventoryTableView({
   // Calculate column widths for consistent alignment
   const getColumnWidth = (columnId: string): string => {
     switch (columnId) {
-      case 'item_name': return '250px'
-      case 'model': return '150px'
-      case 'product_group': return '180px'
-      case 'category': return '150px'
-      case 'status': return '180px'
-      case 'serial_qty': return '150px'
-      case 'value': return '120px'
-      case 'current_location': return '200px'
-      case 'last_assigned': return '180px'
-      case 'purchase_date': return '140px'
-      case 'notes': return '200px'
-      case 'actions': return '140px'
-      default: return '150px'
+      case 'item_name': return '140px'
+      case 'model': return '120px'
+      case 'product_group': return '150px'
+      case 'category': return '130px'
+      case 'status': return '150px'
+      case 'serial_qty': return '110px'
+      case 'value': return '90px'
+      case 'current_location': return '160px'
+      case 'last_assigned': return '140px'
+      case 'purchase_date': return '110px'
+      case 'notes': return '180px'
+      case 'actions': return '120px'
+      default: return '120px'
     }
   }
 
