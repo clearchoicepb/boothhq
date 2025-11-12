@@ -44,14 +44,14 @@ export async function GET(
     }
 
     // Get tenant settings for logo
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('value')
+    const { data: logoSetting } = await supabase
+      .from('tenant_settings')
+      .select('setting_value')
       .eq('tenant_id', dataSourceTenantId)
-      .eq('key', 'appearance')
+      .eq('setting_key', 'appearance.logoUrl')
       .single()
 
-    const logoUrl = settings?.value?.logoUrl || null
+    const logoUrl = logoSetting?.setting_value || null
 
     // Generate PDF
     const pdfBuffer = await generateInvoicePDF({
