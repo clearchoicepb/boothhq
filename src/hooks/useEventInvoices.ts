@@ -15,7 +15,7 @@ export function useEventInvoices(eventId: string) {
   return useQuery({
     queryKey: ['event-invoices', eventId],
     queryFn: () => fetchEventInvoices(eventId),
-    staleTime: 60 * 1000,
+    staleTime: 0, // Always fetch fresh data to ensure cache updates are visible
     enabled: Boolean(eventId),
   })
 }

@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
     })) || []
 
     const response = NextResponse.json(transformedData)
-    
-    // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-    
+
+    // Use short-lived cache to ensure fresh data after mutations
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
+
     return response
   } catch (error) {
     console.error('Error:', error)
@@ -138,7 +138,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(invoice)
+    const response = NextResponse.json(invoice)
+    // Invalidate cache after mutation
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

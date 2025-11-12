@@ -28,7 +28,7 @@ export function useAccountInvoices(accountId: string) {
   return useQuery({
     queryKey: ['account-invoices', accountId],
     queryFn: () => fetchAccountInvoices(accountId),
-    staleTime: 60 * 1000,
+    staleTime: 0, // Always fetch fresh data to ensure cache updates are visible
     enabled: Boolean(accountId),
   })
 }
