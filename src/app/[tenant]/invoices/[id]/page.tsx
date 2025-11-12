@@ -7,7 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign } from 'lucide-react'
+import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check } from 'lucide-react'
 
 interface InvoiceLineItem {
   id: string
@@ -51,6 +51,7 @@ interface Invoice {
   account_name: string | null
   contact_name: string | null
   line_items: InvoiceLineItem[]
+  public_token?: string | null
   created_at: string
   updated_at: string
 }
@@ -78,6 +79,7 @@ export default function InvoiceDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [localLoading, setLocalLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     if (session && tenant && invoiceId) {
@@ -188,11 +190,32 @@ export default function InvoiceDetailPage() {
       })
 
       if (!response.ok) throw new Error('Failed to delete invoice')
-      
+
       router.push(`/${tenantSubdomain}/invoices`)
     } catch (error) {
       console.error('Error deleting invoice:', error)
       alert('Failed to delete invoice')
+    }
+  }
+
+  const handleCopyPublicLink = async () => {
+    if (!invoice?.public_token) {
+      alert('Public link is not available for this invoice')
+      return
+    }
+
+    try {
+      const publicUrl = `${window.location.origin}/invoices/public/${invoice.public_token}`
+      await navigator.clipboard.writeText(publicUrl)
+      setLinkCopied(true)
+
+      // Reset the "copied" state after 2 seconds
+      setTimeout(() => {
+        setLinkCopied(false)
+      }, 2000)
+    } catch (error) {
+      console.error('Error copying link:', error)
+      alert('Failed to copy link to clipboard')
     }
   }
 
@@ -258,6 +281,25 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
             <div className="flex space-x-2">
+              {invoice.public_token && (
+                <Button
+                  variant="outline"
+                  onClick={handleCopyPublicLink}
+                  className={linkCopied ? 'bg-green-50 border-green-500' : ''}
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2 text-green-600" />
+                      <span className="text-green-600">Link Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="h-4 w-4 mr-2" />
+                      Copy Public Link
+                    </>
+                  )}
+                </Button>
+              )}
               <Button variant="outline" onClick={handleDownloadPDF}>
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
