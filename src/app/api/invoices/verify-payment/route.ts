@@ -48,7 +48,14 @@ export async function POST(request: NextRequest) {
         const paymentAmount = paymentIntent.amount / 100 // Convert from cents
         const newPaidAmount = (invoice.paid_amount || 0) + paymentAmount
         const newBalanceAmount = invoice.total_amount - newPaidAmount
-        const newStatus = newBalanceAmount <= 0 ? 'paid' : invoice.status
+
+        // Determine new status based on payment
+        let newStatus = invoice.status
+        if (newBalanceAmount <= 0.01) { // Account for floating point precision
+          newStatus = 'paid_in_full'
+        } else if (newPaidAmount > 0) {
+          newStatus = 'partially_paid'
+        }
 
         // Update invoice
         const { error: updateError } = await supabase
