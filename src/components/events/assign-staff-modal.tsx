@@ -2,7 +2,7 @@
 
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { formatDate } from '@/lib/utils/date-utils'
+import { formatDate, formatTime } from '@/lib/utils/date-utils'
 
 interface StaffRole {
   id: string
@@ -205,7 +205,7 @@ export function AssignStaffModal({
                           <div className="mt-2 space-y-2">
                             {eventDate.setup_time && (
                               <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                                Setup starts at: <span className="font-medium text-gray-900">{eventDate.setup_time}</span>
+                                Setup starts at: <span className="font-medium text-gray-900">{formatTime(eventDate.setup_time)}</span>
                               </div>
                             )}
                             <div className="grid grid-cols-2 gap-2">

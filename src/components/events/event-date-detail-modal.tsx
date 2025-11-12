@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, MapPin, User, Edit, X, CheckCircle } from "lucide-react"
 import { EventStatusBadge } from "./event-status-badge"
-import { formatDate, toDateInputValue } from "@/lib/utils/date-utils"
+import { formatDate, formatTime, toDateInputValue } from "@/lib/utils/date-utils"
 import { Modal } from "@/components/ui/modal"
 
 type EventLocation = {
@@ -187,7 +187,7 @@ export function EventDateDetailModal({
               ) : eventDate.setup_time ? (
                 <div className="flex items-center">
                   <Clock className="mr-2 h-5 w-5 text-gray-400" />
-                  <span className="text-base text-gray-900">{eventDate.setup_time}</span>
+                  <span className="text-base text-gray-900">{formatTime(eventDate.setup_time)}</span>
                 </div>
               ) : (
                 <span className="text-sm text-gray-500">Not set</span>
@@ -210,7 +210,7 @@ export function EventDateDetailModal({
               ) : eventDate.start_time ? (
                 <div className="flex items-center">
                   <Clock className="mr-2 h-5 w-5 text-gray-400" />
-                  <span className="text-base text-gray-900">{eventDate.start_time}</span>
+                  <span className="text-base text-gray-900">{formatTime(eventDate.start_time)}</span>
                 </div>
               ) : (
                 <span className="text-sm text-gray-500">Not set</span>
@@ -233,7 +233,7 @@ export function EventDateDetailModal({
               ) : eventDate.end_time ? (
                 <div className="flex items-center">
                   <Clock className="mr-2 h-5 w-5 text-gray-400" />
-                  <span className="text-base text-gray-900">{eventDate.end_time}</span>
+                  <span className="text-base text-gray-900">{formatTime(eventDate.end_time)}</span>
                 </div>
               ) : (
                 <span className="text-sm text-gray-500">Not set</span>
