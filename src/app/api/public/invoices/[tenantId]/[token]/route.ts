@@ -84,14 +84,14 @@ export async function GET(
     }
 
     // Fetch tenant appearance settings (logo)
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('value')
+    const { data: logoSetting } = await supabase
+      .from('tenant_settings')
+      .select('setting_value')
       .eq('tenant_id', invoice.tenant_id)
-      .eq('key', 'appearance')
+      .eq('setting_key', 'appearance.logoUrl')
       .single();
 
-    const logoUrl = settings?.value?.logoUrl || null;
+    const logoUrl = logoSetting?.setting_value || null;
 
     return NextResponse.json({
       invoice: {
