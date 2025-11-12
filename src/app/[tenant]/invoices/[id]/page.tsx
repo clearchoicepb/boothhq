@@ -243,7 +243,7 @@ export default function InvoiceDetailPage() {
                 </Button>
               )}
               {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                <Button 
+                <Button
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={handleMarkAsPaid}
                   disabled={updating}
@@ -252,16 +252,12 @@ export default function InvoiceDetailPage() {
                   Mark as Paid
                 </Button>
               )}
-              <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/edit`}>
-                <Button variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
+              {invoice.status === 'draft' && (
+                <Button variant="outline" className="text-red-600" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
                 </Button>
-              </Link>
-              <Button variant="outline" className="text-red-600" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
+              )}
             </div>
           </div>
         </div>
@@ -329,7 +325,13 @@ export default function InvoiceDetailPage() {
 
           {/* Line Items */}
           <div className="mb-8">
-            <table className="min-w-full">
+            <table className="min-w-full table-fixed">
+              <colgroup>
+                <col className="w-[46%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b-2 border-gray-900">
                   <th className="text-left py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Item</th>
@@ -341,7 +343,7 @@ export default function InvoiceDetailPage() {
               <tbody className="divide-y divide-gray-200">
                 {invoice.line_items.map((item) => (
                   <tr key={item.id}>
-                    <td className="py-4">
+                    <td className="py-4 pr-4">
                       <p className="font-bold text-gray-900">{item.name}</p>
                       {item.description && (
                         <p className="text-xs text-gray-600 mt-1 leading-relaxed">{item.description}</p>
