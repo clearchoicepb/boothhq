@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
 import { Plus, CheckSquare, Square, RotateCcw, Printer, Download, Settings, Grid3x3, List, Table, Bookmark } from 'lucide-react'
@@ -24,6 +24,7 @@ import { ExportModal } from './export-modal'
 import { InventoryTableView } from './inventory-table-view'
 import { InventoryCardView } from './inventory-card-view'
 import { InventoryListView } from './inventory-list-view'
+import { groupAndSortInventoryItems } from './inventory-grouping'
 
 type ViewMode = 'table' | 'card' | 'list'
 
@@ -75,6 +76,11 @@ export function InventoryItemsListEnterprise() {
     totalPages: 0,
     hasMore: false
   }
+
+  // Group and sort items for table view
+  const groupedSections = useMemo(() => {
+    return groupAndSortInventoryItems(items)
+  }, [items])
 
   // Calculate counts for filter badges
   const counts = {
@@ -409,7 +415,7 @@ export function InventoryItemsListEnterprise() {
           {/* Views */}
           {viewMode === 'table' && (
             <InventoryTableView
-              items={items}
+              sections={groupedSections}
               columns={columns}
               onEdit={openEditModal}
               onDelete={handleDelete}

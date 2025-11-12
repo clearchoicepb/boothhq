@@ -1,16 +1,18 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Edit, Trash2, Package2 } from 'lucide-react'
+import { Edit, Trash2, Package2, ChevronDown, ChevronRight } from 'lucide-react'
 import { StatusBadge } from './status-badge'
 import { AssignmentHistory } from './assignment-history'
 import { format } from 'date-fns'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
 import { ColumnConfig } from './column-customization-modal'
+import { GroupedInventorySection } from './inventory-grouping'
 
 interface InventoryTableViewProps {
-  items: any[]
+  sections: GroupedInventorySection[]
   columns: ColumnConfig[]
   onEdit: (item: any) => void
   onDelete: (itemId: string) => void
@@ -21,8 +23,12 @@ interface InventoryTableViewProps {
   allSelected?: boolean
 }
 
+type VirtualRow =
+  | { type: 'header'; section: GroupedInventorySection; sectionIndex: number }
+  | { type: 'item'; item: any; sectionIndex: number }
+
 export function InventoryTableView({
-  items,
+  sections,
   columns,
   onEdit,
   onDelete,
@@ -33,11 +39,32 @@ export function InventoryTableView({
   allSelected
 }: InventoryTableViewProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
+
+  // Flatten sections into rows for virtual scrolling
+  const virtualRows = useMemo(() => {
+    const rows: VirtualRow[] = []
+    sections.forEach((section, sectionIndex) => {
+      // Add section header
+      rows.push({ type: 'header', section, sectionIndex })
+
+      // Add items if not collapsed
+      if (!collapsedSections.has(section.id)) {
+        section.items.forEach(item => {
+          rows.push({ type: 'item', item, sectionIndex })
+        })
+      }
+    })
+    return rows
+  }, [sections, collapsedSections])
 
   const rowVirtualizer = useVirtualizer({
-    count: items.length,
+    count: virtualRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 72,
+    estimateSize: (index) => {
+      const row = virtualRows[index]
+      return row.type === 'header' ? 48 : 72
+    },
     overscan: 10
   })
 
@@ -46,13 +73,25 @@ export function InventoryTableView({
     .filter(col => col.visible)
     .sort((a, b) => a.order - b.order)
 
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(sectionId)) {
+        next.delete(sectionId)
+      } else {
+        next.add(sectionId)
+      }
+      return next
+    })
+  }
+
   // Calculate column flex properties for responsive sizing
   const getColumnStyle = (columnId: string): React.CSSProperties => {
     switch (columnId) {
       case 'item_name': return { flex: '1 1 140px', minWidth: '120px' }
       case 'model': return { flex: '0.8 1 120px', minWidth: '100px' }
       case 'product_group': return { flex: '1.2 1 150px', minWidth: '130px' }
-      case 'category': return { flex: '1.1 1 170px', minWidth: '150px' } // 30% larger
+      case 'category': return { flex: '1.1 1 170px', minWidth: '150px' }
       case 'status': return { flex: '1 1 150px', minWidth: '130px' }
       case 'serial_qty': return { flex: '0.8 1 110px', minWidth: '100px' }
       case 'value': return { flex: '0.6 1 90px', minWidth: '80px' }
@@ -60,7 +99,7 @@ export function InventoryTableView({
       case 'last_assigned': return { flex: '1 1 140px', minWidth: '120px' }
       case 'purchase_date': return { flex: '0.8 1 110px', minWidth: '100px' }
       case 'notes': return { flex: '1.4 1 180px', minWidth: '150px' }
-      case 'actions': return { flex: '0 0 120px', minWidth: '120px' } // Fixed width
+      case 'actions': return { flex: '0 0 120px', minWidth: '120px' }
       default: return { flex: '1 1 120px', minWidth: '100px' }
     }
   }
@@ -93,7 +132,7 @@ export function InventoryTableView({
             </span>
           </div>
         ) : (
-          <span className="text-xs text-gray-400">No group</span>
+          <span className="text-xs text-gray-400">—</span>
         )
 
       case 'category':
@@ -229,7 +268,7 @@ export function InventoryTableView({
     }
   }
 
-  if (items.length === 0) {
+  if (sections.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border">
         <Package2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -238,10 +277,22 @@ export function InventoryTableView({
     )
   }
 
+  const getSectionIcon = (type: string) => {
+    if (type === 'product_group') return <Package2 className="h-4 w-4" />
+    if (type === 'location') return <span className="text-base">👤</span>
+    return <span className="text-base">📦</span>
+  }
+
+  const getSectionColor = (type: string) => {
+    if (type === 'product_group') return 'bg-purple-50 border-purple-200 text-purple-900'
+    if (type === 'location') return 'bg-blue-50 border-blue-200 text-blue-900'
+    return 'bg-gray-50 border-gray-200 text-gray-900'
+  }
+
   return (
     <div className="bg-white rounded-lg border overflow-hidden">
-      {/* Table Header - Using div-based layout for perfect alignment */}
-      <div className="border-b bg-gray-50">
+      {/* Table Header */}
+      <div className="border-b bg-gray-50 sticky top-0 z-20">
         <div className="flex items-center min-w-full">
           {bulkMode && (
             <div className="px-4 py-3 flex-shrink-0" style={{ width: '60px' }}>
@@ -265,7 +316,7 @@ export function InventoryTableView({
         </div>
       </div>
 
-      {/* Virtualized Table Body */}
+      {/* Virtualized Table Body with Sections */}
       <div
         ref={parentRef}
         className="overflow-auto"
@@ -279,7 +330,44 @@ export function InventoryTableView({
           }}
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const item = items[virtualRow.index]
+            const row = virtualRows[virtualRow.index]
+
+            if (row.type === 'header') {
+              const isCollapsed = collapsedSections.has(row.section.id)
+              const itemCount = row.section.items.length
+
+              return (
+                <div
+                  key={virtualRow.key}
+                  className={`flex items-center border-b cursor-pointer sticky z-10 ${getSectionColor(row.section.type)}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`
+                  }}
+                  onClick={() => toggleSection(row.section.id)}
+                >
+                  <div className="flex items-center gap-3 px-4 py-3 font-semibold w-full">
+                    {isCollapsed ? (
+                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    {getSectionIcon(row.section.type)}
+                    <span className="flex-1">{row.section.title}</span>
+                    <span className="text-xs font-normal opacity-75">
+                      {itemCount} item{itemCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              )
+            }
+
+            // Item row
+            const item = row.item
 
             return (
               <div
