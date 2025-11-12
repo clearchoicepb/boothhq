@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useEventInvoices } from './useEventInvoices'
 import { useEventActivities } from './useEventActivities'
 import { useEventAttachments } from './useEventAttachments'
@@ -18,8 +19,18 @@ export function useEventTabs(
   session?: any,
   tenant?: any
 ) {
-  // Tab state
-  const [activeTab, setActiveTab] = useState('overview')
+  const searchParams = useSearchParams()
+  const tabFromUrl = searchParams?.get('tab')
+
+  // Tab state - initialize from URL if present
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'overview')
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [tabFromUrl])
 
   // Pagination
   const [communicationsPage, setCommunicationsPage] = useState(1)

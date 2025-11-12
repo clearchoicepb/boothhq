@@ -7,6 +7,7 @@ export interface InvoicePDFData {
     invoice_number: string
     account_name: string | null
     contact_name: string | null
+    opportunity_name: string | null
     issue_date: string
     due_date: string
     status: string
@@ -18,11 +19,14 @@ export interface InvoicePDFData {
     balance_amount: number
     payment_terms: string | null
     notes: string | null
+    terms: string | null
     line_items: Array<{
-      description: string
+      name: string
+      description: string | null
       quantity: number
       unit_price: number
       total_price: number
+      taxable?: boolean
     }>
   }
   companyInfo: {
@@ -30,6 +34,7 @@ export interface InvoicePDFData {
     address: string
     phone: string
     email: string
+    logoUrl?: string
   }
 }
 
@@ -81,67 +86,116 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
   doc.text(`Status: ${invoice.status.toUpperCase()}`, 150, 55)
   
   // Bill To Section
-  doc.setFontSize(12)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text('Bill To:', 20, 70)
-  
-  doc.setFont('helvetica', 'normal')
-  let yPos = 80
+  doc.text('BILL TO:', 20, 70)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  let yPos = 78
   if (invoice.account_name) {
     doc.text(invoice.account_name, 20, yPos)
+    yPos += 6
+  }
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  if (invoice.contact_name && invoice.account_name) {
+    doc.text(`Attn: ${invoice.contact_name}`, 20, yPos)
+    yPos += 5
+  } else if (invoice.contact_name) {
+    doc.text(invoice.contact_name, 20, yPos)
     yPos += 5
   }
-  if (invoice.contact_name) {
-    doc.text(invoice.contact_name, 20, yPos)
+
+  if (invoice.opportunity_name) {
+    doc.text(`RE: ${invoice.opportunity_name}`, 20, yPos)
     yPos += 5
   }
   
   // Line Items Table Header
   yPos = 110
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('Description', 20, yPos)
-  doc.text('Qty', 120, yPos)
-  doc.text('Unit Price', 140, yPos)
-  doc.text('Total', 170, yPos)
-  
+  doc.text('ITEM', 20, yPos)
+  doc.text('QTY', 110, yPos, { align: 'right' })
+  doc.text('UNIT PRICE', 140, yPos, { align: 'right' })
+  doc.text('AMOUNT', 180, yPos, { align: 'right' })
+
   // Draw line under header
+  doc.setLineWidth(0.5)
   doc.line(20, yPos + 2, 190, yPos + 2)
-  
+
   // Line Items
   yPos += 10
   doc.setFont('helvetica', 'normal')
-  
+
   invoice.line_items.forEach((item) => {
-    if (yPos > 250) {
+    if (yPos > 240) {
       doc.addPage()
       yPos = 20
     }
-    
-    doc.text(item.description, 20, yPos)
-    doc.text(item.quantity.toString(), 120, yPos)
-    doc.text(formatCurrency(item.unit_price), 140, yPos)
-    doc.text(formatCurrency(item.total_price), 170, yPos)
+
+    // Item name (bold)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(item.name, 20, yPos)
+    yPos += 5
+
+    // Description (smaller, if exists)
+    if (item.description) {
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      const descLines = doc.splitTextToSize(item.description, 80)
+      doc.text(descLines, 20, yPos)
+      yPos += (descLines.length * 4)
+    }
+
+    // Reset position for quantity, price, and total on the same line as name
+    const itemYPos = yPos - (item.description ? (doc.splitTextToSize(item.description, 80).length * 4) + 5 : 5)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(item.quantity.toString(), 110, itemYPos, { align: 'right' })
+    doc.text(formatCurrency(item.unit_price), 140, itemYPos, { align: 'right' })
+    doc.text(formatCurrency(item.total_price), 180, itemYPos, { align: 'right' })
+
+    // Taxable indicator
+    if (item.taxable === false) {
+      doc.setFontSize(7)
+      doc.setTextColor(100, 100, 100)
+      doc.text('(Non-taxable)', 20, yPos + 3)
+      doc.setTextColor(0, 0, 0)
+      yPos += 4
+    }
+
     yPos += 8
   })
   
   // Totals Section
   yPos += 10
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.text('Subtotal:', 140, yPos)
-  doc.text(formatCurrency(invoice.subtotal), 170, yPos)
-  yPos += 8
-  
+  doc.text(formatCurrency(invoice.subtotal), 180, yPos, { align: 'right' })
+  yPos += 7
+
   if (invoice.tax_amount && invoice.tax_amount > 0) {
-    doc.text(`Tax (${((invoice.tax_rate || 0) * 100).toFixed(1)}%):`, 140, yPos)
-    doc.text(formatCurrency(invoice.tax_amount), 170, yPos)
-    yPos += 8
+    doc.text(`Tax (${((invoice.tax_rate || 0) * 100).toFixed(2)}%):`, 140, yPos)
+    doc.text(formatCurrency(invoice.tax_amount), 180, yPos, { align: 'right' })
+    yPos += 7
   }
-  
-  doc.setFont('helvetica', 'bold')
-  doc.text('Total Amount:', 140, yPos)
-  doc.text(formatCurrency(invoice.total_amount), 170, yPos)
+
+  // Draw line before total
+  doc.setLineWidth(0.8)
+  doc.line(140, yPos, 190, yPos)
   yPos += 8
+
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Total Due:', 140, yPos)
+  doc.text(formatCurrency(invoice.total_amount), 180, yPos, { align: 'right' })
+  yPos += 10
   
   if (invoice.paid_amount && invoice.paid_amount > 0) {
     doc.setFont('helvetica', 'normal')
@@ -154,23 +208,57 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
     doc.text(formatCurrency(invoice.balance_amount), 170, yPos)
   }
   
-  // Payment Terms
-  if (invoice.payment_terms) {
-    yPos += 20
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Payment Terms:', 20, yPos)
-    doc.text(invoice.payment_terms, 20, yPos + 8)
-  }
-  
-  // Notes
-  if (invoice.notes) {
-    yPos += 20
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Notes:', 20, yPos)
-    const notesLines = doc.splitTextToSize(invoice.notes, 170)
-    doc.text(notesLines, 20, yPos + 8)
+  // Notes and Terms Section
+  if (invoice.notes || invoice.terms) {
+    yPos += 15
+
+    // Draw separator line
+    doc.setLineWidth(0.3)
+    doc.line(20, yPos, 190, yPos)
+    yPos += 10
+
+    const hasNotes = !!invoice.notes
+    const hasTerms = !!invoice.terms
+
+    if (hasNotes && hasTerms) {
+      // Two columns
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      doc.text('NOTES', 20, yPos)
+      doc.text('TERMS & CONDITIONS', 110, yPos)
+
+      yPos += 6
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+
+      const notesLines = doc.splitTextToSize(invoice.notes, 80)
+      const termsLines = doc.splitTextToSize(invoice.terms, 80)
+
+      doc.text(notesLines, 20, yPos)
+      doc.text(termsLines, 110, yPos)
+    } else if (hasNotes) {
+      // Notes only
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      doc.text('NOTES', 20, yPos)
+
+      yPos += 6
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      const notesLines = doc.splitTextToSize(invoice.notes, 170)
+      doc.text(notesLines, 20, yPos)
+    } else if (hasTerms) {
+      // Terms only
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      doc.text('TERMS & CONDITIONS', 20, yPos)
+
+      yPos += 6
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      const termsLines = doc.splitTextToSize(invoice.terms, 170)
+      doc.text(termsLines, 20, yPos)
+    }
   }
   
   // Footer

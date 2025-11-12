@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
+import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -10,10 +11,12 @@ import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X } from 'lucide-
 
 interface InvoiceLineItem {
   id: string
-  description: string
+  name: string
+  description: string | null
   quantity: number
   unit_price: number
   total: number
+  taxable?: boolean
 }
 
 interface Invoice {
@@ -22,6 +25,7 @@ interface Invoice {
   opportunity_id: string | null
   account_id: string | null
   contact_id: string | null
+  event_id: string | null
   issue_date: string
   due_date: string
   status: string
@@ -42,6 +46,7 @@ interface Invoice {
 export default function InvoiceDetailPage() {
   const { data: session, status } = useSession()
   const { tenant, loading } = useTenant()
+  const { settings } = useSettings()
   const params = useParams()
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
@@ -239,7 +244,7 @@ export default function InvoiceDetailPage() {
                 </Button>
               )}
               {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                <Button 
+                <Button
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={handleMarkAsPaid}
                   disabled={updating}
@@ -248,16 +253,20 @@ export default function InvoiceDetailPage() {
                   Mark as Paid
                 </Button>
               )}
-              <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/edit`}>
-                <Button variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
+              {invoice.status === 'draft' && invoice.event_id && (
+                <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials&invoice=${invoice.id}`}>
+                  <Button variant="outline">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </Link>
+              )}
+              {invoice.status === 'draft' && (
+                <Button variant="outline" className="text-red-600" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
                 </Button>
-              </Link>
-              <Button variant="outline" className="text-red-600" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
+              )}
             </div>
           </div>
         </div>
@@ -265,50 +274,98 @@ export default function InvoiceDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Invoice Preview */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          {/* Invoice Header */}
-          <div className="flex justify-between mb-8">
+        <div className="bg-white rounded-lg shadow-lg p-12 mb-6">
+          {/* Header with Logo and Invoice Info */}
+          <div className="flex justify-between items-start mb-12">
+            {/* Company Logo */}
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">INVOICE</h2>
-              <p className="text-gray-600">Invoice #: {invoice.invoice_number}</p>
+              {settings?.appearance?.logoUrl ? (
+                <img
+                  src={settings.appearance.logoUrl}
+                  alt="Company Logo"
+                  className="h-16 w-auto object-contain mb-4"
+                />
+              ) : (
+                <div className="h-16 flex items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#347dc4]">{tenant?.display_name || 'Company Name'}</h2>
+                </div>
+              )}
             </div>
+
+            {/* Invoice Title and Number */}
             <div className="text-right">
-              <p className="text-sm text-gray-600">Issue Date</p>
-              <p className="font-semibold text-gray-900">{new Date(invoice.issue_date).toLocaleDateString()}</p>
-              <p className="text-sm text-gray-600 mt-2">Due Date</p>
-              <p className="font-semibold text-gray-900">{new Date(invoice.due_date).toLocaleDateString()}</p>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">INVOICE</h1>
+              <p className="text-lg text-gray-600">#{invoice.invoice_number}</p>
             </div>
           </div>
 
-          {/* Bill To */}
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Bill To</h3>
-            <div className="text-gray-900">
-              <p className="font-semibold">{invoice.account_name || invoice.contact_name || 'N/A'}</p>
-              {invoice.opportunity_name && (
-                <p className="text-sm text-gray-600">RE: {invoice.opportunity_name}</p>
-              )}
+          {/* Billing Information */}
+          <div className="grid grid-cols-2 gap-12 mb-12 pb-8 border-b border-gray-200">
+            {/* Bill To */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bill To</h3>
+              <div className="text-gray-900">
+                <p className="text-lg font-bold mb-1">{invoice.account_name || invoice.contact_name || 'N/A'}</p>
+                {invoice.contact_name && invoice.account_name && (
+                  <p className="text-sm text-gray-600">Attn: {invoice.contact_name}</p>
+                )}
+                {invoice.opportunity_name && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    <span className="font-medium">RE:</span> {invoice.opportunity_name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Invoice Dates */}
+            <div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</p>
+                  <p className="text-base font-semibold text-gray-900">{new Date(invoice.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</p>
+                  <p className="text-base font-semibold text-gray-900">{new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Line Items */}
           <div className="mb-8">
-            <table className="min-w-full">
-              <thead className="border-b-2 border-gray-300">
-                <tr>
-                  <th className="text-left py-3 text-sm font-semibold text-gray-700">Description</th>
-                  <th className="text-right py-3 text-sm font-semibold text-gray-700">Qty</th>
-                  <th className="text-right py-3 text-sm font-semibold text-gray-700">Unit Price</th>
-                  <th className="text-right py-3 text-sm font-semibold text-gray-700">Total</th>
+            <table className="min-w-full table-fixed">
+              <colgroup>
+                <col className="w-[46%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b-2 border-gray-900">
+                  <th className="text-left py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Item</th>
+                  <th className="text-right py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Qty</th>
+                  <th className="text-right py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Unit Price</th>
+                  <th className="text-right py-3 text-xs font-bold text-gray-900 uppercase tracking-wide">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {invoice.line_items.map((item) => (
                   <tr key={item.id}>
-                    <td className="py-3 text-gray-900">{item.description}</td>
-                    <td className="py-3 text-right text-gray-900">{item.quantity}</td>
-                    <td className="py-3 text-right text-gray-900">${item.unit_price.toFixed(2)}</td>
-                    <td className="py-3 text-right text-gray-900">${item.total.toFixed(2)}</td>
+                    <td className="py-4 pr-4">
+                      <p className="font-bold text-gray-900">{item.name}</p>
+                      {item.description && (
+                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">{item.description}</p>
+                      )}
+                      {item.taxable === false && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 mt-1">
+                          Non-taxable
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 text-right text-gray-900">{item.quantity}</td>
+                    <td className="py-4 text-right text-gray-900">${(item.unit_price || 0).toFixed(2)}</td>
+                    <td className="py-4 text-right font-semibold text-gray-900">${(item.total || 0).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -317,37 +374,41 @@ export default function InvoiceDetailPage() {
 
           {/* Totals */}
           <div className="flex justify-end mb-8">
-            <div className="w-64">
-              <div className="flex justify-between py-2">
-                <span className="text-gray-600">Subtotal:</span>
-                <span className="font-semibold text-gray-900">${invoice.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-600">Tax ({invoice.tax_rate}%):</span>
-                <span className="font-semibold text-gray-900">${invoice.tax_amount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-t-2 border-gray-300">
-                <span className="text-lg font-bold text-gray-900">Total:</span>
-                <span className="text-lg font-bold text-[#347dc4]">${invoice.total_amount.toFixed(2)}</span>
+            <div className="w-80">
+              <div className="space-y-3">
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-700">Subtotal:</span>
+                  <span className="font-semibold text-gray-900 text-lg">${(invoice.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-700">Tax ({((invoice.tax_rate || 0) * 100).toFixed(2)}%):</span>
+                  <span className="font-semibold text-gray-900 text-lg">${(invoice.tax_amount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-4 border-t-2 border-gray-900">
+                  <span className="text-xl font-bold text-gray-900">Total Due:</span>
+                  <span className="text-2xl font-bold text-[#347dc4]">${(invoice.total_amount || 0).toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Notes and Terms */}
           {(invoice.notes || invoice.terms) && (
-            <div className="border-t pt-6">
-              {invoice.notes && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Notes</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{invoice.notes}</p>
-                </div>
-              )}
-              {invoice.terms && (
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Terms & Conditions</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{invoice.terms}</p>
-                </div>
-              )}
+            <div className="border-t border-gray-200 pt-8 mt-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {invoice.notes && (
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Notes</h4>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{invoice.notes}</p>
+                  </div>
+                )}
+                {invoice.terms && (
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Terms & Conditions</h4>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{invoice.terms}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

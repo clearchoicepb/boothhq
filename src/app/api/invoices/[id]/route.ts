@@ -15,9 +15,9 @@ export async function GET(
       .from('invoices')
       .select(`
         *,
-        accounts!invoices_account_id_fkey(name, email, phone),
-        contacts!invoices_contact_id_fkey(first_name, last_name, email, phone),
-        events!invoices_event_id_fkey(id, title, start_date, status)
+        accounts(name, email, phone),
+        contacts(first_name, last_name, email, phone),
+        events(id, title, start_date, status)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
@@ -44,6 +44,19 @@ export async function GET(
       console.error('Error fetching line items:', lineItemsError)
     }
 
+    // Get opportunity name if opportunity_id exists
+    let opportunityName = null
+    if (invoice.opportunity_id) {
+      const { data: opportunity } = await supabase
+        .from('opportunities')
+        .select('name')
+        .eq('id', invoice.opportunity_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      opportunityName = opportunity?.name || null
+    }
+
     // Transform the data
     const transformedInvoice = {
       ...invoice,
@@ -53,9 +66,13 @@ export async function GET(
       contact_name: invoice.contacts ? `${invoice.contacts.first_name} ${invoice.contacts.last_name}` : null,
       contact_email: invoice.contacts?.email || null,
       contact_phone: invoice.contacts?.phone || null,
+      opportunity_name: opportunityName,
       event_name: invoice.events?.title || null,
       event_date: invoice.events?.start_date || null,
-      line_items: lineItems || []
+      line_items: (lineItems || []).map((item: any) => ({
+        ...item,
+        total: item.total_price // Map database field to component field
+      }))
     }
 
     return NextResponse.json(transformedInvoice)
