@@ -89,10 +89,13 @@ export async function POST(
       issue_date: new Date().toISOString().split('T')[0],
       due_date: calculatedDueDate,
       subtotal: quote.subtotal,
+      tax_rate: quote.tax_rate || 0,
       tax_amount: quote.tax_amount,
       total_amount: quote.total_amount,
+      balance_amount: quote.total_amount,
       status: 'draft',
-      notes: quote.notes
+      notes: quote.notes,
+      terms: quote.terms
     }
 
     const { data: invoice, error: invoiceError } = await supabase
@@ -107,14 +110,20 @@ export async function POST(
     }
 
     // Copy quote line items to invoice line items
+    // IMPORTANT: Preserve package/add-on lineage for tracking
     if (quoteLineItems && quoteLineItems.length > 0) {
       const invoiceLineItemsData = quoteLineItems.map((item: any) => ({
         tenant_id: dataSourceTenantId,
         invoice_id: invoice.id,
-        description: item.name,
+        item_type: item.item_type,           // Preserve type (package/add_on/custom)
+        package_id: item.package_id,         // Preserve package reference
+        add_on_id: item.add_on_id,           // Preserve add-on reference
+        name: item.name,                     // Snapshot name
+        description: item.description,       // Preserve description
         quantity: item.quantity,
         unit_price: item.unit_price,
-        total_price: item.total
+        total_price: item.total,
+        sort_order: item.sort_order || 0
       }))
 
       const { error: lineItemsError } = await supabase
