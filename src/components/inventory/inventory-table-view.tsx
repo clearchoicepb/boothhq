@@ -85,6 +85,32 @@ export function InventoryTableView({
     })
   }
 
+  const toggleAllSections = () => {
+    if (collapsedSections.size === sections.length) {
+      // All collapsed, expand all
+      setCollapsedSections(new Set())
+    } else {
+      // Some or none collapsed, collapse all
+      setCollapsedSections(new Set(sections.map(s => s.id)))
+    }
+  }
+
+  // Get unique locations for a product group
+  const getGroupLocations = (section: GroupedInventorySection): string => {
+    if (section.type !== 'product_group') return ''
+
+    const locations = new Set<string>()
+    section.items.forEach(item => {
+      if (item.assigned_to_name) {
+        locations.add(item.assigned_to_name)
+      }
+    })
+
+    if (locations.size === 0) return 'No location'
+    if (locations.size === 1) return Array.from(locations)[0]
+    return `${locations.size} locations`
+  }
+
   // Calculate column flex properties for responsive sizing
   const getColumnStyle = (columnId: string): React.CSSProperties => {
     switch (columnId) {
@@ -291,6 +317,18 @@ export function InventoryTableView({
 
   return (
     <div className="bg-white rounded-lg border overflow-hidden">
+      {/* Toggle All Button */}
+      <div className="border-b bg-gray-50 px-4 py-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleAllSections}
+          className="text-xs"
+        >
+          {collapsedSections.size === sections.length ? 'Expand All Groups' : 'Collapse All Groups'}
+        </Button>
+      </div>
+
       {/* Table Header */}
       <div className="border-b bg-gray-50 sticky top-0 z-20">
         <div className="flex items-center min-w-full">
@@ -357,7 +395,14 @@ export function InventoryTableView({
                       <ChevronDown className="h-4 w-4 flex-shrink-0" />
                     )}
                     {getSectionIcon(row.section.type)}
-                    <span className="flex-1">{row.section.title}</span>
+                    <span className="flex-1">
+                      {row.section.title}
+                      {row.section.type === 'product_group' && (
+                        <span className="ml-3 text-sm font-normal opacity-75">
+                          @ {getGroupLocations(row.section)}
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs font-normal opacity-75">
                       {itemCount} item{itemCount !== 1 ? 's' : ''}
                     </span>
