@@ -20,6 +20,7 @@ interface User {
 interface EventDate {
   id: string
   event_date: string
+  setup_time?: string
   start_time?: string
   end_time?: string
 }
@@ -201,34 +202,41 @@ export function AssignStaffModal({
                         </label>
 
                         {isSelected && dateTime && (
-                          <div className="mt-2 grid grid-cols-2 gap-2">
-                            <div>
-                              <label htmlFor={`start-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
-                                Start Time
-                              </label>
-                              <input
-                                id={`start-time-${eventDate.id}`}
-                                name={`start-time-${eventDate.id}`}
-                                title="Start Time"
-                                type="time"
-                                value={dateTime.startTime}
-                                onChange={(e) => handleUpdateDateTime(eventDate.id, 'startTime', e.target.value)}
-                                className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor={`end-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
-                                End Time
-                              </label>
-                              <input
-                                id={`end-time-${eventDate.id}`}
-                                name={`end-time-${eventDate.id}`}
-                                title="End Time"
-                                type="time"
-                                value={dateTime.endTime}
-                                onChange={(e) => handleUpdateDateTime(eventDate.id, 'endTime', e.target.value)}
-                                className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              />
+                          <div className="mt-2 space-y-2">
+                            {eventDate.setup_time && (
+                              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                                Setup starts at: <span className="font-medium text-gray-900">{eventDate.setup_time}</span>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label htmlFor={`start-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
+                                  Start Time
+                                </label>
+                                <input
+                                  id={`start-time-${eventDate.id}`}
+                                  name={`start-time-${eventDate.id}`}
+                                  title="Start Time"
+                                  type="time"
+                                  value={dateTime.startTime}
+                                  onChange={(e) => handleUpdateDateTime(eventDate.id, 'startTime', e.target.value)}
+                                  className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label htmlFor={`end-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
+                                  End Time
+                                </label>
+                                <input
+                                  id={`end-time-${eventDate.id}`}
+                                  name={`end-time-${eventDate.id}`}
+                                  title="End Time"
+                                  type="time"
+                                  value={dateTime.endTime}
+                                  onChange={(e) => handleUpdateDateTime(eventDate.id, 'endTime', e.target.value)}
+                                  className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
                             </div>
                           </div>
                         )}

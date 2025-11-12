@@ -43,6 +43,7 @@ export async function GET(
       .from('event_dates')
       .select(`
         event_date,
+        setup_time,
         start_time,
         end_time,
         notes,
@@ -187,6 +188,7 @@ export async function GET(
       event_date: primaryEventDate?.event_date,
       load_in_time: event.load_in_time,
       load_in_notes: event.load_in_notes,
+      setup_time: primaryEventDate?.setup_time,
       start_time: primaryEventDate?.start_time ||
         (event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', {
           hour: '2-digit',

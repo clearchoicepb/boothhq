@@ -27,6 +27,7 @@ type EventDate = {
   id: string
   event_date: string
   status: string
+  setup_time?: string | null
   start_time?: string | null
   end_time?: string | null
   notes?: string | null
@@ -38,6 +39,7 @@ type EventDate = {
 type EditableEventDate = {
   event_date?: string
   status?: string
+  setup_time?: string
   start_time?: string
   end_time?: string
   notes?: string
@@ -167,7 +169,30 @@ export function EventDateDetailModal({
             )}
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-500" htmlFor="event-setup-time">
+                Setup Time
+              </label>
+              {isEditing ? (
+                <input
+                  id="event-setup-time"
+                  name="setup_time"
+                  title="Setup Time"
+                  type="time"
+                  value={editEventDateData.setup_time || ''}
+                  onChange={(e) => onFieldChange('setup_time', e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              ) : eventDate.setup_time ? (
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-5 w-5 text-gray-400" />
+                  <span className="text-base text-gray-900">{eventDate.setup_time}</span>
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">Not set</span>
+              )}
+            </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-500" htmlFor="event-start-time">
                 Start Time

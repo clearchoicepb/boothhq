@@ -47,6 +47,12 @@ export function EventDatesCard({
             <EventStatusBadge status={eventDates[0].status} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+            {eventDates[0].setup_time && (
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                <span>Setup: {formatTime(eventDates[0].setup_time)}</span>
+              </div>
+            )}
             {eventDates[0].start_time && (
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-2" />
@@ -114,7 +120,16 @@ export function EventDatesCard({
             <EventStatusBadge status={eventDates[activeTab].status} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+            {eventDates[activeTab].setup_time && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Setup Time</label>
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 text-gray-400 mr-2" />
+                  <span className="text-sm text-gray-900">{formatTime(eventDates[activeTab].setup_time)}</span>
+                </div>
+              </div>
+            )}
             {eventDates[activeTab].start_time && (
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Start Time</label>
