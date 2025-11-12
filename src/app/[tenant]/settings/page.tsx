@@ -195,17 +195,9 @@ const settingsSections: SettingsSection[] = [
   {
     id: 'integrations',
     title: 'Integrations',
-    description: 'Connect with external services and configure API settings',
+    description: 'Connect with external services and configure API settings (including Stripe payments)',
     icon: Globe,
     href: '/integrations',
-    category: 'integrations'
-  },
-  {
-    id: 'payments',
-    title: 'Payment Gateways',
-    description: 'Configure Stripe, PayPal, and other payment processing options',
-    icon: CreditCard,
-    href: '/payments',
     category: 'integrations'
   },
   {

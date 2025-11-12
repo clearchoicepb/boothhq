@@ -41,11 +41,19 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
   publishableKey?: string
 }> {
   try {
+    // Check both possible locations for Stripe settings:
+    // 1. Integrations page: thirdPartyIntegrations.stripe.* (preferred)
+    // 2. Payment Gateways page: stripe.* (legacy, for backwards compatibility)
     const { data: settings, error } = await supabase
       .from('tenant_settings')
       .select('setting_key, setting_value')
       .eq('tenant_id', tenantId)
-      .in('setting_key', ['stripe.secretKey', 'stripe.publishableKey'])
+      .in('setting_key', [
+        'thirdPartyIntegrations.stripe.secretKey',
+        'thirdPartyIntegrations.stripe.publishableKey',
+        'stripe.secretKey',
+        'stripe.publishableKey'
+      ])
 
     if (error) {
       console.error('Error fetching Stripe settings:', error)
@@ -70,10 +78,17 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
         value = value.value
       }
 
-      if (setting.setting_key === 'stripe.secretKey') {
-        config.secretKey = value
-      } else if (setting.setting_key === 'stripe.publishableKey') {
-        config.publishableKey = value
+      // Check both possible key locations (prefer Integrations page keys)
+      if (setting.setting_key === 'thirdPartyIntegrations.stripe.secretKey' || setting.setting_key === 'stripe.secretKey') {
+        // Only set if not already set (prefer thirdPartyIntegrations version)
+        if (!config.secretKey) {
+          config.secretKey = value
+        }
+      } else if (setting.setting_key === 'thirdPartyIntegrations.stripe.publishableKey' || setting.setting_key === 'stripe.publishableKey') {
+        // Only set if not already set (prefer thirdPartyIntegrations version)
+        if (!config.publishableKey) {
+          config.publishableKey = value
+        }
       }
     })
 
