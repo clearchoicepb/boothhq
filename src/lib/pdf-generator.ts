@@ -40,7 +40,7 @@ export interface InvoicePDFData {
 
 export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> => {
   const { invoice, companyInfo } = data
-  
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -56,22 +56,63 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
     })
   }
 
+  // Helper function to load image as base64
+  const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return null
+
+      const arrayBuffer = await response.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+      const base64 = buffer.toString('base64')
+      const contentType = response.headers.get('content-type') || 'image/png'
+
+      return `data:${contentType};base64,${base64}`
+    } catch (error) {
+      console.error('Error loading logo image:', error)
+      return null
+    }
+  }
+
   // Create a new PDF document
   const doc = new jsPDF()
-  
+
   // Set font
   doc.setFont('helvetica')
-  
-  // Company Header
-  doc.setFontSize(24)
+
+  // Company Header - with logo if available
+  let headerYPos = 30
+
+  if (companyInfo.logoUrl) {
+    try {
+      const logoBase64 = await loadImageAsBase64(companyInfo.logoUrl)
+      if (logoBase64) {
+        // Add logo image - max height of 20mm, auto width
+        doc.addImage(logoBase64, 'PNG', 20, 15, 0, 20, undefined, 'FAST')
+        headerYPos = 40 // Adjust text position if logo is present
+      }
+    } catch (error) {
+      console.error('Error adding logo to PDF:', error)
+      // Fall back to text-only header
+    }
+  }
+
+  // Company name (smaller if logo is present)
+  if (companyInfo.logoUrl) {
+    doc.setFontSize(16)
+  } else {
+    doc.setFontSize(24)
+  }
   doc.setFont('helvetica', 'bold')
-  doc.text(companyInfo.name, 20, 30)
-  
+  doc.text(companyInfo.name, 20, headerYPos)
+
+  // Company contact info - positioned below logo/name
+  const contactYStart = headerYPos + 10
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text(companyInfo.address, 20, 40)
-  doc.text(`Phone: ${companyInfo.phone}`, 20, 45)
-  doc.text(`Email: ${companyInfo.email}`, 20, 50)
+  doc.text(companyInfo.address, 20, contactYStart)
+  doc.text(`Phone: ${companyInfo.phone}`, 20, contactYStart + 5)
+  doc.text(`Email: ${companyInfo.email}`, 20, contactYStart + 10)
   
   // Invoice Title and Number
   doc.setFontSize(20)

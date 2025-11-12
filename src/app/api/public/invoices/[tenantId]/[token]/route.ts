@@ -83,6 +83,16 @@ export async function GET(
       );
     }
 
+    // Fetch tenant appearance settings (logo)
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('tenant_id', invoice.tenant_id)
+      .eq('key', 'appearance')
+      .single();
+
+    const logoUrl = settings?.value?.logoUrl || null;
+
     return NextResponse.json({
       invoice: {
         ...invoice,
@@ -92,6 +102,7 @@ export async function GET(
         id: invoice.tenant_id,
         name: process.env.TENANT_NAME || 'Invoice Payment',
         subdomain: process.env.TENANT_SUBDOMAIN || '',
+        logoUrl: logoUrl,
       },
     });
 
