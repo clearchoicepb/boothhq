@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase-client';
 import { getTenantStripe, getTenantStripeConfig, formatAmountForStripe } from '@/lib/stripe';
 
 // GET /api/public/invoices/[token]/pay - Create payment intent (no auth required)
@@ -19,7 +19,7 @@ export async function GET(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServerSupabaseClient();
 
     // Fetch invoice by public token
     const { data: invoice, error: invoiceError } = await supabase
@@ -139,7 +139,7 @@ export async function POST(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServerSupabaseClient();
 
     // Fetch invoice by public token
     const { data: invoice, error: invoiceError } = await supabase

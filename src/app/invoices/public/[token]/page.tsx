@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { CreditCard, Building2, Mail, Phone, Calendar, Hash, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -236,7 +235,7 @@ export default function PublicInvoicePage() {
               </div>
             </div>
 
-            <Separator />
+            <div className="border-t border-gray-200"></div>
 
             {/* Bill To Section */}
             {(invoice.accounts || invoice.contacts) && (
@@ -285,7 +284,7 @@ export default function PublicInvoicePage() {
                     )}
                   </div>
                 </div>
-                <Separator />
+                <div className="border-t border-gray-200"></div>
               </>
             )}
 
@@ -316,7 +315,7 @@ export default function PublicInvoicePage() {
               </div>
             </div>
 
-            <Separator />
+            <div className="border-t border-gray-200"></div>
 
             {/* Totals */}
             <div className="space-y-2">
@@ -328,7 +327,7 @@ export default function PublicInvoicePage() {
                 <span className="text-gray-600">Tax</span>
                 <span className="font-semibold">{formatCurrency(invoice.tax_amount)}</span>
               </div>
-              <Separator />
+              <div className="border-t border-gray-200"></div>
               <div className="flex justify-between text-lg">
                 <span className="font-bold">Total</span>
                 <span className="font-bold">{formatCurrency(invoice.total_amount)}</span>
@@ -351,7 +350,7 @@ export default function PublicInvoicePage() {
             {/* Notes */}
             {invoice.notes && (
               <>
-                <Separator />
+                <div className="border-t border-gray-200"></div>
                 <div>
                   <h3 className="text-sm font-semibold mb-2 text-gray-600">Notes</h3>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>

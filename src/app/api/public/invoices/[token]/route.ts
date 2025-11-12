@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase-client';
 
 // GET /api/public/invoices/[token] - View invoice details (no auth required)
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     }
 
     // Create Supabase client without auth context
-    const supabase = await createClient();
+    const supabase = createServerSupabaseClient();
 
     // Fetch invoice by public token
     const { data: invoice, error: invoiceError } = await supabase
