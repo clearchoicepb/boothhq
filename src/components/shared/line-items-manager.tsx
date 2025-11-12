@@ -172,11 +172,16 @@ export function LineItemsManager({
 
       if (response.ok) {
         await fetchData()
-        if (onUpdate) onUpdate()
+        if (onUpdate) await onUpdate()
         setIsModalOpen(false)
+      } else {
+        const errorData = await response.json()
+        console.error('Error response:', errorData)
+        alert(`Failed to save item: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error saving line item:', error)
+      alert('Failed to save line item. Please try again.')
     }
   }
 
