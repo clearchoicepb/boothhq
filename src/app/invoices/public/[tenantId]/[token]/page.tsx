@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 
 interface InvoiceLineItem {
   id: string
+  name?: string
   description: string
   quantity: number
   unit_price: number
@@ -200,15 +201,15 @@ export default function PublicInvoicePage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Payment CTA Banner - Mobile & Desktop */}
         {canPay && (
-          <div className="mb-6 bg-blue-600 text-white rounded-lg shadow-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mb-6 bg-gray-800 text-white rounded-lg shadow-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <p className="font-semibold text-lg">Amount Due: {formatCurrency(balanceAmount)}</p>
-              <p className="text-sm text-blue-100">Click to pay your invoice securely online</p>
+              <p className="text-sm text-gray-300">Click to pay your invoice securely online</p>
             </div>
             <Button
               onClick={handlePayNow}
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-100 font-semibold"
+              className="bg-white text-gray-900 hover:bg-gray-100 font-semibold"
             >
               <CreditCard className="mr-2 h-5 w-5" />
               Pay Now
@@ -314,7 +315,10 @@ export default function PublicInvoicePage() {
                 {invoice.line_items.map((item) => (
                   <tr key={item.id}>
                     <td className="py-4 pr-4">
-                      <p className="font-bold text-gray-900">{item.description}</p>
+                      <p className="font-bold text-gray-900">{item.name || item.description}</p>
+                      {item.name && item.description && (
+                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">{item.description}</p>
+                      )}
                       {item.taxable === false && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 mt-1">
                           Non-taxable
