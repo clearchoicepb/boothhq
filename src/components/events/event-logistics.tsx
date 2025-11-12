@@ -33,6 +33,7 @@ interface LogisticsData {
   event_date?: string
   load_in_time?: string
   load_in_notes?: string
+  setup_time?: string
   start_time?: string
   end_time?: string
   location?: {
@@ -641,9 +642,17 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
               </div>
             )}
 
-            {/* Event Setup Time (Load-In Time) */}
+            {/* Event Setup Time (from event dates) */}
+            {logistics?.setup_time && (
+              <div className="flex">
+                <span className="text-sm font-semibold text-gray-700 w-40">Setup Time:</span>
+                <span className="text-sm text-gray-900">{formatTime(logistics.setup_time)}</span>
+              </div>
+            )}
+
+            {/* Load-In Time (event-level field) */}
             <div className="flex">
-              <span className="text-sm font-semibold text-gray-700 w-40">Setup Time:</span>
+              <span className="text-sm font-semibold text-gray-700 w-40">Load-In Time:</span>
               {loadInTimeEditor.isEditing ? (
                 <div className="flex-1 space-y-2 print:hidden">
                   <input

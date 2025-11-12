@@ -10,6 +10,7 @@ interface LogisticsData {
   event_date?: string
   load_in_time?: string
   load_in_notes?: string
+  setup_time?: string
   start_time?: string
   end_time?: string
   location?: {

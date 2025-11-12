@@ -42,6 +42,7 @@ export interface EventWithRelations extends EventType {
   event_dates?: Array<{
     id: string
     event_date: string
+    setup_time: string | null
     start_time: string | null
     end_time: string | null
   }>
@@ -53,6 +54,7 @@ export interface EventWithRelations extends EventType {
 export interface EventDate {
   id: string
   event_date: string
+  setup_time: string | null
   start_time: string | null
   end_time: string | null
   location_id: string | null
