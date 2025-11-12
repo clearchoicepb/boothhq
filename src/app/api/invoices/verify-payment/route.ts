@@ -1,6 +1,6 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { getTenantStripe, getTenantStripeConfig } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,8 +27,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
+    // Get tenant-specific Stripe configuration
+    const stripeConfig = await getTenantStripeConfig(supabase, dataSourceTenantId)
+    const tenantStripe = getTenantStripe(stripeConfig.secretKey)
+
     // Retrieve the payment intent from Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+    const paymentIntent = await tenantStripe.paymentIntents.retrieve(payment_intent_id)
 
     if (paymentIntent.status === 'succeeded') {
       // Check if we've already processed this payment

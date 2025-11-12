@@ -7,15 +7,13 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, CreditCard, Check } from 'lucide-react'
 import Link from 'next/link'
-import { loadStripe } from '@stripe/stripe-js'
+import { loadStripe, Stripe } from '@stripe/stripe-js'
 import {
   Elements,
   CardElement,
   useStripe,
   useElements
 } from '@stripe/react-stripe-js'
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 interface Invoice {
   id: string
@@ -178,6 +176,7 @@ export default function InvoicePaymentPage() {
   const invoiceId = params.id as string
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [localLoading, setLocalLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -202,6 +201,13 @@ export default function InvoicePaymentPage() {
       const data = await response.json()
       setInvoice(data.invoice)
       setClientSecret(data.client_secret)
+
+      // Load Stripe with tenant-specific publishable key
+      if (data.publishable_key) {
+        setStripePromise(loadStripe(data.publishable_key))
+      } else {
+        setError('Stripe is not configured for this tenant')
+      }
     } catch (error) {
       console.error('Error:', error)
       setError('Failed to load payment data')
@@ -250,12 +256,16 @@ export default function InvoicePaymentPage() {
     )
   }
 
-  if (!invoice || !clientSecret) {
+  if (!invoice || !clientSecret || !stripePromise) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invoice Not Found</h1>
-          <p className="text-gray-600">The invoice you're looking for doesn't exist.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            {!invoice ? 'Invoice Not Found' : 'Loading Payment System...'}
+          </h1>
+          <p className="text-gray-600">
+            {!invoice ? 'The invoice you\'re looking for doesn\'t exist.' : 'Please wait while we set up the payment form.'}
+          </p>
         </div>
       </div>
     )

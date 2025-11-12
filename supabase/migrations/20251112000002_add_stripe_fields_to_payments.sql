@@ -1,59 +1,28 @@
--- Create payments table if it doesn't exist
--- Note: Foreign key constraints will only be added if the referenced tables exist
-DO $$
-BEGIN
-  -- Create the table without foreign key constraints first
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payments') THEN
-    CREATE TABLE payments (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      tenant_id UUID,
-      invoice_id UUID,
-      amount DECIMAL(15,2) NOT NULL,
-      payment_date DATE,
-      payment_method TEXT,
-      payment_intent_id TEXT,
-      status TEXT DEFAULT 'completed',
-      processed_at TIMESTAMP WITH TIME ZONE,
-      reference_number TEXT,
-      notes TEXT,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-  END IF;
-
-  -- Add foreign key to tenants if the table exists
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tenants') THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM information_schema.table_constraints
-      WHERE constraint_name = 'payments_tenant_id_fkey'
-      AND table_name = 'payments'
-    ) THEN
-      ALTER TABLE payments
-      ADD CONSTRAINT payments_tenant_id_fkey
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
-    END IF;
-  END IF;
-
-  -- Add foreign key to invoices if the table exists
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'invoices') THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM information_schema.table_constraints
-      WHERE constraint_name = 'payments_invoice_id_fkey'
-      AND table_name = 'payments'
-    ) THEN
-      ALTER TABLE payments
-      ADD CONSTRAINT payments_invoice_id_fkey
-      FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE;
-    END IF;
-  END IF;
-END $$;
+-- Create payments table for tenant database
+-- Note: tenant_id is stored as UUID but no FK to tenants (since tenants table is in app DB)
+-- This migration is designed to run on TENANT databases, not the application database
+CREATE TABLE IF NOT EXISTS payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  amount DECIMAL(15,2) NOT NULL,
+  payment_date DATE,
+  payment_method TEXT,
+  payment_intent_id TEXT,
+  status TEXT DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed')),
+  processed_at TIMESTAMP WITH TIME ZONE,
+  reference_number TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- Add missing columns if the table already exists
 DO $$
 BEGIN
-  -- Add tenant_id if missing
+  -- Add tenant_id if missing (no FK since tenants table is in app database)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_name='payments' AND column_name='tenant_id') THEN
-    ALTER TABLE payments ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+    ALTER TABLE payments ADD COLUMN tenant_id UUID NOT NULL;
   END IF;
 
   -- Add payment_intent_id if missing

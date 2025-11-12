@@ -1,6 +1,6 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, formatAmountForStripe } from '@/lib/stripe'
+import { getTenantStripe, getTenantStripeConfig, formatAmountForStripe } from '@/lib/stripe'
 
 export async function POST(
   request: NextRequest,
@@ -42,12 +42,16 @@ export async function POST(
     }
 
     try {
+      // Get tenant-specific Stripe configuration
+      const stripeConfig = await getTenantStripeConfig(supabase, dataSourceTenantId)
+      const tenantStripe = getTenantStripe(stripeConfig.secretKey)
+
       // Get the base URL for return URLs
       const { origin } = new URL(request.url)
       const returnUrl = `${origin}/clearchoice/invoices/${invoice.id}/pay/return`
 
       // Create payment intent
-      const paymentIntent = await stripe.paymentIntents.create({
+      const paymentIntent = await tenantStripe.paymentIntents.create({
         amount: formatAmountForStripe(paymentAmount, 'usd'),
         currency: 'usd',
         payment_method: payment_method_id,
@@ -143,7 +147,7 @@ export async function GET(
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
-    
+
     const { id } = await params
     // Get invoice data
     const { data: invoice, error: invoiceError } = await supabase
@@ -160,12 +164,16 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
+    // Get tenant-specific Stripe configuration
+    const stripeConfig = await getTenantStripeConfig(supabase, dataSourceTenantId)
+    const tenantStripe = getTenantStripe(stripeConfig.secretKey)
+
     // Get the base URL for return URLs
     const { origin } = new URL(request.url)
     const returnUrl = `${origin}/clearchoice/invoices/${invoice.id}/pay/return`
 
     // Create payment intent for the balance amount
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntent = await tenantStripe.paymentIntents.create({
       amount: formatAmountForStripe(invoice.balance_amount, 'usd'),
       currency: 'usd',
       automatic_payment_methods: {
@@ -182,6 +190,7 @@ export async function GET(
 
     return NextResponse.json({
       client_secret: paymentIntent.client_secret,
+      publishable_key: stripeConfig.publishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
       invoice: {
         id: invoice.id,
         invoice_number: invoice.invoice_number,
