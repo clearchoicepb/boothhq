@@ -25,6 +25,7 @@ interface Invoice {
   opportunity_id: string | null
   account_id: string | null
   contact_id: string | null
+  event_id: string | null
   issue_date: string
   due_date: string
   status: string
@@ -251,6 +252,14 @@ export default function InvoiceDetailPage() {
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Mark as Paid
                 </Button>
+              )}
+              {invoice.status === 'draft' && invoice.event_id && (
+                <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials`}>
+                  <Button variant="outline">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </Link>
               )}
               {invoice.status === 'draft' && (
                 <Button variant="outline" className="text-red-600" onClick={handleDelete}>
