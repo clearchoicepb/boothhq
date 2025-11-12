@@ -1,5 +1,6 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { addDays } from 'date-fns'
 
 // GET /api/events/[id]/inventory - Get all inventory assigned to an event or available inventory
 export async function GET(
@@ -376,13 +377,16 @@ export async function POST(
       }, { status: 404 })
     }
 
+    // Calculate default return date: 5 days after event start date
+    const defaultReturnDate = addDays(new Date(event.start_date), 5).toISOString().split('T')[0]
+
     // Update inventory items
     const { data: updatedItems, error: updateError } = await supabase
       .from('inventory_items')
       .update({
         event_id: eventId,
         assignment_type: 'event_checkout',
-        expected_return_date: expected_return_date || event.start_date,
+        expected_return_date: expected_return_date || defaultReturnDate,
         updated_at: new Date().toISOString()
       })
       .in('id', allItemIds)
