@@ -10,11 +10,60 @@ export async function GET(request: NextRequest) {
     const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
 
+    // Pagination params
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '50', 10)
+    const offset = (page - 1) * limit
+
+    // Filter params
     const category = searchParams.get('category')
     const trackingType = searchParams.get('tracking_type')
     const assignedToType = searchParams.get('assigned_to_type')
     const assignedToId = searchParams.get('assigned_to_id')
+    const status = searchParams.get('status')
+    const search = searchParams.get('search')
 
+    // Sorting params
+    const sortBy = searchParams.get('sort') || 'item_name'
+    const sortOrder = searchParams.get('order') || 'asc'
+
+    // Value range filters
+    const minValue = searchParams.get('min_value')
+    const maxValue = searchParams.get('max_value')
+
+    // Date filters
+    const purchaseDateFrom = searchParams.get('purchase_date_from')
+    const purchaseDateTo = searchParams.get('purchase_date_to')
+
+    // Get total count first (before pagination)
+    let countQuery = supabase
+      .from('inventory_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', dataSourceTenantId)
+
+    // Apply same filters to count query
+    if (category) countQuery = countQuery.eq('item_category', category)
+    if (trackingType) countQuery = countQuery.eq('tracking_type', trackingType)
+    if (assignedToType) countQuery = countQuery.eq('assigned_to_type', assignedToType)
+    if (assignedToId) countQuery = countQuery.eq('assigned_to_id', assignedToId)
+    if (status === 'available') {
+      countQuery = countQuery.or('assigned_to_id.is.null,assignment_type.eq.warehouse')
+    } else if (status === 'checked_out') {
+      countQuery = countQuery.eq('assignment_type', 'event_checkout')
+    } else if (status === 'long_term') {
+      countQuery = countQuery.eq('assignment_type', 'long_term_staff')
+    }
+    if (minValue) countQuery = countQuery.gte('item_value', parseFloat(minValue))
+    if (maxValue) countQuery = countQuery.lte('item_value', parseFloat(maxValue))
+    if (purchaseDateFrom) countQuery = countQuery.gte('purchase_date', purchaseDateFrom)
+    if (purchaseDateTo) countQuery = countQuery.lte('purchase_date', purchaseDateTo)
+    if (search) {
+      countQuery = countQuery.or(`item_name.ilike.%${search}%,serial_number.ilike.%${search}%,item_category.ilike.%${search}%,model.ilike.%${search}%`)
+    }
+
+    const { count } = await countQuery
+
+    // Build main query with pagination
     let query = supabase
       .from('inventory_items')
       .select(`
@@ -28,23 +77,41 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('tenant_id', dataSourceTenantId)
-      .order('item_name', { ascending: true })
 
-    if (category) {
-      query = query.eq('item_category', category)
+    // Apply filters
+    if (category) query = query.eq('item_category', category)
+    if (trackingType) query = query.eq('tracking_type', trackingType)
+    if (assignedToType) query = query.eq('assigned_to_type', assignedToType)
+    if (assignedToId) query = query.eq('assigned_to_id', assignedToId)
+
+    // Status filters
+    if (status === 'available') {
+      query = query.or('assigned_to_id.is.null,assignment_type.eq.warehouse')
+    } else if (status === 'checked_out') {
+      query = query.eq('assignment_type', 'event_checkout')
+    } else if (status === 'long_term') {
+      query = query.eq('assignment_type', 'long_term_staff')
     }
 
-    if (trackingType) {
-      query = query.eq('tracking_type', trackingType)
+    // Value range filters
+    if (minValue) query = query.gte('item_value', parseFloat(minValue))
+    if (maxValue) query = query.lte('item_value', parseFloat(maxValue))
+
+    // Date filters
+    if (purchaseDateFrom) query = query.gte('purchase_date', purchaseDateFrom)
+    if (purchaseDateTo) query = query.lte('purchase_date', purchaseDateTo)
+
+    // Search filter (across multiple fields)
+    if (search) {
+      query = query.or(`item_name.ilike.%${search}%,serial_number.ilike.%${search}%,item_category.ilike.%${search}%,model.ilike.%${search}%`)
     }
 
-    if (assignedToType) {
-      query = query.eq('assigned_to_type', assignedToType)
-    }
+    // Apply sorting
+    const ascending = sortOrder === 'asc'
+    query = query.order(sortBy, { ascending })
 
-    if (assignedToId) {
-      query = query.eq('assigned_to_id', assignedToId)
-    }
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1)
 
     const { data, error } = await query
 
@@ -159,7 +226,19 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json(data)
+    // Return data with pagination metadata
+    const totalPages = Math.ceil((count || 0) / limit)
+
+    return NextResponse.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages,
+        hasMore: page < totalPages
+      }
+    })
   } catch (error) {
     console.error('Error fetching inventory items:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
