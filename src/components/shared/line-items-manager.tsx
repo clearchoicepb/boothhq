@@ -32,6 +32,7 @@ interface LineItem {
   unit_price: number
   total: number
   sort_order: number
+  taxable?: boolean
 }
 
 interface LineItemsManagerProps {
@@ -66,6 +67,7 @@ export function LineItemsManager({
     description: '',
     quantity: '1',
     unit_price: '',
+    taxable: true,
   })
 
   // Build API endpoint based on parent type
@@ -106,6 +108,7 @@ export function LineItemsManager({
       description: '',
       quantity: '1',
       unit_price: '',
+      taxable: true,
     })
     setIsModalOpen(true)
   }
@@ -120,6 +123,7 @@ export function LineItemsManager({
           description: pkg.description || '',
           quantity: '1',
           unit_price: pkg.base_price.toString(),
+          taxable: true,
         })
       }
     } else if (modalType === 'add_on') {
@@ -131,6 +135,7 @@ export function LineItemsManager({
           description: addOn.description || '',
           quantity: '1',
           unit_price: addOn.price.toString(),
+          taxable: true,
         })
       }
     }
@@ -139,7 +144,7 @@ export function LineItemsManager({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const payload = {
+    const payload: any = {
       item_type: modalType,
       package_id: modalType === 'package' ? formData.selectedId : null,
       add_on_id: modalType === 'add_on' ? formData.selectedId : null,
@@ -147,6 +152,11 @@ export function LineItemsManager({
       description: formData.description || null,
       quantity: parseFloat(formData.quantity),
       unit_price: parseFloat(formData.unit_price),
+    }
+
+    // Only include taxable for invoices
+    if (parentType === 'invoice') {
+      payload.taxable = formData.taxable
     }
 
     try {
@@ -282,8 +292,15 @@ export function LineItemsManager({
                             : 'bg-green-500'
                         }`}
                       ></span>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                          {parentType === 'invoice' && item.taxable !== false && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Taxable item">
+                              TAX
+                            </span>
+                          )}
+                        </div>
                         {item.description && (
                           <p className="text-xs text-gray-500">{item.description}</p>
                         )}
@@ -446,6 +463,23 @@ export function LineItemsManager({
                     </div>
                   </div>
                 </div>
+
+                {/* Taxable checkbox - only for invoices */}
+                {parentType === 'invoice' && (
+                  <div className="flex items-center">
+                    <input
+                      id="item-taxable"
+                      name="taxable"
+                      type="checkbox"
+                      checked={formData.taxable}
+                      onChange={(e) => setFormData({ ...formData, taxable: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="item-taxable" className="ml-2 block text-sm text-gray-900">
+                      Taxable (applies tax rate to this item)
+                    </label>
+                  </div>
+                )}
 
                 {formData.quantity && formData.unit_price && (
                   <div className="bg-gray-50 p-4 rounded-md">

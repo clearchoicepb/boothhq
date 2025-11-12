@@ -22,7 +22,8 @@ export async function PUT(
       quantity: parseFloat(body.quantity),
       unit_price: parseFloat(body.unit_price),
       total_price: parseFloat(body.quantity) * parseFloat(body.unit_price),
-      sort_order: body.sort_order || 0
+      sort_order: body.sort_order || 0,
+      taxable: body.taxable !== undefined ? body.taxable : true
     }
 
     const { data, error } = await supabase
@@ -92,11 +93,16 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
   // Calculate subtotal from all line items
   const { data: lineItems } = await supabase
     .from('invoice_line_items')
-    .select('total_price')
+    .select('total_price, taxable')
     .eq('invoice_id', invoiceId)
     .eq('tenant_id', tenantId)
 
   const subtotal = lineItems?.reduce((sum: number, item: any) => sum + parseFloat(item.total_price), 0) || 0
+
+  // Calculate taxable subtotal (only items where taxable = true)
+  const taxableSubtotal = lineItems?.reduce((sum: number, item: any) => {
+    return sum + (item.taxable !== false ? parseFloat(item.total_price) : 0)
+  }, 0) || 0
 
   // Get current tax rate
   const { data: invoice } = await supabase
@@ -107,7 +113,7 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
     .single()
 
   const taxRate = parseFloat(invoice?.tax_rate || 0)
-  const taxAmount = subtotal * taxRate
+  const taxAmount = taxableSubtotal * taxRate  // Only apply tax to taxable items
   const totalAmount = subtotal + taxAmount
   const balanceAmount = totalAmount // Assuming no payments yet; adjust if paid_amount exists
 
