@@ -1,18 +1,51 @@
 -- Create payments table if it doesn't exist
-CREATE TABLE IF NOT EXISTS payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
-  invoice_id UUID REFERENCES invoices(id) ON DELETE CASCADE,
-  amount DECIMAL(15,2) NOT NULL,
-  payment_date DATE,
-  payment_method TEXT,
-  payment_intent_id TEXT,
-  status TEXT DEFAULT 'completed',
-  processed_at TIMESTAMP WITH TIME ZONE,
-  reference_number TEXT,
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Note: Foreign key constraints will only be added if the referenced tables exist
+DO $$
+BEGIN
+  -- Create the table without foreign key constraints first
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payments') THEN
+    CREATE TABLE payments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id UUID,
+      invoice_id UUID,
+      amount DECIMAL(15,2) NOT NULL,
+      payment_date DATE,
+      payment_method TEXT,
+      payment_intent_id TEXT,
+      status TEXT DEFAULT 'completed',
+      processed_at TIMESTAMP WITH TIME ZONE,
+      reference_number TEXT,
+      notes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+  END IF;
+
+  -- Add foreign key to tenants if the table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tenants') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'payments_tenant_id_fkey'
+      AND table_name = 'payments'
+    ) THEN
+      ALTER TABLE payments
+      ADD CONSTRAINT payments_tenant_id_fkey
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+    END IF;
+  END IF;
+
+  -- Add foreign key to invoices if the table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'invoices') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'payments_invoice_id_fkey'
+      AND table_name = 'payments'
+    ) THEN
+      ALTER TABLE payments
+      ADD CONSTRAINT payments_invoice_id_fkey
+      FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE;
+    END IF;
+  END IF;
+END $$;
 
 -- Add missing columns if the table already exists
 DO $$
