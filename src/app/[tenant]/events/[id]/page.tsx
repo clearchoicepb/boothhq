@@ -595,6 +595,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
               eventDates={eventDates}
               paymentStatusOptions={paymentStatusOptions}
               tenantSubdomain={tenantSubdomain}
+              invoices={invoices}
               isEditingAccountContact={contextEditing.isEditingAccountContact}
               editAccountId={contextEditing.editAccountId}
               editContactId={contextEditing.editContactId}
