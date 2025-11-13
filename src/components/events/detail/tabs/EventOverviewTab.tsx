@@ -85,11 +85,21 @@ interface PaymentStatusOption {
   status_color: string | null
 }
 
+interface Invoice {
+  id: string
+  invoice_number: string
+  status: string
+  total_amount: number
+  paid_amount: number
+  balance_amount: number
+}
+
 interface EventOverviewTabProps {
   event: Event
   eventDates: EventDate[]
   paymentStatusOptions: PaymentStatusOption[]
   tenantSubdomain: string
+  invoices?: Invoice[]
 
   // Editing states
   isEditingAccountContact: boolean
@@ -130,11 +140,48 @@ interface EventOverviewTabProps {
   onNavigateToStaffing: () => void
 }
 
+/**
+ * Derive payment status from invoice statuses
+ */
+function derivePaymentStatus(invoices: Invoice[]): string | null {
+  if (!invoices || invoices.length === 0) return null
+
+  const statuses = invoices.map(inv => inv.status)
+
+  // If all invoices are paid_in_full, event is fully paid
+  if (statuses.every(s => s === 'paid_in_full')) {
+    return 'Paid in Full'
+  }
+
+  // If all invoices are draft or cancelled, no payment status
+  if (statuses.every(s => s === 'draft' || s === 'cancelled')) {
+    return null
+  }
+
+  // If any invoice has partial payment
+  if (statuses.some(s => s === 'partially_paid')) {
+    return 'Partially Paid'
+  }
+
+  // If any invoice is past due
+  if (statuses.some(s => s === 'past_due')) {
+    return 'Past Due'
+  }
+
+  // If no payments received on active invoices
+  if (statuses.some(s => s === 'no_payments_received')) {
+    return 'No Payments Received'
+  }
+
+  return null
+}
+
 export function EventOverviewTab({
   event,
   eventDates,
   paymentStatusOptions,
   tenantSubdomain,
+  invoices = [],
   isEditingAccountContact,
   editAccountId,
   editContactId,
@@ -162,11 +209,24 @@ export function EventOverviewTab({
   staffAssignments,
   onNavigateToStaffing
 }: EventOverviewTabProps) {
+  // Calculate Event Value from all invoices
+  const calculatedEventValue = invoices.reduce((sum, invoice) => sum + (invoice.total_amount || 0), 0)
+
+  // Derive Payment Status from invoice statuses
+  const derivedPaymentStatus = derivePaymentStatus(invoices)
+
+  // Create enhanced event object with calculated values
+  const enhancedEvent = {
+    ...event,
+    event_value: calculatedEventValue > 0 ? calculatedEventValue.toString() : event.event_value,
+    payment_status: derivedPaymentStatus || event.payment_status
+  }
+
   return (
     <div className="space-y-6">
       {/* Key Metrics: Event Date, Payment Status, Event Value, Status */}
       <EventKeyMetricsCards
-        event={event}
+        event={enhancedEvent}
         paymentStatusOptions={paymentStatusOptions}
         isEditingPaymentStatus={isEditingPaymentStatus}
         onStartEditPaymentStatus={onStartEditPaymentStatus}
