@@ -218,9 +218,26 @@ export default function PublicInvoicePage() {
         )}
 
         {/* Invoice Preview */}
-        <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 mb-6">
+        <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 mb-6 relative overflow-hidden">
+          {/* Paid Stamp Overlay */}
+          {invoice.status === 'paid_in_full' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div
+                className="text-green-600 font-bold opacity-20 select-none"
+                style={{
+                  fontSize: '180px',
+                  transform: 'rotate(-30deg)',
+                  letterSpacing: '0.1em',
+                  textShadow: '0 0 20px rgba(22, 163, 74, 0.3)'
+                }}
+              >
+                PAID
+              </div>
+            </div>
+          )}
+
           {/* Header with Logo and Invoice Info */}
-          <div className="flex justify-between items-start mb-12">
+          <div className="flex justify-between items-start mb-12 relative z-20">
             {/* Company Logo */}
             <div>
               {tenant.logoUrl ? (
@@ -247,7 +264,7 @@ export default function PublicInvoicePage() {
           </div>
 
           {/* Billing Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12 pb-8 border-b border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12 pb-8 border-b border-gray-200 relative z-20">
             {/* Bill To */}
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bill To</h3>
@@ -295,7 +312,7 @@ export default function PublicInvoicePage() {
           </div>
 
           {/* Line Items */}
-          <div className="mb-8">
+          <div className="mb-8 relative z-20">
             <table className="min-w-full table-fixed">
               <colgroup>
                 <col className="w-[46%]" />
@@ -335,7 +352,7 @@ export default function PublicInvoicePage() {
           </div>
 
           {/* Totals */}
-          <div className="flex justify-end mb-8">
+          <div className="flex justify-end mb-8 relative z-20">
             <div className="w-80">
               <div className="space-y-3">
                 <div className="flex justify-between py-2">
@@ -368,7 +385,7 @@ export default function PublicInvoicePage() {
 
           {/* Notes */}
           {invoice.notes && (
-            <div className="border-t border-gray-200 pt-8 mt-8">
+            <div className="border-t border-gray-200 pt-8 mt-8 relative z-20">
               <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Notes</h4>
               <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{invoice.notes}</p>
             </div>

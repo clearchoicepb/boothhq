@@ -90,16 +90,50 @@ export async function POST(request: NextRequest) {
 
     // Generate invoice number if not provided
     if (!body.invoice_number) {
-      const { data: lastInvoice } = await supabase
+      // Get invoice settings from tenant_settings
+      const { data: tenantSettings } = await supabase
+        .from('tenant_settings')
+        .select('settings')
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      // Extract invoice settings with defaults
+      const invoiceSettings = tenantSettings?.settings?.invoices || {}
+      const prefix = invoiceSettings.invoiceNumberPrefix || 'INV'
+      const suffix = invoiceSettings.invoiceNumberSuffix || ''
+      const startingNumber = invoiceSettings.nextInvoiceNumber || 1
+
+      // Get ALL invoices to find the maximum invoice number ever used
+      // This ensures we NEVER reuse a deleted invoice number
+      const { data: allInvoices } = await supabase
         .from('invoices')
         .select('invoice_number')
         .eq('tenant_id', dataSourceTenantId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+        .order('invoice_number', { ascending: false })
 
-      const lastNumber = lastInvoice?.invoice_number ? parseInt(lastInvoice.invoice_number.replace('INV-', '')) : 0
-      body.invoice_number = `INV-${String(lastNumber + 1).padStart(4, '0')}`
+      let maxNumber = 0
+      if (allInvoices && allInvoices.length > 0) {
+        // Find the highest numeric invoice number
+        for (const inv of allInvoices) {
+          if (inv.invoice_number) {
+            // Extract number from format like 'PREFIX-0001SUFFIX'
+            const match = inv.invoice_number.match(/(\d+)/)
+            if (match) {
+              const num = parseInt(match[1])
+              if (num > maxNumber) {
+                maxNumber = num
+              }
+            }
+          }
+        }
+      }
+
+      // Use the maximum of: maxNumber + 1 or the configured starting number
+      const nextNumber = Math.max(maxNumber + 1, startingNumber)
+
+      // Format: PREFIX-0001SUFFIX (with separator only if prefix exists)
+      const separator = prefix ? '-' : ''
+      body.invoice_number = `${prefix}${separator}${String(nextNumber).padStart(4, '0')}${suffix}`
     }
 
     // Calculate totals

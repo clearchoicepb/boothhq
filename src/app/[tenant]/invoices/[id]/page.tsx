@@ -7,7 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus } from 'lucide-react'
+import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus, Pencil } from 'lucide-react'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 
 interface InvoiceLineItem {
@@ -83,6 +83,8 @@ export default function InvoiceDetailPage() {
   const [linkCopied, setLinkCopied] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null)
+  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState(false)
+  const [newInvoiceNumber, setNewInvoiceNumber] = useState('')
 
   useEffect(() => {
     if (session && tenant && invoiceId) {
@@ -320,6 +322,46 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  const handleEditInvoiceNumber = () => {
+    setNewInvoiceNumber(invoice?.invoice_number || '')
+    setEditingInvoiceNumber(true)
+  }
+
+  const handleSaveInvoiceNumber = async () => {
+    if (!newInvoiceNumber.trim()) {
+      alert('Invoice number cannot be empty')
+      return
+    }
+
+    try {
+      setUpdating(true)
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_number: newInvoiceNumber.trim() })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update invoice number')
+      }
+
+      await fetchInvoice()
+      setEditingInvoiceNumber(false)
+      alert('Invoice number updated successfully!')
+    } catch (error) {
+      console.error('Error updating invoice number:', error)
+      alert(error instanceof Error ? error.message : 'Failed to update invoice number')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleCancelEditInvoiceNumber = () => {
+    setEditingInvoiceNumber(false)
+    setNewInvoiceNumber('')
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft':
@@ -396,7 +438,50 @@ export default function InvoiceDetailPage() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{invoice.invoice_number}</h1>
+                {editingInvoiceNumber ? (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={newInvoiceNumber}
+                      onChange={(e) => setNewInvoiceNumber(e.target.value)}
+                      className="text-2xl font-bold text-gray-900 border border-gray-300 rounded px-2 py-1"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveInvoiceNumber()
+                        if (e.key === 'Escape') handleCancelEditInvoiceNumber()
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveInvoiceNumber}
+                      disabled={updating}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEditInvoiceNumber}
+                      disabled={updating}
+                      className="text-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <h1 className="text-2xl font-bold text-gray-900">{invoice.invoice_number}</h1>
+                    <button
+                      onClick={handleEditInvoiceNumber}
+                      className="text-gray-400 hover:text-[#347dc4] transition-colors"
+                      title="Edit invoice number"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
                   {getStatusLabel(invoice.status)}
                 </span>
@@ -484,9 +569,26 @@ export default function InvoiceDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Invoice Preview */}
-        <div className="bg-white rounded-lg shadow-lg p-12 mb-6">
+        <div className="bg-white rounded-lg shadow-lg p-12 mb-6 relative overflow-hidden">
+          {/* Paid Stamp Overlay */}
+          {invoice.status === 'paid_in_full' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div
+                className="text-green-600 font-bold opacity-20 select-none"
+                style={{
+                  fontSize: '180px',
+                  transform: 'rotate(-30deg)',
+                  letterSpacing: '0.1em',
+                  textShadow: '0 0 20px rgba(22, 163, 74, 0.3)'
+                }}
+              >
+                PAID
+              </div>
+            </div>
+          )}
+
           {/* Header with Logo and Invoice Info */}
-          <div className="flex justify-between items-start mb-12">
+          <div className="flex justify-between items-start mb-12 relative z-20">
             {/* Company Logo */}
             <div>
               {settings?.appearance?.logoUrl ? (
@@ -510,7 +612,7 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Billing Information */}
-          <div className="grid grid-cols-2 gap-12 mb-12 pb-8 border-b border-gray-200">
+          <div className="grid grid-cols-2 gap-12 mb-12 pb-8 border-b border-gray-200 relative z-20">
             {/* Bill To */}
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bill To</h3>
@@ -543,7 +645,7 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Line Items */}
-          <div className="mb-8">
+          <div className="mb-8 relative z-20">
             <table className="min-w-full table-fixed">
               <colgroup>
                 <col className="w-[46%]" />
@@ -583,7 +685,7 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Totals */}
-          <div className="flex justify-end mb-8">
+          <div className="flex justify-end mb-8 relative z-20">
             <div className="w-80">
               <div className="space-y-3">
                 <div className="flex justify-between py-2">
@@ -616,7 +718,7 @@ export default function InvoiceDetailPage() {
 
           {/* Notes and Terms */}
           {(invoice.notes || invoice.terms) && (
-            <div className="border-t border-gray-200 pt-8 mt-8">
+            <div className="border-t border-gray-200 pt-8 mt-8 relative z-20">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {invoice.notes && (
                   <div>
