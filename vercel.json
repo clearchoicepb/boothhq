@@ -10,5 +10,19 @@
   },
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/maintenance",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/consumables",
+      "schedule": "0 8,14,20 * * *"
+    },
+    {
+      "path": "/api/cron/notifications",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
