@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { Package, Plus, Edit2, Trash2, ChevronLeft } from 'lucide-react'
 
 interface PackageItem {
@@ -237,16 +238,16 @@ export default function PackagesPage() {
         )}
 
         {/* Create/Edit Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-              <div className="px-6 py-4 border-b">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {editingPackage ? 'Edit Package' : 'New Package'}
-                </h2>
-              </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false)
+            resetForm()
+          }}
+          title={editingPackage ? 'Edit Package' : 'New Package'}
+          className="sm:max-w-md"
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Package Name *
@@ -316,25 +317,23 @@ export default function PackagesPage() {
                   </label>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsModalOpen(false)
-                      resetForm()
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-[#347dc4] hover:bg-[#2c6aa3]">
-                    {editingPackage ? 'Save Changes' : 'Create Package'}
-                  </Button>
-                </div>
-              </form>
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsModalOpen(false)
+                  resetForm()
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-[#347dc4] hover:bg-[#2c6aa3]">
+                {editingPackage ? 'Save Changes' : 'Create Package'}
+              </Button>
             </div>
-          </div>
-        )}
+          </form>
+        </Modal>
       </div>
     </div>
   )

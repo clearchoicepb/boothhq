@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { Modal } from '@/components/ui/modal'
 import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText } from 'lucide-react'
 
 interface Template {
@@ -276,15 +277,13 @@ export default function TemplatesSettingsPage() {
         </div>
 
       {/* Create/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {editingTemplate ? 'Edit Template' : 'Create Template'}
-              </h2>
-
-              <div className="space-y-4">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingTemplate ? 'Edit Template' : 'Create Template'}
+        className="sm:max-w-2xl"
+      >
+        <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Template Name
@@ -351,28 +350,25 @@ export default function TemplatesSettingsPage() {
                     placeholder={`Hi {{first_name}},\n\nThank you for your interest...\n\nBest regards,\n{{company_name}}`}
                   />
                 </div>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveTemplate}
-                  disabled={saving || !formData.name || !formData.content}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? 'Saving...' : editingTemplate ? 'Update Template' : 'Create Template'}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
-      )}
+
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveTemplate}
+            disabled={saving || !formData.name || !formData.content}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Saving...' : editingTemplate ? 'Update Template' : 'Create Template'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
