@@ -139,21 +139,53 @@ export async function GET(request: NextRequest) {
       inventoryByEvent.get(item.event_id).push(item)
     })
 
-    // Build event summaries
+    // Build event summaries with prep status
     const eventSummaries = events?.map(event => {
       const inventory = inventoryByEvent.get(event.id) || []
-      const allReady = inventory.every((item: any) =>
-        item.assigned_to_type === 'user' && item.assignment_type === 'event_checkout'
-      )
+
+      // Calculate event-level status based on "worst" item status
+      // Status priority (worst to best): no gear -> needs_prep -> ready_for_pickup/in_transit -> delivered_to_staff
+      let eventStatus = 'delivered_to_staff' // Best case
+
+      if (inventory.length === 0) {
+        eventStatus = 'needs_gear_assigned'
+      } else {
+        const statusPriority: Record<string, number> = {
+          'needs_gear_assigned': 1,
+          'needs_prep': 2,
+          'ready_for_pickup': 3,
+          'in_transit': 3,
+          'delivered_to_staff': 4
+        }
+
+        let worstPriority = 4
+        for (const item of inventory) {
+          const itemStatus = item.prep_status || 'needs_prep'
+          const priority = statusPriority[itemStatus] || 2
+          if (priority < worstPriority) {
+            worstPriority = priority
+            eventStatus = itemStatus
+          }
+        }
+      }
+
+      // Count items by status
+      const statusCounts = {
+        needs_prep: inventory.filter((item: any) => item.prep_status === 'needs_prep').length,
+        ready_for_pickup: inventory.filter((item: any) => item.prep_status === 'ready_for_pickup').length,
+        in_transit: inventory.filter((item: any) => item.prep_status === 'in_transit').length,
+        delivered_to_staff: inventory.filter((item: any) => item.prep_status === 'delivered_to_staff').length
+      }
 
       return {
         ...event,
         inventory_count: inventory.length,
         inventory,
-        all_ready: allReady,
-        needs_prep: inventory.filter((item: any) =>
-          item.assigned_to_type !== 'user' || item.assignment_type !== 'event_checkout'
-        ).length
+        event_status: eventStatus,
+        status_counts: statusCounts,
+        // Legacy fields for backward compatibility
+        all_ready: eventStatus === 'delivered_to_staff',
+        needs_prep: statusCounts.needs_prep
       }
     }) || []
 
