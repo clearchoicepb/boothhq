@@ -14,11 +14,14 @@ import {
   ChevronRight,
   User,
   MapPin,
-  Package2
+  Package2,
+  Truck,
+  CheckCheck
 } from 'lucide-react'
 import { format, isToday, isPast, isFuture } from 'date-fns'
 import Link from 'next/link'
 import { groupAndSortInventoryItems } from './inventory-grouping'
+import { useUpdatePrepStatus, useBulkUpdatePrepStatus, getStatusDisplayInfo, PrepStatus } from '@/hooks/usePrepStatus'
 
 interface WeekendPrepData {
   weekend_start: string
@@ -41,6 +44,14 @@ interface EventSummary {
   start_date: string
   inventory_count: number
   inventory: any[]
+  event_status: PrepStatus
+  status_counts: {
+    needs_prep: number
+    ready_for_pickup: number
+    in_transit: number
+    delivered_to_staff: number
+  }
+  // Legacy fields
   all_ready: boolean
   needs_prep: number
 }
@@ -51,6 +62,12 @@ export function WeekendPrepDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
   const [collapsedReturnSections, setCollapsedReturnSections] = useState<Set<string>>(new Set())
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [showShippingModal, setShowShippingModal] = useState(false)
+  const [shippingEventId, setShippingEventId] = useState<string | null>(null)
+
+  const updatePrepStatus = useUpdatePrepStatus()
+  const bulkUpdatePrepStatus = useBulkUpdatePrepStatus()
 
   useEffect(() => {
     fetchWeekendData()

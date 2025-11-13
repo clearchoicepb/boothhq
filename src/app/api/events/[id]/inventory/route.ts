@@ -387,6 +387,7 @@ export async function POST(
         event_id: eventId,
         assignment_type: 'event_checkout',
         expected_return_date: expected_return_date || defaultReturnDate,
+        prep_status: 'needs_prep',  // Initial prep status when assigned to event
         updated_at: new Date().toISOString()
       })
       .in('id', allItemIds)
