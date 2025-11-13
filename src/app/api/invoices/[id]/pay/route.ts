@@ -103,7 +103,7 @@ export async function POST(
             tenant_id: dataSourceTenantId,
             invoice_id: invoice.id,
             amount: paymentAmount,
-            payment_method: 'stripe',
+            payment_method: 'credit_card', // Stripe payments are credit card payments
             payment_intent_id: paymentIntent.id,
             status: 'completed',
             processed_at: new Date().toISOString(),

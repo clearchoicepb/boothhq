@@ -7,7 +7,8 @@ import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check } from 'lucide-react'
+import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus } from 'lucide-react'
+import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 
 interface InvoiceLineItem {
   id: string
@@ -80,6 +81,7 @@ export default function InvoiceDetailPage() {
   const [localLoading, setLocalLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
   useEffect(() => {
     if (session && tenant && invoiceId) {
@@ -244,6 +246,36 @@ export default function InvoiceDetailPage() {
     } catch (error) {
       console.error('Error copying link:', error)
       alert('Failed to copy link to clipboard')
+    }
+  }
+
+  const handleAddPayment = async (payment: any) => {
+    try {
+      setUpdating(true)
+      const response = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...payment,
+          invoice_id: invoiceId
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create payment')
+      }
+
+      // Close modal and refresh data
+      setIsPaymentModalOpen(false)
+      await fetchInvoice()
+
+      alert('Payment added successfully!')
+    } catch (error) {
+      console.error('Error adding payment:', error)
+      alert(error instanceof Error ? error.message : 'Failed to add payment')
+    } finally {
+      setUpdating(false)
     }
   }
 
@@ -565,9 +597,21 @@ export default function InvoiceDetailPage() {
         {/* Payment History */}
         {payments.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <DollarSign className="h-5 w-5 text-green-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <DollarSign className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
+              </div>
+              {invoice.status !== 'paid_in_full' && invoice.status !== 'cancelled' && (
+                <Button
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add a Payment
+                </Button>
+              )}
             </div>
             <div className="space-y-3">
               {payments.map((payment) => (
@@ -616,6 +660,27 @@ export default function InvoiceDetailPage() {
           </div>
         )}
 
+        {/* No Payments Yet */}
+        {payments.length === 0 && invoice.status !== 'draft' && invoice.status !== 'cancelled' && invoice.status !== 'paid_in_full' && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <DollarSign className="h-5 w-5 text-gray-400 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Payment Tracking</h3>
+              </div>
+              <Button
+                onClick={() => setIsPaymentModalOpen(true)}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add a Payment
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500">No payments have been recorded for this invoice yet.</p>
+          </div>
+        )}
+
         {/* Metadata */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Information</h3>
@@ -642,6 +707,19 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Form Modal */}
+      {invoice && (
+        <InvoicePaymentForm
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onSubmit={handleAddPayment}
+          invoiceId={invoiceId}
+          invoiceNumber={invoice.invoice_number}
+          totalAmount={invoice.total_amount}
+          remainingBalance={invoice.balance_amount}
+        />
+      )}
     </div>
   )
 }
