@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
-import { 
+import {
   ArrowLeft,
   FileText,
   Settings,
@@ -12,7 +12,8 @@ import {
   ToggleRight,
   Plus,
   Trash2,
-  DollarSign
+  DollarSign,
+  Hash
 } from 'lucide-react';
 
 interface InvoiceTemplate {
@@ -333,7 +334,66 @@ export default function InvoicesSettingsPage() {
 
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="space-y-8">
-            
+
+            {/* Invoice Numbering Settings */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Hash className="h-5 w-5 mr-2 text-[#347dc4]" />
+                Invoice Numbering
+              </h2>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-900">Invoice Number Prefix</label>
+                    <p className="text-xs text-gray-500 mb-1">Text before the invoice number (e.g., "INV")</p>
+                    <input
+                      type="text"
+                      value={settings.invoiceNumberPrefix}
+                      onChange={(e) => handleSelect('invoiceNumberPrefix', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                      placeholder="INV"
+                      maxLength={10}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-900">Invoice Number Suffix</label>
+                    <p className="text-xs text-gray-500 mb-1">Text after the invoice number (optional)</p>
+                    <input
+                      type="text"
+                      value={settings.invoiceNumberSuffix}
+                      onChange={(e) => handleSelect('invoiceNumberSuffix', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                      placeholder=""
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-900">Starting Invoice Number</label>
+                  <p className="text-xs text-gray-500 mb-1">
+                    The next invoice number to use. This allows you to continue from your previous system.
+                  </p>
+                  <p className="text-xs text-yellow-600 mb-1">
+                    ⚠️ Warning: Only change this if you're starting a new sequence or migrating from another system.
+                  </p>
+                  <input
+                    type="number"
+                    min="1"
+                    value={settings.nextInvoiceNumber}
+                    onChange={(e) => handleSelect('nextInvoiceNumber', parseInt(e.target.value) || 1)}
+                    className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
+                    placeholder="1001"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Next invoice will be: {settings.invoiceNumberPrefix}{String(settings.nextInvoiceNumber).padStart(4, '0')}{settings.invoiceNumberSuffix}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Display Settings */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
