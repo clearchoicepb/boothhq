@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +33,9 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
 
   if (!isOpen) return null
 
-  return (
+  // Use portal to render modal at document.body level, outside the component tree
+  // This prevents stacking context issues with headers and other positioned elements
+  return createPortal(
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <div className="fixed inset-0 bg-black/10 transition-opacity" onClick={onClose} />
@@ -55,6 +58,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
