@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/layout/app-layout'
+import { Modal } from '@/components/ui/modal'
 import {
   Tag,
   Plus,
@@ -372,13 +373,13 @@ function EventTypeModal({ eventType, categories, onClose, onSuccess }: any) {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-xl font-bold mb-4">
-          {eventType ? 'Edit Event Type' : 'Add Event Type'}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={eventType ? 'Edit Event Type' : 'Add Event Type'}
+      className="sm:max-w-md"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Category *
@@ -425,31 +426,30 @@ function EventTypeModal({ eventType, categories, onClose, onSuccess }: any) {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !name || !categoryId}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
-            >
-              {saving ? (
-                <>Saving...</>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  {eventType ? 'Update' : 'Create'}
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-2 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !name || !categoryId}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
+          >
+            {saving ? (
+              <>Saving...</>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                {eventType ? 'Update' : 'Create'}
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
