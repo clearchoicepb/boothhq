@@ -10,6 +10,8 @@ export async function POST(request: NextRequest) {
     const { supabase, dataSourceTenantId } = context
     const body = await request.json()
 
+    console.log('[Payment API] Creating payment for tenant:', dataSourceTenantId)
+
     // Validate required fields
     if (!body.invoice_id || !body.amount || !body.payment_method) {
       return NextResponse.json(
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create payment record
+    console.log('[Payment API] About to insert payment:', JSON.stringify(paymentData, null, 2))
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert(paymentData)
@@ -55,7 +58,8 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (paymentError) {
-      console.error('Error creating payment:', paymentError)
+      console.error('[Payment API] Error creating payment:', paymentError)
+      console.error('[Payment API] Payment data that failed:', paymentData)
       return NextResponse.json(
         { error: 'Failed to create payment' },
         { status: 500 }
