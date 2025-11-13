@@ -1,5 +1,6 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { ConsumableAutomation } from '@/lib/automation/consumableAutomation'
 
 /**
  * POST - Record consumable reorder
@@ -80,6 +81,9 @@ export async function POST(
         { status: 500 }
       )
     }
+
+    // Automatically dismiss stock alerts after successful restock
+    await ConsumableAutomation.dismissStockAlertsAfterRestock(dataSourceTenantId, id)
 
     return NextResponse.json(data)
   } catch (error) {

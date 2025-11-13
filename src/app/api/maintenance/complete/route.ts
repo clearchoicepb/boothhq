@@ -1,5 +1,6 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { MaintenanceAutomation } from '@/lib/automation/maintenanceAutomation'
 
 /**
  * POST - Complete maintenance workflow
@@ -110,6 +111,15 @@ export async function POST(request: NextRequest) {
 
       taskUpdated = !taskError
     }
+
+    // Automatically dismiss overdue maintenance notifications
+    await supabase
+      .from('inventory_notifications')
+      .update({ status: 'dismissed' })
+      .eq('tenant_id', dataSourceTenantId)
+      .eq('inventory_item_id', body.inventory_item_id)
+      .eq('notification_type', 'maintenance_overdue')
+      .in('status', ['pending', 'sent'])
 
     return NextResponse.json({
       success: true,
