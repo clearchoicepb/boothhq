@@ -122,6 +122,7 @@ export function InventoryTableView({
       case 'serial_qty': return { flex: '0.8 1 110px', minWidth: '100px' }
       case 'value': return { flex: '0.6 1 90px', minWidth: '80px' }
       case 'current_location': return { flex: '1.2 1 160px', minWidth: '140px' }
+      case 'last_maintenance': return { flex: '1 1 130px', minWidth: '110px' }
       case 'last_assigned': return { flex: '1 1 140px', minWidth: '120px' }
       case 'purchase_date': return { flex: '0.8 1 110px', minWidth: '100px' }
       case 'notes': return { flex: '1.4 1 180px', minWidth: '150px' }
@@ -229,6 +230,22 @@ export function InventoryTableView({
               <span className="text-gray-400">Unassigned</span>
             )}
           </div>
+        )
+
+      case 'last_maintenance':
+        return item.last_maintenance_date ? (
+          <div className="min-w-0">
+            <div className="text-sm text-gray-900">
+              {format(new Date(item.last_maintenance_date), 'MMM d, yyyy')}
+            </div>
+            {item.next_maintenance_date && (
+              <div className="text-xs text-gray-500 mt-0.5">
+                Next: {format(new Date(item.next_maintenance_date), 'MMM d')}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No maintenance</span>
         )
 
       case 'last_assigned':
