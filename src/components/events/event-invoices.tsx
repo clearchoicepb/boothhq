@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/modal'
 import { LineItemsManager } from '@/components/shared/line-items-manager'
 import { EmptyState } from './detail/shared/EmptyState'
 import { SkeletonTable } from './detail/shared/SkeletonLoader'
+import { InlineEditField } from './detail/shared/InlineEditField'
 
 interface Invoice {
   id: string
@@ -23,6 +24,8 @@ interface Invoice {
   issue_date: string
   notes: string | null
   terms: string | null
+  paid_amount: number
+  balance_amount: number
 }
 
 interface EventInvoicesProps {
@@ -62,6 +65,8 @@ export function EventInvoices({
     notes: '',
     terms: ''
   })
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [savingField, setSavingField] = useState<string | null>(null)
 
   // Auto-expand invoice from URL parameter (for edit button routing)
   useEffect(() => {
@@ -156,6 +161,32 @@ export function EventInvoices({
 
   const toggleInvoice = (invoiceId: string) => {
     setExpandedInvoiceId(expandedInvoiceId === invoiceId ? null : invoiceId)
+  }
+
+  const handleUpdateInvoiceField = async (invoiceId: string, field: string, value: string) => {
+    try {
+      setSavingField(`${invoiceId}-${field}`)
+
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value })
+      })
+
+      if (!response.ok) throw new Error(`Failed to update invoice ${field}`)
+
+      // Invalidate queries to refetch data
+      await queryClient.invalidateQueries({ queryKey: ['event-invoices', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      await onRefresh()
+
+      setEditingField(null)
+    } catch (error) {
+      console.error(`Error updating invoice ${field}:`, error)
+      alert(`Failed to update invoice ${field}`)
+    } finally {
+      setSavingField(null)
+    }
   }
 
   if (loading) {
@@ -258,15 +289,23 @@ export function EventInvoices({
                 {expandedInvoiceId === invoice.id && (
                   <div className="border-t p-6 bg-gray-50">
                     <div className="mb-6">
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Invoice Details</h3>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Issue Date:</span>
-                          <span className="ml-2 text-gray-900">{new Date(invoice.issue_date).toLocaleDateString()}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Tax Rate:</span>
-                          <span className="ml-2 text-gray-900">{((invoice.tax_rate || 0) * 100).toFixed(2)}%</span>
+                      <h3 className="text-sm font-medium text-gray-700 mb-4">Invoice Details</h3>
+                      <div className="grid grid-cols-2 gap-6">
+                        <InlineEditField
+                          label="Issue Date"
+                          value={invoice.issue_date}
+                          displayValue={new Date(invoice.issue_date).toLocaleDateString()}
+                          type="date"
+                          isEditing={editingField === `${invoice.id}-issue_date`}
+                          isLoading={savingField === `${invoice.id}-issue_date`}
+                          canEdit={canEdit}
+                          onStartEdit={() => setEditingField(`${invoice.id}-issue_date`)}
+                          onSave={(value) => handleUpdateInvoiceField(invoice.id, 'issue_date', value)}
+                          onCancel={() => setEditingField(null)}
+                        />
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-gray-500">Tax Rate</label>
+                          <p className="text-sm text-gray-900">{((invoice.tax_rate || 0) * 100).toFixed(2)}%</p>
                         </div>
                       </div>
                     </div>
@@ -301,6 +340,20 @@ export function EventInvoices({
                             <span className="text-gray-900">Total:</span>
                             <span className="text-[#347dc4]">${(invoice.total_amount || 0).toFixed(2)}</span>
                           </div>
+                          {(invoice.paid_amount > 0 || invoice.balance_amount !== invoice.total_amount) && (
+                            <>
+                              <div className="flex justify-between text-sm border-t pt-2 mt-2">
+                                <span className="text-gray-600">Paid:</span>
+                                <span className="text-green-600 font-medium">${(invoice.paid_amount || 0).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-base font-semibold">
+                                <span className="text-gray-900">Balance Due:</span>
+                                <span className={invoice.balance_amount > 0 ? "text-orange-600" : "text-green-600"}>
+                                  ${(invoice.balance_amount || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
