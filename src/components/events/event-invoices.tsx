@@ -448,7 +448,7 @@ export function EventInvoices({
                               className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
                               <CreditCard className="h-4 w-4 mr-2" />
-                              Pay Now
+                              Process Payment
                             </Button>
                           </Link>
                         )}
@@ -459,7 +459,7 @@ export function EventInvoices({
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
                             <Plus className="h-4 w-4 mr-2" />
-                            Make a Payment
+                            Add Manual Payment
                           </Button>
                         )}
                         {invoice.public_token && (
