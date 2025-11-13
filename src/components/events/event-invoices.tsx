@@ -58,6 +58,7 @@ export function EventInvoices({
   const [newInvoiceData, setNewInvoiceData] = useState({
     tax_rate: '0.08',
     due_days: '30',
+    issue_date: new Date().toISOString().split('T')[0],
     notes: '',
     terms: ''
   })
@@ -93,7 +94,7 @@ export function EventInvoices({
           event_id: eventId,
           account_id: accountId,
           contact_id: contactId,
-          issue_date: new Date().toISOString().split('T')[0],
+          issue_date: newInvoiceData.issue_date,
           due_date: dueDate.toISOString().split('T')[0],
           subtotal: 0,
           tax_rate: parseFloat(newInvoiceData.tax_rate),
@@ -338,6 +339,20 @@ export function EventInvoices({
           className="sm:max-w-lg"
         >
           <form onSubmit={(e) => { e.preventDefault(); handleCreateInvoice(); }} className="space-y-4">
+            <div>
+              <label htmlFor="issue_date" className="block text-sm font-medium text-gray-700 mb-2">
+                Invoice Issue Date
+              </label>
+              <input
+                id="issue_date"
+                type="date"
+                value={newInvoiceData.issue_date}
+                onChange={(e) => setNewInvoiceData({ ...newInvoiceData, issue_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                required
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="tax_rate" className="block text-sm font-medium text-gray-700 mb-2">

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { DollarSign, Plus, Trash2, Package, PlusCircle, Edit } from 'lucide-react'
+import { DollarSign, Plus, Trash2, Package, PlusCircle, Edit, Tag } from 'lucide-react'
 
 interface PackageItem {
   id: string
@@ -61,7 +61,7 @@ export function LineItemsManager({
   const [addOns, setAddOns] = useState<AddOn[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalType, setModalType] = useState<'package' | 'add_on' | 'custom'>('package')
+  const [modalType, setModalType] = useState<'package' | 'add_on' | 'custom' | 'discount'>('package')
   const [editingItem, setEditingItem] = useState<LineItem | null>(null)
   const [formData, setFormData] = useState({
     selectedId: '',
@@ -101,7 +101,7 @@ export function LineItemsManager({
     }
   }
 
-  const openModal = (type: 'package' | 'add_on' | 'custom') => {
+  const openModal = (type: 'package' | 'add_on' | 'custom' | 'discount') => {
     setModalType(type)
     setEditingItem(null)
     setFormData({
@@ -110,7 +110,7 @@ export function LineItemsManager({
       description: '',
       quantity: '1',
       unit_price: '',
-      taxable: true,
+      taxable: type !== 'discount', // Default to false for discounts, true for others
     })
     setIsModalOpen(true)
   }
@@ -123,7 +123,8 @@ export function LineItemsManager({
       name: item.name,
       description: item.description || '',
       quantity: item.quantity.toString(),
-      unit_price: item.unit_price.toString(),
+      // For discounts, show the absolute value for editing
+      unit_price: item.item_type === 'discount' ? Math.abs(item.unit_price).toString() : item.unit_price.toString(),
       taxable: item.taxable !== false,
     })
     setIsModalOpen(true)
@@ -160,6 +161,11 @@ export function LineItemsManager({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // For discounts, convert the unit price to negative
+    const unitPrice = modalType === 'discount'
+      ? -Math.abs(parseFloat(formData.unit_price))
+      : parseFloat(formData.unit_price)
+
     const payload: any = {
       item_type: modalType,
       package_id: modalType === 'package' ? formData.selectedId : null,
@@ -167,7 +173,7 @@ export function LineItemsManager({
       name: formData.name,
       description: formData.description || null,
       quantity: parseFloat(formData.quantity),
-      unit_price: parseFloat(formData.unit_price),
+      unit_price: unitPrice,
     }
 
     // Only include taxable for invoices
@@ -276,6 +282,17 @@ export function LineItemsManager({
               <PlusCircle className="h-4 w-4 mr-2" />
               Custom Item
             </Button>
+            {parentType === 'invoice' && (
+              <Button
+                onClick={() => openModal('discount')}
+                size="sm"
+                variant="outline"
+                className="text-orange-600 border-orange-600 hover:bg-orange-50"
+              >
+                <Tag className="h-4 w-4 mr-2" />
+                Add Discount
+              </Button>
+            )}
           </div>
 
           {showActions && lineItems.length > 0 && onGenerateQuote && (
@@ -324,6 +341,8 @@ export function LineItemsManager({
                             ? 'bg-blue-500'
                             : item.item_type === 'add_on'
                             ? 'bg-purple-500'
+                            : item.item_type === 'discount'
+                            ? 'bg-orange-500'
                             : 'bg-green-500'
                         }`}
                       ></span>
@@ -343,10 +362,10 @@ export function LineItemsManager({
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-gray-900">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-900">
+                  <td className={`px-4 py-3 text-right text-sm ${item.item_type === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
                     ${item.unit_price.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                  <td className={`px-4 py-3 text-right text-sm font-medium ${item.item_type === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
                     ${item.total.toFixed(2)}
                   </td>
                   {editable && (
@@ -396,12 +415,17 @@ export function LineItemsManager({
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title={`${editingItem ? 'Edit' : 'Add'} ${modalType === 'package' ? 'Package' : modalType === 'add_on' ? 'Add-on' : 'Custom Item'}`}
+          title={`${editingItem ? 'Edit' : 'Add'} ${
+            modalType === 'package' ? 'Package' :
+            modalType === 'add_on' ? 'Add-on' :
+            modalType === 'discount' ? 'Discount' :
+            'Custom Item'
+          }`}
           className="sm:max-w-2xl"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Show item name when editing */}
-            {editingItem && modalType !== 'custom' && (
+            {editingItem && modalType !== 'custom' && modalType !== 'discount' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {modalType === 'package' ? 'Package' : 'Add-on'}
@@ -413,7 +437,7 @@ export function LineItemsManager({
             )}
 
             {/* Package/Add-on Selection */}
-            {modalType !== 'custom' && !editingItem && (
+            {modalType !== 'custom' && modalType !== 'discount' && !editingItem && (
               <div>
                 <label htmlFor="item-select" className="block text-sm font-medium text-gray-700 mb-2">
                   Select {modalType === 'package' ? 'Package' : 'Add-on'} *
@@ -465,8 +489,28 @@ export function LineItemsManager({
               </div>
             )}
 
+            {/* Discount Name */}
+            {modalType === 'discount' && (
+              <div>
+                <label htmlFor="discount-name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Name *
+                </label>
+                <input
+                  id="discount-name"
+                  name="discount_name"
+                  title="Discount Name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Early Bird Discount, Volume Discount"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  required
+                />
+              </div>
+            )}
+
             {/* Description */}
-            {editingItem || formData.selectedId || modalType === 'custom' ? (
+            {editingItem || formData.selectedId || modalType === 'custom' || modalType === 'discount' ? (
               <>
                 <div>
                   <label htmlFor="item-description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -483,44 +527,69 @@ export function LineItemsManager({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {modalType === 'discount' ? (
                   <div>
-                    <label htmlFor="item-quantity" className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantity *
-                    </label>
-                    <input
-                      id="item-quantity"
-                      name="quantity"
-                      title="Quantity"
-                      type="number"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="item-price" className="block text-sm font-medium text-gray-700 mb-2">
-                      Unit Price *
+                    <label htmlFor="discount-amount" className="block text-sm font-medium text-gray-700 mb-2">
+                      Discount Amount *
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-2 text-gray-500">$</span>
                       <input
-                        id="item-price"
-                        name="unit_price"
-                        title="Unit Price"
+                        id="discount-amount"
+                        name="discount_amount"
+                        title="Discount Amount"
                         type="number"
                         step="0.01"
+                        min="0"
                         value={formData.unit_price}
-                        onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, unit_price: e.target.value, quantity: '1' })}
+                        placeholder="Enter positive amount"
                         className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                         required
                       />
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">Enter the discount amount as a positive number</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="item-quantity" className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantity *
+                      </label>
+                      <input
+                        id="item-quantity"
+                        name="quantity"
+                        title="Quantity"
+                        type="number"
+                        step="0.01"
+                        value={formData.quantity}
+                        onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="item-price" className="block text-sm font-medium text-gray-700 mb-2">
+                        Unit Price *
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500">$</span>
+                        <input
+                          id="item-price"
+                          name="unit_price"
+                          title="Unit Price"
+                          type="number"
+                          step="0.01"
+                          value={formData.unit_price}
+                          onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                          className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Taxable checkbox - only for invoices */}
                 {parentType === 'invoice' && (
@@ -541,9 +610,11 @@ export function LineItemsManager({
 
                 {formData.quantity && formData.unit_price && (
                   <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-sm text-gray-600">Total:</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      ${(parseFloat(formData.quantity) * parseFloat(formData.unit_price)).toFixed(2)}
+                    <p className="text-sm text-gray-600">
+                      {modalType === 'discount' ? 'Discount Amount:' : 'Total:'}
+                    </p>
+                    <p className={`text-2xl font-bold ${modalType === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
+                      {modalType === 'discount' ? '-' : ''}${(parseFloat(formData.quantity) * parseFloat(formData.unit_price)).toFixed(2)}
                     </p>
                   </div>
                 )}
@@ -561,7 +632,7 @@ export function LineItemsManager({
               <Button
                 type="submit"
                 className="bg-blue-600 hover:bg-blue-700"
-                disabled={!editingItem && !formData.selectedId && modalType !== 'custom'}
+                disabled={!editingItem && !formData.selectedId && modalType !== 'custom' && modalType !== 'discount'}
               >
                 {editingItem ? 'Update Item' : 'Add Item'}
               </Button>
