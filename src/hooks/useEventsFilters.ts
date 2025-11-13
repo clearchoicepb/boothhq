@@ -152,10 +152,13 @@ export function useEventsFilters({
    */
   const isWithinTaskDateRange = (event: FilterableEvent): boolean => {
     if (!event.start_date) return false
-    const eventDate = new Date(event.start_date)
+    const eventDate = parseLocalDate(event.start_date)
+    eventDate.setHours(0, 0, 0, 0)
     const now = new Date()
+    now.setHours(0, 0, 0, 0)
     const futureDate = new Date()
     futureDate.setDate(futureDate.getDate() + filters.taskDateRangeFilter)
+    futureDate.setHours(23, 59, 59, 999)
     return eventDate >= now && eventDate <= futureDate
   }
 
@@ -315,17 +318,15 @@ export function useEventsFilters({
       switch (sortBy) {
         case 'date_asc':
           // Earliest date first
-          return (
-            new Date(a.start_date || a.created_at).getTime() -
-            new Date(b.start_date || b.created_at).getTime()
-          )
+          const aDate = a.start_date ? parseLocalDate(a.start_date) : new Date(a.created_at)
+          const bDate = b.start_date ? parseLocalDate(b.start_date) : new Date(b.created_at)
+          return aDate.getTime() - bDate.getTime()
 
         case 'date_desc':
           // Latest date first
-          return (
-            new Date(b.start_date || b.created_at).getTime() -
-            new Date(a.start_date || a.created_at).getTime()
-          )
+          const aDateDesc = a.start_date ? parseLocalDate(a.start_date) : new Date(a.created_at)
+          const bDateDesc = b.start_date ? parseLocalDate(b.start_date) : new Date(b.created_at)
+          return bDateDesc.getTime() - aDateDesc.getTime()
 
         case 'title_asc':
           // Title A-Z
@@ -345,10 +346,9 @@ export function useEventsFilters({
 
         default:
           // Default: earliest date first
-          return (
-            new Date(a.start_date || a.created_at).getTime() -
-            new Date(b.start_date || b.created_at).getTime()
-          )
+          const aDateDefault = a.start_date ? parseLocalDate(a.start_date) : new Date(a.created_at)
+          const bDateDefault = b.start_date ? parseLocalDate(b.start_date) : new Date(b.created_at)
+          return aDateDefault.getTime() - bDateDefault.getTime()
       }
     })
 
