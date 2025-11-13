@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { GripVertical } from 'lucide-react'
+import { useSettings } from '@/lib/settings-context'
 
 export interface ColumnConfig {
   id: string
@@ -154,25 +155,47 @@ export function ColumnCustomizationModal({
   )
 }
 
-// Default column configuration
-export const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: 'item_name', label: 'Item Name', visible: true, required: true, order: 0 },
-  { id: 'model', label: 'Model', visible: true, order: 1 },
-  { id: 'product_group', label: 'Product Group', visible: true, order: 2 },
-  { id: 'category', label: 'Category', visible: true, order: 3 },
-  { id: 'status', label: 'Status', visible: true, required: true, order: 4 },
-  { id: 'serial_qty', label: 'Serial/Qty', visible: true, order: 5 },
-  { id: 'value', label: 'Value', visible: true, order: 6 },
-  { id: 'current_location', label: 'Current Location', visible: true, order: 7 },
-  { id: 'last_assigned', label: 'Last Assigned To', visible: false, order: 8 },
-  { id: 'purchase_date', label: 'Purchase Date', visible: false, order: 9 },
-  { id: 'notes', label: 'Notes', visible: false, order: 10 },
-  { id: 'actions', label: 'Actions', visible: true, required: true, order: 11 }
-]
+/**
+ * Get default column configuration with optional settings overrides
+ */
+export function getDefaultColumns(settings?: {
+  showCost?: boolean
+  showLocation?: boolean
+  showLastMaintenance?: boolean
+}): ColumnConfig[] {
+  return [
+    { id: 'item_name', label: 'Item Name', visible: true, required: true, order: 0 },
+    { id: 'model', label: 'Model', visible: true, order: 1 },
+    { id: 'product_group', label: 'Product Group', visible: true, order: 2 },
+    { id: 'category', label: 'Category', visible: true, order: 3 },
+    { id: 'status', label: 'Status', visible: true, required: true, order: 4 },
+    { id: 'serial_qty', label: 'Serial/Qty', visible: true, order: 5 },
+    { id: 'value', label: 'Value', visible: settings?.showCost ?? true, order: 6 },
+    { id: 'current_location', label: 'Current Location', visible: settings?.showLocation ?? true, order: 7 },
+    { id: 'last_maintenance', label: 'Last Maintenance', visible: settings?.showLastMaintenance ?? false, order: 8 },
+    { id: 'last_assigned', label: 'Last Assigned To', visible: false, order: 9 },
+    { id: 'purchase_date', label: 'Purchase Date', visible: false, order: 10 },
+    { id: 'notes', label: 'Notes', visible: false, order: 11 },
+    { id: 'actions', label: 'Actions', visible: true, required: true, order: 12 }
+  ]
+}
 
-// Hook to manage column preferences
+// Default column configuration (for backward compatibility)
+export const DEFAULT_COLUMNS: ColumnConfig[] = getDefaultColumns()
+
+// Hook to manage column preferences with settings integration
 export function useColumnPreferences() {
-  const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS)
+  const { getSetting } = useSettings()
+  const inventorySettings = getSetting('inventory', {})
+
+  // Get default columns based on settings
+  const settingsBasedDefaults = getDefaultColumns({
+    showCost: inventorySettings.showCost,
+    showLocation: inventorySettings.showLocation,
+    showLastMaintenance: inventorySettings.showLastMaintenance
+  })
+
+  const [columns, setColumns] = useState<ColumnConfig[]>(settingsBasedDefaults)
 
   useEffect(() => {
     // Load from localStorage
@@ -180,18 +203,29 @@ export function useColumnPreferences() {
     if (stored) {
       try {
         const savedColumns: ColumnConfig[] = JSON.parse(stored)
-        // Merge with defaults to handle new columns
-        const mergedColumns = DEFAULT_COLUMNS.map(defaultCol => {
+        // Merge with settings-based defaults to handle new columns and respect settings
+        const mergedColumns = settingsBasedDefaults.map(defaultCol => {
           const savedCol = savedColumns.find(c => c.id === defaultCol.id)
-          return savedCol || defaultCol
+          if (savedCol) {
+            // Preserve user's order and visibility preference, but respect settings for default visibility
+            return {
+              ...savedCol,
+              // If user hasn't customized, use settings-based default
+              visible: savedCol.visible !== undefined ? savedCol.visible : defaultCol.visible
+            }
+          }
+          return defaultCol
         }).sort((a, b) => a.order - b.order)
 
         setColumns(mergedColumns)
       } catch (error) {
         console.error('Failed to load column preferences:', error)
+        setColumns(settingsBasedDefaults)
       }
+    } else {
+      setColumns(settingsBasedDefaults)
     }
-  }, [])
+  }, [inventorySettings.showCost, inventorySettings.showLocation, inventorySettings.showLastMaintenance])
 
   const saveColumns = (newColumns: ColumnConfig[]) => {
     setColumns(newColumns)
