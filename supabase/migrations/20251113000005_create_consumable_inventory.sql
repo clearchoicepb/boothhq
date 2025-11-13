@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS consumable_inventory (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
   category_id UUID NOT NULL REFERENCES equipment_categories(id) ON DELETE RESTRICT,
 
   -- Quantity tracking
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS consumable_inventory (
 -- Usage log for tracking consumption
 CREATE TABLE IF NOT EXISTS consumable_usage_log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
   consumable_id UUID NOT NULL REFERENCES consumable_inventory(id) ON DELETE CASCADE,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
 
@@ -76,17 +76,8 @@ CREATE TRIGGER trigger_update_consumable_quantity_on_usage
   FOR EACH ROW
   EXECUTE FUNCTION update_consumable_quantity_on_usage();
 
--- Seed consumable inventory records for existing tenants with Media/Paper category
-INSERT INTO consumable_inventory (tenant_id, category_id, current_quantity, unit_of_measure)
-SELECT
-  ec.tenant_id,
-  ec.id as category_id,
-  5000 as current_quantity, -- Default starting quantity
-  ec.unit_of_measure
-FROM equipment_categories ec
-WHERE ec.is_consumable = true
-  AND ec.category_type = 'consumable'
-ON CONFLICT (tenant_id, category_id) DO NOTHING;
+-- Note: Consumable inventory is initialized via API when consumable categories are created
+-- See /api/consumables endpoint for automatic inventory record creation
 
 -- Grant permissions
 GRANT ALL ON consumable_inventory TO service_role;

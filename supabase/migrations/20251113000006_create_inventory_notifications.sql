@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS inventory_notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Related entities (polymorphic - either inventory item or consumable)
   inventory_item_id UUID REFERENCES inventory_items(id) ON DELETE CASCADE,

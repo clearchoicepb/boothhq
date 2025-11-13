@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS maintenance_history (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
   inventory_item_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
 
   -- Maintenance details

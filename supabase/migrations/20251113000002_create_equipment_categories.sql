@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS equipment_categories (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Basic info
   name VARCHAR(100) NOT NULL,
@@ -57,47 +57,9 @@ CREATE TRIGGER update_equipment_categories_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Seed default equipment categories for all existing tenants from item_categories
-INSERT INTO equipment_categories (tenant_id, name, description, color, requires_maintenance, maintenance_interval_days, category_type, sort_order)
-SELECT
-  t.id as tenant_id,
-  ic.category_name as name,
-  'Equipment category' as description,
-  '#6B7280' as color,
-  false as requires_maintenance,
-  90 as maintenance_interval_days,
-  'equipment' as category_type,
-  ic.sort_order
-FROM tenants t
-CROSS JOIN item_categories ic
-ON CONFLICT (tenant_id, name) DO NOTHING;
-
--- Add default consumables category (Media/Paper) for all tenants
-INSERT INTO equipment_categories (
-  tenant_id,
-  name,
-  description,
-  color,
-  category_type,
-  is_consumable,
-  unit_of_measure,
-  low_stock_threshold,
-  estimated_consumption_per_event,
-  sort_order
-)
-SELECT
-  id as tenant_id,
-  'Media/Paper' as name,
-  'Consumable media and printing supplies' as description,
-  '#F59E0B' as color,
-  'consumable' as category_type,
-  true as is_consumable,
-  'prints' as unit_of_measure,
-  1000 as low_stock_threshold,
-  500 as estimated_consumption_per_event,
-  9999 as sort_order -- Put at end
-FROM tenants
-ON CONFLICT (tenant_id, name) DO NOTHING;
+-- Note: Categories are seeded per-tenant via API or initial setup
+-- See /api/tenant-setup/seed-categories for initial category creation
+-- Default categories will be created when tenant first accesses inventory settings
 
 -- Grant permissions
 GRANT ALL ON equipment_categories TO service_role;
