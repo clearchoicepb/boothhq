@@ -179,18 +179,23 @@ export async function POST(
       const opportunityEventDates = opportunity.event_dates || eventDates || []
 
       // Calculate start and end dates from event_dates
-      let startDate = new Date().toISOString()
+      // Use date-only format (YYYY-MM-DD) to avoid timezone conversion issues
+      let startDate = new Date().toISOString().split('T')[0]
       let endDate = null
       let primaryLocationId = null
 
       if (opportunityEventDates.length > 0) {
+        // Extract event_date strings and sort them (already in YYYY-MM-DD format)
         const sortedDates = opportunityEventDates
-          .map((d: any) => new Date(d.event_date))
-          .sort((a: Date, b: Date) => a.getTime() - b.getTime())
+          .map((d: any) => d.event_date)
+          .filter(Boolean)
+          .sort()
 
-        startDate = sortedDates[0].toISOString()
-        if (sortedDates.length > 1) {
-          endDate = sortedDates[sortedDates.length - 1].toISOString()
+        if (sortedDates.length > 0) {
+          startDate = sortedDates[0]
+          if (sortedDates.length > 1) {
+            endDate = sortedDates[sortedDates.length - 1]
+          }
         }
 
         // Get the location_id from the first event_date as the primary location

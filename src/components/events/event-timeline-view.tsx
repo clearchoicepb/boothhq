@@ -110,15 +110,20 @@ export function EventTimelineView({
         return // Skip past events
       }
 
-      if (daysUntil <= 2) {
+      if (daysUntil <= 1) {
+        // Today (0) and Tomorrow (1)
         groups.todayTomorrow.push(event)
       } else if (daysUntil <= 7) {
+        // 2-7 days out
         groups.thisWeek.push(event)
       } else if (daysUntil <= 14) {
+        // 8-14 days out
         groups.nextTwoWeeks.push(event)
       } else if (daysUntil <= 45) {
+        // 15-45 days out
         groups.next15To45Days.push(event)
       } else {
+        // 46+ days out
         groups.beyond45Days.push(event)
       }
     })
@@ -142,7 +147,7 @@ export function EventTimelineView({
     {
       id: 'thisWeek',
       title: 'THIS WEEK',
-      subtitle: '3-7 Days Out',
+      subtitle: '2-7 Days Out',
       icon: '⚠️',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-300',

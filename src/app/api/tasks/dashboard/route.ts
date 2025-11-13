@@ -3,6 +3,7 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { enrichTaskWithUrgency } from '@/types/tasks'
 import type { TaskDashboardData, TaskWithRelations } from '@/types/tasks'
 import { canAccessDepartment, type DepartmentId } from '@/lib/departments'
+import { parseLocalDate } from '@/lib/utils/date-utils'
 
 /**
  * GET /api/tasks/dashboard
@@ -160,7 +161,8 @@ function calculateStats(tasks: TaskWithRelations[]) {
     if (task.status === 'pending' || task.status === 'in_progress') {
       if (!task.due_date) return
 
-      const dueDate = new Date(task.due_date)
+      // Use parseLocalDate to avoid timezone conversion issues
+      const dueDate = parseLocalDate(task.due_date)
       dueDate.setHours(0, 0, 0, 0)
 
       if (dueDate < today) {
