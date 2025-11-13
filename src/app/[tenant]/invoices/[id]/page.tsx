@@ -532,7 +532,7 @@ export default function InvoiceDetailPage() {
                   <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/pay`}>
                     <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Pay Now
+                      Process Payment
                     </Button>
                   </Link>
                   {(invoice.status === 'no_payments_received' || invoice.status === 'partially_paid' || invoice.status === 'past_due') && invoice.balance_amount > 0 && (

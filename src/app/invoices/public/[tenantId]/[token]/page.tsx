@@ -212,7 +212,7 @@ export default function PublicInvoicePage() {
               className="bg-white text-gray-900 hover:bg-gray-100 font-semibold"
             >
               <CreditCard className="mr-2 h-5 w-5" />
-              Pay Now
+              Process Payment
             </Button>
           </div>
         )}
