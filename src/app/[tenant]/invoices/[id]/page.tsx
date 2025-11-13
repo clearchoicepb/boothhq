@@ -7,7 +7,8 @@ import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check } from 'lucide-react'
+import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus } from 'lucide-react'
+import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 
 interface InvoiceLineItem {
   id: string
@@ -80,6 +81,8 @@ export default function InvoiceDetailPage() {
   const [localLoading, setLocalLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null)
 
   useEffect(() => {
     if (session && tenant && invoiceId) {
@@ -247,6 +250,76 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  const handleAddPayment = async (payment: any) => {
+    try {
+      setUpdating(true)
+
+      // If editing existing payment, use PUT, otherwise POST
+      const isEditing = editingPayment !== null
+      const url = isEditing ? `/api/payments/${editingPayment.id}` : '/api/payments'
+      const method = isEditing ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...payment,
+          invoice_id: invoiceId
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Failed to ${isEditing ? 'update' : 'create'} payment`)
+      }
+
+      // Close modal and refresh data
+      setIsPaymentModalOpen(false)
+      setEditingPayment(null)
+      await fetchInvoice()
+
+      alert(`Payment ${isEditing ? 'updated' : 'added'} successfully!`)
+    } catch (error) {
+      console.error('Error saving payment:', error)
+      alert(error instanceof Error ? error.message : 'Failed to save payment')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleEditPayment = (payment: Payment) => {
+    setEditingPayment(payment)
+    setIsPaymentModalOpen(true)
+  }
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm('Are you sure you want to delete this payment? This will recalculate the invoice balance.')) {
+      return
+    }
+
+    try {
+      setUpdating(true)
+      const response = await fetch(`/api/payments/${paymentId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_id: invoiceId })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete payment')
+      }
+
+      await fetchInvoice()
+      alert('Payment deleted successfully!')
+    } catch (error) {
+      console.error('Error deleting payment:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete payment')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft':
@@ -390,11 +463,11 @@ export default function InvoiceDetailPage() {
                   )}
                 </>
               )}
-              {invoice.status === 'draft' && invoice.event_id && (
+              {invoice.event_id && (
                 <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials&invoice=${invoice.id}`}>
                   <Button variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                    Edit Invoice
                   </Button>
                 </Link>
               )}
@@ -565,14 +638,26 @@ export default function InvoiceDetailPage() {
         {/* Payment History */}
         {payments.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <DollarSign className="h-5 w-5 text-green-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <DollarSign className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
+              </div>
+              {invoice.status !== 'paid_in_full' && invoice.status !== 'cancelled' && (
+                <Button
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add a Payment
+                </Button>
+              )}
             </div>
             <div className="space-y-3">
               {payments.map((payment) => (
                 <div key={payment.id} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">
                       ${payment.amount.toFixed(2)}
                     </p>
@@ -585,9 +670,15 @@ export default function InvoiceDetailPage() {
                         minute: '2-digit'
                       })}
                     </p>
+                    {payment.reference_number && (
+                      <p className="text-xs text-gray-500">Ref: {payment.reference_number}</p>
+                    )}
+                    {payment.notes && (
+                      <p className="text-xs text-gray-600 italic mt-1">{payment.notes}</p>
+                    )}
                   </div>
                   <div className="flex items-center space-x-3">
-                    <span className="text-xs text-gray-500 capitalize">{payment.payment_method}</span>
+                    <span className="text-xs text-gray-500 capitalize">{payment.payment_method.replace(/_/g, ' ')}</span>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       payment.status === 'completed'
                         ? 'bg-green-100 text-green-800'
@@ -597,6 +688,26 @@ export default function InvoiceDetailPage() {
                     }`}>
                       {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                     </span>
+                    <div className="flex space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditPayment(payment)}
+                        disabled={updating}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-4 w-4 text-gray-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeletePayment(payment.id)}
+                        disabled={updating}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -613,6 +724,27 @@ export default function InvoiceDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* No Payments Yet */}
+        {payments.length === 0 && invoice.status !== 'draft' && invoice.status !== 'cancelled' && invoice.status !== 'paid_in_full' && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <DollarSign className="h-5 w-5 text-gray-400 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Payment Tracking</h3>
+              </div>
+              <Button
+                onClick={() => setIsPaymentModalOpen(true)}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add a Payment
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500">No payments have been recorded for this invoice yet.</p>
           </div>
         )}
 
@@ -642,6 +774,23 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Form Modal */}
+      {invoice && (
+        <InvoicePaymentForm
+          isOpen={isPaymentModalOpen}
+          onClose={() => {
+            setIsPaymentModalOpen(false)
+            setEditingPayment(null)
+          }}
+          onSubmit={handleAddPayment}
+          invoiceId={invoiceId}
+          invoiceNumber={invoice.invoice_number}
+          totalAmount={invoice.total_amount}
+          remainingBalance={invoice.balance_amount}
+          initialData={editingPayment || undefined}
+        />
+      )}
     </div>
   )
 }

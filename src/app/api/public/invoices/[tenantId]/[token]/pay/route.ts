@@ -225,7 +225,7 @@ export async function POST(
         invoice_id: invoice.id,
         amount: paymentAmountUSD,
         payment_date: new Date().toISOString().split('T')[0],
-        payment_method: 'stripe',
+        payment_method: 'credit_card', // Stripe payments are credit card payments
         payment_intent_id: payment_intent_id,
         status: 'completed',
         processed_at: new Date().toISOString(),

@@ -35,12 +35,14 @@ export const paymentFormConfig: FormConfig<any> = {
       required: true,
       options: [
         { value: 'credit_card', label: 'Credit Card' },
-        { value: 'bank_transfer', label: 'Bank Transfer' },
         { value: 'check', label: 'Check' },
+        { value: 'echeck', label: 'eCheck' },
+        { value: 'ach', label: 'ACH' },
+        { value: 'wire_transfer', label: 'Wire Transfer' },
+        { value: 'zelle', label: 'Zelle' },
         { value: 'cash', label: 'Cash' },
-        { value: 'paypal', label: 'PayPal' },
-        { value: 'stripe', label: 'Stripe' },
-        { value: 'other', label: 'Other' }
+        { value: 'venmo', label: 'Venmo' },
+        { value: 'cash_app', label: 'Cash App' }
       ],
       gridCols: 1
     },

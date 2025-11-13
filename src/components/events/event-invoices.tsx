@@ -237,7 +237,7 @@ export function EventInvoices({
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Link>
-                      {canEdit && invoice.status === 'draft' && (
+                      {canEdit && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -277,7 +277,7 @@ export function EventInvoices({
                         key={`invoice-${invoice.id}-${expandedInvoiceId}`}
                         parentType="invoice"
                         parentId={invoice.id}
-                        editable={canEdit && invoice.status === 'draft'}
+                        editable={canEdit}
                         onUpdate={async () => {
                           await onRefresh()
                         }}
