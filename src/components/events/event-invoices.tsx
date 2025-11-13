@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye, Download, Link2, Check, CreditCard } from 'lucide-react'
+import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye, Download, Link2, Check, CreditCard, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -74,6 +74,7 @@ export function EventInvoices({
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [activeInvoiceForPayment, setActiveInvoiceForPayment] = useState<Invoice | null>(null)
   const [linkCopiedInvoiceId, setLinkCopiedInvoiceId] = useState<string | null>(null)
+  const [activatingInvoiceId, setActivatingInvoiceId] = useState<string | null>(null)
 
   // Auto-expand invoice from URL parameter (for edit button routing)
   useEffect(() => {
@@ -277,6 +278,33 @@ export function EventInvoices({
     }
   }
 
+  const handleActivateInvoice = async (invoiceId: string) => {
+    if (!confirm('Activate this invoice? It will be available for payment via the public link.')) return
+
+    try {
+      setActivatingInvoiceId(invoiceId)
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'no_payments_received' })
+      })
+
+      if (!response.ok) throw new Error('Failed to activate invoice')
+
+      // Invalidate queries to refetch data
+      await queryClient.invalidateQueries({ queryKey: ['event-invoices', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      await onRefresh()
+
+      alert('Invoice activated successfully!')
+    } catch (error) {
+      console.error('Error activating invoice:', error)
+      alert('Failed to activate invoice')
+    } finally {
+      setActivatingInvoiceId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -402,6 +430,17 @@ export function EventInvoices({
                     <div className="mb-6 bg-white rounded-lg p-4">
                       <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Actions</h3>
                       <div className="flex flex-wrap gap-2">
+                        {invoice.status === 'draft' && (
+                          <Button
+                            onClick={() => handleActivateInvoice(invoice.id)}
+                            disabled={activatingInvoiceId === invoice.id}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            {activatingInvoiceId === invoice.id ? 'Activating...' : 'Save & Activate'}
+                          </Button>
+                        )}
                         {invoice.status !== 'paid_in_full' && invoice.status !== 'draft' && (
                           <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/pay`}>
                             <Button
