@@ -22,8 +22,11 @@ export function InvoicePaymentForm({
   invoiceNumber,
   totalAmount,
   remainingBalance,
+  initialData,
   ...props
 }: InvoicePaymentFormProps) {
+  const isEditing = !!initialData
+
   // Create a modified config that excludes the invoice_id field
   // since it's already known from the context
   const invoicePaymentConfig: FormConfig<any> = {
@@ -34,15 +37,21 @@ export function InvoicePaymentForm({
       invoice_id: invoiceId,
       payment_date: new Date().toISOString().split('T')[0],
       status: 'completed',
-      amount: remainingBalance || totalAmount || undefined
+      // Only pre-fill amount if NOT editing
+      amount: isEditing ? undefined : (remainingBalance || totalAmount || undefined)
     }
   }
 
   return (
     <BaseForm
       config={invoicePaymentConfig}
-      title={invoiceNumber ? `Add Payment - Invoice ${invoiceNumber}` : 'Add Payment'}
-      submitLabel="Record Payment"
+      title={
+        isEditing
+          ? `Edit Payment - Invoice ${invoiceNumber || ''}`
+          : `Add Payment - Invoice ${invoiceNumber || ''}`
+      }
+      submitLabel={isEditing ? 'Update Payment' : 'Record Payment'}
+      initialData={initialData}
       {...props}
     />
   )
