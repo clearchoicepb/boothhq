@@ -22,6 +22,8 @@ import { format, isToday, isPast, isFuture } from 'date-fns'
 import Link from 'next/link'
 import { groupAndSortInventoryItems } from './inventory-grouping'
 import { useUpdatePrepStatus, useBulkUpdatePrepStatus, getStatusDisplayInfo, PrepStatus } from '@/hooks/usePrepStatus'
+import { BaseForm } from '@/components/forms/BaseForm'
+import { FormConfig } from '@/components/forms/types'
 
 interface WeekendPrepData {
   weekend_start: string
@@ -68,6 +70,62 @@ export function WeekendPrepDashboard() {
 
   const updatePrepStatus = useUpdatePrepStatus()
   const bulkUpdatePrepStatus = useBulkUpdatePrepStatus()
+
+  // Shipping form configuration
+  const shippingFormConfig: FormConfig = {
+    entity: 'shipping_info',
+    fields: [
+      {
+        name: 'shipping_carrier',
+        type: 'select',
+        label: 'Shipping Carrier',
+        required: true,
+        options: [
+          { value: 'UPS', label: 'UPS' },
+          { value: 'FedEx', label: 'FedEx' },
+          { value: 'USPS', label: 'USPS' },
+          { value: 'DHL', label: 'DHL' },
+          { value: 'Other', label: 'Other' }
+        ]
+      },
+      {
+        name: 'shipping_tracking_number',
+        type: 'text',
+        label: 'Tracking Number',
+        required: true,
+        placeholder: 'Enter tracking number'
+      },
+      {
+        name: 'shipping_expected_delivery',
+        type: 'date',
+        label: 'Expected Delivery Date'
+      }
+    ],
+    defaultValues: {
+      shipping_carrier: '',
+      shipping_tracking_number: '',
+      shipping_expected_delivery: ''
+    }
+  }
+
+  const handleShippingSubmit = async (formData: any) => {
+    const shippingEvent = data?.events.find(ev => ev.id === shippingEventId)
+    if (!shippingEvent) return
+
+    const itemsToShip = shippingEvent.inventory.filter((i: any) => i.prep_status === 'ready_for_pickup')
+
+    await bulkUpdatePrepStatus.mutateAsync({
+      item_ids: itemsToShip.map(i => i.id),
+      prep_status: 'in_transit',
+      shipping_carrier: formData.shipping_carrier,
+      shipping_tracking_number: formData.shipping_tracking_number,
+      shipping_expected_delivery: formData.shipping_expected_delivery
+    })
+
+    setShowShippingModal(false)
+    setShippingEventId(null)
+    await fetchWeekendData()
+  }
 
   useEffect(() => {
     fetchWeekendData()
@@ -772,100 +830,18 @@ export function WeekendPrepDashboard() {
       )}
 
       {/* Shipping Info Modal */}
-      {showShippingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Shipping Information</h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault()
-              const formData = new FormData(e.currentTarget)
-              const shippingEvent = data?.events.find(ev => ev.id === shippingEventId)
-              if (!shippingEvent) return
-
-              const itemsToShip = shippingEvent.inventory.filter((i: any) => i.prep_status === 'ready_for_pickup')
-
-              try {
-                await bulkUpdatePrepStatus.mutateAsync({
-                  item_ids: itemsToShip.map(i => i.id),
-                  prep_status: 'in_transit',
-                  shipping_carrier: formData.get('carrier') as string,
-                  shipping_tracking_number: formData.get('tracking_number') as string,
-                  shipping_expected_delivery: formData.get('expected_delivery') as string
-                })
-                setShowShippingModal(false)
-                setShippingEventId(null)
-                await fetchWeekendData()
-              } catch (error) {
-                console.error('Failed to update shipping info:', error)
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Shipping Carrier *
-                  </label>
-                  <select
-                    name="carrier"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    <option value="">Select carrier...</option>
-                    <option value="UPS">UPS</option>
-                    <option value="FedEx">FedEx</option>
-                    <option value="USPS">USPS</option>
-                    <option value="DHL">DHL</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tracking Number *
-                  </label>
-                  <input
-                    type="text"
-                    name="tracking_number"
-                    required
-                    placeholder="Enter tracking number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expected Delivery Date
-                  </label>
-                  <input
-                    type="date"
-                    name="expected_delivery"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowShippingModal(false)
-                    setShippingEventId(null)
-                  }}
-                  disabled={bulkUpdatePrepStatus.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={bulkUpdatePrepStatus.isPending}
-                >
-                  {bulkUpdatePrepStatus.isPending ? 'Updating...' : 'Mark as In Transit'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <BaseForm
+        config={shippingFormConfig}
+        isOpen={showShippingModal}
+        onClose={() => {
+          setShowShippingModal(false)
+          setShippingEventId(null)
+        }}
+        onSubmit={handleShippingSubmit}
+        title="Shipping Information"
+        submitLabel="Mark as In Transit"
+        className="sm:max-w-md"
+      />
     </div>
   )
 }

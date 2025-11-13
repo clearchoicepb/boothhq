@@ -10,6 +10,11 @@ export async function POST(
   if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId, session } = context
+
+  // Extract event ID from params
+  const resolvedParams = await params
+  const eventId = resolvedParams.id
+
     // Get all active core task templates for this tenant
     const { data: templates, error: templatesError } = await supabase
       .from('core_task_templates')
