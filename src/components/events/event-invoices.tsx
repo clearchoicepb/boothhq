@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye } from 'lucide-react'
+import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye, Download, Link2, Check } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -11,6 +11,8 @@ import { LineItemsManager } from '@/components/shared/line-items-manager'
 import { EmptyState } from './detail/shared/EmptyState'
 import { SkeletonTable } from './detail/shared/SkeletonLoader'
 import { InlineEditField } from './detail/shared/InlineEditField'
+import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
+import { useSession } from 'next-auth/react'
 
 interface Invoice {
   id: string
@@ -26,6 +28,7 @@ interface Invoice {
   terms: string | null
   paid_amount: number
   balance_amount: number
+  public_token?: string | null
 }
 
 interface EventInvoicesProps {
@@ -54,6 +57,7 @@ export function EventInvoices({
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const invoiceIdFromUrl = searchParams?.get('invoice')
+  const { data: session } = useSession()
 
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null)
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false)
@@ -67,6 +71,9 @@ export function EventInvoices({
   })
   const [editingField, setEditingField] = useState<string | null>(null)
   const [savingField, setSavingField] = useState<string | null>(null)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [activeInvoiceForPayment, setActiveInvoiceForPayment] = useState<Invoice | null>(null)
+  const [linkCopiedInvoiceId, setLinkCopiedInvoiceId] = useState<string | null>(null)
 
   // Auto-expand invoice from URL parameter (for edit button routing)
   useEffect(() => {
@@ -189,6 +196,87 @@ export function EventInvoices({
     }
   }
 
+  const handleDownloadPDF = async (invoice: Invoice) => {
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/pdf`)
+      if (!response.ok) throw new Error('Failed to generate PDF')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${invoice.invoice_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading PDF:', error)
+      alert('Failed to download PDF')
+    }
+  }
+
+  const handleCopyPublicLink = async (invoice: Invoice) => {
+    if (!invoice.public_token) {
+      alert('Public link is not available for this invoice')
+      return
+    }
+
+    if (!session?.user?.tenantId) {
+      alert('Tenant information is not available')
+      return
+    }
+
+    try {
+      const publicUrl = `${window.location.origin}/invoices/public/${session.user.tenantId}/${invoice.public_token}`
+      await navigator.clipboard.writeText(publicUrl)
+      setLinkCopiedInvoiceId(invoice.id)
+
+      setTimeout(() => {
+        setLinkCopiedInvoiceId(null)
+      }, 2000)
+    } catch (error) {
+      console.error('Error copying link:', error)
+      alert('Failed to copy link to clipboard')
+    }
+  }
+
+  const handleOpenPaymentModal = (invoice: Invoice) => {
+    setActiveInvoiceForPayment(invoice)
+    setIsPaymentModalOpen(true)
+  }
+
+  const handleAddPayment = async (payment: any) => {
+    try {
+      const response = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...payment,
+          invoice_id: activeInvoiceForPayment?.id
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create payment')
+      }
+
+      setIsPaymentModalOpen(false)
+      setActiveInvoiceForPayment(null)
+
+      // Invalidate queries to refetch data
+      await queryClient.invalidateQueries({ queryKey: ['event-invoices', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      await onRefresh()
+
+      alert('Payment added successfully!')
+    } catch (error) {
+      console.error('Error saving payment:', error)
+      alert(error instanceof Error ? error.message : 'Failed to save payment')
+    }
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -258,7 +346,7 @@ export function EventInvoices({
                       {invoice.status}
                     </span>
                     <div className="font-semibold text-gray-900">
-                      ${(invoice.total_amount || 0).toFixed(2)}
+                      ${(invoice.balance_amount || 0).toFixed(2)}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Link
@@ -307,6 +395,51 @@ export function EventInvoices({
                           <label className="block text-xs font-medium text-gray-500">Tax Rate</label>
                           <p className="text-sm text-gray-900">{((invoice.tax_rate || 0) * 100).toFixed(2)}%</p>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="mb-6 bg-white rounded-lg p-4">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Actions</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {invoice.status !== 'paid_in_full' && invoice.status !== 'cancelled' && (
+                          <Button
+                            onClick={() => handleOpenPaymentModal(invoice)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Make a Payment
+                          </Button>
+                        )}
+                        {invoice.public_token && (
+                          <Button
+                            onClick={() => handleCopyPublicLink(invoice)}
+                            size="sm"
+                            variant="outline"
+                            className={linkCopiedInvoiceId === invoice.id ? 'bg-green-50 border-green-500' : ''}
+                          >
+                            {linkCopiedInvoiceId === invoice.id ? (
+                              <>
+                                <Check className="h-4 w-4 mr-2 text-green-600" />
+                                <span className="text-green-600">Link Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Link2 className="h-4 w-4 mr-2" />
+                                Copy Public Link
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => handleDownloadPDF(invoice)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
+                        </Button>
                       </div>
                     </div>
 
@@ -479,6 +612,22 @@ export function EventInvoices({
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Payment Form Modal */}
+      {activeInvoiceForPayment && (
+        <InvoicePaymentForm
+          isOpen={isPaymentModalOpen}
+          onClose={() => {
+            setIsPaymentModalOpen(false)
+            setActiveInvoiceForPayment(null)
+          }}
+          onSubmit={handleAddPayment}
+          invoiceId={activeInvoiceForPayment.id}
+          invoiceNumber={activeInvoiceForPayment.invoice_number}
+          totalAmount={activeInvoiceForPayment.total_amount}
+          remainingBalance={activeInvoiceForPayment.balance_amount}
+        />
       )}
     </div>
   )
