@@ -584,20 +584,21 @@ export function WeekendPrepDashboard() {
                                       </td>
                                       <td className="px-2 py-1.5 text-gray-700">{item.item_category}</td>
                                       <td className="px-2 py-1.5">
-                                        {item.assigned_to_type === 'user' && (
+                                        {item.assigned_to_type === 'user' && item.assigned_to_name ? (
                                           <div className="flex items-center gap-1">
                                             <User className="h-3 w-3 text-gray-400" />
                                             <span className="text-gray-700">{item.assigned_to_name}</span>
                                           </div>
-                                        )}
-                                        {item.assigned_to_type === 'physical_address' && (
+                                        ) : item.assigned_to_type === 'physical_address' && item.assigned_to_name ? (
                                           <div className="flex items-center gap-1">
                                             <MapPin className="h-3 w-3 text-gray-400" />
                                             <span className="text-gray-700">{item.assigned_to_name}</span>
                                           </div>
-                                        )}
-                                        {!item.assigned_to_type && (
-                                          <span className="text-gray-400">Unassigned</span>
+                                        ) : (
+                                          <div className="flex items-center gap-1">
+                                            <Package2 className="h-3 w-3 text-blue-400" />
+                                            <span className="text-blue-700 text-[11px] font-medium">Event Equipment</span>
+                                          </div>
                                         )}
                                       </td>
                                       <td className="px-2 py-1.5">
