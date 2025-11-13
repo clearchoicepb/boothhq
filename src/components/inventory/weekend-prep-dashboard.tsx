@@ -187,6 +187,91 @@ export function WeekendPrepDashboard() {
     printWindow.document.close()
   }
 
+  // Handler to toggle item selection
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev)
+      if (next.has(itemId)) {
+        next.delete(itemId)
+      } else {
+        next.add(itemId)
+      }
+      return next
+    })
+  }
+
+  // Handler to select all items for an event
+  const selectAllEventItems = (event: EventSummary) => {
+    const itemIds = event.inventory.map(item => item.id)
+    setSelectedItems(prev => {
+      const next = new Set(prev)
+      itemIds.forEach(id => next.add(id))
+      return next
+    })
+  }
+
+  // Handler to mark items as ready for pickup
+  const handleMarkAsReady = async (eventId: string, items: any[]) => {
+    const itemIds = items.map(i => i.id)
+    try {
+      await bulkUpdatePrepStatus.mutateAsync({
+        item_ids: itemIds,
+        prep_status: 'ready_for_pickup'
+      })
+      setSelectedItems(new Set())
+      await fetchWeekendData()
+    } catch (error) {
+      console.error('Failed to mark items as ready:', error)
+    }
+  }
+
+  // Handler to mark items as in transit (opens shipping modal)
+  const handleMarkAsInTransit = (eventId: string) => {
+    setShippingEventId(eventId)
+    setShowShippingModal(true)
+  }
+
+  // Handler to mark items as delivered
+  const handleMarkAsDelivered = async (eventId: string, items: any[]) => {
+    const itemIds = items.map(i => i.id)
+    try {
+      await bulkUpdatePrepStatus.mutateAsync({
+        item_ids: itemIds,
+        prep_status: 'delivered_to_staff'
+      })
+      setSelectedItems(new Set())
+      await fetchWeekendData()
+    } catch (error) {
+      console.error('Failed to mark items as delivered:', error)
+    }
+  }
+
+  // Handler for individual item checkbox toggle
+  const handleItemCheckbox = async (item: any) => {
+    const currentStatus = item.prep_status || 'needs_prep'
+    let nextStatus: PrepStatus = 'ready_for_pickup'
+
+    // Determine next status based on current status
+    if (currentStatus === 'needs_prep') {
+      nextStatus = 'ready_for_pickup'
+    } else if (currentStatus === 'ready_for_pickup') {
+      nextStatus = 'delivered_to_staff'
+    } else {
+      return // Already delivered, no action
+    }
+
+    try {
+      await updatePrepStatus.mutateAsync({
+        itemId: item.id,
+        prep_status: nextStatus,
+        old_prep_status: currentStatus
+      })
+      await fetchWeekendData()
+    } catch (error) {
+      console.error('Failed to update item status:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -340,17 +425,21 @@ export function WeekendPrepDashboard() {
                           >
                             {event.title}
                           </Link>
-                          {event.all_ready ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                              <CheckCircle className="h-3 w-3" />
-                              Ready
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                              <AlertTriangle className="h-3 w-3" />
-                              {event.needs_prep} Need Prep
-                            </span>
-                          )}
+                          {(() => {
+                            const statusInfo = getStatusDisplayInfo(event.event_status || 'needs_prep')
+                            const Icon = event.event_status === 'needs_gear_assigned' ? AlertTriangle :
+                                       event.event_status === 'needs_prep' ? AlertTriangle :
+                                       event.event_status === 'ready_for_pickup' ? CheckCircle :
+                                       event.event_status === 'in_transit' ? Truck :
+                                       CheckCheck
+
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 ${statusInfo.bgColor} ${statusInfo.textColor} ${statusInfo.borderColor} border text-xs rounded-full font-medium`}>
+                                <Icon className="h-3 w-3" />
+                                {statusInfo.label}
+                              </span>
+                            )
+                          })()}
                         </div>
                         <div className="text-xs text-gray-600 mt-0.5">
                           {format(new Date(event.start_date), 'EEEE, MMM d, yyyy')} • {event.inventory_count} items
@@ -388,69 +477,148 @@ export function WeekendPrepDashboard() {
                           No equipment assigned yet
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="px-2 py-1.5 text-left font-medium text-gray-700">Item</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-gray-700">Category</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-gray-700">Assigned To</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-gray-700">Status</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-gray-700">Return Date</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                              {event.inventory.map((item: any) => (
-                                <tr key={item.id} className="hover:bg-white">
-                                  <td className="px-2 py-1.5">
-                                    <div className="font-medium text-gray-900">{item.item_name}</div>
-                                    {item.model && (
-                                      <div className="text-[10px] text-gray-500">{item.model}</div>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1.5 text-gray-700">{item.item_category}</td>
-                                  <td className="px-2 py-1.5">
-                                    {item.assigned_to_type === 'user' && (
-                                      <div className="flex items-center gap-1">
-                                        <User className="h-3 w-3 text-gray-400" />
-                                        <span className="text-gray-700">{item.assigned_to_name}</span>
-                                      </div>
-                                    )}
-                                    {item.assigned_to_type === 'physical_address' && (
-                                      <div className="flex items-center gap-1">
-                                        <MapPin className="h-3 w-3 text-gray-400" />
-                                        <span className="text-gray-700">{item.assigned_to_name}</span>
-                                      </div>
-                                    )}
-                                    {!item.assigned_to_type && (
-                                      <span className="text-gray-400">Unassigned</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1.5">
-                                    {item.assignment_type === 'event_checkout' ? (
-                                      <span className="inline-flex items-center gap-1 text-green-700">
-                                        <CheckCircle className="h-3 w-3" />
-                                        Ready
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-yellow-700">
-                                        <AlertTriangle className="h-3 w-3" />
-                                        Prep
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1.5 text-gray-700">
-                                    {item.expected_return_date ? (
-                                      format(new Date(item.expected_return_date), 'MMM d')
-                                    ) : (
-                                      <span className="text-gray-400">—</span>
-                                    )}
-                                  </td>
+                        <>
+                          {/* Status Summary & Bulk Actions */}
+                          <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex gap-3 text-xs">
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium text-yellow-700">{event.status_counts.needs_prep}</span>
+                                <span className="text-gray-600">Need Prep</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium text-green-700">{event.status_counts.ready_for_pickup}</span>
+                                <span className="text-gray-600">Ready</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium text-blue-700">{event.status_counts.in_transit}</span>
+                                <span className="text-gray-600">In Transit</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium text-emerald-700">{event.status_counts.delivered_to_staff}</span>
+                                <span className="text-gray-600">Delivered</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              {event.status_counts.needs_prep > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleMarkAsReady(event.id, event.inventory.filter((i: any) => i.prep_status === 'needs_prep'))}
+                                  disabled={bulkUpdatePrepStatus.isPending}
+                                >
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Mark All as Ready
+                                </Button>
+                              )}
+                              {event.status_counts.ready_for_pickup > 0 && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleMarkAsInTransit(event.id)}
+                                    disabled={bulkUpdatePrepStatus.isPending}
+                                  >
+                                    <Truck className="h-3 w-3 mr-1" />
+                                    Ship Items
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleMarkAsDelivered(event.id, event.inventory.filter((i: any) => i.prep_status === 'ready_for_pickup'))}
+                                    disabled={bulkUpdatePrepStatus.isPending}
+                                  >
+                                    <CheckCheck className="h-3 w-3 mr-1" />
+                                    Mark as Delivered
+                                  </Button>
+                                </>
+                              )}
+                              {event.status_counts.in_transit > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleMarkAsDelivered(event.id, event.inventory.filter((i: any) => i.prep_status === 'in_transit'))}
+                                  disabled={bulkUpdatePrepStatus.isPending}
+                                >
+                                  <CheckCheck className="h-3 w-3 mr-1" />
+                                  Mark as Delivered
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Items Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="px-2 py-1.5 w-8"></th>
+                                  <th className="px-2 py-1.5 text-left font-medium text-gray-700">Item</th>
+                                  <th className="px-2 py-1.5 text-left font-medium text-gray-700">Category</th>
+                                  <th className="px-2 py-1.5 text-left font-medium text-gray-700">Assigned To</th>
+                                  <th className="px-2 py-1.5 text-left font-medium text-gray-700">Prep Status</th>
+                                  <th className="px-2 py-1.5 text-left font-medium text-gray-700">Return Date</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody className="divide-y">
+                                {event.inventory.map((item: any) => {
+                                  const itemStatus = item.prep_status || 'needs_prep'
+                                  const statusInfo = getStatusDisplayInfo(itemStatus as PrepStatus)
+                                  const isDelivered = itemStatus === 'delivered_to_staff'
+
+                                  return (
+                                    <tr key={item.id} className="hover:bg-white">
+                                      <td className="px-2 py-1.5">
+                                        <input
+                                          type="checkbox"
+                                          checked={isDelivered}
+                                          onChange={() => handleItemCheckbox(item)}
+                                          disabled={isDelivered || updatePrepStatus.isPending}
+                                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                                        />
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        <div className="font-medium text-gray-900">{item.item_name}</div>
+                                        {item.model && (
+                                          <div className="text-[10px] text-gray-500">{item.model}</div>
+                                        )}
+                                      </td>
+                                      <td className="px-2 py-1.5 text-gray-700">{item.item_category}</td>
+                                      <td className="px-2 py-1.5">
+                                        {item.assigned_to_type === 'user' && (
+                                          <div className="flex items-center gap-1">
+                                            <User className="h-3 w-3 text-gray-400" />
+                                            <span className="text-gray-700">{item.assigned_to_name}</span>
+                                          </div>
+                                        )}
+                                        {item.assigned_to_type === 'physical_address' && (
+                                          <div className="flex items-center gap-1">
+                                            <MapPin className="h-3 w-3 text-gray-400" />
+                                            <span className="text-gray-700">{item.assigned_to_name}</span>
+                                          </div>
+                                        )}
+                                        {!item.assigned_to_type && (
+                                          <span className="text-gray-400">Unassigned</span>
+                                        )}
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${statusInfo.bgColor} ${statusInfo.textColor} text-[10px] rounded-full font-medium`}>
+                                          {statusInfo.icon} {statusInfo.label}
+                                        </span>
+                                      </td>
+                                      <td className="px-2 py-1.5 text-gray-700">
+                                        {item.expected_return_date ? (
+                                          format(new Date(item.expected_return_date), 'MMM d')
+                                        ) : (
+                                          <span className="text-gray-400">—</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -598,6 +766,102 @@ export function WeekendPrepDashboard() {
                 </div>
               )
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Shipping Info Modal */}
+      {showShippingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Shipping Information</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              const shippingEvent = data?.events.find(ev => ev.id === shippingEventId)
+              if (!shippingEvent) return
+
+              const itemsToShip = shippingEvent.inventory.filter((i: any) => i.prep_status === 'ready_for_pickup')
+
+              try {
+                await bulkUpdatePrepStatus.mutateAsync({
+                  item_ids: itemsToShip.map(i => i.id),
+                  prep_status: 'in_transit',
+                  shipping_carrier: formData.get('carrier') as string,
+                  shipping_tracking_number: formData.get('tracking_number') as string,
+                  shipping_expected_delivery: formData.get('expected_delivery') as string
+                })
+                setShowShippingModal(false)
+                setShippingEventId(null)
+                await fetchWeekendData()
+              } catch (error) {
+                console.error('Failed to update shipping info:', error)
+              }
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Shipping Carrier *
+                  </label>
+                  <select
+                    name="carrier"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Select carrier...</option>
+                    <option value="UPS">UPS</option>
+                    <option value="FedEx">FedEx</option>
+                    <option value="USPS">USPS</option>
+                    <option value="DHL">DHL</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tracking Number *
+                  </label>
+                  <input
+                    type="text"
+                    name="tracking_number"
+                    required
+                    placeholder="Enter tracking number"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Expected Delivery Date
+                  </label>
+                  <input
+                    type="date"
+                    name="expected_delivery"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowShippingModal(false)
+                    setShippingEventId(null)
+                  }}
+                  disabled={bulkUpdatePrepStatus.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={bulkUpdatePrepStatus.isPending}
+                >
+                  {bulkUpdatePrepStatus.isPending ? 'Updating...' : 'Mark as In Transit'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
