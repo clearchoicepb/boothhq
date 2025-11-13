@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye, Download, Link2, Check } from 'lucide-react'
+import { DollarSign, Plus, ExternalLink, ChevronDown, ChevronRight, Edit, Trash2, Eye, Download, Link2, Check, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -402,6 +402,17 @@ export function EventInvoices({
                     <div className="mb-6 bg-white rounded-lg p-4">
                       <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Actions</h3>
                       <div className="flex flex-wrap gap-2">
+                        {invoice.status !== 'paid_in_full' && invoice.status !== 'draft' && (
+                          <Link href={`/${tenantSubdomain}/invoices/${invoice.id}/pay`}>
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Pay Now
+                            </Button>
+                          </Link>
+                        )}
                         {invoice.status !== 'paid_in_full' && invoice.status !== 'cancelled' && (
                           <Button
                             onClick={() => handleOpenPaymentModal(invoice)}
