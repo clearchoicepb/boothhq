@@ -45,7 +45,6 @@ import { EventAccountContactCard } from '@/components/events/event-account-conta
 import { EventDescriptionCard } from '@/components/events/event-description-card'
 import { EventInvoices } from '@/components/events/event-invoices'
 import { EventActivitiesList } from '@/components/events/event-activities-list'
-import { EventCommunicationsList } from '@/components/events/event-communications-list'
 import { EventStaffList } from '@/components/events/event-staff-list'
 import { EventTabsNavigation } from '@/components/events/event-tabs-navigation'
 import { AssignStaffModal } from '@/components/events/assign-staff-modal'
@@ -54,7 +53,7 @@ import { CommunicationDetailModal } from '@/components/events/communication-deta
 import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
 import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewTab'
 import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
-import { EventCommunicationsTab } from '@/components/events/detail/tabs/EventCommunicationsTab'
+import { CommunicationsTab } from '@/components/shared/CommunicationsTab'
 import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
 import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
@@ -166,6 +165,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   const [isLogCommunicationModalOpen, setIsLogCommunicationModalOpen] = useState(false)
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
+  const [showSMSThread, setShowSMSThread] = useState(false)
   const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
@@ -679,22 +679,26 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
             </div>
           </TabsContent>
 
-          {/* Communications Tab - NEW: Includes Notes */}
+          {/* Communications Tab */}
           <TabsContent value="communications" className="mt-0">
-            <EventCommunicationsTab
-              eventId={eventId}
+            <CommunicationsTab
+              entityType="event"
+              entityId={eventId}
               communications={communications}
-              communicationsPage={communicationsPage}
-              totalCommunicationsPages={Math.ceil(communications.length / 10)}
-              onCommunicationPageChange={(page) => setCommunicationsPage(page)}
+              showSMSThread={showSMSThread}
+              contactId={event?.contact_id}
+              accountId={event?.account_id}
+              contactPhone={
+                event?.contacts?.phone ||
+                event?.accounts?.phone
+              }
+              onToggleSMSThread={() => setShowSMSThread(!showSMSThread)}
+              onCreateEmail={() => setIsEmailModalOpen(true)}
+              onLogCommunication={() => setIsLogCommunicationModalOpen(true)}
               onCommunicationClick={(comm) => {
                 setSelectedCommunication(comm)
                 setIsCommunicationDetailOpen(true)
               }}
-              onNewCommunication={() => setIsLogCommunicationModalOpen(true)}
-              onEmail={() => setIsEmailModalOpen(true)}
-              onSMS={() => setIsSMSModalOpen(true)}
-              canCreate={canManageEvents}
             />
           </TabsContent>
 

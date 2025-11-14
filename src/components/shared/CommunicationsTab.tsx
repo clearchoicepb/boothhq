@@ -1,6 +1,15 @@
 /**
- * Opportunity Communications Tab
- * Displays and manages communications (email, SMS, etc.) for an opportunity
+ * Unified Communications Tab
+ * A reusable component for displaying and managing communications across all entity types
+ * (events, opportunities, accounts, leads, contacts)
+ *
+ * Features:
+ * - SMS Thread Integration with toggle
+ * - Dynamic sizing based on communication count
+ * - Numbered pagination for better navigation
+ * - Direction indicators (Inbound/Outbound) with color coding
+ * - Color-coded type badges
+ * - Inline display of all communications
  */
 
 import { useState } from 'react'
@@ -8,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, MessageSquare } from 'lucide-react'
 import { SMSThread } from '@/components/sms-thread'
 
-interface Communication {
+export interface Communication {
   id: string
   communication_type: 'email' | 'sms' | 'phone' | 'in_person' | 'other'
   direction: 'inbound' | 'outbound'
@@ -17,34 +26,55 @@ interface Communication {
   notes?: string
 }
 
-interface OpportunityCommunicationsTabProps {
-  opportunityId: string
+export interface CommunicationsTabProps {
+  // Entity information
+  entityType: 'event' | 'opportunity' | 'account' | 'lead' | 'contact'
+  entityId: string
+
+  // Communications data
   communications: Communication[]
-  showSMSThread: boolean
+
+  // SMS Thread support
+  showSMSThread?: boolean
   contactId?: string
   accountId?: string
   leadId?: string
+  opportunityId?: string
   contactPhone?: string
-  onToggleSMSThread: () => void
+
+  // Event handlers
+  onToggleSMSThread?: () => void
   onCreateEmail: () => void
   onLogCommunication: () => void
   onCommunicationClick: (communication: Communication) => void
 }
 
-export function OpportunityCommunicationsTab({
-  opportunityId,
+export function CommunicationsTab({
+  entityType,
+  entityId,
   communications,
-  showSMSThread,
+  showSMSThread = false,
   contactId,
   accountId,
   leadId,
+  opportunityId,
   contactPhone,
   onToggleSMSThread,
   onCreateEmail,
   onLogCommunication,
   onCommunicationClick
-}: OpportunityCommunicationsTabProps) {
+}: CommunicationsTabProps) {
   const [communicationsPage, setCommunicationsPage] = useState(1)
+
+  // Get the appropriate entity ID prop for SMSThread based on entity type
+  const smsThreadProps = {
+    eventId: entityType === 'event' ? entityId : undefined,
+    opportunityId: entityType === 'opportunity' ? entityId : opportunityId,
+    contactId,
+    accountId,
+    leadId,
+    contactPhone,
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -59,14 +89,16 @@ export function OpportunityCommunicationsTab({
           <FileText className="h-4 w-4 mr-2" />
           Create Email
         </Button>
-        <Button
-          variant={showSMSThread ? "default" : "outline"}
-          size="sm"
-          onClick={onToggleSMSThread}
-        >
-          <MessageSquare className="h-4 w-4 mr-2" />
-          {showSMSThread ? 'Hide SMS Thread' : 'View SMS Thread'}
-        </Button>
+        {onToggleSMSThread && (
+          <Button
+            variant={showSMSThread ? "default" : "outline"}
+            size="sm"
+            onClick={onToggleSMSThread}
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            {showSMSThread ? 'Hide SMS Thread' : 'View SMS Thread'}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -77,13 +109,9 @@ export function OpportunityCommunicationsTab({
         </Button>
       </div>
 
-      {showSMSThread ? (
+      {showSMSThread && onToggleSMSThread ? (
         <SMSThread
-          opportunityId={opportunityId}
-          contactId={contactId}
-          accountId={accountId}
-          leadId={leadId}
-          contactPhone={contactPhone}
+          {...smsThreadProps}
           onClose={onToggleSMSThread}
         />
       ) : communications.length === 0 ? (
@@ -110,6 +138,7 @@ export function OpportunityCommunicationsTab({
             let headerMargin = 'mb-3'
             let maxLines = ''
 
+            // Dynamic sizing based on total communications count
             if (total >= 10) {
               containerSpacing = 'space-y-1'
               padding = 'p-1.5'
