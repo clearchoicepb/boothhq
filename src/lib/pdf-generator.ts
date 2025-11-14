@@ -17,6 +17,7 @@ export interface InvoicePDFData {
     total_amount: number
     paid_amount: number | null
     balance_amount: number
+    purchase_order: string | null
     payment_terms: string | null
     notes: string | null
     terms: string | null
@@ -184,6 +185,21 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(0, 0, 0)
   doc.text(formatDate(invoice.due_date), rightColX, rightColY)
+  rightColY += 8
+
+  // Add purchase order if exists
+  if (invoice.purchase_order) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(100, 100, 100)
+    doc.text('PURCHASE ORDER', rightColX, rightColY)
+    rightColY += 5
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    doc.text(invoice.purchase_order, rightColX, rightColY)
+  }
 
   // Add spacing after billing section
   yPos = Math.max(yPos, rightColY) + 10

@@ -24,6 +24,7 @@ interface Invoice {
   tax_rate: number
   due_date: string
   issue_date: string
+  purchase_order: string | null
   notes: string | null
   terms: string | null
   paid_amount: number
@@ -66,6 +67,7 @@ export function EventInvoices({
     tax_rate: '0.08',
     due_days: '30',
     issue_date: new Date().toISOString().split('T')[0],
+    purchase_order: '',
     notes: '',
     terms: ''
   })
@@ -115,6 +117,7 @@ export function EventInvoices({
           total_amount: 0,
           balance_amount: 0,
           status: 'draft',
+          purchase_order: newInvoiceData.purchase_order || null,
           notes: newInvoiceData.notes || null,
           terms: newInvoiceData.terms || null,
         })
@@ -423,6 +426,17 @@ export function EventInvoices({
                           <label className="block text-xs font-medium text-gray-500">Tax Rate</label>
                           <p className="text-sm text-gray-900">{((invoice.tax_rate || 0) * 100).toFixed(2)}%</p>
                         </div>
+                        <InlineEditField
+                          label="Purchase Order"
+                          value={invoice.purchase_order || ''}
+                          type="text"
+                          isEditing={editingField === `${invoice.id}-purchase_order`}
+                          isLoading={savingField === `${invoice.id}-purchase_order`}
+                          canEdit={canEdit}
+                          onStartEdit={() => setEditingField(`${invoice.id}-purchase_order`)}
+                          onSave={(value) => handleUpdateInvoiceField(invoice.id, 'purchase_order', value)}
+                          onCancel={() => setEditingField(null)}
+                        />
                       </div>
                     </div>
 
@@ -586,6 +600,20 @@ export function EventInvoices({
                 onChange={(e) => setNewInvoiceData({ ...newInvoiceData, issue_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="purchase_order" className="block text-sm font-medium text-gray-700 mb-2">
+                Purchase Order (PO) Number (Optional)
+              </label>
+              <input
+                id="purchase_order"
+                type="text"
+                value={newInvoiceData.purchase_order}
+                onChange={(e) => setNewInvoiceData({ ...newInvoiceData, purchase_order: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                placeholder="e.g., PO-12345"
               />
             </div>
 

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Package, Plus, Edit2, Trash2, ChevronLeft } from 'lucide-react'
 
 interface PackageItem {
@@ -215,7 +216,10 @@ export default function PackagesPage() {
                 </div>
 
                 {pkg.description && (
-                  <p className="text-sm text-gray-600 mb-4">{pkg.description}</p>
+                  <div
+                    className="text-sm text-gray-600 mb-4 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: pkg.description }}
+                  />
                 )}
 
                 <div className="flex items-center justify-between pt-4 border-t">
@@ -265,11 +269,11 @@ export default function PackagesPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Description
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
+                    onChange={(value) => setFormData({ ...formData, description: value })}
+                    placeholder="Describe the package details..."
+                    minHeight="120px"
                   />
                 </div>
 
