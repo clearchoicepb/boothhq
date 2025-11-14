@@ -34,10 +34,6 @@ END $$;
 -- STEP 1: ADD AUDIT COLUMNS TO ALL TABLES
 -- ============================================================================
 
-RAISE NOTICE '==================================================';
-RAISE NOTICE 'STEP 1: Adding audit columns to all tables';
-RAISE NOTICE '==================================================';
-
 -- INVOICES (completely missing audit fields)
 ALTER TABLE invoices
   ADD COLUMN IF NOT EXISTS created_by UUID,
@@ -105,21 +101,21 @@ ALTER TABLE invoice_line_items
   ADD COLUMN IF NOT EXISTS created_by UUID,
   ADD COLUMN IF NOT EXISTS updated_by UUID;
 
-RAISE NOTICE 'Audit columns added successfully';
-
 -- ============================================================================
 -- STEP 2: BACKFILL EXISTING RECORDS WITH ADMIN USER
 -- ============================================================================
-
-RAISE NOTICE '==================================================';
-RAISE NOTICE 'STEP 2: Backfilling existing records';
-RAISE NOTICE '==================================================';
 
 DO $$
 DECLARE
   admin_user_id UUID := 'fcb7ec1f-7599-4ec2-893a-bef11b30a32e';
   updated_count INTEGER;
 BEGIN
+  RAISE NOTICE '==================================================';
+  RAISE NOTICE 'STEP 1: Audit columns added successfully';
+  RAISE NOTICE '==================================================';
+  RAISE NOTICE 'STEP 2: Backfilling existing records';
+  RAISE NOTICE '==================================================';
+
   -- INVOICES
   UPDATE invoices
   SET created_by = admin_user_id, updated_by = admin_user_id
@@ -232,15 +228,14 @@ BEGIN
   RAISE NOTICE 'Invoice line items backfilled: % records', updated_count;
 
   RAISE NOTICE 'Backfill complete';
+  RAISE NOTICE '==================================================';
+  RAISE NOTICE 'STEP 3: Adding foreign key constraints';
+  RAISE NOTICE '==================================================';
 END $$;
 
 -- ============================================================================
 -- STEP 3: ADD FOREIGN KEY CONSTRAINTS
 -- ============================================================================
-
-RAISE NOTICE '==================================================';
-RAISE NOTICE 'STEP 3: Adding foreign key constraints';
-RAISE NOTICE '==================================================';
 
 -- INVOICES
 ALTER TABLE invoices
@@ -419,15 +414,9 @@ ALTER TABLE contact_accounts
   ADD CONSTRAINT contact_accounts_updated_by_fkey
     FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL;
 
-RAISE NOTICE 'Foreign key constraints added successfully';
-
 -- ============================================================================
 -- STEP 4: ADD INDEXES FOR PERFORMANCE
 -- ============================================================================
-
-RAISE NOTICE '==================================================';
-RAISE NOTICE 'STEP 4: Adding indexes for audit fields';
-RAISE NOTICE '==================================================';
 
 -- Create indexes on created_by/updated_by for faster queries
 CREATE INDEX IF NOT EXISTS idx_invoices_created_by ON invoices(created_by);
@@ -455,20 +444,19 @@ CREATE INDEX IF NOT EXISTS idx_locations_updated_by ON locations(updated_by);
 CREATE INDEX IF NOT EXISTS idx_event_dates_created_by ON event_dates(created_by);
 CREATE INDEX IF NOT EXISTS idx_event_dates_updated_by ON event_dates(updated_by);
 
-RAISE NOTICE 'Indexes created successfully';
-
 -- ============================================================================
 -- STEP 5: ADD TRIGGERS FOR AUTO-UPDATING updated_at
 -- ============================================================================
-
-RAISE NOTICE '==================================================';
-RAISE NOTICE 'STEP 5: Verifying auto-update triggers';
-RAISE NOTICE '==================================================';
 
 -- Triggers already exist from tenant-data-schema-actual.sql
 -- Just verify they exist for critical tables
 DO $$
 BEGIN
+  RAISE NOTICE '==================================================';
+  RAISE NOTICE 'STEP 4: Indexes created successfully';
+  RAISE NOTICE '==================================================';
+  RAISE NOTICE 'STEP 5: Verifying auto-update triggers';
+  RAISE NOTICE '==================================================';
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
     WHERE tgname = 'update_invoices_updated_at'
@@ -498,16 +486,16 @@ END $$;
 -- VERIFICATION
 -- ============================================================================
 
-RAISE NOTICE '==================================================';
-RAISE NOTICE 'MIGRATION COMPLETE - VERIFICATION';
-RAISE NOTICE '==================================================';
-
 DO $$
 DECLARE
   table_name TEXT;
   column_count INTEGER;
   fk_count INTEGER;
 BEGIN
+  RAISE NOTICE '==================================================';
+  RAISE NOTICE 'MIGRATION COMPLETE - VERIFICATION';
+  RAISE NOTICE '==================================================';
+
   -- Verify all tables have created_by and updated_by
   FOR table_name IN
     SELECT unnest(ARRAY[
