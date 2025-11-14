@@ -147,10 +147,10 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
 
   console.log('[Invoice Totals] Subtotal:', subtotal, 'Taxable Subtotal:', taxableSubtotal)
 
-  // Get current tax rate
+  // Get current tax rate and paid amount
   const { data: invoice } = await supabase
     .from('invoices')
-    .select('tax_rate')
+    .select('tax_rate, paid_amount')
     .eq('id', invoiceId)
     .eq('tenant_id', tenantId)
     .single()
@@ -158,7 +158,10 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
   const taxRate = parseFloat(invoice?.tax_rate || 0)
   const taxAmount = taxableSubtotal * taxRate  // Only apply tax to taxable items
   const totalAmount = subtotal + taxAmount
-  const balanceAmount = totalAmount // Assuming no payments yet; adjust if paid_amount exists
+  const paidAmount = parseFloat(invoice?.paid_amount || 0)
+  const balanceAmount = totalAmount - paidAmount  // Calculate balance considering payments
+
+  console.log('[Invoice Totals] Total:', totalAmount, 'Paid:', paidAmount, 'Balance:', balanceAmount)
 
   // Update invoice totals
   await supabase
