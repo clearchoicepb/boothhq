@@ -29,7 +29,7 @@ export function useProductGroupsData() {
   return useQuery({
     queryKey: ['product-groups'],
     queryFn: fetchProductGroups,
-    staleTime: 30 * 1000,
+    staleTime: 0, // Always refetch when invalidated to show latest data
   })
 }
 
@@ -40,7 +40,7 @@ export function useProductGroupData(groupId: string, options?: { enabled?: boole
   return useQuery({
     queryKey: ['product-groups', groupId],
     queryFn: () => fetchProductGroup(groupId),
-    staleTime: 30 * 1000,
+    staleTime: 0, // Always refetch when invalidated to show latest data
     enabled: options?.enabled !== undefined ? options.enabled : Boolean(groupId),
   })
 }
