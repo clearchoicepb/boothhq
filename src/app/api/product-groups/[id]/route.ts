@@ -68,9 +68,17 @@ export async function PUT(
     const groupId = params.id
     const body = await request.json()
 
+    console.log('[Product Group Update] Received data:', {
+      groupId,
+      body,
+      assigned_to_type: body.assigned_to_type,
+      assigned_to_id: body.assigned_to_id
+    })
+
     // Validate assignment fields before converting empty strings
     // Only validate if explicitly trying to change/clear the assignment
     if ('assigned_to_id' in body && !body.assigned_to_id) {
+      console.log('[Product Group Update] Validation failed: assigned_to_id is missing or empty')
       return NextResponse.json({
         error: 'Product groups must be assigned to a user or physical address',
       }, { status: 400 })

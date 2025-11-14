@@ -40,17 +40,24 @@ export function ProductGroupsList() {
   const removeItemFromGroup = useRemoveItemFromProductGroup()
 
   const handleSubmit = useCallback(async (data: any) => {
+    console.log('[Product Group Submit] Form data:', data)
+    console.log('[Product Group Submit] Editing group:', editingGroup?.id)
+
     try {
       if (editingGroup) {
-        await updateGroup.mutateAsync({ groupId: editingGroup.id, groupData: data })
+        const result = await updateGroup.mutateAsync({ groupId: editingGroup.id, groupData: data })
+        console.log('[Product Group Submit] Update successful:', result)
       } else {
-        await addGroup.mutateAsync(data)
+        const result = await addGroup.mutateAsync(data)
+        console.log('[Product Group Submit] Create successful:', result)
       }
       setIsModalOpen(false)
       setEditingGroup(null)
     } catch (error: any) {
-      console.error('Failed to save product group:', error)
-      // Error will be shown by the mutation's error state
+      console.error('[Product Group Submit] Error occurred:', error)
+      console.error('[Product Group Submit] Error message:', error.message)
+      // Re-throw the error so the BaseForm can handle it
+      throw error
     }
   }, [editingGroup, updateGroup, addGroup])
 
