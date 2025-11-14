@@ -70,10 +70,23 @@ export async function POST(request: NextRequest) {
     const { supabase, dataSourceTenantId, session } = context
 
     const body = await request.json()
+
+    // Log what we're receiving for debugging
+    console.log('[Communications POST] Received data:', {
+      ...body,
+      // Redact sensitive info, just show structure
+      hasEventId: !!body.event_id,
+      hasAccountId: !!body.account_id,
+      hasContactId: !!body.contact_id,
+      communicationType: body.communication_type,
+    })
+
     const communicationData = {
       ...body,
       tenant_id: dataSourceTenantId,
+      // Audit trail: track who created this communication
       created_by: session.user.id,
+      updated_by: session.user.id,
     }
 
     const { data, error } = await supabase
@@ -96,9 +109,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating communication:', error)
+      console.error('[Communications POST] Error creating communication:', error)
+      console.error('[Communications POST] Failed data:', communicationData)
       return NextResponse.json({ error: 'Failed to create communication', details: error.message }, { status: 500 })
     }
+
+    console.log('[Communications POST] Success! Created communication:', data.id)
 
     return NextResponse.json(data)
   } catch (error) {
