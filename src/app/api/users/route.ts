@@ -12,12 +12,12 @@ export async function GET(request: NextRequest) {
     const { supabase, dataSourceTenantId, session } = context
     // Query Tenant DB for users (users table is now in Tenant DB)
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    // Get all users for the current tenant
+    // Get all users for the current tenant, sorted alphabetically by first name
     const { data: users, error } = await supabase
       .from('users')
       .select('*')
       .eq('tenant_id', dataSourceTenantId)
-      .order('created_at', { ascending: false })
+      .order('first_name', { ascending: true })
 
     if (error) {
       console.error('Error fetching users:', error)

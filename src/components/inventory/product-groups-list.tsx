@@ -13,19 +13,22 @@ import {
   useAddItemToProductGroup,
   useRemoveItemFromProductGroup
 } from '@/hooks/useProductGroupsData'
-import { useInventoryItemsData } from '@/hooks/useInventoryItemsData'
+import { useInventoryItemsData, useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
 import { useQueryClient } from '@tanstack/react-query'
+import { ProductGroupItemSelector } from './ProductGroupItemSelector'
 
 export function ProductGroupsList() {
   const queryClient = useQueryClient()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
-  const [selectedItemId, setSelectedItemId] = useState<string>('')
+  const [viewMode, setViewMode] = useState<'view' | 'add' | null>(null) // Track which mode is active
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<any>(null) // For viewing/editing item details
 
   // Data hooks
   const { data: groups = [], isLoading } = useProductGroupsData()
-  const { data: inventoryResponse } = useInventoryItemsData()
+  // Fetch all inventory items with a high limit to ensure we get everything
+  const { data: inventoryResponse } = useInventoryItemsData({ limit: 10000 })
   const allInventoryItems = inventoryResponse?.data || []
 
   // Fetch users and physical addresses for assignment dropdowns
@@ -56,6 +59,7 @@ export function ProductGroupsList() {
   const deleteGroup = useDeleteProductGroup()
   const addItemToGroup = useAddItemToProductGroup()
   const removeItemFromGroup = useRemoveItemFromProductGroup()
+  const updateInventoryItem = useUpdateInventoryItem()
 
   const handleSubmit = useCallback(async (data: any) => {
     console.log('[Product Group Submit] Form data:', data)
@@ -90,16 +94,17 @@ export function ProductGroupsList() {
     }
   }, [deleteGroup])
 
-  const toggleGroupExpansion = useCallback((groupId: string) => {
-    if (expandedGroupId === groupId) {
+  const toggleGroupExpansion = useCallback((groupId: string, mode: 'view' | 'add') => {
+    if (expandedGroupId === groupId && viewMode === mode) {
+      // If clicking the same button, collapse
       setExpandedGroupId(null)
-      setSelectedItemId('') // Clear selection when collapsing
+      setViewMode(null)
     } else {
+      // Otherwise expand and set mode
       setExpandedGroupId(groupId)
-      setSelectedItemId('') // Clear selection when switching groups
-      // React Query will automatically fetch details when expandedGroupId changes
+      setViewMode(mode)
     }
-  }, [expandedGroupId])
+  }, [expandedGroupId, viewMode])
 
   const openCreateModal = useCallback(() => {
     setEditingGroup(null)
@@ -111,18 +116,17 @@ export function ProductGroupsList() {
     setIsModalOpen(true)
   }, [])
 
-  const handleAddItemToGroup = useCallback(async (groupId: string) => {
-    if (!selectedItemId) return
+  const handleAddItemToGroup = useCallback(async (groupId: string, inventoryItemId: string) => {
+    if (!inventoryItemId) return
 
     try {
-      await addItemToGroup.mutateAsync({ groupId, inventoryItemId: selectedItemId })
-      setSelectedItemId('') // Clear selection after adding
+      await addItemToGroup.mutateAsync({ groupId, inventoryItemId })
       // React Query mutations already invalidate the cache
     } catch (error: any) {
       console.error('Failed to add item to group:', error)
       // Error will be shown by the mutation's error state
     }
-  }, [selectedItemId, addItemToGroup])
+  }, [addItemToGroup])
 
   const handleRemoveItemFromGroup = useCallback(async (groupId: string, inventoryItemId: string) => {
     if (!confirm('Remove this item from the group?')) return
@@ -135,6 +139,18 @@ export function ProductGroupsList() {
       // Error will be shown by the mutation's error state
     }
   }, [removeItemFromGroup])
+
+  const handleInventoryItemSubmit = useCallback(async (data: any) => {
+    if (!selectedInventoryItem?.id) return
+
+    try {
+      await updateInventoryItem.mutateAsync({ itemId: selectedInventoryItem.id, itemData: data })
+      setSelectedInventoryItem(null)
+    } catch (error: any) {
+      console.error('Failed to update inventory item:', error)
+      throw error
+    }
+  }, [selectedInventoryItem, updateInventoryItem])
 
   const handleInlineAssignmentChange = useCallback(async (
     groupId: string,
@@ -278,24 +294,30 @@ export function ProductGroupsList() {
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                         {group.product_group_items?.length || 0} items
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleGroupExpansion(group.id)}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        {isExpanded ? (
-                          <>
-                            <ChevronUp className="h-4 w-4 mr-1" />
-                            Hide Items
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Items
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleGroupExpansion(group.id, 'view')}
+                          className={`text-gray-600 hover:text-gray-900 ${
+                            isExpanded && viewMode === 'view' ? 'bg-gray-100' : ''
+                          }`}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Items
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleGroupExpansion(group.id, 'add')}
+                          className={`text-gray-600 hover:text-gray-900 ${
+                            isExpanded && viewMode === 'add' ? 'bg-gray-100' : ''
+                          }`}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          Add Items
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -319,7 +341,7 @@ export function ProductGroupsList() {
                   </div>
                 </div>
 
-                {/* Expanded Items List */}
+                {/* Expanded Items Content */}
                 {isExpanded && (
                   <div className="border-t bg-gray-50 p-4">
                     {isLoadingDetails ? (
@@ -329,106 +351,96 @@ export function ProductGroupsList() {
                       </div>
                     ) : details ? (
                       <>
-                        {/* Add Item Section */}
-                        <div className="mb-4 bg-white rounded-lg p-3 border border-purple-200">
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={selectedItemId}
-                              onChange={(e) => setSelectedItemId(e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            >
-                              <option value="">Select an item to add...</option>
-                              {allInventoryItems
-                                .filter((item: any) =>
-                                  // Filter out items already in this group
-                                  !details.product_group_items?.some((gi: any) => gi.inventory_item_id === item.id)
-                                )
-                                .map((item: any) => (
-                                  <option key={item.id} value={item.id}>
-                                    {item.item_name} ({item.item_category})
-                                  </option>
-                                ))}
-                            </select>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddItemToGroup(group.id)}
-                              disabled={!selectedItemId || addItemToGroup.isPending}
-                            >
-                              <PlusCircle className="h-4 w-4 mr-1" />
-                              {addItemToGroup.isPending ? 'Adding...' : 'Add'}
-                            </Button>
-                          </div>
-                        </div>
+                        {/* Add Items Mode */}
+                        {viewMode === 'add' && (
+                          <ProductGroupItemSelector
+                            availableItems={allInventoryItems}
+                            excludeItemIds={details.product_group_items?.map((gi: any) => gi.inventory_item_id) || []}
+                            onAddItem={(itemId) => handleAddItemToGroup(group.id, itemId)}
+                            isAdding={addItemToGroup.isPending}
+                          />
+                        )}
 
-                        {/* Items List */}
-                        {details.product_group_items && details.product_group_items.length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-3">
-                              {details.product_group_items.length} item{details.product_group_items.length !== 1 ? 's' : ''} in this group
-                            </p>
-                            {details.product_group_items.map((item: any) => {
-                              // Handle case where inventory item might have been deleted
-                              if (!item.inventory_items) {
-                                return (
-                                  <div key={item.id} className="bg-red-50 rounded p-3 border border-red-200">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1">
-                                        <p className="font-medium text-sm text-red-900">
-                                          Item Not Found (Deleted)
-                                        </p>
-                                        <p className="text-xs text-red-600">
-                                          This item may have been deleted. Remove it from this group.
-                                        </p>
+                        {/* View Items Mode */}
+                        {viewMode === 'view' && (
+                          <>
+                            {details.product_group_items && details.product_group_items.length > 0 ? (
+                              <div className="space-y-2">
+                                <p className="text-xs font-medium text-gray-500 uppercase mb-3">
+                                  {details.product_group_items.length} item{details.product_group_items.length !== 1 ? 's' : ''} in this group
+                                </p>
+                                {details.product_group_items.map((item: any) => {
+                                  // Handle case where inventory item might have been deleted
+                                  if (!item.inventory_items) {
+                                    return (
+                                      <div key={item.id} className="bg-red-50 rounded p-3 border border-red-200">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex-1">
+                                            <p className="font-medium text-sm text-red-900">
+                                              Item Not Found (Deleted)
+                                            </p>
+                                            <p className="text-xs text-red-600">
+                                              This item may have been deleted. Remove it from this group.
+                                            </p>
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
+                                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </div>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
-                                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                )
-                              }
+                                    )
+                                  }
 
-                              return (
-                                <div key={item.id} className="bg-white rounded p-3 border border-gray-200">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <p className="font-medium text-sm text-gray-900">
-                                        {item.inventory_items.item_name || 'Unknown Item'}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {item.inventory_items.item_category}
-                                        {item.inventory_items.serial_number &&
-                                          ` • S/N: ${item.inventory_items.serial_number}`
-                                        }
-                                        {item.inventory_items.tracking_type === 'total_quantity' &&
-                                          ` • Qty: ${item.inventory_items.total_quantity}`
-                                        }
-                                      </p>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleRemoveItemFromGroup(group.id, item.inventory_item_id)}
-                                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="bg-white rounded p-3 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                                      onClick={() => setSelectedInventoryItem(item.inventory_items)}
                                     >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-center py-4">
-                            <Package className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                            <p className="text-sm text-gray-500">No items in this group yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Use the dropdown above to add items</p>
-                          </div>
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <p className="font-medium text-sm text-gray-900">
+                                            {item.inventory_items.item_name || 'Unknown Item'}
+                                          </p>
+                                          <p className="text-xs text-gray-500">
+                                            {item.inventory_items.item_category}
+                                            {item.inventory_items.serial_number &&
+                                              ` • S/N: ${item.inventory_items.serial_number}`
+                                            }
+                                            {item.inventory_items.tracking_type === 'total_quantity' &&
+                                              ` • Qty: ${item.inventory_items.total_quantity}`
+                                            }
+                                          </p>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleRemoveItemFromGroup(group.id, item.inventory_item_id)
+                                          }}
+                                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <Package className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                                <p className="text-sm text-gray-500">No items in this group yet</p>
+                                <p className="text-xs text-gray-400 mt-1">Click "Add Items" to add items to this group</p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     ) : null}
@@ -440,7 +452,7 @@ export function ProductGroupsList() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Product Group Modal */}
       <EntityForm
         entity="product_group"
         isOpen={isModalOpen}
@@ -452,6 +464,17 @@ export function ProductGroupsList() {
         initialData={editingGroup || undefined}
         title={editingGroup ? 'Edit Product Group' : 'New Product Group'}
         submitLabel={editingGroup ? 'Update Group' : 'Create Group'}
+      />
+
+      {/* Inventory Item View/Edit Modal */}
+      <EntityForm
+        entity="inventory_item"
+        isOpen={Boolean(selectedInventoryItem)}
+        onClose={() => setSelectedInventoryItem(null)}
+        onSubmit={handleInventoryItemSubmit}
+        initialData={selectedInventoryItem || undefined}
+        title="View/Edit Item"
+        submitLabel="Update Item"
       />
     </div>
   )
