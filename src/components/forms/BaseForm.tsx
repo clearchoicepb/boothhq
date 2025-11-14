@@ -147,6 +147,8 @@ export function BaseForm<T extends Record<string, any>>({
   }, [config.fields, state.data, validateField, shouldShowField])
 
   const handleFieldChange = useCallback((fieldName: string, value: any) => {
+    console.log('[BaseForm] Field changed:', fieldName, 'to:', value)
+
     setState(prev => {
       const newData = { ...prev.data, [fieldName]: value }
 
@@ -156,10 +158,12 @@ export function BaseForm<T extends Record<string, any>>({
         // Check if there's a corresponding ID field in the config
         const hasIdField = config.fields.some(f => f.name === idFieldName)
         if (hasIdField) {
+          console.log('[BaseForm] Clearing', idFieldName, 'because', fieldName, 'changed')
           newData[idFieldName] = null // Clear the ID when type changes
         }
       }
 
+      console.log('[BaseForm] New form data:', newData)
       return {
         ...prev,
         data: newData,
@@ -179,7 +183,20 @@ export function BaseForm<T extends Record<string, any>>({
     setSubmitError(null)
 
     try {
-      await onSubmit(state.data as T)
+      // Filter data to only include fields defined in the form config
+      // This prevents sending extra database fields like id, created_at, etc.
+      const formFieldNames = config.fields.map(f => f.name)
+      const filteredData = Object.keys(state.data).reduce((acc, key) => {
+        if (formFieldNames.includes(key)) {
+          acc[key] = state.data[key]
+        }
+        return acc
+      }, {} as Record<string, any>)
+
+      console.log('[BaseForm] Submitting filtered data:', filteredData)
+      console.log('[BaseForm] Original data:', state.data)
+
+      await onSubmit(filteredData as T)
       onClose()
     } catch (error: any) {
       console.error('Error submitting form:', error)
