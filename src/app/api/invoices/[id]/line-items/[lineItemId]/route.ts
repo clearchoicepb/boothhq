@@ -15,20 +15,31 @@ export async function PUT(
 
     console.log('[Update Line Item] Received taxable value:', body.taxable, 'type:', typeof body.taxable)
 
-    const updateData: any = {
-      item_type: body.item_type,
-      package_id: body.package_id || null,
-      add_on_id: body.add_on_id || null,
-      name: body.name,
-      description: body.description || null,
-      quantity: parseFloat(body.quantity),
-      unit_price: parseFloat(body.unit_price),
-      total_price: parseFloat(body.quantity) * parseFloat(body.unit_price),
-      sort_order: body.sort_order || 0,
-      taxable: body.taxable !== undefined ? body.taxable : true
+    // Support partial updates - only update fields that are provided
+    const updateData: any = {}
+
+    // If this is a sort_order-only update (drag/drop reorder)
+    if (body.sort_order !== undefined && Object.keys(body).length === 1) {
+      updateData.sort_order = body.sort_order
+    } else {
+      // Full update - all fields required
+      updateData.item_type = body.item_type
+      updateData.package_id = body.package_id || null
+      updateData.add_on_id = body.add_on_id || null
+      updateData.name = body.name
+      updateData.description = body.description || null
+      updateData.quantity = parseFloat(body.quantity)
+      updateData.unit_price = parseFloat(body.unit_price)
+      updateData.total_price = parseFloat(body.quantity) * parseFloat(body.unit_price)
+      updateData.taxable = body.taxable !== undefined ? body.taxable : true
+
+      // Include sort_order if provided
+      if (body.sort_order !== undefined) {
+        updateData.sort_order = body.sort_order
+      }
     }
 
-    console.log('[Update Line Item] Setting taxable to:', updateData.taxable, 'type:', typeof updateData.taxable)
+    console.log('[Update Line Item] Update data:', updateData)
 
     const { data, error } = await supabase
       .from('invoice_line_items')
@@ -44,8 +55,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update line item' }, { status: 500 })
     }
 
-    // Update invoice totals
-    await updateInvoiceTotals(supabase, params.id, dataSourceTenantId)
+    // Only update invoice totals if this wasn't a sort_order-only update
+    if (!(body.sort_order !== undefined && Object.keys(body).length === 1)) {
+      await updateInvoiceTotals(supabase, params.id, dataSourceTenantId)
+    }
 
     // Normalize field names for response
     const normalizedData = {
