@@ -28,6 +28,24 @@ export function ProductGroupsList() {
   const { data: inventoryResponse } = useInventoryItemsData()
   const allInventoryItems = inventoryResponse?.data || []
 
+  // Fetch users and physical addresses for assignment dropdowns
+  const [users, setUsers] = React.useState<any[]>([])
+  const [physicalAddresses, setPhysicalAddresses] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    // Fetch users
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => setUsers(data))
+      .catch(err => console.error('Failed to fetch users:', err))
+
+    // Fetch physical addresses
+    fetch('/api/physical-addresses')
+      .then(res => res.json())
+      .then(data => setPhysicalAddresses(data))
+      .catch(err => console.error('Failed to fetch physical addresses:', err))
+  }, [])
+
   // Fetch details for expanded group using React Query
   const { data: groupDetails, isLoading: isLoadingDetails } = useProductGroupData(expandedGroupId || '', {
     enabled: Boolean(expandedGroupId)
@@ -118,6 +136,27 @@ export function ProductGroupsList() {
     }
   }, [removeItemFromGroup])
 
+  const handleInlineAssignmentChange = useCallback(async (
+    groupId: string,
+    assignedToType: string,
+    assignedToId: string
+  ) => {
+    console.log('[Inline Assignment] Updating group:', groupId, 'to:', assignedToType, assignedToId)
+
+    try {
+      await updateGroup.mutateAsync({
+        groupId,
+        groupData: {
+          assigned_to_type: assignedToType,
+          assigned_to_id: assignedToId
+        }
+      })
+    } catch (error: any) {
+      console.error('Failed to update assignment:', error)
+      alert(`Failed to update assignment: ${error.message}`)
+    }
+  }, [updateGroup])
+
   const getAssignmentIcon = (assignedToType: string) => {
     if (assignedToType === 'user') return <Users className="h-5 w-5 text-blue-600" />
     if (assignedToType === 'physical_address') return <MapPin className="h-5 w-5 text-green-600" />
@@ -183,11 +222,56 @@ export function ProductGroupsList() {
                   </div>
 
                   <div className="space-y-3 mb-4 border-t pt-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      {getAssignmentIcon(group.assigned_to_type)}
-                      <span className="text-gray-700">
-                        {getAssignmentLabel(group.assigned_to_type)}
-                      </span>
+                    {/* Inline Assignment Editor */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {getAssignmentIcon(group.assigned_to_type)}
+                        <label className="text-xs font-medium text-gray-600">Assign To</label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={group.assigned_to_type || ''}
+                          onChange={(e) => {
+                            const newType = e.target.value
+                            if (!newType) return
+                            // When changing type, default to first item of new type
+                            const defaultId = newType === 'user'
+                              ? users[0]?.id
+                              : physicalAddresses[0]?.id
+                            if (defaultId) {
+                              handleInlineAssignmentChange(group.id, newType, defaultId)
+                            }
+                          }}
+                          className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="user">User</option>
+                          <option value="physical_address">Location</option>
+                        </select>
+                        <select
+                          value={group.assigned_to_id || ''}
+                          onChange={(e) => {
+                            const newId = e.target.value
+                            if (newId && group.assigned_to_type) {
+                              handleInlineAssignmentChange(group.id, group.assigned_to_type, newId)
+                            }
+                          }}
+                          className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">Select...</option>
+                          {group.assigned_to_type === 'user'
+                            ? users.map(user => (
+                                <option key={user.id} value={user.id}>
+                                  {user.first_name} {user.last_name}
+                                </option>
+                              ))
+                            : physicalAddresses.map(addr => (
+                                <option key={addr.id} value={addr.id}>
+                                  {addr.location_name}
+                                </option>
+                              ))
+                          }
+                        </select>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
