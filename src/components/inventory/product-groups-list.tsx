@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, Package, Users, MapPin, ChevronDown, ChevronUp, Eye, X, PlusCircle } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
@@ -29,10 +29,10 @@ export function ProductGroupsList() {
   const allInventoryItems = inventoryResponse?.data || []
 
   // Fetch users and physical addresses for assignment dropdowns
-  const [users, setUsers] = React.useState<any[]>([])
-  const [physicalAddresses, setPhysicalAddresses] = React.useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [physicalAddresses, setPhysicalAddresses] = useState<any[]>([])
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Fetch users
     fetch('/api/users')
       .then(res => res.json())
