@@ -15,17 +15,18 @@ import {
 } from '@/hooks/useProductGroupsData'
 import { useInventoryItemsData } from '@/hooks/useInventoryItemsData'
 import { useQueryClient } from '@tanstack/react-query'
+import { ProductGroupItemSelector } from './ProductGroupItemSelector'
 
 export function ProductGroupsList() {
   const queryClient = useQueryClient()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
-  const [selectedItemId, setSelectedItemId] = useState<string>('')
 
   // Data hooks
   const { data: groups = [], isLoading } = useProductGroupsData()
-  const { data: inventoryResponse } = useInventoryItemsData()
+  // Fetch all inventory items with a high limit to ensure we get everything
+  const { data: inventoryResponse } = useInventoryItemsData({ limit: 10000 })
   const allInventoryItems = inventoryResponse?.data || []
 
   // Fetch users and physical addresses for assignment dropdowns
@@ -93,10 +94,8 @@ export function ProductGroupsList() {
   const toggleGroupExpansion = useCallback((groupId: string) => {
     if (expandedGroupId === groupId) {
       setExpandedGroupId(null)
-      setSelectedItemId('') // Clear selection when collapsing
     } else {
       setExpandedGroupId(groupId)
-      setSelectedItemId('') // Clear selection when switching groups
       // React Query will automatically fetch details when expandedGroupId changes
     }
   }, [expandedGroupId])
@@ -111,18 +110,17 @@ export function ProductGroupsList() {
     setIsModalOpen(true)
   }, [])
 
-  const handleAddItemToGroup = useCallback(async (groupId: string) => {
-    if (!selectedItemId) return
+  const handleAddItemToGroup = useCallback(async (groupId: string, inventoryItemId: string) => {
+    if (!inventoryItemId) return
 
     try {
-      await addItemToGroup.mutateAsync({ groupId, inventoryItemId: selectedItemId })
-      setSelectedItemId('') // Clear selection after adding
+      await addItemToGroup.mutateAsync({ groupId, inventoryItemId })
       // React Query mutations already invalidate the cache
     } catch (error: any) {
       console.error('Failed to add item to group:', error)
       // Error will be shown by the mutation's error state
     }
-  }, [selectedItemId, addItemToGroup])
+  }, [addItemToGroup])
 
   const handleRemoveItemFromGroup = useCallback(async (groupId: string, inventoryItemId: string) => {
     if (!confirm('Remove this item from the group?')) return
@@ -330,34 +328,13 @@ export function ProductGroupsList() {
                     ) : details ? (
                       <>
                         {/* Add Item Section */}
-                        <div className="mb-4 bg-white rounded-lg p-3 border border-purple-200">
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={selectedItemId}
-                              onChange={(e) => setSelectedItemId(e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            >
-                              <option value="">Select an item to add...</option>
-                              {allInventoryItems
-                                .filter((item: any) =>
-                                  // Filter out items already in this group
-                                  !details.product_group_items?.some((gi: any) => gi.inventory_item_id === item.id)
-                                )
-                                .map((item: any) => (
-                                  <option key={item.id} value={item.id}>
-                                    {item.item_name} ({item.item_category})
-                                  </option>
-                                ))}
-                            </select>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddItemToGroup(group.id)}
-                              disabled={!selectedItemId || addItemToGroup.isPending}
-                            >
-                              <PlusCircle className="h-4 w-4 mr-1" />
-                              {addItemToGroup.isPending ? 'Adding...' : 'Add'}
-                            </Button>
-                          </div>
+                        <div className="mb-4">
+                          <ProductGroupItemSelector
+                            availableItems={allInventoryItems}
+                            excludeItemIds={details.product_group_items?.map((gi: any) => gi.inventory_item_id) || []}
+                            onAddItem={(itemId) => handleAddItemToGroup(group.id, itemId)}
+                            isAdding={addItemToGroup.isPending}
+                          />
                         </div>
 
                         {/* Items List */}
