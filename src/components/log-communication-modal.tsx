@@ -75,6 +75,7 @@ export function LogCommunicationModal({
           account_id: accountId || null,
           contact_id: contactId || null,
           lead_id: leadId || null,
+          event_id: eventId || null, // Link to event for activity tracking
           status: 'logged',
         }),
       })
