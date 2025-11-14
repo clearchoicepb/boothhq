@@ -54,7 +54,7 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none px-3 py-2',
+        class: 'prose prose-sm max-w-none focus:outline-none px-3 py-2 prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4',
         style: `min-height: ${minHeight}`,
       },
     },
