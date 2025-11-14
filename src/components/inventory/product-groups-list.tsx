@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, Package, Users, MapPin, ChevronDown, ChevronUp, Eye, X, PlusCircle } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
@@ -28,6 +28,24 @@ export function ProductGroupsList() {
   const { data: inventoryResponse } = useInventoryItemsData()
   const allInventoryItems = inventoryResponse?.data || []
 
+  // Fetch users and physical addresses for assignment dropdowns
+  const [users, setUsers] = useState<any[]>([])
+  const [physicalAddresses, setPhysicalAddresses] = useState<any[]>([])
+
+  useEffect(() => {
+    // Fetch users
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => setUsers(data))
+      .catch(err => console.error('Failed to fetch users:', err))
+
+    // Fetch physical addresses
+    fetch('/api/physical-addresses')
+      .then(res => res.json())
+      .then(data => setPhysicalAddresses(data))
+      .catch(err => console.error('Failed to fetch physical addresses:', err))
+  }, [])
+
   // Fetch details for expanded group using React Query
   const { data: groupDetails, isLoading: isLoadingDetails } = useProductGroupData(expandedGroupId || '', {
     enabled: Boolean(expandedGroupId)
@@ -40,17 +58,24 @@ export function ProductGroupsList() {
   const removeItemFromGroup = useRemoveItemFromProductGroup()
 
   const handleSubmit = useCallback(async (data: any) => {
+    console.log('[Product Group Submit] Form data:', data)
+    console.log('[Product Group Submit] Editing group:', editingGroup?.id)
+
     try {
       if (editingGroup) {
-        await updateGroup.mutateAsync({ groupId: editingGroup.id, groupData: data })
+        const result = await updateGroup.mutateAsync({ groupId: editingGroup.id, groupData: data })
+        console.log('[Product Group Submit] Update successful:', result)
       } else {
-        await addGroup.mutateAsync(data)
+        const result = await addGroup.mutateAsync(data)
+        console.log('[Product Group Submit] Create successful:', result)
       }
       setIsModalOpen(false)
       setEditingGroup(null)
     } catch (error: any) {
-      console.error('Failed to save product group:', error)
-      // Error will be shown by the mutation's error state
+      console.error('[Product Group Submit] Error occurred:', error)
+      console.error('[Product Group Submit] Error message:', error.message)
+      // Re-throw the error so the BaseForm can handle it
+      throw error
     }
   }, [editingGroup, updateGroup, addGroup])
 
@@ -110,6 +135,27 @@ export function ProductGroupsList() {
       // Error will be shown by the mutation's error state
     }
   }, [removeItemFromGroup])
+
+  const handleInlineAssignmentChange = useCallback(async (
+    groupId: string,
+    assignedToType: string,
+    assignedToId: string
+  ) => {
+    console.log('[Inline Assignment] Updating group:', groupId, 'to:', assignedToType, assignedToId)
+
+    try {
+      await updateGroup.mutateAsync({
+        groupId,
+        groupData: {
+          assigned_to_type: assignedToType,
+          assigned_to_id: assignedToId
+        }
+      })
+    } catch (error: any) {
+      console.error('Failed to update assignment:', error)
+      alert(`Failed to update assignment: ${error.message}`)
+    }
+  }, [updateGroup])
 
   const getAssignmentIcon = (assignedToType: string) => {
     if (assignedToType === 'user') return <Users className="h-5 w-5 text-blue-600" />
@@ -176,11 +222,56 @@ export function ProductGroupsList() {
                   </div>
 
                   <div className="space-y-3 mb-4 border-t pt-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      {getAssignmentIcon(group.assigned_to_type)}
-                      <span className="text-gray-700">
-                        {getAssignmentLabel(group.assigned_to_type)}
-                      </span>
+                    {/* Inline Assignment Editor */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {getAssignmentIcon(group.assigned_to_type)}
+                        <label className="text-xs font-medium text-gray-600">Assign To</label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={group.assigned_to_type || ''}
+                          onChange={(e) => {
+                            const newType = e.target.value
+                            if (!newType) return
+                            // When changing type, default to first item of new type
+                            const defaultId = newType === 'user'
+                              ? users[0]?.id
+                              : physicalAddresses[0]?.id
+                            if (defaultId) {
+                              handleInlineAssignmentChange(group.id, newType, defaultId)
+                            }
+                          }}
+                          className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="user">User</option>
+                          <option value="physical_address">Location</option>
+                        </select>
+                        <select
+                          value={group.assigned_to_id || ''}
+                          onChange={(e) => {
+                            const newId = e.target.value
+                            if (newId && group.assigned_to_type) {
+                              handleInlineAssignmentChange(group.id, group.assigned_to_type, newId)
+                            }
+                          }}
+                          className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">Select...</option>
+                          {group.assigned_to_type === 'user'
+                            ? users.map(user => (
+                                <option key={user.id} value={user.id}>
+                                  {user.first_name} {user.last_name}
+                                </option>
+                              ))
+                            : physicalAddresses.map(addr => (
+                                <option key={addr.id} value={addr.id}>
+                                  {addr.location_name}
+                                </option>
+                              ))
+                          }
+                        </select>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
