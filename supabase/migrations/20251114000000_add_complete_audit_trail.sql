@@ -488,7 +488,7 @@ END $$;
 
 DO $$
 DECLARE
-  table_name TEXT;
+  tbl_name TEXT;
   column_count INTEGER;
   fk_count INTEGER;
 BEGIN
@@ -497,7 +497,7 @@ BEGIN
   RAISE NOTICE '==================================================';
 
   -- Verify all tables have created_by and updated_by
-  FOR table_name IN
+  FOR tbl_name IN
     SELECT unnest(ARRAY[
       'invoices', 'communications', 'tasks', 'notes', 'attachments',
       'accounts', 'contacts', 'leads', 'opportunities', 'events',
@@ -507,13 +507,13 @@ BEGIN
     SELECT COUNT(*) INTO column_count
     FROM information_schema.columns
     WHERE table_schema = 'public'
-      AND table_name = table_name
+      AND table_name = tbl_name
       AND column_name IN ('created_by', 'updated_by');
 
     IF column_count = 2 THEN
-      RAISE NOTICE '✓ % has both audit columns', table_name;
+      RAISE NOTICE '✓ % has both audit columns', tbl_name;
     ELSE
-      RAISE WARNING '✗ % missing audit columns (found: %)', table_name, column_count;
+      RAISE WARNING '✗ % missing audit columns (found: %)', tbl_name, column_count;
     END IF;
   END LOOP;
 
