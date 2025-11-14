@@ -13,15 +13,19 @@ export async function PUT(
     const params = await routeContext.params
     const body = await request.json()
 
-    console.log('[Update Line Item] Received taxable value:', body.taxable, 'type:', typeof body.taxable)
+    console.log('[Update Line Item] Request params:', { invoiceId: params.id, lineItemId: params.lineItemId, tenantId: dataSourceTenantId })
+    console.log('[Update Line Item] Request body:', body)
+    console.log('[Update Line Item] Body keys:', Object.keys(body))
 
     // Support partial updates - only update fields that are provided
     const updateData: any = {}
 
     // If this is a sort_order-only update (drag/drop reorder)
     if (body.sort_order !== undefined && Object.keys(body).length === 1) {
+      console.log('[Update Line Item] Detected sort_order-only update (drag/drop)')
       updateData.sort_order = body.sort_order
     } else {
+      console.log('[Update Line Item] Full update detected')
       // Full update - all fields required
       updateData.item_type = body.item_type
       updateData.package_id = body.package_id || null
@@ -51,9 +55,11 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating line item:', error)
-      return NextResponse.json({ error: 'Failed to update line item' }, { status: 500 })
+      console.error('[Update Line Item] Database error:', error)
+      return NextResponse.json({ error: 'Failed to update line item', details: error.message }, { status: 500 })
     }
+
+    console.log('[Update Line Item] Successfully updated:', data)
 
     // Only update invoice totals if this wasn't a sort_order-only update
     if (!(body.sort_order !== undefined && Object.keys(body).length === 1)) {

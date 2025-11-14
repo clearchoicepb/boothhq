@@ -388,13 +388,20 @@ export function LineItemsManager({
 
     // Update sort_order for all items based on their new positions
     try {
-      const updatePromises = reorderedItems.map((item, index) =>
-        fetch(`${getApiEndpoint()}/${item.id}`, {
+      const updatePromises = reorderedItems.map(async (item, index) => {
+        const response = await fetch(`${getApiEndpoint()}/${item.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sort_order: index }),
         })
-      )
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(`Failed to update item ${item.name}: ${errorData.error || response.statusText}`)
+        }
+
+        return response
+      })
 
       await Promise.all(updatePromises)
 
@@ -405,9 +412,10 @@ export function LineItemsManager({
         await queryClient.invalidateQueries({ queryKey: ['invoices'] })
       }
 
-      if (onUpdate) onUpdate()
+      if (onUpdate) await onUpdate()
     } catch (error) {
       console.error('Error updating item order:', error)
+      alert(error instanceof Error ? error.message : 'Failed to save new order. Please try again.')
       // Revert the optimistic update on error
       await fetchData()
     }
