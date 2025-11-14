@@ -57,6 +57,23 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
     })
   }
 
+  // Helper function to strip HTML tags and convert to plain text
+  const stripHtml = (html: string | null): string => {
+    if (!html) return ''
+    // Remove HTML tags
+    let text = html.replace(/<[^>]*>/g, '')
+    // Decode HTML entities
+    text = text.replace(/&nbsp;/g, ' ')
+    text = text.replace(/&amp;/g, '&')
+    text = text.replace(/&lt;/g, '<')
+    text = text.replace(/&gt;/g, '>')
+    text = text.replace(/&quot;/g, '"')
+    text = text.replace(/&#39;/g, "'")
+    // Replace multiple spaces with single space
+    text = text.replace(/\s+/g, ' ')
+    return text.trim()
+  }
+
   // Helper function to load image as base64
   const loadImageAsBase64 = async (url: string): Promise<string | null> => {
     try {
@@ -250,7 +267,8 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 100, 100)
-      const descLines = doc.splitTextToSize(item.description, col1Width - 2)
+      const plainTextDesc = stripHtml(item.description)
+      const descLines = doc.splitTextToSize(plainTextDesc, col1Width - 2)
       doc.text(descLines, col1X, yPos + 1)
       yPos += descLines.length * 3.5
       doc.setTextColor(0, 0, 0)

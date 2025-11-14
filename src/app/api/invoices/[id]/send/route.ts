@@ -43,6 +43,29 @@ export async function POST(
       return NextResponse.json({ error: 'No email address found for recipient' }, { status: 400 })
     }
 
+    // Get opportunity name if opportunity_id exists
+    let opportunityName = null
+    if (invoice.opportunity_id) {
+      const { data: opportunity } = await supabase
+        .from('opportunities')
+        .select('name')
+        .eq('id', invoice.opportunity_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      opportunityName = opportunity?.name || null
+    }
+
+    // Get tenant settings for logo
+    const { data: logoSetting } = await supabase
+      .from('tenant_settings')
+      .select('setting_value')
+      .eq('tenant_id', dataSourceTenantId)
+      .eq('setting_key', 'appearance.logoUrl')
+      .single()
+
+    const logoUrl = logoSetting?.setting_value || null
+
     // Generate PDF if requested
     let pdfBuffer: Buffer | undefined
     if (includePDF) {
@@ -50,13 +73,26 @@ export async function POST(
         pdfBuffer = await generateInvoicePDF({
           invoice: {
             ...invoice,
-            line_items: invoice.invoice_line_items,
+            account_name: invoice.accounts?.name || null,
+            contact_name: invoice.contacts ? `${invoice.contacts.first_name} ${invoice.contacts.last_name}` : null,
+            opportunity_name: opportunityName,
+            line_items: invoice.invoice_line_items
+              .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+              .map((item: any) => ({
+                name: item.name || item.description || 'Unnamed Item',
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total_price: item.total_price,
+                taxable: item.taxable
+              })),
           },
           companyInfo: {
             name: process.env.COMPANY_NAME || 'ClearChoice Photo Booth',
             address: process.env.COMPANY_ADDRESS || 'Your Company Address',
             phone: process.env.COMPANY_PHONE || '(555) 123-4567',
             email: process.env.GMAIL_USER || 'billing@yourcompany.com',
+            logoUrl: logoUrl,
           },
         })
       } catch (error) {

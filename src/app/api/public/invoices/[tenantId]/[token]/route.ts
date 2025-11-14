@@ -74,7 +74,7 @@ export async function GET(
       .from('invoice_line_items')
       .select('*')
       .eq('invoice_id', invoice.id)
-      .order('created_at', { ascending: true });
+      .order('sort_order', { ascending: true });
 
     if (lineItemsError) {
       return NextResponse.json(

@@ -60,14 +60,16 @@ export async function GET(
         account_name: invoice.accounts?.name || null,
         contact_name: invoice.contacts ? `${invoice.contacts.first_name} ${invoice.contacts.last_name}` : null,
         opportunity_name: opportunityName,
-        line_items: invoice.invoice_line_items.map((item: any) => ({
-          name: item.name || item.description || 'Unnamed Item',
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.total_price,
-          taxable: item.taxable
-        })),
+        line_items: invoice.invoice_line_items
+          .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map((item: any) => ({
+            name: item.name || item.description || 'Unnamed Item',
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            taxable: item.taxable
+          })),
       },
       companyInfo: {
         name: process.env.COMPANY_NAME || 'ClearChoice Photo Booth',
