@@ -235,7 +235,11 @@ export async function GET(
     // Sort all activities by date (most recent first)
     activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    return NextResponse.json(activities)
+    const response = NextResponse.json(activities)
+    // Prevent browser caching - activity data should always be fresh
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+
+    return response
   } catch (error) {
     console.error('Error fetching activity:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
