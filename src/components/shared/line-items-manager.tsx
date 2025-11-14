@@ -5,7 +5,25 @@ import { useParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { DollarSign, Plus, Trash2, Package, PlusCircle, Edit, Tag } from 'lucide-react'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { DollarSign, Plus, Trash2, Package, PlusCircle, Edit, Tag, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface PackageItem {
   id: string
@@ -45,6 +63,113 @@ interface LineItemsManagerProps {
   onGenerateQuote?: () => void
 }
 
+// Sortable Row Component
+function SortableRow({
+  item,
+  parentType,
+  editable,
+  onEdit,
+  onDelete
+}: {
+  item: LineItem
+  parentType: 'opportunity' | 'quote' | 'invoice'
+  editable: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50">
+      <td className="px-4 py-3">
+        <div className="flex items-center">
+          {editable && (
+            <button
+              type="button"
+              className="cursor-grab active:cursor-grabbing mr-2 text-gray-400 hover:text-gray-600"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
+          <span
+            className={`inline-block w-2 h-2 rounded-full mr-2 ${
+              item.item_type === 'package'
+                ? 'bg-blue-500'
+                : item.item_type === 'add_on'
+                ? 'bg-purple-500'
+                : item.item_type === 'discount'
+                ? 'bg-orange-500'
+                : 'bg-green-500'
+            }`}
+          ></span>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-900">{item.name}</p>
+              {parentType === 'invoice' && item.taxable !== false && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Taxable item">
+                  TAX
+                </span>
+              )}
+            </div>
+            {item.description && (
+              <div
+                className="text-xs text-gray-500 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: item.description }}
+              />
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right text-sm text-gray-900">{item.quantity}</td>
+      <td className={`px-4 py-3 text-right text-sm ${item.item_type === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
+        ${item.unit_price.toFixed(2)}
+      </td>
+      <td className={`px-4 py-3 text-right text-sm font-medium ${item.item_type === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
+        ${item.total.toFixed(2)}
+      </td>
+      {editable && (
+        <td className="px-4 py-3 text-right">
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="text-gray-400 hover:text-blue-600"
+              title="Edit item"
+              aria-label="Edit item"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-gray-400 hover:text-red-600"
+              title="Delete item"
+              aria-label="Delete item"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      )}
+    </tr>
+  )
+}
+
 export function LineItemsManager({
   parentType,
   parentId,
@@ -71,6 +196,14 @@ export function LineItemsManager({
     unit_price: '',
     taxable: true,
   })
+
+  // Setup drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Build API endpoint based on parent type
   const getApiEndpoint = () => {
@@ -238,6 +371,48 @@ export function LineItemsManager({
     }
   }
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) return
+
+    const oldIndex = lineItems.findIndex((item) => item.id === active.id)
+    const newIndex = lineItems.findIndex((item) => item.id === over.id)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reorderedItems = arrayMove(lineItems, oldIndex, newIndex)
+
+    // Optimistically update the UI
+    setLineItems(reorderedItems)
+
+    // Update sort_order for all items based on their new positions
+    try {
+      const updatePromises = reorderedItems.map((item, index) =>
+        fetch(`${getApiEndpoint()}/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sort_order: index }),
+        })
+      )
+
+      await Promise.all(updatePromises)
+
+      // Invalidate queries to refetch data
+      if (parentType === 'invoice') {
+        await queryClient.invalidateQueries({ queryKey: ['event-invoices'] })
+        await queryClient.invalidateQueries({ queryKey: ['account-invoices'] })
+        await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      }
+
+      if (onUpdate) onUpdate()
+    } catch (error) {
+      console.error('Error updating item order:', error)
+      // Revert the optimistic update on error
+      await fetchData()
+    }
+  }
+
   const totalAmount = lineItems.reduce((sum, item) => sum + Number(item.total), 0)
 
   if (loading) {
@@ -317,97 +492,55 @@ export function LineItemsManager({
           )}
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-                {editable && (
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {lineItems.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center">
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                          item.item_type === 'package'
-                            ? 'bg-blue-500'
-                            : item.item_type === 'add_on'
-                            ? 'bg-purple-500'
-                            : item.item_type === 'discount'
-                            ? 'bg-orange-500'
-                            : 'bg-green-500'
-                        }`}
-                      ></span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                          {parentType === 'invoice' && item.taxable !== false && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Taxable item">
-                              TAX
-                            </span>
-                          )}
-                        </div>
-                        {item.description && (
-                          <p className="text-xs text-gray-500">{item.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-900">{item.quantity}</td>
-                  <td className={`px-4 py-3 text-right text-sm ${item.item_type === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
-                    ${item.unit_price.toFixed(2)}
-                  </td>
-                  <td className={`px-4 py-3 text-right text-sm font-medium ${item.item_type === 'discount' ? 'text-orange-600' : 'text-gray-900'}`}>
-                    ${item.total.toFixed(2)}
-                  </td>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="border rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                   {editable && (
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="text-gray-400 hover:text-blue-600"
-                          title="Edit item"
-                          aria-label="Edit item"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="text-gray-400 hover:text-red-600"
-                          title="Delete item"
-                          aria-label="Delete item"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50">
-                <td colSpan={3} className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
-                  Total:
-                </td>
-                <td className="px-4 py-3 text-right text-lg font-bold text-gray-900">
-                  ${totalAmount.toFixed(2)}
-                </td>
-                {editable && <td></td>}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              </thead>
+              <SortableContext
+                items={lineItems.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {lineItems.map((item) => (
+                    <SortableRow
+                      key={item.id}
+                      item={item}
+                      parentType={parentType}
+                      editable={editable}
+                      onEdit={() => openEditModal(item)}
+                      onDelete={() => handleDelete(item.id)}
+                    />
+                  ))}
+                </tbody>
+              </SortableContext>
+              <tfoot>
+                <tr className="bg-gray-50">
+                  <td colSpan={3} className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                    Total:
+                  </td>
+                  <td className="px-4 py-3 text-right text-lg font-bold text-gray-900">
+                    ${totalAmount.toFixed(2)}
+                  </td>
+                  {editable && <td></td>}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </DndContext>
       )}
 
       {/* Add/Edit Modal */}
@@ -516,14 +649,11 @@ export function LineItemsManager({
                   <label htmlFor="item-description" className="block text-sm font-medium text-gray-700 mb-2">
                     Description
                   </label>
-                  <textarea
-                    id="item-description"
-                    name="description"
-                    title="Description"
+                  <RichTextEditor
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    onChange={(value) => setFormData({ ...formData, description: value })}
+                    placeholder="Add item description..."
+                    minHeight="120px"
                   />
                 </div>
 

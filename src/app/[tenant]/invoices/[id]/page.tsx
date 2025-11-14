@@ -46,6 +46,7 @@ interface Invoice {
   total_amount: number
   paid_amount: number
   balance_amount: number
+  purchase_order: string | null
   notes: string | null
   terms: string | null
   opportunity_name: string | null
@@ -640,6 +641,12 @@ export default function InvoiceDetailPage() {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</p>
                   <p className="text-base font-semibold text-gray-900">{new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
+                {invoice.purchase_order && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Order</p>
+                    <p className="text-base font-semibold text-gray-900">{invoice.purchase_order}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
