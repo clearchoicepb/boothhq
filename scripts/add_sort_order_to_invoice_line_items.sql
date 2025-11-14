@@ -9,11 +9,15 @@
 
 BEGIN;
 
--- Step 1: Add sort_order column if it doesn't exist
+-- Step 1: Add updated_at column if it doesn't exist (fixes trigger error)
+ALTER TABLE invoice_line_items
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Step 2: Add sort_order column if it doesn't exist
 ALTER TABLE invoice_line_items
   ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
 
--- Step 2: Update existing records to have sort_order based on created_at
+-- Step 3: Update existing records to have sort_order based on created_at
 -- This ensures existing items have a proper initial order
 UPDATE invoice_line_items
 SET sort_order = subquery.row_num
@@ -26,11 +30,11 @@ FROM (
 ) AS subquery
 WHERE invoice_line_items.id = subquery.id;
 
--- Step 3: Add index for better performance when ordering
+-- Step 4: Add index for better performance when ordering
 CREATE INDEX IF NOT EXISTS idx_invoice_line_items_sort_order
   ON invoice_line_items(invoice_id, sort_order);
 
--- Step 4: Add index on invoice_id and tenant_id if they don't exist
+-- Step 5: Add index on invoice_id if it doesn't exist
 CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice_id
   ON invoice_line_items(invoice_id);
 
@@ -47,7 +51,7 @@ SELECT
   is_nullable
 FROM information_schema.columns
 WHERE table_name = 'invoice_line_items'
-  AND column_name IN ('sort_order', 'invoice_id')
+  AND column_name IN ('sort_order', 'updated_at', 'invoice_id')
 ORDER BY column_name;
 
 -- Show sample data with sort_order
@@ -56,7 +60,8 @@ SELECT
   invoice_id,
   name,
   sort_order,
-  created_at
+  created_at,
+  updated_at
 FROM invoice_line_items
 ORDER BY invoice_id, sort_order
 LIMIT 10;
