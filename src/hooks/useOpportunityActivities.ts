@@ -14,7 +14,7 @@ export function useOpportunityActivities(opportunityId: string) {
   return useQuery({
     queryKey: ['opportunity-activities', opportunityId],
     queryFn: () => fetchActivities(opportunityId),
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 0, // Always refetch when invalidated to show latest activities
     enabled: Boolean(opportunityId),
   })
 }

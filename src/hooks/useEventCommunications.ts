@@ -15,7 +15,7 @@ export function useEventCommunications(eventId: string, page: number = 1) {
   return useQuery({
     queryKey: ['event-communications', eventId, page],
     queryFn: () => fetchEventCommunications(eventId, page),
-    staleTime: 30 * 1000,
+    staleTime: 0, // Always refetch when invalidated to show latest communications
     enabled: Boolean(eventId),
   })
 }
