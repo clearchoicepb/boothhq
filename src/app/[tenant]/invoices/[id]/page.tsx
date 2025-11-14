@@ -674,7 +674,10 @@ export default function InvoiceDetailPage() {
                     <td className="py-4 pr-4">
                       <p className="font-bold text-gray-900">{item.name}</p>
                       {item.description && (
-                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">{item.description}</p>
+                        <div
+                          className="text-xs text-gray-600 mt-1 leading-relaxed prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: item.description }}
+                        />
                       )}
                       {item.taxable === false && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 mt-1">
