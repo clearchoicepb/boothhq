@@ -245,14 +245,59 @@ export function createTenantQuery<T extends keyof Database['public']['Tables']>(
 }
 
 /**
- * Insert data with automatic tenant_id
+ * Add audit fields to data object
  *
- * Helper to insert data with tenant_id automatically added.
+ * Automatically adds created_by and updated_by fields from session.
+ * Follows the Single Responsibility Principle - only handles audit field enrichment.
+ *
+ * @param data - Data object to enrich
+ * @param userId - User ID from session
+ * @param operation - 'create' or 'update'
+ * @returns Data with audit fields added
+ *
+ * @example
+ * ```typescript
+ * const context = await getTenantContext();
+ * if (isErrorResponse(context)) return context;
+ *
+ * const dataWithAudit = withAuditFields(
+ *   { title: 'New Event', event_type: 'conference' },
+ *   context.session.user.id,
+ *   'create'
+ * );
+ * // Result: { title: 'New Event', event_type: 'conference', created_by: 'user-id', updated_by: 'user-id' }
+ * ```
+ */
+export function withAuditFields<T extends Record<string, any>>(
+  data: T,
+  userId: string,
+  operation: 'create' | 'update'
+): T & { created_by?: string; updated_by: string } {
+  if (operation === 'create') {
+    return {
+      ...data,
+      created_by: userId,
+      updated_by: userId,
+    };
+  } else {
+    return {
+      ...data,
+      updated_by: userId,
+    };
+  }
+}
+
+/**
+ * Insert data with automatic tenant_id and audit fields
+ *
+ * Helper to insert data with tenant_id and audit fields (created_by, updated_by) automatically added.
+ * Enhanced version following the Open/Closed Principle - extended functionality without breaking existing code.
  *
  * @param supabase - Supabase client
  * @param table - Table name
- * @param data - Data to insert (tenant_id will be added automatically)
+ * @param data - Data to insert (tenant_id and audit fields will be added automatically)
  * @param dataSourceTenantId - Mapped tenant ID
+ * @param userId - User ID for audit trail (optional, will use system if not provided)
  * @returns Insert query
  *
  * @example
@@ -260,13 +305,14 @@ export function createTenantQuery<T extends keyof Database['public']['Tables']>(
  * const context = await getTenantContext();
  * if (isErrorResponse(context)) return context;
  *
- * const { supabase, dataSourceTenantId } = context;
+ * const { supabase, dataSourceTenantId, session } = context;
  *
  * const { data, error } = await insertWithTenantId(
  *   supabase,
  *   'events',
  *   { title: 'New Event', event_type: 'conference', start_date: '2025-12-01' },
- *   dataSourceTenantId
+ *   dataSourceTenantId,
+ *   session.user.id // Audit: who created this
  * );
  * ```
  */
@@ -274,12 +320,18 @@ export async function insertWithTenantId<T extends keyof Database['public']['Tab
   supabase: SupabaseClient<Database>,
   table: T,
   data: Partial<Database['public']['Tables'][T]['Insert']>,
-  dataSourceTenantId: string
+  dataSourceTenantId: string,
+  userId?: string
 ) {
+  // Enrich data with audit fields if userId is provided
+  const enrichedData = userId
+    ? withAuditFields(data, userId, 'create')
+    : data;
+
   return supabase
     .from(table)
     .insert({
-      ...data,
+      ...enrichedData,
       tenant_id: dataSourceTenantId,
     } as any)
     .select()
@@ -287,15 +339,17 @@ export async function insertWithTenantId<T extends keyof Database['public']['Tab
 }
 
 /**
- * Update data with tenant_id filter
+ * Update data with tenant_id filter and audit fields
  *
- * Helper to update data with tenant_id automatically filtered.
+ * Helper to update data with tenant_id automatically filtered and updated_by audit field added.
+ * Enhanced version following the Open/Closed Principle - extended functionality without breaking existing code.
  *
  * @param supabase - Supabase client
  * @param table - Table name
  * @param id - Record ID to update
- * @param data - Data to update
+ * @param data - Data to update (updated_by will be added automatically if userId provided)
  * @param dataSourceTenantId - Mapped tenant ID
+ * @param userId - User ID for audit trail (optional)
  * @returns Update query
  *
  * @example
@@ -303,14 +357,15 @@ export async function insertWithTenantId<T extends keyof Database['public']['Tab
  * const context = await getTenantContext();
  * if (isErrorResponse(context)) return context;
  *
- * const { supabase, dataSourceTenantId } = context;
+ * const { supabase, dataSourceTenantId, session } = context;
  *
  * const { data, error } = await updateWithTenantId(
  *   supabase,
  *   'events',
  *   'event-id-123',
  *   { title: 'Updated Event Title' },
- *   dataSourceTenantId
+ *   dataSourceTenantId,
+ *   session.user.id // Audit: who updated this
  * );
  * ```
  */
@@ -319,11 +374,17 @@ export async function updateWithTenantId<T extends keyof Database['public']['Tab
   table: T,
   id: string,
   data: Partial<Database['public']['Tables'][T]['Update']>,
-  dataSourceTenantId: string
+  dataSourceTenantId: string,
+  userId?: string
 ) {
+  // Enrich data with audit fields if userId is provided
+  const enrichedData = userId
+    ? withAuditFields(data, userId, 'update')
+    : data;
+
   return supabase
     .from(table)
-    .update(data as any)
+    .update(enrichedData as any)
     .eq('id', id)
     .eq('tenant_id', dataSourceTenantId)
     .select()

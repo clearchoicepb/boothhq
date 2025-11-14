@@ -74,7 +74,8 @@ export async function GET(
             email
           )
         `)
-        .eq('event_id', eventId)
+        .eq('entity_type', 'event')
+        .eq('entity_id', eventId)
         .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false }),
 
@@ -90,7 +91,8 @@ export async function GET(
             email
           )
         `)
-        .eq('event_id', eventId)
+        .eq('entity_type', 'event')
+        .eq('entity_id', eventId)
         .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false })
     ])
