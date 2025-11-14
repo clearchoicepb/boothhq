@@ -38,7 +38,7 @@ export async function GET(
       .select('*')
       .eq('invoice_id', id)
       .eq('tenant_id', dataSourceTenantId)
-      .order('created_at', { ascending: true })
+      .order('sort_order', { ascending: true })
 
     if (lineItemsError) {
       console.error('Error fetching line items:', lineItemsError)
