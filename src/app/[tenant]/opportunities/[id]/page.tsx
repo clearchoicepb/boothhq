@@ -28,7 +28,7 @@ import { OpportunityTasksTab } from '@/components/opportunities/detail/tabs/Oppo
 import { OpportunityPricingTab } from '@/components/opportunities/detail/tabs/OpportunityPricingTab'
 import { OpportunityActivityTab } from '@/components/opportunities/detail/tabs/OpportunityActivityTab'
 import { OpportunityQuotesTab } from '@/components/opportunities/detail/tabs/OpportunityQuotesTab'
-import { OpportunityCommunicationsTab } from '@/components/opportunities/detail/tabs/OpportunityCommunicationsTab'
+import { CommunicationsTab } from '@/components/shared/CommunicationsTab'
 import { OpportunityOverviewTab } from '@/components/opportunities/detail/tabs/OpportunityOverviewTab'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { OpportunityPricing } from '@/components/opportunity-pricing'
@@ -919,20 +919,22 @@ export default function OpportunityDetailPage() {
 
           {/* Communications Tab */}
           <TabsContent value="communications" className="mt-0">
-            <OpportunityCommunicationsTab
-              opportunityId={opportunityId}
+            <CommunicationsTab
+              entityType="opportunity"
+              entityId={opportunityId}
               communications={communications}
               showSMSThread={showSMSThread}
               contactId={opportunity?.contact_id}
               accountId={opportunity?.account_id}
               leadId={opportunity?.lead_id}
+              opportunityId={opportunityId}
               contactPhone={
                 opportunity?.contacts?.phone ||
                 opportunity?.leads?.phone ||
                 opportunity?.accounts?.phone
               }
-              onCreateEmail={() => setIsEmailModalOpen(true)}
               onToggleSMSThread={() => setShowSMSThread(!showSMSThread)}
+              onCreateEmail={() => setIsEmailModalOpen(true)}
               onLogCommunication={() => setIsLogCommunicationModalOpen(true)}
               onCommunicationClick={(comm) => {
                 setSelectedCommunication(comm)
