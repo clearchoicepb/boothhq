@@ -11,6 +11,9 @@ export async function GET(
   const { supabase, dataSourceTenantId, session } = context
     const params = await routeContext.params
     const eventId = params.id
+
+    console.log('[Activity] Fetching activities for event:', eventId, 'tenant:', dataSourceTenantId)
+
     // Fetch all activity types with user information
     const [communications, tasks, invoices, notes, attachments] = await Promise.all([
       // Communications
@@ -74,7 +77,8 @@ export async function GET(
             email
           )
         `)
-        .eq('event_id', eventId)
+        .eq('entity_type', 'event')
+        .eq('entity_id', eventId)
         .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false }),
 
@@ -90,10 +94,26 @@ export async function GET(
             email
           )
         `)
-        .eq('event_id', eventId)
+        .eq('entity_type', 'event')
+        .eq('entity_id', eventId)
         .eq('tenant_id', dataSourceTenantId)
         .order('created_at', { ascending: false })
     ])
+
+    // Debug logging
+    console.log('[Activity] Query results:', {
+      communications: { count: communications.data?.length || 0, error: communications.error?.message },
+      tasks: { count: tasks.data?.length || 0, error: tasks.error?.message },
+      invoices: { count: invoices.data?.length || 0, error: invoices.error?.message },
+      notes: { count: notes.data?.length || 0, error: notes.error?.message },
+      attachments: { count: attachments.data?.length || 0, error: attachments.error?.message },
+    })
+
+    if (communications.error) console.error('[Activity] Communications error:', communications.error)
+    if (tasks.error) console.error('[Activity] Tasks error:', tasks.error)
+    if (invoices.error) console.error('[Activity] Invoices error:', invoices.error)
+    if (notes.error) console.error('[Activity] Notes error:', notes.error)
+    if (attachments.error) console.error('[Activity] Attachments error:', attachments.error)
 
     // Transform and combine all activities into a single timeline
     const activities: any[] = []
@@ -215,7 +235,11 @@ export async function GET(
     // Sort all activities by date (most recent first)
     activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    return NextResponse.json(activities)
+    const response = NextResponse.json(activities)
+    // Prevent browser caching - activity data should always be fresh
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+
+    return response
   } catch (error) {
     console.error('Error fetching activity:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

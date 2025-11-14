@@ -823,7 +823,11 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
         eventId={eventId}
         accountId={event?.account_id || undefined}
         contactId={event?.contact_id || undefined}
-        onSuccess={fetchCommunications}
+        onSuccess={() => {
+          // Refresh both communications AND activities since communication appears in both
+          fetchCommunications()
+          refetchActivities()
+        }}
       />
 
       {/* Send Email Modal */}
@@ -832,6 +836,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
         onClose={() => setIsEmailModalOpen(false)}
         onSuccess={() => {
           fetchCommunications()
+          refetchActivities()
           toast.success('Email sent successfully!')
         }}
         defaultSubject={event ? `Regarding: ${event.title}` : ''}
@@ -846,6 +851,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
         onClose={() => setIsSMSModalOpen(false)}
         onSuccess={() => {
           fetchCommunications()
+          refetchActivities()
           toast.success('SMS sent successfully!')
         }}
         eventId={eventId}

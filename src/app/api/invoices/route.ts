@@ -149,7 +149,10 @@ export async function POST(request: NextRequest) {
       tax_amount: taxAmount,
       total_amount: totalAmount,
       balance_amount: balanceAmount,
-      status: body.status || 'sent' // Default to 'sent' (live) instead of 'draft'
+      status: body.status || 'sent', // Default to 'sent' (live) instead of 'draft'
+      // Audit trail: track who created this invoice
+      created_by: session.user.id,
+      updated_by: session.user.id,
     }
 
     // Remove line_items from the main invoice data
@@ -171,7 +174,10 @@ export async function POST(request: NextRequest) {
       const lineItemsData = line_items.map((item: any) => ({
         ...item,
         tenant_id: dataSourceTenantId,
-        invoice_id: invoice.id
+        invoice_id: invoice.id,
+        // Audit trail: track who created these line items
+        created_by: session.user.id,
+        updated_by: session.user.id,
       }))
 
       const { error: lineItemsError } = await supabase

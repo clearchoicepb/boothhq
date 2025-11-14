@@ -15,7 +15,7 @@ export function useEventActivities(eventId: string) {
   return useQuery({
     queryKey: ['event-activities', eventId],
     queryFn: () => fetchEventActivities(eventId),
-    staleTime: 30 * 1000,
+    staleTime: 0, // Always refetch - activity data should be fresh
     enabled: Boolean(eventId),
   })
 }
