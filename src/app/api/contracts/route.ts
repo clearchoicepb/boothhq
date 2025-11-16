@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       accountId,
       contactId,
       leadId,
+      eventId,
       templateId,
       templateName,
       content,
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
         account_id: accountId || null,
         contact_id: contactId || null,
         lead_id: leadId || null,
+        event_id: eventId || null,
         template_id: templateId || null,
         template_name: templateName,
         contract_number: contractNumber || `CONTRACT-${Date.now()}`,
@@ -81,6 +83,7 @@ export async function GET(request: NextRequest) {
     const accountId = searchParams.get('accountId')
     const contactId = searchParams.get('contactId')
     const leadId = searchParams.get('leadId')
+    const eventId = searchParams.get('eventId')
 
     let query = supabase
       .from('contracts')
@@ -99,6 +102,9 @@ export async function GET(request: NextRequest) {
     }
     if (leadId) {
       query = query.eq('lead_id', leadId)
+    }
+    if (eventId) {
+      query = query.eq('event_id', eventId)
     }
 
     const { data: contracts, error } = await query

@@ -59,6 +59,7 @@ import { FloatingQuickActions } from '@/components/events/detail/shared/Floating
 import { formatDate, formatDateShort } from '@/lib/utils/date-utils'
 import { eventsService } from '@/lib/api/services/eventsService'
 import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
+import { GenerateEventAgreementModal } from '@/components/generate-event-agreement-modal'
 
 interface EventDate {
   id: string
@@ -171,6 +172,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
   const [selectedEventDate, setSelectedEventDate] = useState<any>(null)
+  const [isGenerateAgreementModalOpen, setIsGenerateAgreementModalOpen] = useState(false)
   const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
   const [activeEventDateTab, setActiveEventDateTab] = useState('details')
 
@@ -672,6 +674,18 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
           {/* Files Tab */}
           <TabsContent value="files" className="mt-0">
             <div className="bg-white rounded-lg shadow p-6">
+              {/* Header with Generate Agreement button */}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Files</h3>
+                <Button
+                  onClick={() => setIsGenerateAgreementModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Agreement
+                </Button>
+              </div>
+
               <AttachmentsSection
                 entityType="event"
                 entityId={event.id}
@@ -881,6 +895,17 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
                     setIsActivityDetailOpen(false)
                     setSelectedActivity(null)
                   }}
+      />
+
+      {/* Generate Agreement Modal */}
+      <GenerateEventAgreementModal
+        isOpen={isGenerateAgreementModalOpen}
+        onClose={() => setIsGenerateAgreementModalOpen(false)}
+        eventId={eventId}
+        onSuccess={() => {
+          // Refresh attachments list
+          refetchAttachments()
+        }}
       />
 
       {/* Event Date Detail Modal */}
