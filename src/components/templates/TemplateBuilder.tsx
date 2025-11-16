@@ -207,11 +207,13 @@ export default function TemplateBuilder({
           ) : (
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="sections">
-                {(provided) => (
+                {(provided, snapshot) => (
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className="space-y-3"
+                    className={`space-y-3 min-h-[100px] ${
+                      snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg' : ''
+                    }`}
                   >
                     {sections
                       .sort((a, b) => a.order - b.order)
@@ -221,18 +223,21 @@ export default function TemplateBuilder({
                           draggableId={section.id}
                           index={index}
                         >
-                          {(provided) => (
+                          {(provided, snapshot) => (
                             <Card
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className="p-4 hover:shadow-md transition-shadow"
+                              className={`p-4 hover:shadow-md transition-shadow ${
+                                snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : ''
+                              }`}
                             >
                               <div className="flex items-start gap-3">
                                 <div
                                   {...provided.dragHandleProps}
-                                  className="mt-1 cursor-grab active:cursor-grabbing"
+                                  className="mt-1 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded p-1 -m-1 transition-colors"
+                                  title="Drag to reorder"
                                 >
-                                  <GripVertical className="h-5 w-5 text-gray-400" />
+                                  <GripVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                                 </div>
 
                                 <div className="flex-1 min-w-0">
