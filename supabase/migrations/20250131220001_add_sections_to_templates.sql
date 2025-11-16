@@ -1,13 +1,5 @@
--- Add sections column to store section composition (if it doesn't already exist)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'templates' AND column_name = 'sections'
-  ) THEN
-    ALTER TABLE templates ADD COLUMN sections JSONB DEFAULT '[]'::jsonb;
-  END IF;
-END $$;
+-- Note: sections column already exists in this environment
+-- Skipping column addition - only updating constraints and indexes
 
 -- Update template_type CHECK constraint to allow new template types
 -- First, drop the existing constraint
