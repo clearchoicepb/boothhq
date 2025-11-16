@@ -137,7 +137,7 @@ Client is responsible for securing and covering all required credentials and ass
 If the event is outdoors protective cover is required if there is any risk of inclement weather. Client is responsible for any and all passes and must also arrange for any venue access passes, parking permits, and credentials needed by CCPB staff.',
 'Detailed access and power requirements for corporate events',
 true, false,
-ARRAY[], 10),
+ARRAY[]::text[], 10),
 
 -- 11. Access, Space & Power - Private
 (NULL, 'Access, Space & Power - Private', 'operations',
@@ -146,7 +146,7 @@ ARRAY[], 10),
 Client will arrange for an appropriate space for the Photo Station at event''s venue. All Outdoor Events require a tent or similar cover to protect against inclement weather. Client is responsible for providing extension cords if need be for booth locations outside 25 ft of electrical outlet, including outdoor events. Standard outlet required. (110V, 5 amps, 3 prong outlet). Client will provide all necessary passes for provider and their employee''s to setup, load In, remain on site and park their vehicles for this event. Any expenses are the sole responsibility of the CLIENT and must be paid for in advance of event.',
 'Simplified access and power requirements for private events',
 true, false,
-ARRAY[], 11),
+ARRAY[]::text[], 11),
 
 -- 12. Internet Access - Corporate
 (NULL, 'Internet Access - Corporate', 'operations',
@@ -155,7 +155,7 @@ ARRAY[], 11),
 CCPB uses T-Mobile 5G internet devices to operate equipment. However, CCPB recommends that client provide a local high-speed internet connection via a private wifi network or hardline when possible to ensure optimal performance. If service is interrupted, photos will be queued and delivered later when the internet becomes available.',
 'Internet policy for corporate events',
 true, false,
-ARRAY[], 12),
+ARRAY[]::text[], 12),
 
 -- 13. Internet Access - Private
 (NULL, 'Internet Access - Private', 'operations',
@@ -166,7 +166,7 @@ Instant SMS and email sharing are included at no additional cost with every pack
 If the internet connection is unstable, guests can still enter their phone number or email to send their photos, but delivery may be delayed. In such cases, images will be sent automatically once our internet service is restored—typically within **15 to 20 minutes** after our attendant leaves your location.',
 'Internet policy for private events with delivery details',
 true, false,
-ARRAY[], 13),
+ARRAY[]::text[], 13),
 
 -- 14. Prints Per Person Policy
 (NULL, 'Prints Per Person Policy', 'operations',
@@ -177,7 +177,7 @@ Each guest in a photo is entitled to one printout per session. For example, if a
 Printer malfunctions are rare, but in the event of any onsite printing issues, the Provider will print one copy of all affected images and mail them at no cost to the client, allowing for distribution to the impacted guest(s).',
 'Printing policy for events with physical prints',
 true, false,
-ARRAY[], 14),
+ARRAY[]::text[], 14),
 
 -- LEGAL SECTIONS
 -- 15. Cancellations - Corporate
@@ -187,7 +187,7 @@ ARRAY[], 14),
 Client understands and agrees that, due to the nature of the rental industry, date changes and cancellations are not allowed. Upon executing this Agreement, all fees become due and payable by the dates listed and are nonrefundable.',
 'Cancellation policy for corporate events',
 true, false,
-ARRAY[], 15),
+ARRAY[]::text[], 15),
 
 -- 16. Date Changes & Cancellations - Private
 (NULL, 'Date Changes & Cancellations - Private', 'legal',
@@ -196,7 +196,7 @@ ARRAY[], 15),
 Client understands that due to the nature of the rental industry date changes and cancellations are not allowed. Upon executing this agreement all amounts will become due as written in the terms listed and are non refundable.',
 'Cancellation policy for private events',
 true, false,
-ARRAY[], 16),
+ARRAY[]::text[], 16),
 
 -- 17. Indemnity/Hold Harmless
 (NULL, 'Indemnity/Hold Harmless', 'legal',
@@ -205,7 +205,7 @@ ARRAY[], 16),
 TO THE FULLEST EXTENT PERMITTED BY LAW, CLIENT AGREES TO INDEMNIFY, DEFEND AND HOLD CCPB AND ANY OF ITS RESPECTIVE OFFICERS, AGENTS, SERVANTS, OR EMPLOYEES, AFFILIATES, PARENTS, SUBSIDIARIES AND ANY OTHER PERSONS TO WHICH CCPB MAY BE RESPONSIBLE, HARMLESS FROM ANY AND ALL LIABILITY, CLAIMS, DAMAGES, COSTS, INCLUDING LEGAL FEES, AND EXPENSES ARISING FROM CLIENT''S USE, MISUSE AND/OR POSSESSION OF CCPB EQUIPMENT, BUSINESS INTERRUPTION RELATED TO THE MALFUNCTIONING OF CCPB EQUIPMENT AND/OR ANY ACTION OR CLAIM THAT ARISES OUT OF OR IS IN CONNECTION WITH THE MISAPPROPRIATION, INFRINGEMENT, AND/OR INVALID LICENSING OF A COPYRIGHTED WORK BY CLIENT OR A GUEST OF CLIENT''S.',
 'Legal protection clause for indemnification',
 true, false,
-ARRAY[], 17),
+ARRAY[]::text[], 17),
 
 -- 18. Force Majeure
 (NULL, 'Force Majeure', 'legal',
@@ -216,7 +216,7 @@ If for any reason of a Force Majeure Event, it is impossible or illegal for eith
 "Force Majeure Event" means any event or circumstance beyond the reasonable control of either party, which delays or causes the relocation or cancellation of the Event and/or prevents either party from performing any material obligation arising under this Agreement, including, without limitation, acts of God, flooding, lightning, landslide, earthquake, fire, drought, explosion, epidemic, quarantine, storm, hurricane, tornado, volcano, other natural disaster or unusual or extreme adverse weather-related events, security risk, war, riot or similar civil disturbance, acts of the public enemy (including acts or threats of terrorism), sabotage, blockade, insurrection, revolution, strikes, work stoppage or labor disputes or material change, amendment or enactment in applicable law, rule or regulation, which, in each case, would make it impossible, inadvisable or illegal for either party to perform the Services (or any portion thereof) or to perform any obligation hereunder.',
 'Force majeure clause for unforeseen circumstances',
 true, false,
-ARRAY[], 18),
+ARRAY[]::text[], 18),
 
 -- 19. Miscellaneous Terms - Corporate
 (NULL, 'Miscellaneous Terms - Corporate', 'legal',
@@ -225,7 +225,7 @@ ARRAY[], 18),
 This Agreement represents the entire agreement between Client and CCPB with respect to the subject matter herein. There are no oral or other representations or agreements not included herein and this Agreement shall not be modified except in writing, signed by both parties. If any provision of this Agreement shall be unlawful, void, or for any reason unenforceable under contract law, then that provision or portion thereof shall be deemed separate from the rest of this contract and shall not affect the validity and enforceability of any remaining provisions or portions thereof. In the event of a conflict between CCPB and Client, Client agrees to resolve said conflict via arbitration. In the event CCPB is unable to supply a working photo booth for at least 95% of the Rental times specified in this Agreement, Client shall be refunded a prorated amount based on the amount of time the photo booth was not operational. If the printer fails to print photos on site, Client agrees that CCPB will be allowed to provide Client with a web site that Client''s guests can access and order prints, free of charge (including shipping), as well as the ability to download the digital files for their own use.',
 'Standard legal terms for corporate agreements',
 true, false,
-ARRAY[], 19),
+ARRAY[]::text[], 19),
 
 -- 20. Miscellaneous Terms - Private
 (NULL, 'Miscellaneous Terms - Private', 'legal',
@@ -234,7 +234,7 @@ ARRAY[], 19),
 If any provision of these terms shall be unlawful, void, or for any reason unenforceable under Contract Law, then that provision, or portion thereof, shall be deemed separate from the rest of this contract and shall not affect the validity and enforceability of any remaining provisions, or portions thereof. This is the entire agreement between Provider and Client relating to the subject matter herein and shall not be modified except in writing, signed by both parties. In the event of a conflict between parties, Client agrees to solve any disagreements via arbitration. In the event Provider is unable to supply a working photo booth for at least 95% of the Service Period, Client shall be refunded a prorated amount based on the amount of service received. If the printer fails to print out photos onsite the Provider will be allowed to give a web site to the client where there guests can log onto and order prints free of charge with free shipping as well as the ability to download the digital files for their own use.',
 'Standard legal terms for private agreements',
 true, false,
-ARRAY[], 20),
+ARRAY[]::text[], 20),
 
 -- SIGNATURE SECTIONS
 -- 21. Authority to Sign - Corporate
@@ -246,11 +246,11 @@ By signing below, I/Client represent and warrant that I am of legal age, that I 
 **Client Signature: _________________________________ Date: ______________**',
 'Formal signature block with authority clause',
 true, true,
-ARRAY[], 21),
+ARRAY[]::text[], 21),
 
 -- 22. Signature Block - Simple
 (NULL, 'Signature Block - Simple', 'signature',
 '**Client Signature: _________________________________ Date: ______________**',
 'Simple signature line',
 true, true,
-ARRAY[], 22);
+ARRAY[]::text[], 22);
