@@ -1,7 +1,7 @@
 -- Create template_sections table for reusable agreement sections
 CREATE TABLE template_sections (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID, -- Multi-DB: No FK constraint, managed by application layer
   name TEXT NOT NULL,
   category TEXT NOT NULL, -- 'header', 'party-info', 'event-details', 'payment', 'operations', 'legal', 'signature'
   content TEXT NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE template_sections (
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID REFERENCES users(id)
+  created_by UUID -- Multi-DB: No FK constraint, managed by application layer
 );
 
 -- Indexes
@@ -45,5 +45,7 @@ CREATE POLICY "Users can delete their tenant sections"
 
 -- Comments
 COMMENT ON TABLE template_sections IS 'Reusable sections for building contract templates';
+COMMENT ON COLUMN template_sections.tenant_id IS 'Multi-DB: References tenants table in auth DB, managed by application layer';
 COMMENT ON COLUMN template_sections.is_system IS 'System sections are pre-built and available to all tenants';
 COMMENT ON COLUMN template_sections.is_required IS 'Required sections must be included in every template';
+COMMENT ON COLUMN template_sections.created_by IS 'Multi-DB: References users table in auth DB, managed by application layer';
