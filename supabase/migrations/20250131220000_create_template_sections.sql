@@ -27,21 +27,22 @@ ALTER TABLE template_sections ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their tenant sections and system sections"
   ON template_sections FOR SELECT
   USING (
-    tenant_id = current_setting('app.current_tenant_id')::uuid
+    tenant_id = current_setting('app.current_tenant_id', TRUE)::uuid
     OR is_system = true
+    OR tenant_id IS NULL
   );
 
 CREATE POLICY "Users can insert their tenant sections"
   ON template_sections FOR INSERT
-  WITH CHECK (tenant_id = current_setting('app.current_tenant_id')::uuid);
+  WITH CHECK (tenant_id = current_setting('app.current_tenant_id', TRUE)::uuid);
 
 CREATE POLICY "Users can update their tenant sections"
   ON template_sections FOR UPDATE
-  USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', TRUE)::uuid);
 
 CREATE POLICY "Users can delete their tenant sections"
   ON template_sections FOR DELETE
-  USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', TRUE)::uuid);
 
 -- Comments
 COMMENT ON TABLE template_sections IS 'Reusable sections for building contract templates';
