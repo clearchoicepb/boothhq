@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { template_type, name, subject, content, merge_fields, is_active } = body
+    const { template_type, name, subject, content, merge_fields, is_active, sections } = body
 
     if (!template_type || !name || !content) {
       return NextResponse.json(
@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate template_type
-    if (!['email', 'sms', 'contract'].includes(template_type)) {
+    if (!['email', 'sms', 'contract', 'corporate', 'private', 'lease', 'custom'].includes(template_type)) {
       return NextResponse.json(
-        { error: 'template_type must be email, sms, or contract' },
+        { error: 'template_type must be email, sms, contract, corporate, private, lease, or custom' },
         { status: 400 }
       )
     }
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         subject: subject || null,
         content,
         merge_fields: merge_fields || [],
+        sections: sections || [],
         is_active: is_active !== undefined ? is_active : true,
         created_by: session.user.id,
       })

@@ -96,8 +96,18 @@ export function GenerateEventAgreementModal({
       // Store agreement name
       setAgreementName(template.name)
 
+      // Check if template has sections (section-based template)
+      let templateContent = template.content
+      if ((template as any).sections && Array.isArray((template as any).sections) && (template as any).sections.length > 0) {
+        // Section-based template - compile sections in order
+        templateContent = (template as any).sections
+          .sort((a: any, b: any) => a.order - b.order)
+          .map((s: any) => s.content)
+          .join('\n\n')
+      }
+
       // Replace merge fields in template
-      const replacedContent = replaceMergeFields(template.content, mergeData)
+      const replacedContent = replaceMergeFields(templateContent, mergeData)
       setAgreementContent(replacedContent)
       setIsEditMode(false) // Start in preview mode
       setStep('preview')

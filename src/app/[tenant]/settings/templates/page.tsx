@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText } from 'lucide-react'
+import TemplateBuilder from '@/components/templates/TemplateBuilder'
+import toast from 'react-hot-toast'
 
 interface Template {
   id: string
@@ -33,6 +35,7 @@ export default function TemplatesSettingsPage() {
   const [saving, setSaving] = useState(false)
   const subjectInputRef = useRef<HTMLInputElement>(null)
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const [isBuilderMode, setIsBuilderMode] = useState(false)
 
   const mergeFields = [
     { label: 'First Name', value: '{{first_name}}' },
@@ -67,7 +70,11 @@ export default function TemplatesSettingsPage() {
   const handleCreateTemplate = () => {
     setEditingTemplate(null)
     setFormData({ name: '', subject: '', content: '' })
-    setIsModalOpen(true)
+    if (activeTab === 'contract') {
+      setIsBuilderMode(true)
+    } else {
+      setIsModalOpen(true)
+    }
   }
 
   const handleEditTemplate = (template: Template) => {
@@ -77,7 +84,43 @@ export default function TemplatesSettingsPage() {
       subject: template.subject || '',
       content: template.content,
     })
-    setIsModalOpen(true)
+    if (activeTab === 'contract') {
+      setIsBuilderMode(true)
+    } else {
+      setIsModalOpen(true)
+    }
+  }
+
+  const handleSaveFromBuilder = async (templateData: any) => {
+    try {
+      const url = editingTemplate
+        ? `/api/templates/${editingTemplate.id}`
+        : '/api/templates'
+
+      const method = editingTemplate ? 'PUT' : 'POST'
+
+      const payload = {
+        ...templateData,
+        template_type: 'contract',
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save template')
+      }
+
+      setIsBuilderMode(false)
+      setEditingTemplate(null)
+      fetchTemplates()
+    } catch (error) {
+      console.error('Error saving template:', error)
+      throw error
+    }
   }
 
   const handleSaveTemplate = async () => {
@@ -175,6 +218,27 @@ export default function TemplatesSettingsPage() {
       case 'contract':
         return <FileText className="h-4 w-4" />
     }
+  }
+
+  // Show Template Builder if in builder mode
+  if (isBuilderMode) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <TemplateBuilder
+          initialTemplate={editingTemplate ? {
+            id: editingTemplate.id,
+            name: editingTemplate.name,
+            sections: (editingTemplate as any).sections || [],
+            template_type: editingTemplate.template_type
+          } : undefined}
+          onSave={handleSaveFromBuilder}
+          onCancel={() => {
+            setIsBuilderMode(false)
+            setEditingTemplate(null)
+          }}
+        />
+      </div>
+    )
   }
 
   return (
