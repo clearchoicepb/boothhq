@@ -396,3 +396,23 @@ header {
   margin: 0.25rem 0;
   display: list-item;
 }
+
+/* Drag and Drop Styles (@hello-pangea/dnd) */
+/* These styles are required for the drag and drop library to work properly */
+[data-rbd-drag-handle-draggable-id] {
+  cursor: grab;
+}
+
+[data-rbd-drag-handle-draggable-id]:active {
+  cursor: grabbing;
+}
+
+/* Ensure draggable items have proper pointer events */
+[data-rbd-draggable-id] {
+  user-select: none;
+}
+
+/* Fix for touch devices */
+[data-rbd-drag-handle-draggable-id] {
+  touch-action: manipulation;
+}

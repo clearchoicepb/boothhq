@@ -55,7 +55,7 @@ export async function PUT(
     const templateId = params.id
 
     const body = await request.json()
-    const { name, subject, content, merge_fields, is_active } = body
+    const { name, subject, content, merge_fields, is_active, sections, template_type } = body
 
     const updateData: any = {}
     if (name !== undefined) updateData.name = name
@@ -63,6 +63,8 @@ export async function PUT(
     if (content !== undefined) updateData.content = content
     if (merge_fields !== undefined) updateData.merge_fields = merge_fields
     if (is_active !== undefined) updateData.is_active = is_active
+    if (sections !== undefined) updateData.sections = sections
+    if (template_type !== undefined) updateData.template_type = template_type
 
     const { data: template, error } = await supabase
       .from('templates')
