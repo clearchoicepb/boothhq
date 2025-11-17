@@ -1,14 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
-
-// Create Supabase client for webhook (no auth required)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+import { getTenantClient } from '@/lib/data-sources'
+import { createServerSupabaseClient } from '@/lib/supabase-client'
 
 /**
  * Twilio Inbound SMS Webhook Handler
  * Receives incoming SMS messages and logs them as communications
+ *
+ * IMPORTANT: This webhook writes to the TENANT DATABASE, not the Application DB!
+ * The communications table lives in the tenant-specific data database.
  *
  * Twilio sends POST requests with the following key parameters:
  * - MessageSid: Unique identifier for the message
@@ -18,8 +18,6 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
  * - NumMedia: Number of media items (0 for text-only)
  */
 export async function POST(request: NextRequest) {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
   try {
     // Parse the incoming form data from Twilio
     const formData = await request.formData()
@@ -58,39 +56,75 @@ export async function POST(request: NextRequest) {
 
     const normalizedFrom = normalizePhone(from)
 
-    // Try to match the phone number to a contact, account, or lead
+    // STEP 1: Find which tenant owns the receiving phone number
+    console.log('🔍 Step 1: Finding tenant for receiving number:', to)
+    
+    const appSupabase = createServerSupabaseClient()
+    const { data: settingsRows } = await appSupabase
+      .from('tenant_settings')
+      .select('tenant_id, setting_value')
+      .eq('setting_key', 'integrations.thirdPartyIntegrations.twilio.phoneNumber')
+    
+    let tenantId: string | null = null
+    const matchingTenant = settingsRows?.find(row => {
+      const configuredNumber = row.setting_value
+      if (typeof configuredNumber === 'string') {
+        const normalizedConfigured = normalizePhone(configuredNumber)
+        const normalizedTo = normalizePhone(to)
+        return normalizedConfigured === normalizedTo
+      }
+      return false
+    })
+
+    if (matchingTenant) {
+      tenantId = matchingTenant.tenant_id
+      console.log('✅ Found tenant by receiving phone number:', tenantId)
+    } else {
+      console.warn('⚠️ Could not determine tenant for incoming SMS to:', to)
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`,
+        { status: 200, headers: { 'Content-Type': 'text/xml' } }
+      )
+    }
+
+    // STEP 2: Get Tenant Database client
+    console.log('🔍 Step 2: Connecting to tenant database')
+    const tenantSupabase = await getTenantClient(tenantId)
+
+    // STEP 3: Try to find matching contact, lead, or account in TENANT DB
+    console.log('🔍 Step 3: Looking for contact/lead/account with phone:', normalizedFrom)
+    
     let contactId: string | null = null
     let accountId: string | null = null
     let leadId: string | null = null
     let opportunityId: string | null = null
-    let tenantId: string | null = null
 
-    // Search contacts by phone number - try multiple formats
-    const { data: contactsArray } = await supabase
+    // Search contacts by phone number
+    const { data: contactsArray } = await tenantSupabase
       .from('contacts')
-      .select('id, tenant_id, account_id, phone')
+      .select('id, account_id, phone')
+      .eq('tenant_id', tenantId)
 
     // Filter in JavaScript to match normalized phone numbers
-    const contacts = contactsArray?.find(c => {
+    const contact = contactsArray?.find(c => {
       if (!c.phone) return false
-      const normalizedDbPhone = c.phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+      const normalizedDbPhone = normalizePhone(c.phone)
       return normalizedDbPhone === normalizedFrom
     })
 
-    if (contacts) {
-      contactId = contacts.id
-      accountId = contacts.account_id
-      tenantId = contacts.tenant_id
+    if (contact) {
+      contactId = contact.id
+      accountId = contact.account_id
 
       // Try to find the most recent opportunity for this contact
-      const { data: opportunity } = await supabase
+      const { data: opportunity } = await tenantSupabase
         .from('opportunities')
         .select('id')
         .eq('contact_id', contactId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (opportunity) {
         opportunityId = opportunity.id
@@ -99,30 +133,30 @@ export async function POST(request: NextRequest) {
 
     // If no contact found, try leads
     if (!contactId) {
-      const { data: leadsArray } = await supabase
+      const { data: leadsArray } = await tenantSupabase
         .from('leads')
-        .select('id, tenant_id, phone')
+        .select('id, phone')
+        .eq('tenant_id', tenantId)
 
       // Filter in JavaScript to match normalized phone numbers
       const lead = leadsArray?.find(l => {
         if (!l.phone) return false
-        const normalizedDbPhone = l.phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+        const normalizedDbPhone = normalizePhone(l.phone)
         return normalizedDbPhone === normalizedFrom
       })
 
       if (lead) {
         leadId = lead.id
-        tenantId = lead.tenant_id
 
         // Try to find the most recent opportunity for this lead
-        const { data: opportunity } = await supabase
+        const { data: opportunity } = await tenantSupabase
           .from('opportunities')
           .select('id')
           .eq('lead_id', leadId)
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (opportunity) {
           opportunityId = opportunity.id
@@ -132,30 +166,30 @@ export async function POST(request: NextRequest) {
 
     // If no contact or lead found, try accounts
     if (!contactId && !leadId) {
-      const { data: accountsArray } = await supabase
+      const { data: accountsArray } = await tenantSupabase
         .from('accounts')
-        .select('id, tenant_id, phone')
+        .select('id, phone')
+        .eq('tenant_id', tenantId)
 
       // Filter in JavaScript to match normalized phone numbers
       const account = accountsArray?.find(a => {
         if (!a.phone) return false
-        const normalizedDbPhone = a.phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+        const normalizedDbPhone = normalizePhone(a.phone)
         return normalizedDbPhone === normalizedFrom
       })
 
       if (account) {
         accountId = account.id
-        tenantId = account.tenant_id
 
         // Try to find the most recent opportunity for this account
-        const { data: opportunity } = await supabase
+        const { data: opportunity } = await tenantSupabase
           .from('opportunities')
           .select('id')
           .eq('account_id', accountId)
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (opportunity) {
           opportunityId = opportunity.id
@@ -173,70 +207,39 @@ export async function POST(request: NextRequest) {
       opportunityId
     })
 
-    // If we didn't find a tenant via contact matching, try to find by receiving phone number
-    if (!tenantId) {
-      console.log('🔍 No tenant found via contact, trying to match by receiving phone number:', to)
-      
-      // Query tenant_settings to find which tenant has this Twilio number configured
-      const { data: settingsRows } = await supabase
-        .from('tenant_settings')
-        .select('tenant_id, setting_value')
-        .eq('setting_key', 'integrations.thirdPartyIntegrations.twilio.phoneNumber')
-      
-      // Find tenant with matching phone number
-      const matchingTenant = settingsRows?.find(row => {
-        const configuredNumber = row.setting_value
-        if (typeof configuredNumber === 'string') {
-          const normalizedConfigured = normalizePhone(configuredNumber)
-          const normalizedTo = normalizePhone(to)
-          return normalizedConfigured === normalizedTo
-        }
-        return false
-      })
-
-      if (matchingTenant) {
-        tenantId = matchingTenant.tenant_id
-        console.log('✅ Found tenant by phone number:', tenantId)
+    // STEP 4: Log the communication to TENANT DATABASE
+    console.log('🔍 Step 4: Logging communication to tenant database')
+    
+    const communicationData = {
+      tenant_id: tenantId,
+      communication_type: 'sms',
+      direction: 'inbound',
+      subject: 'Incoming SMS',
+      notes: body,
+      status: 'received',
+      communication_date: new Date().toISOString(),
+      contact_id: contactId,
+      account_id: accountId,
+      opportunity_id: opportunityId,
+      lead_id: leadId,
+      metadata: {
+        twilio_sid: messageSid,
+        from_number: from,
+        to_number: to,
+        num_media: numMedia,
       }
     }
 
-    // Log the communication (with or without contact associations)
-    if (tenantId) {
-      const communicationData = {
-        tenant_id: tenantId,
-        communication_type: 'sms',
-        direction: 'inbound',
-        subject: 'Incoming SMS',
-        notes: body,
-        status: 'received',
-        communication_date: new Date().toISOString(),
-        contact_id: contactId,
-        account_id: accountId,
-        opportunity_id: opportunityId,
-        lead_id: leadId,
-        metadata: {
-          twilio_sid: messageSid,
-          from_number: from,
-          to_number: to,
-          num_media: numMedia,
-        }
-      }
+    const { data: communication, error: commError } = await tenantSupabase
+      .from('communications')
+      .insert(communicationData)
+      .select()
+      .single()
 
-      const { data: communication, error: commError } = await supabase
-        .from('communications')
-        .insert(communicationData)
-        .select()
-        .single()
-
-      if (commError) {
-        console.error('❌ Error logging inbound SMS:', commError)
-      } else {
-        console.log('✅ Inbound SMS logged:', communication.id, contactId ? 'with contact' : 'without contact match')
-      }
+    if (commError) {
+      console.error('❌ Error logging inbound SMS to tenant database:', commError)
     } else {
-      // Still couldn't find tenant - log warning but don't fail
-      console.warn('⚠️ Could not determine tenant for incoming SMS from:', from, 'to:', to)
-      console.warn('⚠️ Message will not be logged. Consider adding this as a lead or contact.')
+      console.log('✅ Inbound SMS logged to tenant database:', communication.id, contactId ? 'with contact' : 'without contact match')
     }
 
     // Return TwiML response (empty response = no auto-reply)
@@ -251,7 +254,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Error processing inbound SMS:', error)
+    console.error('❌ Error processing inbound SMS:', error)
 
     // Still return 200 to Twilio to avoid retries
     return new NextResponse(
