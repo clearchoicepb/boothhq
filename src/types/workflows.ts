@@ -105,7 +105,7 @@ export interface Workflow {
   name: string
   description: string | null
   trigger_type: WorkflowTriggerType
-  event_type_id: string | null
+  event_type_ids: string[] // Changed from single event_type_id to array for multi-select
   is_active: boolean
   created_by: string | null
   created_at: string
@@ -243,7 +243,7 @@ export interface WorkflowInsert {
   name: string
   description?: string | null
   trigger_type: WorkflowTriggerType
-  event_type_id: string | null
+  event_type_ids: string[] // Changed to array for multi-select
   is_active?: boolean
   created_by?: string | null
 }
@@ -254,7 +254,7 @@ export interface WorkflowInsert {
 export interface WorkflowUpdate {
   name?: string
   description?: string | null
-  event_type_id?: string | null
+  event_type_ids?: string[] // Changed to array for multi-select
   is_active?: boolean
 }
 
@@ -318,7 +318,7 @@ export interface WorkflowExecutionUpdate {
 export interface WorkflowBuilderState {
   // Step 1: Trigger
   triggerType: WorkflowTriggerType
-  eventTypeId: string | null
+  eventTypeIds: string[] // Changed to array for multi-select
 
   // Step 2: Actions
   actions: WorkflowBuilderAction[]
@@ -359,7 +359,7 @@ export interface WorkflowSavePayload {
  * Workflow list filters
  */
 export interface WorkflowFilters {
-  eventTypeId?: string
+  eventTypeId?: string // Note: Still singular for filtering by a specific event type
   isActive?: boolean
   search?: string
   createdBy?: string

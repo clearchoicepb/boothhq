@@ -300,7 +300,8 @@ class WorkflowEngine {
     const { eventId, eventTypeId, tenantId, dataSourceTenantId, supabase, userId } = options
 
     try {
-      // Find all active workflows for this event type
+      // Find all active workflows that include this event type
+      // Uses PostgreSQL array containment operator (@>) to check if event_type_ids contains eventTypeId
       const { data: workflows, error: workflowsError } = await supabase
         .from('workflows')
         .select(`
@@ -313,7 +314,7 @@ class WorkflowEngine {
           )
         `)
         .eq('tenant_id', dataSourceTenantId)
-        .eq('event_type_id', eventTypeId)
+        .contains('event_type_ids', [eventTypeId]) // Check if array contains this event type
         .eq('is_active', true)
         .eq('trigger_type', 'event_created')
         .order('created_at', { ascending: true })
@@ -538,7 +539,7 @@ class WorkflowEngine {
    * @returns Validation result with errors/warnings
    */
   async validateWorkflow(
-    workflow: { event_type_id: string | null },
+    workflow: { event_type_ids: string[] },
     actions: Array<{ 
       action_type: WorkflowActionType
       task_template_id?: string | null
@@ -552,19 +553,21 @@ class WorkflowEngine {
     const warnings: string[] = []
 
     // Validate trigger
-    if (!workflow.event_type_id) {
-      errors.push('Event type is required')
+    if (!workflow.event_type_ids || workflow.event_type_ids.length === 0) {
+      errors.push('At least one event type is required')
     } else {
-      // Check if event type exists
-      const { data: eventType } = await supabase
-        .from('event_types')
-        .select('id')
-        .eq('id', workflow.event_type_id)
-        .eq('tenant_id', dataSourceTenantId)
-        .single()
+      // Check if all event types exist
+      for (const eventTypeId of workflow.event_type_ids) {
+        const { data: eventType } = await supabase
+          .from('event_types')
+          .select('id')
+          .eq('id', eventTypeId)
+          .eq('tenant_id', dataSourceTenantId)
+          .single()
 
-      if (!eventType) {
-        errors.push('Selected event type does not exist')
+        if (!eventType) {
+          errors.push(`Event type ${eventTypeId} does not exist`)
+        }
       }
     }
 

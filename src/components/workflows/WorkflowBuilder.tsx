@@ -50,7 +50,7 @@ export default function WorkflowBuilder({
   // Workflow state
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [eventTypeId, setEventTypeId] = useState<string | null>(null)
+  const [eventTypeIds, setEventTypeIds] = useState<string[]>([])
   const [isActive, setIsActive] = useState(true)
   const [actions, setActions] = useState<WorkflowBuilderAction[]>([])
 
@@ -63,7 +63,7 @@ export default function WorkflowBuilder({
     if (workflow) {
       setName(workflow.name)
       setDescription(workflow.description || '')
-      setEventTypeId(workflow.event_type_id)
+      setEventTypeIds(workflow.event_type_ids || [])
       setIsActive(workflow.is_active)
       
       // Convert workflow actions to builder actions
@@ -119,8 +119,8 @@ export default function WorkflowBuilder({
     }
 
     // Validate trigger
-    if (!eventTypeId) {
-      validationErrors.push('Event type is required')
+    if (eventTypeIds.length === 0) {
+      validationErrors.push('At least one event type is required')
     }
 
     // Validate actions
@@ -136,6 +136,10 @@ export default function WorkflowBuilder({
         }
         if (!action.assignedToUserId) {
           validationErrors.push(`Action ${index + 1}: Assigned user is required`)
+        }
+      } else if (action.actionType === 'create_design_item') {
+        if (!action.designItemTypeId) {
+          validationErrors.push(`Action ${index + 1}: Design item type is required`)
         }
       }
     })
@@ -154,7 +158,7 @@ export default function WorkflowBuilder({
         name,
         description: description || null,
         trigger_type: 'event_created',
-        event_type_id: eventTypeId,
+        event_type_ids: eventTypeIds,
         is_active: isActive,
       },
       actions: actions.map((action, index) => ({
@@ -170,7 +174,7 @@ export default function WorkflowBuilder({
     await onSave(payload)
   }
 
-  const canProceedToActions = eventTypeId !== null
+  const canProceedToActions = eventTypeIds.length > 0
   const canProceedToReview = canProceedToActions && actions.length > 0
 
   return (
@@ -252,8 +256,8 @@ export default function WorkflowBuilder({
       {/* Step Content */}
       {currentStep === 'trigger' && (
         <TriggerSelector
-          eventTypeId={eventTypeId}
-          onSelect={setEventTypeId}
+          selectedEventTypeIds={eventTypeIds}
+          onSelect={setEventTypeIds}
         />
       )}
 

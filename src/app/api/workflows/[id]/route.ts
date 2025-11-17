@@ -44,6 +44,16 @@ export async function GET(
             task_type,
             default_priority
           ),
+          design_item_type:design_item_types(
+            id,
+            name,
+            type,
+            category,
+            default_design_days,
+            default_production_days,
+            default_shipping_days,
+            client_approval_buffer_days
+          ),
           assigned_to_user:users(
             id,
             first_name,
@@ -52,12 +62,6 @@ export async function GET(
             department,
             department_role
           )
-        ),
-        event_type:event_types(
-          id,
-          name,
-          slug,
-          event_category_id
         ),
         created_by_user:users!workflows_created_by_fkey(
           id,
@@ -169,6 +173,16 @@ export async function PATCH(
             task_type,
             default_priority
           ),
+          design_item_type:design_item_types(
+            id,
+            name,
+            type,
+            category,
+            default_design_days,
+            default_production_days,
+            default_shipping_days,
+            client_approval_buffer_days
+          ),
           assigned_to_user:users(
             id,
             first_name,
@@ -177,12 +191,6 @@ export async function PATCH(
             department,
             department_role
           )
-        ),
-        event_type:event_types(
-          id,
-          name,
-          slug,
-          event_category_id
         ),
         created_by_user:users!workflows_created_by_fkey(
           id,
