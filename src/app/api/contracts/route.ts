@@ -61,12 +61,13 @@ export async function POST(request: NextRequest) {
     console.log('[contracts/route.ts] Using tenant_id:', dataSourceTenantId)
     
     // Note: RLS handles tenant filtering automatically via app.current_tenant_id
+    // Specify the exact foreign key relationship since events has multiple contacts relationships
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
         *,
         accounts(*),
-        contacts(*)
+        contacts:contacts!events_contact_id_fkey(*)
       `)
       .eq('id', event_id)
       .single()
@@ -178,6 +179,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id')
 
     // Note: RLS handles tenant filtering automatically
+    // Note: We don't need to specify foreign key for contracts->contacts since there's only one relationship
     let query = supabase
       .from('contracts')
       .select(`
