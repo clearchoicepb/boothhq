@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import toast from 'react-hot-toast';
 import {
   Settings as SettingsIcon,
   Users,
@@ -19,23 +18,18 @@ import {
   Shield,
   Database,
   Globe,
-  CreditCard,
   Mail,
   BarChart3,
   FileType,
   Plus,
   CheckCircle2,
-  Sparkles,
-  Trash2,
   Folder,
   Tag,
   Search,
   ChevronRight,
   ChevronDown,
   Zap,
-  Clock,
   PenTool,
-  Home,
   Boxes,
   DollarSign
 } from 'lucide-react';
@@ -332,8 +326,6 @@ export default function SettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['crm', 'events']);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Auto-expand all categories if search is active
   useEffect(() => {
@@ -366,75 +358,6 @@ export default function SettingsPage() {
       }))
       .filter(category => category.items.length > 0);
   }, [searchQuery]);
-
-  const handleGenerateSeedData = async () => {
-    if (!confirm('⚠️ This will create 40-50 test records across all CRM entities.\n\nThis operation cannot be undone automatically. Continue?')) {
-      return;
-    }
-
-    setIsGenerating(true);
-    const loadingToast = toast.loading('Generating seed data...');
-
-    try {
-      const response = await fetch('/api/seed-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirm: 'yes-create-test-data' })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(
-          `Successfully created ${data.summary.total} records!`,
-          { duration: 4000 }
-        );
-      } else {
-        toast.error(data.error || 'Failed to generate seed data');
-      }
-    } catch (error: any) {
-      console.error('Seed data error:', error);
-      toast.error('Failed to generate seed data');
-    } finally {
-      toast.dismiss(loadingToast);
-      setIsGenerating(false);
-    }
-  };
-
-  const handleDeleteAllData = async () => {
-    if (!confirm('🚨 WARNING: This will DELETE ALL DATA!\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?')) {
-      return;
-    }
-
-    const confirmation = prompt('Type "DELETE ALL" to confirm (case-sensitive):');
-    if (confirmation !== 'DELETE ALL') {
-      toast.error('Deletion cancelled');
-      return;
-    }
-
-    setIsDeleting(true);
-    const loadingToast = toast.loading('Deleting all data...');
-
-    try {
-      const response = await fetch('/api/seed-data', {
-        method: 'DELETE'
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success('All data deleted successfully', { duration: 4000 });
-      } else {
-        toast.error(data.error || 'Failed to delete data');
-      }
-    } catch (error: any) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete data');
-    } finally {
-      toast.dismiss(loadingToast);
-      setIsDeleting(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -555,43 +478,6 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-500">
               Try a different search term
             </p>
-          </div>
-        )}
-
-        {/* Developer Tools */}
-        {!searchQuery && (
-          <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Developer Tools</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Tools for testing and development. Use with caution in production.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={handleGenerateSeedData}
-                disabled={isGenerating}
-                className="flex items-center justify-center px-4 py-3 border-2 border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Sparkles className="h-4 w-4 mr-2 text-green-700" />
-                <span className="text-sm font-medium text-green-900">
-                  {isGenerating ? 'Generating...' : 'Generate Test Data'}
-                </span>
-              </button>
-              <button
-                onClick={handleDeleteAllData}
-                disabled={isDeleting}
-                className="flex items-center justify-center px-4 py-3 border-2 border-red-200 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Trash2 className="h-4 w-4 mr-2 text-red-700" />
-                <span className="text-sm font-medium text-red-900">
-                  {isDeleting ? 'Deleting...' : 'Delete All Data'}
-                </span>
-              </button>
-            </div>
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-xs text-yellow-800">
-                <strong>⚠️ Warning:</strong> These tools modify your database. Use for development only.
-              </p>
-            </div>
           </div>
         )}
       </div>
