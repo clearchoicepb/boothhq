@@ -393,19 +393,14 @@ export function GenerateContractModal({
                   <button
                     key={template.id}
                     onClick={() => setSelectedTemplateId(template.id)}
-                    className={`text-left p-4 border-2 rounded-lg transition-all ${
+                    className={`text-left p-3 border-2 rounded-lg transition-all ${
                       selectedTemplateId === template.id
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{template.name}</h3>
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                          {template.content.substring(0, 150)}...
-                        </p>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-gray-900">{template.name}</h3>
                       <FileText className={`h-5 w-5 ml-3 ${
                         selectedTemplateId === template.id ? 'text-blue-600' : 'text-gray-400'
                       }`} />

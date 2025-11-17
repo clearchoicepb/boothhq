@@ -313,7 +313,10 @@ export default function TemplatesSettingsPage() {
                           {template.subject && (
                             <p className="text-sm text-gray-700 mt-1">Subject: {template.subject}</p>
                           )}
-                          <p className="text-sm text-gray-800 mt-2 line-clamp-2">{template.content}</p>
+                          {/* Only show content preview for email and SMS templates, not contracts */}
+                          {activeTab !== 'contract' && (
+                            <p className="text-sm text-gray-800 mt-2 line-clamp-2">{template.content}</p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2 ml-4">
                           <button
