@@ -93,10 +93,41 @@ export async function POST(request: NextRequest) {
     
     console.log('[contracts/route.ts] Event found:', event.id, event.title)
 
-    // Fetch merge field data
-    const mergeData = await getMergeFieldData({
-      eventId: event_id
-    })
+    // Build merge field data directly from event (server-side, can't use HTTP fetch)
+    const mergeData: any = {}
+    
+    // Event data
+    if (event) {
+      mergeData.event_title = event.title
+      mergeData.event_load_in_notes = event.load_in_notes
+      mergeData.event_setup_time = event.setup_time
+      mergeData.load_in_notes = event.load_in_notes
+      mergeData.setup_time = event.setup_time
+      
+      // Contact data
+      if (event.contacts) {
+        mergeData.contact_first_name = event.contacts.first_name
+        mergeData.contact_last_name = event.contacts.last_name
+        mergeData.contact_full_name = `${event.contacts.first_name || ''} ${event.contacts.last_name || ''}`.trim()
+        mergeData.contact_email = event.contacts.email
+        mergeData.contact_phone = event.contacts.phone
+        mergeData.first_name = event.contacts.first_name
+        mergeData.last_name = event.contacts.last_name
+        mergeData.email = event.contacts.email
+        mergeData.phone = event.contacts.phone
+        mergeData.contact_name = mergeData.contact_full_name
+      }
+      
+      // Account data
+      if (event.accounts) {
+        mergeData.account_name = event.accounts.name
+        mergeData.account_phone = event.accounts.phone
+        mergeData.account_email = event.accounts.email
+        mergeData.company_name = event.accounts.name
+      }
+    }
+    
+    console.log('[contracts/route.ts] Merge data built:', Object.keys(mergeData))
 
     // Replace merge fields in template
     const processedContent = replaceMergeFields(template_content, mergeData)
@@ -115,7 +146,8 @@ export async function POST(request: NextRequest) {
     expiresAt.setDate(expiresAt.getDate() + expires_days)
 
     // Create contract
-    const { data: contract, error: contractError } = await supabase
+    // Note: signer_name and signer_email will be populated when the client signs
+    const { data: contract, error: contractError} = await supabase
       .from('contracts')
       .insert({
         tenant_id: dataSourceTenantId,
@@ -126,14 +158,14 @@ export async function POST(request: NextRequest) {
         contract_number: contractNumber,
         title,
         content: processedContent,
-        signer_name: signer_name || event.contacts?.first_name + ' ' + event.contacts?.last_name,
-        signer_email: signer_email || event.contacts?.email,
         status: 'draft',
         expires_at: expiresAt.toISOString(),
         created_by: session.user.id
       })
       .select()
       .single()
+    
+    console.log('[contracts/route.ts] Insert result:', { hasContract: !!contract, error: contractError })
 
     if (contractError) {
       console.error('Error creating contract:', contractError)
