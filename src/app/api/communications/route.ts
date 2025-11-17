@@ -56,12 +56,26 @@ export async function GET(request: NextRequest) {
       query = query.gte('communication_date', since)
     }
 
+    console.log('🔍 [Communications API] Query params:', {
+      tenantId: dataSourceTenantId,
+      communicationType,
+      since,
+      opportunityId,
+      accountId,
+      contactId,
+      leadId,
+      eventId
+    })
+
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching communications:', error)
+      console.error('❌ [Communications API] Error fetching communications:', error)
       return NextResponse.json({ error: 'Failed to fetch communications' }, { status: 500 })
     }
+
+    console.log('✅ [Communications API] Returned', data?.length, 'messages')
+    console.log('📊 [Communications API] Directions:', data?.map(d => d.direction).join(', '))
 
     return NextResponse.json(data)
   } catch (error) {
