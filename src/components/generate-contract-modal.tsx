@@ -5,7 +5,8 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FileText, Download, Mail, Loader2, Eye, Plus, Edit2, Save } from 'lucide-react'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
-import jsPDF from 'jspdf'
+import { useSettings } from '@/lib/settings-context'
+import jsPDF from 'jsPDF'
 
 interface Template {
   id: string
@@ -32,6 +33,7 @@ export function GenerateContractModal({
   leadId,
   onSuccess
 }: GenerateContractModalProps) {
+  const { settings } = useSettings()
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [contractContent, setContractContent] = useState('')
@@ -43,6 +45,8 @@ export function GenerateContractModal({
   const [isEditMode, setIsEditMode] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  const logoUrl = settings?.appearance?.logoUrl
 
   // Fetch contract templates
   useEffect(() => {
@@ -146,42 +150,86 @@ export function GenerateContractModal({
     }
   }
 
+  // Helper function to generate PDF with logo
+  const generatePDFWithLogo = async (): Promise<jsPDF> => {
+    const pdf = new jsPDF('p', 'pt', 'letter')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 40
+    let y = margin
+
+    // Add logo if available
+    if (logoUrl) {
+      try {
+        // Load image as data URI
+        const response = await fetch(logoUrl)
+        const blob = await response.blob()
+        const dataUri = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+
+        // Calculate logo dimensions (max width 200px, maintain aspect ratio)
+        const img = new Image()
+        img.src = dataUri
+        await new Promise((resolve) => {
+          img.onload = resolve
+        })
+
+        const maxLogoWidth = 200
+        const logoRatio = img.height / img.width
+        const logoWidth = Math.min(maxLogoWidth, img.width)
+        const logoHeight = logoWidth * logoRatio
+
+        // Center the logo
+        const logoX = (pageWidth - logoWidth) / 2
+
+        // Add logo to PDF
+        pdf.addImage(dataUri, 'PNG', logoX, y, logoWidth, logoHeight)
+        y += logoHeight + 20 // Add space after logo
+      } catch (err) {
+        console.error('Error loading logo:', err)
+        // Continue without logo if it fails
+      }
+    }
+
+    // Split content into lines
+    const lines = contractContent.split('\n')
+
+    pdf.setFontSize(12)
+    pdf.setFont('helvetica', 'normal')
+
+    for (const line of lines) {
+      // Check if we need a new page
+      if (y > pageHeight - margin) {
+        pdf.addPage()
+        y = margin
+      }
+
+      // Split long lines
+      const splitLines = pdf.splitTextToSize(line || ' ', pageWidth - (margin * 2))
+
+      for (const splitLine of splitLines) {
+        if (y > pageHeight - margin) {
+          pdf.addPage()
+          y = margin
+        }
+        pdf.text(splitLine, margin, y)
+        y += 16
+      }
+    }
+
+    return pdf
+  }
+
   const handleDownloadPDF = async () => {
     if (!previewRef.current) return
 
     setLoading(true)
     try {
-      const pdf = new jsPDF('p', 'pt', 'letter')
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 40
-
-      // Split content into lines
-      const lines = contractContent.split('\n')
-      let y = margin
-
-      pdf.setFontSize(12)
-      pdf.setFont('helvetica', 'normal')
-
-      for (const line of lines) {
-        // Check if we need a new page
-        if (y > pageHeight - margin) {
-          pdf.addPage()
-          y = margin
-        }
-
-        // Split long lines
-        const splitLines = pdf.splitTextToSize(line || ' ', pageWidth - (margin * 2))
-
-        for (const splitLine of splitLines) {
-          if (y > pageHeight - margin) {
-            pdf.addPage()
-            y = margin
-          }
-          pdf.text(splitLine, margin, y)
-          y += 16
-        }
-      }
+      // Generate PDF with logo
+      const pdf = await generatePDFWithLogo()
 
       // Download
       const fileName = `${contractName || 'contract'}.pdf`
@@ -236,38 +284,8 @@ export function GenerateContractModal({
     setError('')
 
     try {
-      // Generate PDF
-      const pdf = new jsPDF('p', 'pt', 'letter')
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 40
-
-      // Split content into lines
-      const lines = contractContent.split('\n')
-      let y = margin
-
-      pdf.setFontSize(12)
-      pdf.setFont('helvetica', 'normal')
-
-      for (const line of lines) {
-        // Check if we need a new page
-        if (y > pageHeight - margin) {
-          pdf.addPage()
-          y = margin
-        }
-
-        // Split long lines
-        const splitLines = pdf.splitTextToSize(line || ' ', pageWidth - (margin * 2))
-
-        for (const splitLine of splitLines) {
-          if (y > pageHeight - margin) {
-            pdf.addPage()
-            y = margin
-          }
-          pdf.text(splitLine, margin, y)
-          y += 16
-        }
-      }
+      // Generate PDF with logo
+      const pdf = await generatePDFWithLogo()
 
       // Convert PDF to base64
       const pdfBase64 = pdf.output('datauristring').split(',')[1]
@@ -468,6 +486,16 @@ export function GenerateContractModal({
               ref={previewRef}
               className="bg-white border border-gray-300 rounded-lg p-8 max-h-[60vh] overflow-y-auto"
             >
+              {/* Logo Header */}
+              {logoUrl && (
+                <div className="flex justify-center mb-8 pb-6 border-b border-gray-200">
+                  <img 
+                    src={logoUrl} 
+                    alt="Company Logo" 
+                    className="h-16 w-auto object-contain"
+                  />
+                </div>
+              )}
               <div className="prose prose-sm max-w-none">
                 {contractContent.split('\n').map((line, i) => (
                   <p key={i} className="text-gray-900 mb-2">
