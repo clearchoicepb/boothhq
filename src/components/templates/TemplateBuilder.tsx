@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { useSettings } from '@/lib/settings-context'
 import {
   FileText,
   GripVertical,
@@ -58,6 +59,7 @@ export default function TemplateBuilder({
   onSave,
   onCancel
 }: TemplateBuilderProps) {
+  const { settings } = useSettings()
   const [templateName, setTemplateName] = useState(initialTemplate?.name || '')
   const [templateType, setTemplateType] = useState(initialTemplate?.template_type || 'custom')
   const [sections, setSections] = useState<TemplateSection[]>(initialTemplate?.sections || [])
@@ -67,6 +69,8 @@ export default function TemplateBuilder({
   const [isEditingPreview, setIsEditingPreview] = useState(false)
   const [editedContent, setEditedContent] = useState('')
   const [allLibrarySections, setAllLibrarySections] = useState<LibrarySection[]>([])
+  
+  const logoUrl = settings?.appearance?.logoUrl
   
   // Fetch all library sections for auto-population
   useEffect(() => {
@@ -516,6 +520,16 @@ export default function TemplateBuilder({
           {/* Content Area */}
           {isEditingPreview ? (
             <div>
+              {/* Logo Header */}
+              {logoUrl && (
+                <div className="bg-white p-6 border border-gray-200 rounded-t-lg flex justify-center">
+                  <img 
+                    src={logoUrl} 
+                    alt="Company Logo" 
+                    className="h-16 w-auto object-contain"
+                  />
+                </div>
+              )}
               <RichTextEditor
                 value={editedContent}
                 onChange={setEditedContent}
@@ -528,8 +542,20 @@ export default function TemplateBuilder({
             </div>
           ) : (
             <div className="prose prose-sm max-w-none">
-              <div className="bg-white p-8 border border-gray-200 rounded-lg whitespace-pre-wrap max-h-[600px] overflow-y-auto">
-                {getPreviewContent()}
+              <div className="bg-white p-8 border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                {/* Logo Header */}
+                {logoUrl && (
+                  <div className="flex justify-center mb-8 pb-6 border-b border-gray-200">
+                    <img 
+                      src={logoUrl} 
+                      alt="Company Logo" 
+                      className="h-16 w-auto object-contain"
+                    />
+                  </div>
+                )}
+                <div className="whitespace-pre-wrap">
+                  {getPreviewContent()}
+                </div>
               </div>
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
                 <strong>Note:</strong> This preview shows the template with merge fields removed. 
