@@ -16,10 +16,15 @@ interface Contract {
   signed_at: string | null
 }
 
+interface TenantSettings {
+  logoUrl?: string
+}
+
 export default function ContractSignPage() {
   const params = useParams()
   const router = useRouter()
   const [contract, setContract] = useState<Contract | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
   const [showSignature, setShowSignature] = useState(false)
@@ -27,6 +32,7 @@ export default function ContractSignPage() {
 
   useEffect(() => {
     fetchContract()
+    fetchLogo()
   }, [])
 
   const fetchContract = async () => {
@@ -47,6 +53,21 @@ export default function ContractSignPage() {
       setError('Contract not found or has expired')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchLogo = async () => {
+    try {
+      const response = await fetch('/api/settings')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.appearance?.logoUrl) {
+          setLogoUrl(data.appearance.logoUrl)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching logo:', error)
+      // Logo is optional, don't fail if it errors
     }
   }
 
@@ -147,8 +168,20 @@ export default function ContractSignPage() {
 
         {/* Contract Content */}
         <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+          {/* Company Logo */}
+          {logoUrl && (
+            <div className="flex justify-center mb-8 pb-6 border-b border-gray-200">
+              <img 
+                src={logoUrl} 
+                alt="Company Logo" 
+                className="h-20 w-auto object-contain"
+              />
+            </div>
+          )}
+          
+          {/* Contract Content with improved styling */}
           <div 
-            className="prose prose-sm max-w-none"
+            className="prose prose-sm max-w-none prose-p:mb-4 prose-headings:mt-6 prose-headings:mb-3 prose-ul:my-4 prose-li:my-1"
             dangerouslySetInnerHTML={{ __html: contract.content }}
           />
         </div>
