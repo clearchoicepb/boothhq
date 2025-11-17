@@ -2,6 +2,7 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
 
+// API endpoint for creating and fetching contracts
 export async function POST(request: NextRequest) {
   try {
     const context = await getTenantContext()
