@@ -120,23 +120,40 @@ const TEXT_COLORS = [
   '#800080', // Purple
 ]
 
-// Merge fields for templates
+// Merge fields for templates - organized by entity
 const MERGE_FIELDS = [
-  { label: 'First Name', value: '{{first_name}}' },
-  { label: 'Last Name', value: '{{last_name}}' },
-  { label: 'Email', value: '{{email}}' },
-  { label: 'Phone', value: '{{phone}}' },
-  { label: 'Company Name', value: '{{company_name}}' },
-  { label: 'Event Name', value: '{{event_name}}' },
-  { label: 'Event Location', value: '{{event_location}}' },
-  { label: 'Event Start Date', value: '{{event_start_date}}' },
-  { label: 'Event End Date', value: '{{event_end_date}}' },
-  { label: 'Event Start Time', value: '{{event_start_time}}' },
-  { label: 'Event End Time', value: '{{event_end_time}}' },
-  { label: 'Event Total Amount', value: '{{event_total_amount}}' },
-  { label: 'Setup Time', value: '{{setup_time}}' },
-  { label: 'Load In Notes', value: '{{load_in_notes}}' },
-  { label: 'Contact Name', value: '{{contact_name}}' },
+  // Contact Fields
+  { label: 'Contact: First Name', value: '{{contact_first_name}}' },
+  { label: 'Contact: Last Name', value: '{{contact_last_name}}' },
+  { label: 'Contact: Full Name', value: '{{contact_full_name}}' },
+  { label: 'Contact: Email', value: '{{contact_email}}' },
+  { label: 'Contact: Phone', value: '{{contact_phone}}' },
+  
+  // Lead Fields
+  { label: 'Lead: First Name', value: '{{lead_first_name}}' },
+  { label: 'Lead: Last Name', value: '{{lead_last_name}}' },
+  { label: 'Lead: Full Name', value: '{{lead_full_name}}' },
+  { label: 'Lead: Email', value: '{{lead_email}}' },
+  { label: 'Lead: Phone', value: '{{lead_phone}}' },
+  { label: 'Lead: Company', value: '{{lead_company}}' },
+  
+  // Account Fields
+  { label: 'Account: Company Name', value: '{{account_name}}' },
+  
+  // Event Fields
+  { label: 'Event: Title', value: '{{event_title}}' },
+  { label: 'Event: Location', value: '{{event_location}}' },
+  { label: 'Event: Start Date', value: '{{event_start_date}}' },
+  { label: 'Event: End Date', value: '{{event_end_date}}' },
+  { label: 'Event: Start Time', value: '{{event_start_time}}' },
+  { label: 'Event: End Time', value: '{{event_end_time}}' },
+  { label: 'Event: Setup Time', value: '{{event_setup_time}}' },
+  { label: 'Event: Load In Notes', value: '{{event_load_in_notes}}' },
+  { label: 'Event: Total Amount', value: '{{event_total_amount}}' },
+  
+  // Opportunity Fields
+  { label: 'Opportunity: Name', value: '{{opportunity_name}}' },
+  { label: 'Opportunity: Amount', value: '{{opportunity_amount}}' },
 ]
 
 export function RichTextEditor({

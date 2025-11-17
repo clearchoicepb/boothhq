@@ -4,19 +4,27 @@
  */
 
 interface MergeFieldData {
-  // Contact/Lead data
-  first_name?: string
-  last_name?: string
-  email?: string
-  phone?: string
+  // Contact data
+  contact_first_name?: string
+  contact_last_name?: string
+  contact_full_name?: string
+  contact_email?: string
+  contact_phone?: string
+
+  // Lead data
+  lead_first_name?: string
+  lead_last_name?: string
+  lead_full_name?: string
+  lead_email?: string
+  lead_phone?: string
+  lead_company?: string
 
   // Account data
-  company_name?: string
+  account_name?: string
 
   // Opportunity data
   opportunity_name?: string
-  amount?: number
-  event_date?: string
+  opportunity_amount?: number
 
   // Event data
   event_title?: string
@@ -25,7 +33,18 @@ interface MergeFieldData {
   event_end_date?: string
   event_start_time?: string
   event_end_time?: string
+  event_setup_time?: string
+  event_load_in_notes?: string
   event_total_amount?: number
+
+  // Legacy fields (for backwards compatibility)
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
+  company_name?: string
+  amount?: number
+  event_date?: string
   setup_time?: string
   load_in_notes?: string
   contact_name?: string
@@ -53,25 +72,16 @@ export function replaceMergeFields(template: string, data: MergeFieldData): stri
     let formattedValue = String(value)
 
     // Special formatting for certain fields
-    if (key === 'amount' && typeof value === 'number') {
+    if ((key === 'amount' || key === 'opportunity_amount' || key === 'event_total_amount') && typeof value === 'number') {
       formattedValue = `$${value.toLocaleString()}`
-    } else if (key === 'event_total_amount' && typeof value === 'number') {
-      formattedValue = `$${value.toLocaleString()}`
-    } else if (key === 'event_date' && value) {
+    } else if ((key === 'event_date' || key === 'event_start_date' || key === 'event_end_date') && value) {
       formattedValue = new Date(value).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
-    } else if ((key === 'event_start_date' || key === 'event_end_date') && value) {
-      formattedValue = new Date(value).toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
-    } else if ((key === 'event_start_time' || key === 'event_end_time' || key === 'setup_time') && value) {
+    } else if ((key === 'event_start_time' || key === 'event_end_time' || key === 'event_setup_time' || key === 'setup_time') && value) {
       // Format time from HH:MM:SS to h:MM AM/PM
       const timeParts = value.split(':')
       if (timeParts.length >= 2) {
@@ -118,6 +128,10 @@ export async function getMergeFieldData(params: {
 
         // Event basic info
         data.event_title = event.title
+        data.event_load_in_notes = event.load_in_notes
+        data.event_setup_time = event.setup_time
+        
+        // Legacy fields
         data.load_in_notes = event.load_in_notes
         data.setup_time = event.setup_time
 
@@ -143,15 +157,25 @@ export async function getMergeFieldData(params: {
 
         // Contact info from event
         if (event.contacts) {
+          data.contact_first_name = event.contacts.first_name
+          data.contact_last_name = event.contacts.last_name
+          data.contact_email = event.contacts.email
+          data.contact_phone = event.contacts.phone
+          data.contact_full_name = `${event.contacts.first_name || ''} ${event.contacts.last_name || ''}`.trim()
+          
+          // Legacy fields
           data.first_name = event.contacts.first_name
           data.last_name = event.contacts.last_name
           data.email = event.contacts.email
           data.phone = event.contacts.phone
-          data.contact_name = `${event.contacts.first_name || ''} ${event.contacts.last_name || ''}`.trim()
+          data.contact_name = data.contact_full_name
         }
 
         // Account/company info from event
         if (event.accounts) {
+          data.account_name = event.accounts.name
+          
+          // Legacy field
           data.company_name = event.accounts.name
         }
 
@@ -180,6 +204,9 @@ export async function getMergeFieldData(params: {
         const opportunity = await response.json()
         console.log('[getMergeFieldData] Opportunity data:', opportunity)
         data.opportunity_name = opportunity.name
+        data.opportunity_amount = opportunity.amount
+        
+        // Legacy fields
         data.amount = opportunity.amount
         data.event_date = opportunity.event_date || opportunity.expected_close_date
       }
@@ -192,6 +219,9 @@ export async function getMergeFieldData(params: {
       if (response.ok) {
         const account = await response.json()
         console.log('[getMergeFieldData] Account data:', account)
+        data.account_name = account.name
+        
+        // Legacy field
         data.company_name = account.name
       }
     }
@@ -203,6 +233,13 @@ export async function getMergeFieldData(params: {
       if (response.ok) {
         const contact = await response.json()
         console.log('[getMergeFieldData] Contact data:', contact)
+        data.contact_first_name = contact.first_name
+        data.contact_last_name = contact.last_name
+        data.contact_full_name = `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+        data.contact_email = contact.email
+        data.contact_phone = contact.phone
+        
+        // Legacy fields
         data.first_name = contact.first_name
         data.last_name = contact.last_name
         data.email = contact.email
@@ -217,6 +254,14 @@ export async function getMergeFieldData(params: {
       if (response.ok) {
         const lead = await response.json()
         console.log('[getMergeFieldData] Lead data:', lead)
+        data.lead_first_name = lead.first_name
+        data.lead_last_name = lead.last_name
+        data.lead_full_name = `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
+        data.lead_email = lead.email
+        data.lead_phone = lead.phone
+        data.lead_company = lead.company
+        
+        // Legacy fields
         data.first_name = lead.first_name
         data.last_name = lead.last_name
         data.email = lead.email
