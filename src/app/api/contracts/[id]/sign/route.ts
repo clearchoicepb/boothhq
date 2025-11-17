@@ -145,19 +145,20 @@ export async function POST(
     // For now, just store the base64 data
     const signedPdfUrl = `data:application/pdf;base64,${pdfBase64}`
 
-    // Update contract with signature
+    // Update contract with signature (using actual database column names)
+    // Note: Database uses ip_address (not signed_ip), signed_by for signer name
+    // signature_user_agent and signed_pdf_url don't exist in current schema
     const { data: updatedContract, error: updateError } = await supabase
       .from('contracts')
       .update({
         status: 'signed',
         signature_data: signature,
         signed_at: signedAt,
-        signed_ip: clientIp,
-        signature_user_agent: userAgent,
-        signed_pdf_url: signedPdfUrl
+        signed_by: signature, // Store the typed signature name
+        ip_address: clientIp // Database uses 'ip_address' not 'signed_ip'
+        // Note: signature_user_agent and signed_pdf_url columns don't exist in schema
       })
       .eq('id', id)
-      .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 

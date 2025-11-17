@@ -145,16 +145,19 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expires_days)
 
-    // Create contract with minimal columns (only those that exist in database)
-    // Note: Using only core columns - others may not exist in current schema
+    // Create contract using actual database schema column names
+    // Note: Database uses template_name (not title), recipient_email (not signer_email), etc.
     const insertData: any = {
       tenant_id: dataSourceTenantId,
       event_id,
       content: processedContent,
-      status: 'draft'
+      status: 'draft',
+      template_name: title, // Database uses 'template_name' not 'title'
+      recipient_email: mergeData.contact_email || null, // Database uses 'recipient_email' not 'signer_email'
+      recipient_name: mergeData.contact_full_name || null // Database uses 'recipient_name' not 'signer_name'
     }
     
-    // Add optional fields only if they have values
+    // Add optional fields
     if (event.account_id) insertData.account_id = event.account_id
     if (event.contact_id) insertData.contact_id = event.contact_id
     if (template_id) insertData.template_id = template_id
@@ -163,6 +166,12 @@ export async function POST(request: NextRequest) {
     if (session.user.id) insertData.created_by = session.user.id
     
     console.log('[contracts/route.ts] Inserting with data:', Object.keys(insertData))
+    console.log('[contracts/route.ts] Insert values:', { 
+      template_name: insertData.template_name,
+      recipient_email: insertData.recipient_email,
+      recipient_name: insertData.recipient_name,
+      status: insertData.status
+    })
     
     const { data: contract, error: contractError} = await supabase
       .from('contracts')
