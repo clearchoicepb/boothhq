@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Download, Mail, Loader2, Eye, Plus, Edit2, Save } from 'lucide-react'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
 import { useSettings } from '@/lib/settings-context'
-import jsPDF from 'jsPDF'
+import jsPDF from 'jspdf'
 
 interface Template {
   id: string
