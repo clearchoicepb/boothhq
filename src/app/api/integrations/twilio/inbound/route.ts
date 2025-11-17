@@ -60,17 +60,36 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Step 1: Finding tenant for receiving number:', to)
     
     const appSupabase = createServerSupabaseClient()
-    const { data: settingsRows } = await appSupabase
+    const { data: settingsRows, error: settingsError } = await appSupabase
       .from('tenant_settings')
-      .select('tenant_id, setting_value')
-      .eq('setting_key', 'integrations.thirdPartyIntegrations.twilio.phoneNumber')
+      .select('tenant_id, setting_key, setting_value')
+      .like('setting_key', 'integrations.thirdPartyIntegrations.twilio%')
+    
+    console.log('📋 Found', settingsRows?.length || 0, 'Twilio settings rows')
+    if (settingsRows) {
+      settingsRows.forEach(row => {
+        console.log('  -', row.setting_key, '=', typeof row.setting_value === 'string' ? row.setting_value : JSON.stringify(row.setting_value))
+      })
+    }
+    if (settingsError) {
+      console.error('❌ Error fetching settings:', settingsError)
+    }
     
     let tenantId: string | null = null
-    const matchingTenant = settingsRows?.find(row => {
+    const phoneNumberRows = settingsRows?.filter(row => 
+      row.setting_key === 'integrations.thirdPartyIntegrations.twilio.phoneNumber'
+    )
+    
+    console.log('📞 Found', phoneNumberRows?.length || 0, 'phone number settings')
+    
+    const matchingTenant = phoneNumberRows?.find(row => {
       const configuredNumber = row.setting_value
+      console.log('🔍 Checking tenant', row.tenant_id, '- configured:', configuredNumber, 'type:', typeof configuredNumber)
+      
       if (typeof configuredNumber === 'string') {
         const normalizedConfigured = normalizePhone(configuredNumber)
         const normalizedTo = normalizePhone(to)
+        console.log('  Normalized configured:', normalizedConfigured, 'vs receiving:', normalizedTo)
         return normalizedConfigured === normalizedTo
       }
       return false
@@ -81,6 +100,7 @@ export async function POST(request: NextRequest) {
       console.log('✅ Found tenant by receiving phone number:', tenantId)
     } else {
       console.warn('⚠️ Could not determine tenant for incoming SMS to:', to)
+      console.warn('⚠️ Normalized receiving number:', normalizePhone(to))
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`,
         { status: 200, headers: { 'Content-Type': 'text/xml' } }
