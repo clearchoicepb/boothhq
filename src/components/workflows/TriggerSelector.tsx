@@ -33,16 +33,27 @@ export default function TriggerSelector({ eventTypeId, onSelect }: TriggerSelect
   const fetchEventTypes = async () => {
     try {
       setLoading(true)
+      console.log('[TriggerSelector] Fetching event types...')
       const response = await fetch('/api/event-types')
+      console.log('[TriggerSelector] Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('[TriggerSelector] Raw data:', data)
+        
         // API returns { eventTypes: [...] }
         const types = data.eventTypes || data
+        console.log('[TriggerSelector] Extracted types:', types)
+        console.log('[TriggerSelector] Is array?', Array.isArray(types))
+        console.log('[TriggerSelector] Count:', types?.length)
+        
         // Ensure types is an array
         setEventTypes(Array.isArray(types) ? types : [])
+      } else {
+        console.error('[TriggerSelector] Response not OK:', await response.text())
       }
     } catch (error) {
-      console.error('Error fetching event types:', error)
+      console.error('[TriggerSelector] Error fetching event types:', error)
       setEventTypes([]) // Reset to empty array on error
     } finally {
       setLoading(false)
