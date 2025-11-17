@@ -120,27 +120,10 @@ const TEXT_COLORS = [
   '#800080', // Purple
 ]
 
-// Merge fields for templates - organized by entity
+// Merge fields for templates - organized for Agreement generation
+// Agreements are linked to Events, which have Invoices and Contacts
 const MERGE_FIELDS = [
-  // Contact Fields
-  { label: 'Contact: First Name', value: '{{contact_first_name}}' },
-  { label: 'Contact: Last Name', value: '{{contact_last_name}}' },
-  { label: 'Contact: Full Name', value: '{{contact_full_name}}' },
-  { label: 'Contact: Email', value: '{{contact_email}}' },
-  { label: 'Contact: Phone', value: '{{contact_phone}}' },
-  
-  // Lead Fields
-  { label: 'Lead: First Name', value: '{{lead_first_name}}' },
-  { label: 'Lead: Last Name', value: '{{lead_last_name}}' },
-  { label: 'Lead: Full Name', value: '{{lead_full_name}}' },
-  { label: 'Lead: Email', value: '{{lead_email}}' },
-  { label: 'Lead: Phone', value: '{{lead_phone}}' },
-  { label: 'Lead: Company', value: '{{lead_company}}' },
-  
-  // Account Fields
-  { label: 'Account: Company Name', value: '{{account_name}}' },
-  
-  // Event Fields
+  // Event Fields (Primary - agreements are for events)
   { label: 'Event: Title', value: '{{event_title}}' },
   { label: 'Event: Location', value: '{{event_location}}' },
   { label: 'Event: Start Date', value: '{{event_start_date}}' },
@@ -151,21 +134,27 @@ const MERGE_FIELDS = [
   { label: 'Event: Load In Notes', value: '{{event_load_in_notes}}' },
   { label: 'Event: Total Amount', value: '{{event_total_amount}}' },
   
-  // Opportunity Fields
-  { label: 'Opportunity: Name', value: '{{opportunity_name}}' },
-  { label: 'Opportunity: Amount', value: '{{opportunity_amount}}' },
-  
-  // Invoice/Financial Fields
-  { label: 'Invoice: Number', value: '{{invoice_number}}' },
+  // Invoice/Financial Fields (invoices linked to events)
   { label: 'Invoice: Total Amount', value: '{{invoice_total}}' },
   { label: 'Invoice: Amount Due', value: '{{invoice_amount_due}}' },
-  { label: 'Invoice: Amount Paid', value: '{{invoice_amount_paid}}' },
-  { label: 'Invoice: Due Date', value: '{{invoice_due_date}}' },
-  { label: 'Invoice: Issue Date', value: '{{invoice_issue_date}}' },
   { label: 'Invoice: Deposit Amount', value: '{{invoice_deposit_amount}}' },
   { label: 'Invoice: Balance Due', value: '{{invoice_balance_due}}' },
+  { label: 'Invoice: Amount Paid', value: '{{invoice_amount_paid}}' },
+  { label: 'Invoice: Due Date', value: '{{invoice_due_date}}' },
   { label: 'Invoice: Payment Terms', value: '{{invoice_payment_terms}}' },
+  { label: 'Invoice: Number', value: '{{invoice_number}}' },
+  { label: 'Invoice: Issue Date', value: '{{invoice_issue_date}}' },
   { label: 'Invoice: Status', value: '{{invoice_status}}' },
+  
+  // Contact Fields (from event's account/contact)
+  { label: 'Contact: Full Name', value: '{{contact_full_name}}' },
+  { label: 'Contact: First Name', value: '{{contact_first_name}}' },
+  { label: 'Contact: Last Name', value: '{{contact_last_name}}' },
+  { label: 'Contact: Email', value: '{{contact_email}}' },
+  { label: 'Contact: Phone', value: '{{contact_phone}}' },
+  
+  // Account Fields (company info from event)
+  { label: 'Account: Company Name', value: '{{account_name}}' },
 ]
 
 export function RichTextEditor({

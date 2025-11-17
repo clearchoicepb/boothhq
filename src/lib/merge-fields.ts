@@ -144,7 +144,7 @@ export async function getMergeFieldData(params: {
   console.log('[getMergeFieldData] Params:', params)
 
   try {
-    // Fetch event data
+    // Fetch event data (agreements are linked to events)
     if (params.eventId) {
       const response = await fetch(`/api/events/${params.eventId}`)
       console.log('[getMergeFieldData] Event response:', response.ok)
@@ -205,18 +205,42 @@ export async function getMergeFieldData(params: {
           data.company_name = event.accounts.name
         }
 
-        // Try to fetch total amount from invoices
+        // Fetch invoice data from event (agreements use event + invoice data)
         try {
           const invoicesResponse = await fetch(`/api/invoices?event_id=${params.eventId}`)
           if (invoicesResponse.ok) {
             const invoices = await invoicesResponse.json()
             if (invoices && invoices.length > 0) {
+              // Calculate total from all invoices
               const total = invoices.reduce((sum: number, inv: any) => sum + (inv.total_amount || 0), 0)
               data.event_total_amount = total
+              
+              // Use the first/primary invoice for detailed invoice fields
+              const primaryInvoice = invoices[0]
+              data.invoice_number = primaryInvoice.invoice_number || primaryInvoice.id
+              data.invoice_total = primaryInvoice.total_amount
+              data.invoice_amount_due = primaryInvoice.amount_due || primaryInvoice.total_amount
+              data.invoice_amount_paid = primaryInvoice.amount_paid || 0
+              data.invoice_balance_due = (primaryInvoice.amount_due || primaryInvoice.total_amount) - (primaryInvoice.amount_paid || 0)
+              data.invoice_due_date = primaryInvoice.due_date
+              data.invoice_issue_date = primaryInvoice.issue_date || primaryInvoice.created_at
+              data.invoice_payment_terms = primaryInvoice.payment_terms || 'Due upon receipt'
+              data.invoice_status = primaryInvoice.status
+              
+              // Extract deposit from line items if present
+              if (primaryInvoice.line_items && Array.isArray(primaryInvoice.line_items)) {
+                const depositItem = primaryInvoice.line_items.find((item: any) => 
+                  item.description?.toLowerCase().includes('deposit') || 
+                  item.name?.toLowerCase().includes('deposit')
+                )
+                if (depositItem) {
+                  data.invoice_deposit_amount = depositItem.amount || depositItem.total
+                }
+              }
             }
           }
         } catch (err) {
-          console.error('Error fetching event invoices for total:', err)
+          console.error('Error fetching event invoices:', err)
           data.event_total_amount = null
         }
       }
