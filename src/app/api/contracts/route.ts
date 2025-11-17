@@ -232,9 +232,9 @@ export async function GET(request: NextRequest) {
       .from('contracts')
       .select(`
         *,
-        events(title),
-        accounts(name),
-        contacts(first_name, last_name)
+        events(id, event_name),
+        accounts(id, name),
+        contacts(id, first_name, last_name)
       `)
       .order('created_at', { ascending: false })
 
@@ -252,7 +252,24 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(data)
+    // Transform the data to match frontend expectations
+    const formattedData = data?.map(contract => ({
+      ...contract,
+      event: contract.events ? {
+        id: contract.events.id,
+        event_name: contract.events.event_name
+      } : null,
+      account: contract.accounts ? {
+        id: contract.accounts.id,
+        name: contract.accounts.name
+      } : null,
+      contact: contract.contacts ? {
+        id: contract.contacts.id,
+        full_name: `${contract.contacts.first_name} ${contract.contacts.last_name}`
+      } : null
+    }))
+
+    return NextResponse.json(formattedData)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(

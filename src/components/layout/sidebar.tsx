@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
-import { Building2, Users, TrendingUp } from 'lucide-react'
+import { Building2, Users, TrendingUp, FileText, FileSignature } from 'lucide-react'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
@@ -37,6 +37,18 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
       href: `/${tenantSubdomain}/accounts`,
       icon: Building2,
       permission: permissions.accounts?.view
+    },
+    {
+      label: 'Invoices',
+      href: `/${tenantSubdomain}/invoices`,
+      icon: FileText,
+      permission: permissions.invoices?.view
+    },
+    {
+      label: 'Agreements',
+      href: `/${tenantSubdomain}/agreements`,
+      icon: FileSignature,
+      permission: permissions.contracts?.view
     }
   ]
 
