@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { Modal } from '@/components/ui/modal'
 import {
   Folder,
@@ -94,20 +93,17 @@ export default function EventCategoriesPage() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-64"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-          </div>
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-64"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -247,7 +243,7 @@ export default function EventCategoriesPage() {
           }}
         />
       )}
-    </AppLayout>
+    </div>
   )
 }
 
