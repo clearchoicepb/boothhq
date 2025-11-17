@@ -10,9 +10,13 @@ import {
   CheckCircle, 
   Clock,
   XCircle,
-  Loader2
+  Loader2,
+  Edit,
+  Save,
+  X as XIcon
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
 interface ContractManagerModalProps {
   isOpen: boolean
@@ -44,6 +48,9 @@ export function ContractManagerModal({
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (isOpen && contractId) {
@@ -84,6 +91,47 @@ export function ContractManagerModal({
   const handleOpenLink = () => {
     const link = getSigningLink()
     window.open(link, '_blank')
+  }
+
+  const handleEdit = () => {
+    if (contract) {
+      setEditedContent(contract.content)
+      setIsEditing(true)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditedContent('')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!contract) return
+    
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/contracts/${contract.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: editedContent
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update agreement')
+      }
+
+      const updatedContract = await response.json()
+      setContract(updatedContract)
+      setIsEditing(false)
+      toast.success('Agreement updated successfully!')
+    } catch (error) {
+      console.error('Error updating agreement:', error)
+      toast.error('Failed to update agreement')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getStatusBadge = () => {
@@ -209,43 +257,96 @@ export function ContractManagerModal({
             </div>
           )}
 
-          {/* Agreement Preview */}
+          {/* Agreement Content - Edit or Preview */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Agreement Preview
-            </label>
-            <div className="border border-gray-300 rounded-lg p-6 max-h-96 overflow-y-auto bg-white">
-              {contract.logoUrl && (
-                <div className="flex justify-center mb-6 pb-4 border-b border-gray-200">
-                  <img 
-                    src={contract.logoUrl} 
-                    alt="Company Logo" 
-                    className="h-16 w-auto object-contain"
-                  />
-                </div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                {isEditing ? 'Edit Agreement' : 'Agreement Preview'}
+              </label>
+              {!isEditing && contract.status !== 'signed' && (
+                <Button
+                  onClick={handleEdit}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
               )}
-              <div 
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: contract.content }}
-              />
             </div>
+
+            {isEditing ? (
+              <div className="space-y-4">
+                <RichTextEditor
+                  value={editedContent}
+                  onChange={setEditedContent}
+                  placeholder="Edit agreement content..."
+                  showMergeFields={true}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    onClick={handleCancelEdit}
+                    variant="outline"
+                    disabled={saving}
+                  >
+                    <XIcon className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveEdit}
+                    disabled={saving}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="border border-gray-300 rounded-lg p-6 max-h-96 overflow-y-auto bg-white">
+                {contract.logoUrl && (
+                  <div className="flex justify-center mb-6 pb-4 border-b border-gray-200">
+                    <img 
+                      src={contract.logoUrl} 
+                      alt="Company Logo" 
+                      className="h-16 w-auto object-contain"
+                    />
+                  </div>
+                )}
+                <div 
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: contract.content }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Actions */}
-          <div className="flex justify-between pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleOpenLink}
-                variant="outline"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open Signing Page
+          {!isEditing && (
+            <div className="flex justify-between pt-4 border-t">
+              <Button variant="outline" onClick={onClose}>
+                Close
               </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleOpenLink}
+                  variant="outline"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open Signing Page
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-8">
