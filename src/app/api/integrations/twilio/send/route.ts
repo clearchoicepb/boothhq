@@ -15,25 +15,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Get Twilio credentials from settings (fallback to environment variables)
-    const { data: settings } = await supabase
+    const { data: settings, error: settingsError } = await supabase
       .from('settings')
       .select('integrations')
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
-    let accountSid = process.env.TWILIO_ACCOUNT_SID
-    let authToken = process.env.TWILIO_AUTH_TOKEN
-    let fromNumber = process.env.TWILIO_PHONE_NUMBER
+    console.log('🔍 Loading Twilio settings for tenant:', dataSourceTenantId)
+    console.log('📋 Settings query result:', { settings, settingsError })
 
-    // Override with database settings if available
-    if (settings?.integrations?.thirdPartyIntegrations?.twilio?.enabled) {
-      const twilioSettings = settings.integrations.thirdPartyIntegrations.twilio
-      accountSid = twilioSettings.accountSid || accountSid
-      authToken = twilioSettings.authToken || authToken
-      fromNumber = twilioSettings.phoneNumber || fromNumber
+    let accountSid: string | undefined
+    let authToken: string | undefined
+    let fromNumber: string | undefined
+
+    // Check if database settings exist and are enabled
+    const twilioSettings = settings?.integrations?.thirdPartyIntegrations?.twilio
+    const isDatabaseConfigured = twilioSettings?.enabled && 
+                                  twilioSettings?.accountSid && 
+                                  twilioSettings?.authToken && 
+                                  twilioSettings?.phoneNumber
+
+    if (isDatabaseConfigured) {
+      // Use database settings (PRIORITY)
+      accountSid = twilioSettings.accountSid
+      authToken = twilioSettings.authToken
+      fromNumber = twilioSettings.phoneNumber
+      console.log('✅ Using DATABASE Twilio settings:', { fromNumber, accountSid: accountSid?.substring(0, 10) + '...' })
+    } else {
+      // Fallback to environment variables
+      accountSid = process.env.TWILIO_ACCOUNT_SID
+      authToken = process.env.TWILIO_AUTH_TOKEN
+      fromNumber = process.env.TWILIO_PHONE_NUMBER
+      console.log('⚠️ Using ENVIRONMENT VARIABLE Twilio settings:', { fromNumber, accountSid: accountSid?.substring(0, 10) + '...' })
     }
 
     if (!accountSid || !authToken || !fromNumber) {
+      console.error('❌ Twilio credentials not configured')
       return NextResponse.json({ error: 'Twilio credentials not configured' }, { status: 500 })
     }
 
