@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { AppLayout } from '@/components/layout/app-layout'
 import {
   ArrowLeft,
   Plus,
@@ -180,8 +179,7 @@ export default function DesignSettingsPage() {
   }
 
   return (
-    <AppLayout>
-      <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <Link
@@ -475,8 +473,7 @@ export default function DesignSettingsPage() {
             <li>• All deadlines are calculated based on the event date</li>
           </ul>
         </div>
-      </div>
-    </AppLayout>
+    </div>
   )
 }
 
