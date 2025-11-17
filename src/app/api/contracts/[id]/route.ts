@@ -35,7 +35,29 @@ export async function GET(
       return NextResponse.json({ error: 'Contract has expired' }, { status: 410 })
     }
 
-    return NextResponse.json(contract)
+    // Fetch tenant logo (if available) for display on public signing page
+    let logoUrl = null
+    try {
+      const { data: settings } = await supabase
+        .from('tenant_settings')
+        .select('setting_value')
+        .eq('tenant_id', dataSourceTenantId)
+        .eq('setting_key', 'appearance.logoUrl')
+        .single()
+      
+      if (settings?.setting_value) {
+        logoUrl = settings.setting_value
+      }
+    } catch (error) {
+      // Logo is optional, don't fail if it doesn't exist
+      console.log('No logo configured for tenant')
+    }
+
+    // Return contract with logo URL for public display
+    return NextResponse.json({
+      ...contract,
+      logoUrl
+    })
   } catch (error) {
     console.error('Error fetching contract:', error)
     return NextResponse.json(
