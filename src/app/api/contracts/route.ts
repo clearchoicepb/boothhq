@@ -2,6 +2,10 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // API endpoint for creating and fetching contracts
 export async function POST(request: NextRequest) {
   try {
