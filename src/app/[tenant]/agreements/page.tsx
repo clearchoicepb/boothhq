@@ -10,7 +10,7 @@ import { Plus, FileSignature, ExternalLink, Search, Filter, CheckCircle, Clock, 
 import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
-import { BaseModal } from '@/components/ui/base-modal'
+import { Modal } from '@/components/ui/modal'
 
 interface Agreement {
   id: string
@@ -384,7 +384,7 @@ export default function AgreementsPage() {
       </AppLayout>
 
       {/* Delete Confirmation Modal */}
-      <BaseModal
+      <Modal
         isOpen={deleteModalOpen}
         onClose={handleDeleteCancel}
         title="Delete Agreement"
@@ -448,7 +448,7 @@ export default function AgreementsPage() {
             </Button>
           </div>
         </div>
-      </BaseModal>
+      </Modal>
     </AccessGuard>
   )
 }
