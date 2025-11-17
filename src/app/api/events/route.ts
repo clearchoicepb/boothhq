@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createAutoDesignItems } from '@/lib/design-helpers'
+import { workflowEngine } from '@/lib/services/workflowEngine'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(request: NextRequest) {
@@ -250,6 +251,32 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Error auto-creating design items:', error)
         // Don't fail the entire request, just log the error
+      }
+    }
+
+    // Execute workflows for this event type (automated task creation)
+    if (event.event_type_id && dataSourceTenantId) {
+      try {
+        console.log(`[Events API] Executing workflows for event type: ${event.event_type_id}`)
+        const workflowResults = await workflowEngine.executeWorkflowsForEvent({
+          eventId: event.id,
+          eventTypeId: event.event_type_id,
+          tenantId: context.tenantId,
+          dataSourceTenantId,
+          supabase,
+          userId: session.user.id,
+        })
+        
+        if (workflowResults.length > 0) {
+          const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
+          console.log(`[Events API] Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s)`)
+        } else {
+          console.log(`[Events API] No active workflows found for event type ${event.event_type_id}`)
+        }
+      } catch (error) {
+        console.error('[Events API] Error executing workflows:', error)
+        // Don't fail the event creation, just log the error
+        // Workflows are a nice-to-have, not critical to event creation
       }
     }
 
