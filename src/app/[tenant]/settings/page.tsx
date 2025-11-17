@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -28,248 +28,347 @@ import {
   Sparkles,
   Trash2,
   Folder,
-  Tag
+  Tag,
+  Search,
+  ChevronRight,
+  ChevronDown,
+  Zap,
+  Clock,
+  PenTool,
+  Home,
+  Boxes,
+  DollarSign
 } from 'lucide-react';
 
-interface SettingsSection {
+interface SettingsItem {
   id: string;
   title: string;
   description: string;
   icon: React.ComponentType<any>;
   href: string;
-  category: 'crm' | 'operations' | 'system' | 'integrations';
+  status?: 'configured' | 'new' | 'unconfigured';
 }
 
-const settingsSections: SettingsSection[] = [
-  // CRM Module Settings
+interface SettingsCategory {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+  items: SettingsItem[];
+  color: string;
+}
+
+const settingsStructure: SettingsCategory[] = [
   {
-    id: 'accounts',
-    title: 'Accounts',
-    description: 'Customize account types, fields, and display options',
-    icon: Building2,
-    href: '/accounts',
-    category: 'crm'
-  },
-  {
-    id: 'contacts',
-    title: 'Contacts',
-    description: 'Manage contact fields, relationships, and contact preferences',
-    icon: Users,
-    href: '/contacts',
-    category: 'crm'
-  },
-  {
-    id: 'leads',
-    title: 'Leads',
-    description: 'Configure lead sources, stages, and qualification criteria',
-    icon: UserPlus,
-    href: '/leads',
-    category: 'crm'
-  },
-  {
-    id: 'opportunities',
-    title: 'Opportunities',
-    description: 'Set up sales stages, probability settings, and pipeline views',
+    id: 'crm',
+    label: 'CRM & Sales',
     icon: Target,
-    href: '/opportunities',
-    category: 'crm'
+    color: 'blue',
+    items: [
+      {
+        id: 'leads',
+        title: 'Leads',
+        description: 'Lead sources, stages, and qualification',
+        icon: UserPlus,
+        href: '/leads',
+      },
+      {
+        id: 'opportunities',
+        title: 'Opportunities',
+        description: 'Sales stages and pipeline management',
+        icon: Target,
+        href: '/opportunities',
+      },
+      {
+        id: 'accounts',
+        title: 'Accounts',
+        description: 'Account types and custom fields',
+        icon: Building2,
+        href: '/accounts',
+      },
+      {
+        id: 'contacts',
+        title: 'Contacts',
+        description: 'Contact management and relationships',
+        icon: Users,
+        href: '/contacts',
+      },
+    ]
   },
-  {
-    id: 'users',
-    title: 'Users',
-    description: 'Manage user accounts, roles, and permissions',
-    icon: UserCheck,
-    href: '/users',
-    category: 'crm'
-  },
-  {
-    id: 'roles',
-    title: 'Roles',
-    description: 'Configure job-category based roles and granular permissions',
-    icon: Shield,
-    href: '/roles',
-    category: 'system'
-  },
-  
-  // Operations Module Settings
   {
     id: 'events',
-    title: 'Events',
-    description: 'Configure event types, templates, and scheduling preferences',
+    label: 'Events & Operations',
     icon: Calendar,
-    href: '/events',
-    category: 'operations'
+    color: 'green',
+    items: [
+      {
+        id: 'event-categories',
+        title: 'Event Categories',
+        description: 'Social vs Corporate workflow categories',
+        icon: Folder,
+        href: '/event-categories',
+      },
+      {
+        id: 'event-types',
+        title: 'Event Types',
+        description: 'Specific event types (Weddings, etc.)',
+        icon: Tag,
+        href: '/event-types',
+      },
+      {
+        id: 'packages',
+        title: 'Packages',
+        description: 'Service packages and pricing',
+        icon: Package,
+        href: '/packages',
+      },
+      {
+        id: 'add-ons',
+        title: 'Add-ons',
+        description: 'Additional services and items',
+        icon: Plus,
+        href: '/add-ons',
+      },
+      {
+        id: 'core-tasks',
+        title: 'Core Event Tasks',
+        description: 'Event readiness checklist items',
+        icon: CheckCircle2,
+        href: '/core-tasks',
+      },
+      {
+        id: 'task-templates',
+        title: 'Task Templates',
+        description: 'Reusable task templates',
+        icon: CheckCircle2,
+        href: '/task-templates',
+      },
+      {
+        id: 'staff-roles',
+        title: 'Staff Roles',
+        description: 'Operations and event team roles',
+        icon: UserCheck,
+        href: '/staff-roles',
+      },
+    ]
   },
   {
-    id: 'core-tasks',
-    title: 'Core Event Tasks',
-    description: 'Customize checklist tasks for event readiness tracking',
-    icon: CheckCircle2,
-    href: '/core-tasks',
-    category: 'operations'
+    id: 'design',
+    label: 'Design Management',
+    icon: PenTool,
+    color: 'purple',
+    items: [
+      {
+        id: 'design',
+        title: 'Design Settings',
+        description: 'Design item types, deadlines, and statuses',
+        icon: Palette,
+        href: '/design',
+        status: 'configured'
+      },
+    ]
   },
   {
-    id: 'task-templates',
-    title: 'Task Templates',
-    description: 'Create reusable task templates for quick task creation',
-    icon: CheckCircle2,
-    href: '/task-templates',
-    category: 'operations'
-  },
-  {
-    id: 'event-categories',
-    title: 'Event Categories',
-    description: 'Manage workflow categories (Social vs Corporate events)',
-    icon: Folder,
-    href: '/event-categories',
-    category: 'operations'
-  },
-  {
-    id: 'event-types',
-    title: 'Event Types',
-    description: 'Configure specific event types within categories',
-    icon: Tag,
-    href: '/event-types',
-    category: 'operations'
-  },
-  {
-    id: 'staff-roles',
-    title: 'Staff Roles',
-    description: 'Manage staff role categories for operations and event team members',
-    icon: UserCheck,
-    href: '/staff-roles',
-    category: 'operations'
-  },
-  {
-    id: 'inventory',
-    title: 'Inventory',
-    description: 'Manage equipment categories, maintenance schedules, and tracking',
-    icon: Package,
-    href: '/inventory',
-    category: 'operations'
-  },
-  {
-    id: 'invoices',
-    title: 'Invoices',
-    description: 'Customize invoice templates, payment terms, and billing settings',
-    icon: FileText,
-    href: '/invoices',
-    category: 'operations'
-  },
-  
-  // System Settings
-  {
-    id: 'appearance',
-    title: 'Appearance',
-    description: 'Customize colors, themes, and UI preferences',
-    icon: Palette,
-    href: '/appearance',
-    category: 'system'
-  },
-  {
-    id: 'notifications',
-    title: 'Notifications',
-    description: 'Configure email alerts, reminders, and notification preferences',
-    icon: Bell,
-    href: '/notifications',
-    category: 'system'
-  },
-  {
-    id: 'security',
-    title: 'Security',
-    description: 'Manage user permissions, data access, and security settings',
-    icon: Shield,
-    href: '/security',
-    category: 'system'
-  },
-  {
-    id: 'data',
-    title: 'Data Management',
-    description: 'Import/export data, backup settings, and data retention policies',
-    icon: Database,
-    href: '/data',
-    category: 'system'
-  },
-  
-  // Integrations Settings
-  {
-    id: 'integrations',
-    title: 'Integrations',
-    description: 'Connect with external services and configure API settings (including Stripe payments)',
-    icon: Globe,
-    href: '/integrations',
-    category: 'integrations'
-  },
-  {
-    id: 'email',
-    title: 'Email Services',
-    description: 'Set up Gmail, SMTP, and email marketing integrations',
-    icon: Mail,
-    href: '/email',
-    category: 'integrations'
-  },
-  {
-    id: 'analytics',
-    title: 'Analytics & Reports',
-    description: 'Configure reporting dashboards and analytics integrations',
-    icon: BarChart3,
-    href: '/analytics',
-    category: 'integrations'
+    id: 'automation',
+    label: 'Automation',
+    icon: Zap,
+    color: 'yellow',
+    items: [
+      {
+        id: 'workflows',
+        title: 'Workflows',
+        description: 'Automated task creation and assignment',
+        icon: Zap,
+        href: '/workflows',
+        status: 'new'
+      },
+    ]
   },
   {
     id: 'templates',
-    title: 'Templates',
-    description: 'Create and manage email, SMS, and contract templates',
+    label: 'Templates & Documents',
     icon: FileType,
-    href: '/templates',
-    category: 'system'
+    color: 'indigo',
+    items: [
+      {
+        id: 'templates',
+        title: 'Email & SMS Templates',
+        description: 'Communication templates',
+        icon: Mail,
+        href: '/templates',
+      },
+      {
+        id: 'contract-templates',
+        title: 'Contract Templates',
+        description: 'Agreement and contract templates',
+        icon: FileText,
+        href: '/templates/contracts',
+      },
+    ]
   },
   {
-    id: 'packages',
-    title: 'Packages',
-    description: 'Manage service packages and pricing for quotes',
-    icon: Package,
-    href: '/packages',
-    category: 'operations'
+    id: 'finance',
+    label: 'Finance',
+    icon: DollarSign,
+    color: 'emerald',
+    items: [
+      {
+        id: 'invoices',
+        title: 'Invoice Settings',
+        description: 'Invoice templates and payment terms',
+        icon: FileText,
+        href: '/invoices',
+      },
+    ]
   },
   {
-    id: 'add-ons',
-    title: 'Add-ons',
-    description: 'Manage add-on items and services for quotes',
-    icon: Plus,
-    href: '/add-ons',
-    category: 'operations'
-  }
+    id: 'inventory',
+    label: 'Inventory',
+    icon: Boxes,
+    color: 'orange',
+    items: [
+      {
+        id: 'inventory',
+        title: 'Equipment & Inventory',
+        description: 'Equipment categories and tracking',
+        icon: Package,
+        href: '/inventory',
+      },
+    ]
+  },
+  {
+    id: 'system',
+    label: 'System Settings',
+    icon: SettingsIcon,
+    color: 'gray',
+    items: [
+      {
+        id: 'users',
+        title: 'Users',
+        description: 'User accounts and team management',
+        icon: UserCheck,
+        href: '/users',
+      },
+      {
+        id: 'roles',
+        title: 'Roles & Permissions',
+        description: 'Access control and permissions',
+        icon: Shield,
+        href: '/roles',
+      },
+      {
+        id: 'appearance',
+        title: 'Appearance',
+        description: 'Branding, colors, and themes',
+        icon: Palette,
+        href: '/appearance',
+      },
+      {
+        id: 'notifications',
+        title: 'Notifications',
+        description: 'Email alerts and reminders',
+        icon: Bell,
+        href: '/notifications',
+      },
+      {
+        id: 'security',
+        title: 'Security',
+        description: 'Security settings and policies',
+        icon: Shield,
+        href: '/security',
+      },
+      {
+        id: 'data',
+        title: 'Data Management',
+        description: 'Import, export, and backups',
+        icon: Database,
+        href: '/data',
+      },
+    ]
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: Globe,
+    color: 'pink',
+    items: [
+      {
+        id: 'integrations',
+        title: 'Integrations Hub',
+        description: 'Connect external services',
+        icon: Globe,
+        href: '/integrations',
+      },
+      {
+        id: 'email',
+        title: 'Email Services',
+        description: 'Gmail, SMTP, and email settings',
+        icon: Mail,
+        href: '/email',
+      },
+      {
+        id: 'analytics',
+        title: 'Analytics & Reports',
+        description: 'Reporting and analytics integrations',
+        icon: BarChart3,
+        href: '/analytics',
+      },
+    ]
+  },
 ];
 
-const categoryLabels = {
-  crm: 'CRM Settings',
-  operations: 'Operations',
-  system: 'System',
-  integrations: 'Integrations'
-};
-
-const categoryColors = {
-  crm: 'border-blue-200 bg-blue-50',
-  operations: 'border-green-200 bg-green-50',
-  system: 'border-purple-200 bg-purple-50',
-  integrations: 'border-orange-200 bg-orange-50'
+const colorClasses = {
+  blue: 'text-blue-600 bg-blue-50 border-blue-200',
+  green: 'text-green-600 bg-green-50 border-green-200',
+  purple: 'text-purple-600 bg-purple-50 border-purple-200',
+  yellow: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+  indigo: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+  emerald: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+  orange: 'text-orange-600 bg-orange-50 border-orange-200',
+  gray: 'text-gray-600 bg-gray-50 border-gray-200',
+  pink: 'text-pink-600 bg-pink-50 border-pink-200',
 };
 
 export default function SettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['crm', 'events']);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const filteredSections = selectedCategory
-    ? settingsSections.filter(section => section.category === selectedCategory)
-    : settingsSections;
+  // Auto-expand all categories if search is active
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setExpandedCategories(settingsStructure.map(cat => cat.id));
+    }
+  }, [searchQuery]);
 
-  const categories = Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>;
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  // Filter settings based on search
+  const filteredStructure = useMemo(() => {
+    if (!searchQuery.trim()) return settingsStructure;
+
+    const query = searchQuery.toLowerCase();
+    return settingsStructure
+      .map(category => ({
+        ...category,
+        items: category.items.filter(
+          item =>
+            item.title.toLowerCase().includes(query) ||
+            item.description.toLowerCase().includes(query)
+        ),
+      }))
+      .filter(category => category.items.length > 0);
+  }, [searchQuery]);
 
   const handleGenerateSeedData = async () => {
-    if (!confirm('⚠️ This will create 40-50 test records across all CRM entities (Leads, Accounts, Contacts, Opportunities, Events, Invoices, Quotes).\n\nThis operation cannot be undone automatically. Continue?')) {
+    if (!confirm('⚠️ This will create 40-50 test records across all CRM entities.\n\nThis operation cannot be undone automatically. Continue?')) {
       return;
     }
 
@@ -287,18 +386,15 @@ export default function SettingsPage() {
 
       if (response.ok) {
         toast.success(
-          `Successfully created ${data.summary.total} records!\n` +
-          `Leads: ${data.summary.leads}, Accounts: ${data.summary.accounts}, ` +
-          `Contacts: ${data.summary.contacts}, Opportunities: ${data.summary.opportunities}, ` +
-          `Events: ${data.summary.events}, Invoices: ${data.summary.invoices}, Quotes: ${data.summary.quotes}`,
-          { duration: 6000 }
+          `Successfully created ${data.summary.total} records!`,
+          { duration: 4000 }
         );
       } else {
         toast.error(data.error || 'Failed to generate seed data');
       }
     } catch (error: any) {
       console.error('Seed data error:', error);
-      toast.error('Failed to generate seed data: ' + error.message);
+      toast.error('Failed to generate seed data');
     } finally {
       toast.dismiss(loadingToast);
       setIsGenerating(false);
@@ -306,18 +402,13 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAllData = async () => {
-    if (!confirm('🚨 WARNING: This will DELETE ALL DATA in your CRM!\n\nThis includes:\n- All Leads\n- All Accounts\n- All Contacts\n- All Opportunities\n- All Events\n- All Invoices\n- All Quotes\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?')) {
-      return;
-    }
-
-    // Double confirmation
-    if (!confirm('Last chance! Type YES in the next dialog to confirm deletion.')) {
+    if (!confirm('🚨 WARNING: This will DELETE ALL DATA!\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?')) {
       return;
     }
 
     const confirmation = prompt('Type "DELETE ALL" to confirm (case-sensitive):');
     if (confirmation !== 'DELETE ALL') {
-      toast.error('Deletion cancelled - confirmation text did not match');
+      toast.error('Deletion cancelled');
       return;
     }
 
@@ -338,7 +429,7 @@ export default function SettingsPage() {
       }
     } catch (error: any) {
       console.error('Delete error:', error);
-      toast.error('Failed to delete data: ' + error.message);
+      toast.error('Failed to delete data');
     } finally {
       toast.dismiss(loadingToast);
       setIsDeleting(false);
@@ -346,112 +437,130 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-        {/* Header */}
-        <div className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-                  <SettingsIcon className="h-6 w-6 mr-3 text-[#347dc4]" />
-                  Settings
-                </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Customize your CRM experience and manage system preferences
-                </p>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                <SettingsIcon className="h-8 w-8 mr-3 text-[#347dc4]" />
+                Settings
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Configure your system preferences and manage settings
+              </p>
             </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search settings..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#347dc4] focus:border-[#347dc4] transition-all"
+            />
           </div>
         </div>
+      </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Category Filter */}
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                  selectedCategory === null
-                    ? 'bg-[#347dc4] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All Settings
-              </button>
-              {categories.map((category) => (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Settings Categories */}
+        <div className="space-y-6">
+          {filteredStructure.map((category) => {
+            const CategoryIcon = category.icon;
+            const isExpanded = expandedCategories.includes(category.id);
+            const colorClass = colorClasses[category.color as keyof typeof colorClasses] || colorClasses.gray;
+
+            return (
+              <div key={category.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {/* Category Header */}
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                    selectedCategory === category
-                      ? 'bg-[#347dc4] text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  onClick={() => toggleCategory(category.id)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                 >
-                  {categoryLabels[category]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Settings Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSections.map((section) => {
-              const IconComponent = section.icon;
-              return (
-                <Link
-                  key={section.id}
-                  href={`/${tenantSubdomain}/settings${section.href}`}
-                  className="group block"
-                >
-                  <div className={`border rounded-lg p-6 hover:shadow-md transition-all duration-150 cursor-pointer ${categoryColors[section.category]}`}>
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border">
-                          <IconComponent className="h-5 w-5 text-[#347dc4]" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-[#347dc4] transition-colors duration-150">
-                          {section.title}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {section.description}
-                        </p>
-                        <div className="mt-3">
-                          <span className="inline-flex items-center text-xs font-medium text-[#347dc4]">
-                            Configure →
-                          </span>
-                        </div>
-                      </div>
+                  <div className="flex items-center">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 border ${colorClass}`}>
+                      <CategoryIcon className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <h2 className="text-lg font-semibold text-gray-900">{category.label}</h2>
+                      <p className="text-xs text-gray-500">{category.items.length} settings</p>
                     </div>
                   </div>
-                </Link>
-              );
-            })}
-          </div>
+                  {isExpanded ? (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
 
-          {/* Quick Actions */}
-          <div className="mt-12 border-t border-gray-200 pt-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <button className="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-150">
-                <Database className="h-4 w-4 mr-2 text-[#347dc4]" />
-                <span className="text-sm font-medium">Export Data</span>
-              </button>
-              <button className="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-150">
-                <Database className="h-4 w-4 mr-2 text-[#347dc4]" />
-                <span className="text-sm font-medium">Import Data</span>
-              </button>
-              <button className="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-150">
-                <Shield className="h-4 w-4 mr-2 text-[#347dc4]" />
-                <span className="text-sm font-medium">Backup Settings</span>
-              </button>
-            </div>
-          </div>
+                {/* Category Items */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+                      {category.items.map((item, index) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <Link
+                            key={item.id}
+                            href={`/${tenantSubdomain}/settings${item.href}`}
+                            className="group p-4 hover:bg-gray-50 transition-colors relative"
+                          >
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <ItemIcon className="h-5 w-5 text-gray-400 group-hover:text-[#347dc4] transition-colors" />
+                              </div>
+                              <div className="ml-3 flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="text-sm font-medium text-gray-900 group-hover:text-[#347dc4] transition-colors">
+                                    {item.title}
+                                  </h3>
+                                  {item.status === 'new' && (
+                                    <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                  {item.description}
+                                </p>
+                                <div className="mt-2">
+                                  <span className="inline-flex items-center text-xs font-medium text-[#347dc4] opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Configure
+                                    <ChevronRight className="h-3 w-3 ml-1" />
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-          {/* Developer Tools */}
-          <div className="mt-12 border-t border-gray-200 pt-8">
+        {/* No Results */}
+        {filteredStructure.length === 0 && (
+          <div className="text-center py-12">
+            <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No settings found</h3>
+            <p className="text-sm text-gray-500">
+              Try a different search term
+            </p>
+          </div>
+        )}
+
+        {/* Developer Tools */}
+        {!searchQuery && (
+          <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Developer Tools</h2>
             <p className="text-sm text-gray-600 mb-4">
               Tools for testing and development. Use with caution in production.
@@ -460,7 +569,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleGenerateSeedData}
                 disabled={isGenerating}
-                className="flex items-center justify-center px-4 py-3 border-2 border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center px-4 py-3 border-2 border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Sparkles className="h-4 w-4 mr-2 text-green-700" />
                 <span className="text-sm font-medium text-green-900">
@@ -470,7 +579,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleDeleteAllData}
                 disabled={isDeleting}
-                className="flex items-center justify-center px-4 py-3 border-2 border-red-200 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center px-4 py-3 border-2 border-red-200 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 className="h-4 w-4 mr-2 text-red-700" />
                 <span className="text-sm font-medium text-red-900">
@@ -480,16 +589,12 @@ export default function SettingsPage() {
             </div>
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-xs text-yellow-800">
-                <strong>⚠️ Warning:</strong> Generate Test Data creates 40-50 realistic records across all entities (Leads, Accounts, Contacts, Opportunities, Events, Invoices, Quotes). Delete All Data removes everything permanently. Use these tools for development and testing only.
+                <strong>⚠️ Warning:</strong> These tools modify your database. Use for development only.
               </p>
             </div>
           </div>
-        </div>
+        )}
       </div>
+    </div>
   );
 }
-
-
-
-
-
