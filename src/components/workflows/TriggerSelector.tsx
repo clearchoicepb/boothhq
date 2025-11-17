@@ -36,10 +36,12 @@ export default function TriggerSelector({ eventTypeId, onSelect }: TriggerSelect
       const response = await fetch('/api/event-types')
       if (response.ok) {
         const data = await response.json()
-        setEventTypes(data)
+        // Ensure data is an array
+        setEventTypes(Array.isArray(data) ? data : [])
       }
     } catch (error) {
       console.error('Error fetching event types:', error)
+      setEventTypes([]) // Reset to empty array on error
     } finally {
       setLoading(false)
     }

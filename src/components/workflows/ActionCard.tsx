@@ -51,17 +51,21 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       const templatesRes = await fetch('/api/task-templates')
       if (templatesRes.ok) {
         const templates = await templatesRes.json()
-        setTaskTemplates(templates)
+        // Ensure templates is an array
+        setTaskTemplates(Array.isArray(templates) ? templates : [])
       }
 
       // Fetch users
       const usersRes = await fetch('/api/users')
       if (usersRes.ok) {
         const usersData = await usersRes.json()
-        setUsers(usersData)
+        // Ensure usersData is an array
+        setUsers(Array.isArray(usersData) ? usersData : [])
       }
     } catch (error) {
       console.error('Error fetching data:', error)
+      setTaskTemplates([]) // Reset to empty arrays on error
+      setUsers([])
     } finally {
       setLoading(false)
     }

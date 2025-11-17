@@ -67,7 +67,9 @@ export default function WorkflowBuilder({
       setIsActive(workflow.is_active)
       
       // Convert workflow actions to builder actions
-      const builderActions: WorkflowBuilderAction[] = (workflow.actions || [])
+      // Ensure workflow.actions is an array (handle null, undefined, or non-array)
+      const workflowActions = Array.isArray(workflow.actions) ? workflow.actions : []
+      const builderActions: WorkflowBuilderAction[] = workflowActions
         .sort((a, b) => a.execution_order - b.execution_order)
         .map((action, index) => ({
           tempId: `existing-${action.id}`,
