@@ -227,15 +227,10 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id')
 
     // Note: RLS handles tenant filtering automatically
-    // Note: events table has 'name' column, not 'event_name'
+    // Query without joins first - the events table schema varies
     let query = supabase
       .from('contracts')
-      .select(`
-        *,
-        events(id, name),
-        accounts(id, name),
-        contacts(id, first_name, last_name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (eventId) {
@@ -260,33 +255,9 @@ export async function GET(request: NextRequest) {
 
     console.log('[contracts/route.ts] GET Query successful, contracts count:', data?.length || 0)
 
-    // Transform the data to match frontend expectations
-    const formattedData = (data || []).map(contract => {
-      console.log('[contracts/route.ts] Processing contract:', contract.id, {
-        has_events: !!contract.events,
-        has_accounts: !!contract.accounts,
-        has_contacts: !!contract.contacts
-      })
-      
-      return {
-        ...contract,
-        event: contract.events ? {
-          id: contract.events.id,
-          event_name: contract.events.name // events table has 'name' column
-        } : null,
-        account: contract.accounts ? {
-          id: contract.accounts.id,
-          name: contract.accounts.name
-        } : null,
-        contact: contract.contacts ? {
-          id: contract.contacts.id,
-          full_name: `${contract.contacts.first_name || ''} ${contract.contacts.last_name || ''}`.trim()
-        } : null
-      }
-    })
-
-    console.log('[contracts/route.ts] GET Returning formatted data, count:', formattedData.length)
-    return NextResponse.json(formattedData)
+    // Return raw data - no joins needed for now
+    // Frontend will handle missing related data gracefully
+    return NextResponse.json(data || [])
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(

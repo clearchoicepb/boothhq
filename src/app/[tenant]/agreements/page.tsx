@@ -23,14 +23,9 @@ interface Agreement {
   signed_at: string | null
   expires_at: string | null
   created_at: string
-  event?: {
-    id: string
-    event_name: string
-  } | null
-  account?: {
-    id: string
-    name: string
-  } | null
+  event_id: string | null
+  account_id: string | null
+  contact_id: string | null
 }
 
 export default function AgreementsPage() {
@@ -90,9 +85,7 @@ export default function AgreementsPage() {
         agreement.contract_number.toLowerCase().includes(term) ||
         agreement.recipient_name?.toLowerCase().includes(term) ||
         agreement.recipient_email?.toLowerCase().includes(term) ||
-        agreement.template_name?.toLowerCase().includes(term) ||
-        agreement.account?.name?.toLowerCase().includes(term) ||
-        agreement.event?.event_name?.toLowerCase().includes(term)
+        agreement.template_name?.toLowerCase().includes(term)
       )
     }
 
@@ -247,9 +240,6 @@ export default function AgreementsPage() {
                         Recipient
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Related To
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -282,27 +272,6 @@ export default function AgreementsPage() {
                               {agreement.recipient_email}
                             </div>
                           )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {agreement.event ? (
-                              <Link
-                                href={`/${tenantSubdomain}/events/${agreement.event.id}`}
-                                className="text-[#347dc4] hover:underline"
-                              >
-                                {agreement.event.event_name}
-                              </Link>
-                            ) : agreement.account ? (
-                              <Link
-                                href={`/${tenantSubdomain}/accounts/${agreement.account.id}`}
-                                className="text-[#347dc4] hover:underline"
-                              >
-                                {agreement.account.name}
-                              </Link>
-                            ) : (
-                              'N/A'
-                            )}
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {getStatusBadge(agreement)}
