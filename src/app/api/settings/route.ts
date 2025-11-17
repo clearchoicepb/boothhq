@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
-    const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, tenantId, session } = context
 
     const body = await request.json()
     const { settings } = body
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     
     flattenSettings(settings)
 
-    // Use upsert to handle existing settings
+    // Use upsert to handle existing settings (TENANT DATABASE)
     const { error } = await supabase
       .from('tenant_settings')
       .upsert(settingsArray, {
@@ -113,6 +113,34 @@ export async function POST(request: NextRequest) {
           error: 'Failed to save settings', 
           details: error.message 
         }, { status: 500 })
+      }
+    }
+
+    // CRITICAL: Also save Twilio phone number to APPLICATION DB for webhook lookup
+    // The webhook needs to find which tenant owns a phone number BEFORE connecting to tenant DB
+    const twilioPhoneNumber = settings?.integrations?.thirdPartyIntegrations?.twilio?.phoneNumber
+    if (twilioPhoneNumber) {
+      console.log('💾 Saving Twilio phone number to Application DB for webhook lookup:', twilioPhoneNumber)
+      
+      const { createServerSupabaseClient } = await import('@/lib/supabase-client')
+      const appSupabase = createServerSupabaseClient()
+      
+      // Save phone number mapping to Application DB
+      const { error: appDbError } = await appSupabase
+        .from('tenant_settings')
+        .upsert({
+          tenant_id: tenantId, // Use application tenant_id, not data source tenant_id
+          setting_key: 'integrations.thirdPartyIntegrations.twilio.phoneNumber',
+          setting_value: twilioPhoneNumber
+        }, {
+          onConflict: 'tenant_id,setting_key'
+        })
+      
+      if (appDbError) {
+        console.error('⚠️ Warning: Could not save phone number to Application DB:', appDbError)
+        // Don't fail the request - Tenant DB save succeeded
+      } else {
+        console.log('✅ Twilio phone number saved to Application DB')
       }
     }
 
