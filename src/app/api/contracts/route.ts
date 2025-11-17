@@ -227,12 +227,12 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id')
 
     // Note: RLS handles tenant filtering automatically
-    // Note: We don't need to specify foreign key for contracts->contacts since there's only one relationship
+    // Note: events table has 'name' column, not 'event_name'
     let query = supabase
       .from('contracts')
       .select(`
         *,
-        events(id, event_name),
+        events(id, name),
         accounts(id, name),
         contacts(id, first_name, last_name)
       `)
@@ -272,7 +272,7 @@ export async function GET(request: NextRequest) {
         ...contract,
         event: contract.events ? {
           id: contract.events.id,
-          event_name: contract.events.event_name
+          event_name: contract.events.name // events table has 'name' column
         } : null,
         account: contract.accounts ? {
           id: contract.accounts.id,
