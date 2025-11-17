@@ -15,21 +15,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Get Twilio credentials from settings (fallback to environment variables)
-    const { data: settings, error: settingsError } = await supabase
-      .from('tenant_settings')
-      .select('settings')
-      .eq('tenant_id', dataSourceTenantId)
-      .single()
-
-    console.log('🔍 Loading Twilio settings for tenant:', dataSourceTenantId)
-    console.log('📋 Settings query result:', { settings, settingsError })
+    // Note: tenant_settings is a key-value store, so we use the settings API to reconstruct it
+    const settingsResponse = await fetch(`${request.nextUrl.origin}/api/settings`, {
+      headers: request.headers
+    })
+    
+    let twilioSettings = null
+    if (settingsResponse.ok) {
+      const data = await settingsResponse.json()
+      twilioSettings = data.settings?.integrations?.thirdPartyIntegrations?.twilio
+      console.log('🔍 Loading Twilio settings for tenant:', dataSourceTenantId)
+      console.log('📋 Settings loaded:', { 
+        enabled: twilioSettings?.enabled, 
+        hasAccountSid: !!twilioSettings?.accountSid,
+        hasAuthToken: !!twilioSettings?.authToken,
+        phoneNumber: twilioSettings?.phoneNumber 
+      })
+    } else {
+      console.warn('⚠️ Failed to load settings from API, will use env vars')
+    }
 
     let accountSid: string | undefined
     let authToken: string | undefined
     let fromNumber: string | undefined
 
     // Check if database settings exist and are enabled
-    const twilioSettings = settings?.settings?.integrations?.thirdPartyIntegrations?.twilio
     const isDatabaseConfigured = twilioSettings?.enabled && 
                                   twilioSettings?.accountSid && 
                                   twilioSettings?.authToken && 
