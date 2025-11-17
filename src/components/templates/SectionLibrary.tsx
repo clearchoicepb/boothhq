@@ -146,38 +146,21 @@ export default function SectionLibrary({ onAddSection }: SectionLibraryProps) {
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {categorySections.map(section => (
                   <Card
                     key={section.id}
-                    className="p-3 hover:shadow-md transition-shadow cursor-pointer"
+                    className="p-2 hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => onAddSection(section)}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <h5 className="font-medium text-sm mb-1">{section.name}</h5>
-                        <p className="text-xs text-gray-500 line-clamp-2">
+                        <h5 className="font-medium text-xs mb-0.5">{section.name}</h5>
+                        <p className="text-xs text-gray-500 line-clamp-1">
                           {section.description}
                         </p>
-                        {section.merge_fields && section.merge_fields.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {section.merge_fields.slice(0, 3).map(field => (
-                              <span
-                                key={field}
-                                className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded"
-                              >
-                                {field}
-                              </span>
-                            ))}
-                            {section.merge_fields.length > 3 && (
-                              <span className="text-xs text-gray-500">
-                                +{section.merge_fields.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
-                      <Plus className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
+                      <Plus className="h-3 w-3 text-gray-400 flex-shrink-0 ml-2" />
                     </div>
                   </Card>
                 ))}

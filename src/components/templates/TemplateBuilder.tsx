@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
 import {
   FileText,
   GripVertical,
   Pencil,
   Trash2,
-  Save
+  Save,
+  Eye
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import SectionLibrary from './SectionLibrary'
@@ -22,6 +24,18 @@ interface TemplateSection {
   content: string
   order: number
   name?: string
+}
+
+interface LibrarySection {
+  id: string
+  name: string
+  category: string
+  content: string
+  description: string
+  is_system: boolean
+  is_required: boolean
+  merge_fields: string[]
+  sort_order: number
 }
 
 interface TemplateBuilderProps {
@@ -45,6 +59,70 @@ export default function TemplateBuilder({
   const [sections, setSections] = useState<TemplateSection[]>(initialTemplate?.sections || [])
   const [editingSection, setEditingSection] = useState<TemplateSection | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [allLibrarySections, setAllLibrarySections] = useState<LibrarySection[]>([])
+  
+  // Fetch all library sections for auto-population
+  useEffect(() => {
+    const fetchLibrarySections = async () => {
+      try {
+        const response = await fetch('/api/template-sections')
+        const data = await response.json()
+        setAllLibrarySections(data.sections || [])
+      } catch (error) {
+        console.error('Error fetching library sections:', error)
+      }
+    }
+    fetchLibrarySections()
+  }, [])
+
+  // Auto-populate sections based on template type
+  const autoPopulateSections = useCallback((type: string) => {
+    if (type !== 'corporate' && type !== 'private') return
+    
+    // Filter sections by template type (corporate or private)
+    const relevantSections = allLibrarySections
+      .filter(section => {
+        // Include all required sections
+        if (section.is_required) return true
+        
+        // Include type-specific sections
+        const sectionName = section.name.toLowerCase()
+        if (type === 'corporate') {
+          return sectionName.includes('corporate')
+        } else if (type === 'private') {
+          return sectionName.includes('private')
+        }
+        return false
+      })
+      .sort((a, b) => a.sort_order - b.sort_order)
+    
+    // Convert to template sections
+    const newSections: TemplateSection[] = relevantSections.map((libSection, index) => ({
+      id: `temp-${Date.now()}-${index}`,
+      section_id: libSection.id,
+      content: libSection.content,
+      order: index,
+      name: libSection.name
+    }))
+    
+    setSections(newSections)
+    toast.success(`Auto-populated ${newSections.length} sections for ${type} template`)
+  }, [allLibrarySections])
+
+  // Handle template type change
+  const handleTemplateTypeChange = (newType: string) => {
+    if ((newType === 'corporate' || newType === 'private') && sections.length === 0) {
+      // Auto-populate if no sections exist
+      autoPopulateSections(newType)
+    } else if ((newType === 'corporate' || newType === 'private') && sections.length > 0) {
+      // Ask user if they want to replace existing sections
+      if (confirm(`Replace existing sections with ${newType} template sections?`)) {
+        autoPopulateSections(newType)
+      }
+    }
+    setTemplateType(newType)
+  }
 
   // Handle drag end
   const handleDragEnd = (result: any) => {
@@ -98,6 +176,22 @@ export default function TemplateBuilder({
       setEditingSection(null)
       toast.success('Section updated')
     }
+  }
+
+  // Clean merge fields - remove unmatched {{field}} patterns
+  const cleanMergeFields = (content: string): string => {
+    // Remove any remaining {{...}} patterns that weren't replaced
+    return content.replace(/\{\{[^}]+\}\}/g, '')
+  }
+
+  // Get preview content with cleaned merge fields
+  const getPreviewContent = (): string => {
+    const compiledContent = sections
+      .sort((a, b) => a.order - b.order)
+      .map(s => s.content)
+      .join('\n\n')
+    
+    return cleanMergeFields(compiledContent)
   }
 
   // Save template
@@ -155,6 +249,14 @@ export default function TemplateBuilder({
               <Button variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsPreviewOpen(true)}
+                disabled={sections.length === 0}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -183,7 +285,7 @@ export default function TemplateBuilder({
               </label>
               <select
                 value={templateType}
-                onChange={(e) => setTemplateType(e.target.value)}
+                onChange={(e) => handleTemplateTypeChange(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               >
                 <option value="corporate">Corporate</option>
@@ -191,6 +293,9 @@ export default function TemplateBuilder({
                 <option value="lease">Lease</option>
                 <option value="custom">Custom</option>
               </select>
+              {(templateType === 'corporate' || templateType === 'private') && (
+                <p className="text-xs text-gray-500 mt-1">Sections auto-populated for {templateType} template</p>
+              )}
             </div>
           </div>
         </div>
@@ -227,40 +332,42 @@ export default function TemplateBuilder({
                             <Card
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className={`p-4 hover:shadow-md transition-shadow ${
+                              className={`p-2 hover:shadow-md transition-shadow ${
                                 snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : ''
                               }`}
                             >
-                              <div className="flex items-start gap-3">
+                              <div className="flex items-center gap-2">
                                 <div
                                   {...provided.dragHandleProps}
-                                  className="mt-1 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded p-1 -m-1 transition-colors"
+                                  className="cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded p-1 transition-colors"
                                   title="Drag to reorder"
                                 >
-                                  <GripVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                  <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h4 className="font-medium text-sm">{section.name}</h4>
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-xs">{section.name}</h4>
                                     <div className="flex gap-1">
                                       <Button
                                         size="sm"
                                         variant="ghost"
                                         onClick={() => handleEditSection(section)}
+                                        className="h-6 w-6 p-0"
                                       >
-                                        <Pencil className="h-4 w-4" />
+                                        <Pencil className="h-3 w-3" />
                                       </Button>
                                       <Button
                                         size="sm"
                                         variant="ghost"
                                         onClick={() => handleRemoveSection(section.id)}
+                                        className="h-6 w-6 p-0"
                                       >
-                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                        <Trash2 className="h-3 w-3 text-red-500" />
                                       </Button>
                                     </div>
                                   </div>
-                                  <p className="text-xs text-gray-600 line-clamp-3 whitespace-pre-wrap">
+                                  <p className="text-xs text-gray-500 line-clamp-1 whitespace-pre-wrap mt-0.5">
                                     {section.content}
                                   </p>
                                 </div>
@@ -286,6 +393,24 @@ export default function TemplateBuilder({
           onClose={() => setEditingSection(null)}
         />
       )}
+
+      {/* Preview Modal */}
+      <Modal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title={`Preview: ${templateName || 'Untitled Template'}`}
+        className="sm:max-w-4xl"
+      >
+        <div className="prose prose-sm max-w-none">
+          <div className="bg-white p-8 border border-gray-200 rounded-lg whitespace-pre-wrap">
+            {getPreviewContent()}
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+            <strong>Note:</strong> This preview shows the template with merge fields removed. 
+            When used with actual data (events, accounts, contacts), these fields will be populated automatically.
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
