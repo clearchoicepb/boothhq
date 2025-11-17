@@ -323,18 +323,76 @@ export default function WorkflowBuilder({
             </div>
           </div>
 
-          {/* Summary */}
+          {/* Trigger Summary */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex">
-              <CheckCircle2 className="h-5 w-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-900">Workflow Summary</h3>
-                <div className="mt-2 text-sm text-blue-700 space-y-1">
-                  <p>• <strong>Trigger:</strong> When an event is created</p>
-                  <p>• <strong>Actions:</strong> {actions.length} task{actions.length !== 1 ? 's' : ''} will be created automatically</p>
-                  <p>• <strong>Status:</strong> {isActive ? 'Active (will execute immediately)' : 'Inactive (requires manual activation)'}</p>
+              <Calendar className="h-5 w-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-blue-900 mb-2">Workflow Triggers</h3>
+                <p className="text-sm text-blue-700 mb-2">
+                  This workflow will execute when any of these event types are created:
+                </p>
+                <div className="mt-2 text-sm text-blue-800">
+                  <strong>{eventTypeIds.length}</strong> event type{eventTypeIds.length !== 1 ? 's' : ''} selected
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Actions Summary */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <Zap className="h-5 w-5 mr-2 text-gray-400" />
+              Actions Summary
+            </h3>
+            
+            <div className="space-y-3">
+              {actions.map((action, index) => (
+                <div key={action.tempId} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-start">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium mr-3 flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">
+                        {action.actionType === 'create_task' ? 'Create Task' : 'Create Design Item'}
+                      </div>
+                      <div className="mt-1 text-sm text-gray-600">
+                        {action.actionType === 'create_task' && action.taskTemplateId && (
+                          <span>Task template will be used</span>
+                        )}
+                        {action.actionType === 'create_design_item' && action.designItemTypeId && (
+                          <span>Design item will be created</span>
+                        )}
+                      </div>
+                      {action.assignedToUserId && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          ✓ Assigned to user
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center text-sm text-green-800">
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <span>
+                  <strong>{actions.length}</strong> action{actions.length !== 1 ? 's' : ''} will execute automatically when triggered
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Summary */}
+          <div className={`rounded-lg p-4 border ${isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center text-sm">
+              <CheckCircle2 className={`h-5 w-5 mr-2 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
+              <span className={isActive ? 'text-green-800 font-medium' : 'text-gray-600'}>
+                {isActive ? 'Workflow will be active immediately after saving' : 'Workflow will be inactive (can be activated later in settings)'}
+              </span>
             </div>
           </div>
         </div>
