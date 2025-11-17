@@ -155,6 +155,10 @@ const MERGE_FIELDS = [
   
   // Account Fields (company info from event)
   { label: 'Account: Company Name', value: '{{account_name}}' },
+  { label: 'Account: Phone', value: '{{account_phone}}' },
+  { label: 'Account: Email', value: '{{account_email}}' },
+  { label: 'Account: Billing Address', value: '{{account_billing_address}}' },
+  { label: 'Account: Shipping Address', value: '{{account_shipping_address}}' },
 ]
 
 export function RichTextEditor({

@@ -3,6 +3,28 @@
  * Merge fields format: {{field_name}}
  */
 
+/**
+ * Formats an address object to a string
+ */
+function formatAddress(address: any): string {
+  if (!address) return ''
+  
+  const parts: string[] = []
+  
+  if (address.street1) parts.push(address.street1)
+  if (address.street2) parts.push(address.street2)
+  
+  const cityStateZip: string[] = []
+  if (address.city) cityStateZip.push(address.city)
+  if (address.state) cityStateZip.push(address.state)
+  if (address.zip || address.postal_code) cityStateZip.push(address.zip || address.postal_code)
+  if (cityStateZip.length > 0) parts.push(cityStateZip.join(', '))
+  
+  if (address.country) parts.push(address.country)
+  
+  return parts.join('\n')
+}
+
 interface MergeFieldData {
   // Contact data
   contact_first_name?: string
@@ -21,6 +43,10 @@ interface MergeFieldData {
 
   // Account data
   account_name?: string
+  account_phone?: string
+  account_email?: string
+  account_billing_address?: string
+  account_shipping_address?: string
 
   // Opportunity data
   opportunity_name?: string
@@ -200,6 +226,20 @@ export async function getMergeFieldData(params: {
         // Account/company info from event
         if (event.accounts) {
           data.account_name = event.accounts.name
+          data.account_phone = event.accounts.phone
+          data.account_email = event.accounts.email
+          
+          // Format billing address
+          if (event.accounts.billing_address) {
+            const addr = event.accounts.billing_address
+            data.account_billing_address = formatAddress(addr)
+          }
+          
+          // Format shipping address
+          if (event.accounts.shipping_address) {
+            const addr = event.accounts.shipping_address
+            data.account_shipping_address = formatAddress(addr)
+          }
           
           // Legacy field
           data.company_name = event.accounts.name
@@ -270,6 +310,18 @@ export async function getMergeFieldData(params: {
         const account = await response.json()
         console.log('[getMergeFieldData] Account data:', account)
         data.account_name = account.name
+        data.account_phone = account.phone
+        data.account_email = account.email
+        
+        // Format billing address
+        if (account.billing_address) {
+          data.account_billing_address = formatAddress(account.billing_address)
+        }
+        
+        // Format shipping address
+        if (account.shipping_address) {
+          data.account_shipping_address = formatAddress(account.shipping_address)
+        }
         
         // Legacy field
         data.company_name = account.name
