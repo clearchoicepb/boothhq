@@ -173,7 +173,34 @@ export async function POST(request: NextRequest) {
       opportunityId
     })
 
-    // If we found a match, log the communication
+    // If we didn't find a tenant via contact matching, try to find by receiving phone number
+    if (!tenantId) {
+      console.log('🔍 No tenant found via contact, trying to match by receiving phone number:', to)
+      
+      // Query tenant_settings to find which tenant has this Twilio number configured
+      const { data: settingsRows } = await supabase
+        .from('tenant_settings')
+        .select('tenant_id, setting_value')
+        .eq('setting_key', 'integrations.thirdPartyIntegrations.twilio.phoneNumber')
+      
+      // Find tenant with matching phone number
+      const matchingTenant = settingsRows?.find(row => {
+        const configuredNumber = row.setting_value
+        if (typeof configuredNumber === 'string') {
+          const normalizedConfigured = normalizePhone(configuredNumber)
+          const normalizedTo = normalizePhone(to)
+          return normalizedConfigured === normalizedTo
+        }
+        return false
+      })
+
+      if (matchingTenant) {
+        tenantId = matchingTenant.tenant_id
+        console.log('✅ Found tenant by phone number:', tenantId)
+      }
+    }
+
+    // Log the communication (with or without contact associations)
     if (tenantId) {
       const communicationData = {
         tenant_id: tenantId,
@@ -204,14 +231,12 @@ export async function POST(request: NextRequest) {
       if (commError) {
         console.error('❌ Error logging inbound SMS:', commError)
       } else {
-        console.log('✅ Inbound SMS logged:', communication.id, 'with opportunity:', opportunityId)
+        console.log('✅ Inbound SMS logged:', communication.id, contactId ? 'with contact' : 'without contact match')
       }
     } else {
-      // Log as unmatched communication
-      console.warn('⚠️ No matching contact, lead, or account found for phone:', from)
-
-      // Optionally, you could still log it without associations
-      // or create a lead automatically
+      // Still couldn't find tenant - log warning but don't fail
+      console.warn('⚠️ Could not determine tenant for incoming SMS from:', from, 'to:', to)
+      console.warn('⚠️ Message will not be logged. Consider adding this as a lead or contact.')
     }
 
     // Return TwiML response (empty response = no auto-reply)
