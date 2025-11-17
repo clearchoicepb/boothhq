@@ -82,12 +82,12 @@ export default function TemplateBuilder({
     fetchLibrarySections()
   }, [])
 
-  // Initialize edited content when preview opens
+  // Initialize edited content when preview opens or editing starts
   useEffect(() => {
-    if (isPreviewOpen && !isEditingPreview) {
-      setEditedContent(getPreviewContent())
+    if (isPreviewOpen && isEditingPreview && !editedContent) {
+      setEditedContent(getHtmlPreviewContent())
     }
-  }, [isPreviewOpen])
+  }, [isPreviewOpen, isEditingPreview])
 
   // Auto-populate sections based on template type
   const autoPopulateSections = useCallback((type: string) => {
@@ -197,6 +197,29 @@ export default function TemplateBuilder({
     return content.replace(/\{\{[^}]+\}\}/g, '')
   }
 
+  // Convert plain text to HTML for rich text editor
+  const convertTextToHtml = (text: string): string => {
+    // Replace double line breaks with paragraph breaks
+    // Replace single line breaks with <br>
+    // Preserve markdown-style formatting
+    return text
+      .split('\n\n')
+      .map(paragraph => {
+        // Handle markdown bold (**text**)
+        let formatted = paragraph.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        
+        // Handle markdown italic (*text*)
+        formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>')
+        
+        // Replace single line breaks within paragraphs with <br>
+        formatted = formatted.replace(/\n/g, '<br>')
+        
+        // Wrap in paragraph tag
+        return `<p>${formatted}</p>`
+      })
+      .join('')
+  }
+
   // Get preview content with cleaned merge fields
   const getPreviewContent = (): string => {
     const compiledContent = sections
@@ -207,9 +230,16 @@ export default function TemplateBuilder({
     return cleanMergeFields(compiledContent)
   }
 
+  // Get HTML content for rich text editor
+  const getHtmlPreviewContent = (): string => {
+    const textContent = getPreviewContent()
+    return convertTextToHtml(textContent)
+  }
+
   // Start editing in preview
   const handleStartEditingPreview = () => {
     if (confirm('Editing will combine all sections into a single editable section. Continue?')) {
+      setEditedContent(getHtmlPreviewContent())
       setIsEditingPreview(true)
     }
   }
@@ -233,7 +263,7 @@ export default function TemplateBuilder({
   // Cancel editing preview
   const handleCancelEditingPreview = () => {
     setIsEditingPreview(false)
-    setEditedContent(getPreviewContent())
+    setEditedContent('')
   }
 
   // Close preview modal
