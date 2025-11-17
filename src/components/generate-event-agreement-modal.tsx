@@ -72,21 +72,32 @@ export function GenerateEventAgreementModal({
       const template = templates.find(t => t.id === selectedTemplateId)
       if (!template) return
 
+      const requestBody = {
+        event_id: eventId,
+        template_id: template.id,
+        template_content: template.content,
+        title: template.name,
+        expires_days: 30
+      }
+
+      console.log('[GenerateAgreementModal] Making POST request to /api/contracts')
+      console.log('[GenerateAgreementModal] Request body:', requestBody)
+      console.log('[GenerateAgreementModal] Full URL:', `${window.location.origin}/api/contracts`)
+
       // Create contract with e-signature capability
       const response = await fetch('/api/contracts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_id: eventId,
-          template_id: template.id,
-          template_content: template.content,
-          title: template.name,
-          expires_days: 30
-        })
+        body: JSON.stringify(requestBody)
       })
 
+      console.log('[GenerateAgreementModal] Response status:', response.status)
+      console.log('[GenerateAgreementModal] Response ok:', response.ok)
+
       if (!response.ok) {
-        throw new Error('Failed to create agreement')
+        const errorText = await response.text()
+        console.error('[GenerateAgreementModal] Error response:', errorText)
+        throw new Error(`Failed to create agreement: ${response.status} ${errorText}`)
       }
 
       const newContract = await response.json()
