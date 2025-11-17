@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
 
     // Get Twilio credentials from settings (fallback to environment variables)
     const { data: settings, error: settingsError } = await supabase
-      .from('settings')
-      .select('integrations')
+      .from('tenant_settings')
+      .select('settings')
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     let fromNumber: string | undefined
 
     // Check if database settings exist and are enabled
-    const twilioSettings = settings?.integrations?.thirdPartyIntegrations?.twilio
+    const twilioSettings = settings?.settings?.integrations?.thirdPartyIntegrations?.twilio
     const isDatabaseConfigured = twilioSettings?.enabled && 
                                   twilioSettings?.accountSid && 
                                   twilioSettings?.authToken && 
