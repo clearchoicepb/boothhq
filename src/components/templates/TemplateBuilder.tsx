@@ -6,13 +6,17 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   FileText,
   GripVertical,
   Pencil,
   Trash2,
   Save,
-  Eye
+  Eye,
+  Edit as EditIcon,
+  Check,
+  X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import SectionLibrary from './SectionLibrary'
@@ -60,6 +64,8 @@ export default function TemplateBuilder({
   const [editingSection, setEditingSection] = useState<TemplateSection | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isEditingPreview, setIsEditingPreview] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
   const [allLibrarySections, setAllLibrarySections] = useState<LibrarySection[]>([])
   
   // Fetch all library sections for auto-population
@@ -75,6 +81,13 @@ export default function TemplateBuilder({
     }
     fetchLibrarySections()
   }, [])
+
+  // Initialize edited content when preview opens
+  useEffect(() => {
+    if (isPreviewOpen && !isEditingPreview) {
+      setEditedContent(getPreviewContent())
+    }
+  }, [isPreviewOpen])
 
   // Auto-populate sections based on template type
   const autoPopulateSections = useCallback((type: string) => {
@@ -192,6 +205,42 @@ export default function TemplateBuilder({
       .join('\n\n')
     
     return cleanMergeFields(compiledContent)
+  }
+
+  // Start editing in preview
+  const handleStartEditingPreview = () => {
+    if (confirm('Editing will combine all sections into a single editable section. Continue?')) {
+      setIsEditingPreview(true)
+    }
+  }
+
+  // Save edited preview content
+  const handleSaveEditedPreview = () => {
+    // Replace all sections with a single section containing the edited content
+    const newSection: TemplateSection = {
+      id: `temp-edited-${Date.now()}`,
+      section_id: '',
+      content: editedContent,
+      order: 0,
+      name: 'Custom Edited Content'
+    }
+    setSections([newSection])
+    setIsEditingPreview(false)
+    setIsPreviewOpen(false)
+    toast.success('Preview changes applied to template')
+  }
+
+  // Cancel editing preview
+  const handleCancelEditingPreview = () => {
+    setIsEditingPreview(false)
+    setEditedContent(getPreviewContent())
+  }
+
+  // Close preview modal
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false)
+    setIsEditingPreview(false)
+    setEditedContent('')
   }
 
   // Save template
@@ -397,18 +446,67 @@ export default function TemplateBuilder({
       {/* Preview Modal */}
       <Modal
         isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        title={`Preview: ${templateName || 'Untitled Template'}`}
-        className="sm:max-w-4xl"
+        onClose={handleClosePreview}
+        title={`${isEditingPreview ? 'Edit' : 'Preview'}: ${templateName || 'Untitled Template'}`}
+        className="sm:max-w-5xl"
       >
-        <div className="prose prose-sm max-w-none">
-          <div className="bg-white p-8 border border-gray-200 rounded-lg whitespace-pre-wrap">
-            {getPreviewContent()}
+        <div>
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 mb-4">
+            {!isEditingPreview ? (
+              <Button 
+                variant="outline"
+                onClick={handleStartEditingPreview}
+                className="flex items-center gap-2"
+              >
+                <EditIcon className="h-4 w-4" />
+                Edit with Rich Text Editor
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={handleCancelEditingPreview}
+                  className="flex items-center gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveEditedPreview}
+                  className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <Check className="h-4 w-4" />
+                  Apply Changes
+                </Button>
+              </>
+            )}
           </div>
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-            <strong>Note:</strong> This preview shows the template with merge fields removed. 
-            When used with actual data (events, accounts, contacts), these fields will be populated automatically.
-          </div>
+
+          {/* Content Area */}
+          {isEditingPreview ? (
+            <div>
+              <RichTextEditor
+                value={editedContent}
+                onChange={setEditedContent}
+                placeholder="Edit your template..."
+                minHeight="500px"
+              />
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                <strong>Warning:</strong> Applying changes will combine all existing sections into a single editable section.
+              </div>
+            </div>
+          ) : (
+            <div className="prose prose-sm max-w-none">
+              <div className="bg-white p-8 border border-gray-200 rounded-lg whitespace-pre-wrap max-h-[600px] overflow-y-auto">
+                {getPreviewContent()}
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                <strong>Note:</strong> This preview shows the template with merge fields removed. 
+                When used with actual data (events, accounts, contacts), these fields will be populated automatically.
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
