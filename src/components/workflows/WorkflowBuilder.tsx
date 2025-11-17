@@ -21,7 +21,10 @@ import {
   CheckCircle2,
   Calendar,
   Zap,
-  Settings
+  Settings,
+  Palette,
+  ClipboardCheck,
+  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import TriggerSelector from './TriggerSelector'
@@ -31,6 +34,31 @@ import type {
   WorkflowSavePayload,
   WorkflowBuilderAction 
 } from '@/types/workflows'
+
+// Types for reference data
+interface EventType {
+  id: string
+  name: string
+}
+
+interface TaskTemplate {
+  id: string
+  name: string
+  default_title: string
+}
+
+interface DesignItemType {
+  id: string
+  name: string
+  type: 'digital' | 'physical'
+}
+
+interface User {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  email: string
+}
 
 interface WorkflowBuilderProps {
   workflow: WorkflowWithRelations | null
@@ -57,6 +85,57 @@ export default function WorkflowBuilder({
   // UI state
   const [currentStep, setCurrentStep] = useState<Step>('trigger')
   const [errors, setErrors] = useState<string[]>([])
+
+  // Reference data for review step
+  const [eventTypes, setEventTypes] = useState<EventType[]>([])
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([])
+  const [designItemTypes, setDesignItemTypes] = useState<DesignItemType[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [loadingReferenceData, setLoadingReferenceData] = useState(false)
+
+  // Fetch reference data for review step
+  useEffect(() => {
+    if (currentStep === 'review') {
+      fetchReferenceData()
+    }
+  }, [currentStep])
+
+  const fetchReferenceData = async () => {
+    setLoadingReferenceData(true)
+    try {
+      // Fetch event types
+      const eventTypesRes = await fetch('/api/event-types')
+      if (eventTypesRes.ok) {
+        const data = await eventTypesRes.json()
+        setEventTypes(data.eventTypes || data || [])
+      }
+
+      // Fetch task templates
+      const taskTemplatesRes = await fetch('/api/task-templates')
+      if (taskTemplatesRes.ok) {
+        const templates = await taskTemplatesRes.json()
+        setTaskTemplates(Array.isArray(templates) ? templates : [])
+      }
+
+      // Fetch design item types
+      const designTypesRes = await fetch('/api/design/types')
+      if (designTypesRes.ok) {
+        const designData = await designTypesRes.json()
+        setDesignItemTypes(designData.types || designData.designTypes || designData || [])
+      }
+
+      // Fetch users
+      const usersRes = await fetch('/api/users')
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
+        setUsers(Array.isArray(usersData) ? usersData : [])
+      }
+    } catch (error) {
+      console.error('Error fetching reference data:', error)
+    } finally {
+      setLoadingReferenceData(false)
+    }
+  }
 
   // Initialize from existing workflow
   useEffect(() => {
@@ -332,9 +411,21 @@ export default function WorkflowBuilder({
                 <p className="text-sm text-blue-700 mb-2">
                   This workflow will execute when any of these event types are created:
                 </p>
-                <div className="mt-2 text-sm text-blue-800">
-                  <strong>{eventTypeIds.length}</strong> event type{eventTypeIds.length !== 1 ? 's' : ''} selected
-                </div>
+                {loadingReferenceData ? (
+                  <div className="text-sm text-blue-700">Loading event types...</div>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    {eventTypeIds.map(typeId => {
+                      const eventType = eventTypes.find(et => et.id === typeId)
+                      return (
+                        <div key={typeId} className="flex items-center text-sm text-blue-900">
+                          <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600" />
+                          <span className="font-medium">{eventType?.name || 'Unknown Event Type'}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -346,44 +437,110 @@ export default function WorkflowBuilder({
               Actions Summary
             </h3>
             
-            <div className="space-y-3">
-              {actions.map((action, index) => (
-                <div key={action.tempId} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex items-start">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium mr-3 flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">
-                        {action.actionType === 'create_task' ? 'Create Task' : 'Create Design Item'}
-                      </div>
-                      <div className="mt-1 text-sm text-gray-600">
-                        {action.actionType === 'create_task' && action.taskTemplateId && (
-                          <span>Task template will be used</span>
-                        )}
-                        {action.actionType === 'create_design_item' && action.designItemTypeId && (
-                          <span>Design item will be created</span>
-                        )}
-                      </div>
-                      {action.assignedToUserId && (
-                        <div className="mt-1 text-xs text-gray-500">
-                          ✓ Assigned to user
+            {loadingReferenceData ? (
+              <div className="text-center py-8 text-gray-500">
+                Loading action details...
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {actions.map((action, index) => {
+                    const taskTemplate = action.taskTemplateId 
+                      ? taskTemplates.find(t => t.id === action.taskTemplateId)
+                      : null
+                    
+                    const designItemType = action.designItemTypeId
+                      ? designItemTypes.find(d => d.id === action.designItemTypeId)
+                      : null
+                    
+                    const assignedUser = action.assignedToUserId
+                      ? users.find(u => u.id === action.assignedToUserId)
+                      : null
+
+                    const getUserName = (user: User) => {
+                      if (user.first_name && user.last_name) {
+                        return `${user.first_name} ${user.last_name}`
+                      }
+                      return user.email
+                    }
+
+                    return (
+                      <div key={action.tempId} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-start">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium mr-3 flex-shrink-0 mt-1">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            {/* Action Type Header */}
+                            <div className="flex items-center mb-2">
+                              {action.actionType === 'create_task' ? (
+                                <>
+                                  <ClipboardCheck className="h-4 w-4 mr-2 text-blue-600" />
+                                  <span className="font-medium text-gray-900">Create Task</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Palette className="h-4 w-4 mr-2 text-purple-600" />
+                                  <span className="font-medium text-gray-900">Create Design Item</span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Task Details */}
+                            {action.actionType === 'create_task' && taskTemplate && (
+                              <div className="space-y-1">
+                                <div className="text-sm text-gray-700">
+                                  <span className="font-medium">Template:</span> {taskTemplate.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Task Title: "{taskTemplate.default_title}"
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Design Item Details */}
+                            {action.actionType === 'create_design_item' && designItemType && (
+                              <div className="space-y-1">
+                                <div className="text-sm text-gray-700">
+                                  <span className="font-medium">Design Item:</span> {designItemType.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Type: {designItemType.type === 'digital' ? '📱 Digital' : '📦 Physical'}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Assignment */}
+                            {assignedUser && (
+                              <div className="mt-2 flex items-center text-xs text-gray-600 bg-white px-2 py-1 rounded border border-gray-200 w-fit">
+                                <User className="h-3 w-3 mr-1" />
+                                <span>Assigned to: <strong>{getUserName(assignedUser)}</strong></span>
+                              </div>
+                            )}
+
+                            {/* Unassigned */}
+                            {action.actionType === 'create_design_item' && !assignedUser && (
+                              <div className="mt-2 text-xs text-gray-500 italic">
+                                Unassigned (can be assigned later)
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center text-sm text-green-800">
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    <span>
+                      <strong>{actions.length}</strong> action{actions.length !== 1 ? 's' : ''} will execute automatically when triggered
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center text-sm text-green-800">
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                <span>
-                  <strong>{actions.length}</strong> action{actions.length !== 1 ? 's' : ''} will execute automatically when triggered
-                </span>
-              </div>
-            </div>
+              </>
+            )}
           </div>
 
           {/* Status Summary */}
