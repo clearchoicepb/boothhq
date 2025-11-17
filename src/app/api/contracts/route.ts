@@ -190,6 +190,38 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[contracts/route.ts] Contract created successfully:', contract.id)
+    
+    // Auto-create file entry for this contract in the Files tab
+    try {
+      const { error: fileError } = await supabase
+        .from('files')
+        .insert({
+          tenant_id: dataSourceTenantId,
+          entity_type: 'event',
+          entity_id: event_id,
+          file_name: 'Event Agreement',
+          file_type: 'application/pdf',
+          file_size: 0, // Virtual file, no actual size
+          file_url: `/contracts/${contract.id}`, // Reference to contract
+          description: `Agreement: ${insertData.template_name}`,
+          metadata: {
+            contract_id: contract.id,
+            contract_status: 'draft',
+            is_contract: true
+          },
+          uploaded_by: session.user.id
+        })
+      
+      if (fileError) {
+        console.error('[contracts/route.ts] Error creating file entry:', fileError)
+        // Don't fail contract creation if file entry fails
+      } else {
+        console.log('[contracts/route.ts] File entry created for contract')
+      }
+    } catch (error) {
+      console.error('[contracts/route.ts] Error creating file entry:', error)
+    }
+    
     return NextResponse.json(contract)
   } catch (error) {
     console.error('[contracts/route.ts] ERROR in POST handler:', error)

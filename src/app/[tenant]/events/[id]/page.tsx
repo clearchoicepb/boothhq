@@ -18,6 +18,7 @@ import { LogCommunicationModal } from '@/components/log-communication-modal'
 import { SendEmailModal } from '@/components/send-email-modal'
 import { SendSMSModal } from '@/components/send-sms-modal'
 import AttachmentsSection from '@/components/attachments-section'
+import { EventFilesList } from '@/components/events/event-files-list'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
@@ -175,6 +176,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   const [isGenerateAgreementModalOpen, setIsGenerateAgreementModalOpen] = useState(false)
   const [isEventDateDetailOpen, setIsEventDateDetailOpen] = useState(false)
   const [activeEventDateTab, setActiveEventDateTab] = useState('details')
+  const [attachmentsRefreshTrigger, setAttachmentsRefreshTrigger] = useState(0)
 
   // Event date editing state from useEventEditing hook
   const { isEditingEventDate, editEventDateData, setEditEventDateData, startEditingEventDate, cancelEditingEventDate, finishEditingEventDate } = editing
@@ -686,9 +688,9 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
                 </Button>
               </div>
 
-              <AttachmentsSection
-                entityType="event"
-                entityId={event.id}
+              <EventFilesList
+                eventId={event.id}
+                refreshTrigger={attachmentsRefreshTrigger}
               />
             </div>
           </TabsContent>
@@ -904,8 +906,8 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
         onClose={() => setIsGenerateAgreementModalOpen(false)}
         eventId={eventId}
         onSuccess={() => {
-          // Refresh attachments list
-          refetchAttachments()
+          // Refresh files/attachments list
+          setAttachmentsRefreshTrigger(prev => prev + 1)
         }}
       />
 

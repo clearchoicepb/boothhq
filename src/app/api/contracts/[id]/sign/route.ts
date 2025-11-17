@@ -170,22 +170,30 @@ export async function POST(
       )
     }
 
-    // Create attachment/file record
+    // Update the file entry status to 'signed'
     if (contract.event_id) {
       try {
-        await supabase.from('attachments').insert({
-          tenant_id: dataSourceTenantId,
-          entity_type: 'events',
-          entity_id: contract.event_id,
-          file_name: `${contract.title} - Signed.pdf`,
-          file_type: 'application/pdf',
-          file_url: signedPdfUrl,
-          file_size: Buffer.from(pdfBase64, 'base64').length,
-          uploaded_by: contract.created_by
-        })
+        // Update the contract file entry created when agreement was generated
+        await supabase
+          .from('files')
+          .update({
+            metadata: {
+              contract_id: id,
+              contract_status: 'signed',
+              is_contract: true,
+              signed_at: signedAt,
+              signed_by: signature
+            }
+          })
+          .eq('tenant_id', dataSourceTenantId)
+          .eq('entity_id', contract.event_id)
+          .eq('entity_type', 'event')
+          .contains('metadata', { contract_id: id })
+        
+        console.log('[sign/route.ts] File entry status updated to signed')
       } catch (err) {
-        console.error('Error creating attachment:', err)
-        // Don't fail the whole operation if attachment creation fails
+        console.error('Error updating file entry:', err)
+        // Don't fail the whole operation if file update fails
       }
     }
 
