@@ -154,12 +154,127 @@ const executeCreateTaskAction: ActionExecutor = async (
 }
 
 /**
+ * Execute a 'create_design_item' action
+ * Creates a design item with automatic timeline calculations
+ */
+const executeCreateDesignItemAction: ActionExecutor = async (
+  action,
+  context,
+  supabase,
+  dataSourceTenantId
+) => {
+  const result: ActionExecutionResult = {
+    success: false,
+    actionId: action.id,
+    actionType: 'create_design_item',
+  }
+
+  try {
+    // Validate required fields
+    if (!action.design_item_type_id) {
+      throw new Error('create_design_item action requires design_item_type_id')
+    }
+
+    // Fetch design item type
+    const { data: designItemType, error: designItemTypeError } = await supabase
+      .from('design_item_types')
+      .select('*')
+      .eq('id', action.design_item_type_id)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (designItemTypeError || !designItemType) {
+      throw new Error(`Design item type not found: ${action.design_item_type_id}`)
+    }
+
+    // Get event data to calculate deadlines
+    const event = context.triggerEntity.data
+    const eventDate = event.start_date || event.event_date
+
+    if (!eventDate) {
+      throw new Error('Event date is required for design item timeline calculations')
+    }
+
+    // Parse event date (YYYY-MM-DD format)
+    const eventDateObj = new Date(eventDate + 'T00:00:00')
+
+    // Calculate deadlines working backwards from event date
+    // Timeline: Event Date <- Shipping <- Production <- Design <- Approval Buffer
+    const totalDays =
+      (designItemType.default_design_days || 0) +
+      (designItemType.default_production_days || 0) +
+      (designItemType.default_shipping_days || 0) +
+      (designItemType.client_approval_buffer_days || 0)
+
+    // Design deadline = event date - all days
+    const designDeadline = new Date(eventDateObj)
+    designDeadline.setDate(designDeadline.getDate() - totalDays)
+
+    // Design start date = design deadline - design days
+    const designStartDate = new Date(designDeadline)
+    designStartDate.setDate(designStartDate.getDate() - (designItemType.default_design_days || 0))
+
+    // Production start = design deadline (when design is complete)
+    const productionStartDate = new Date(designDeadline)
+
+    // Shipping start = production start + production days
+    const shippingStartDate = new Date(productionStartDate)
+    shippingStartDate.setDate(shippingStartDate.getDate() + (designItemType.default_production_days || 0))
+
+    // Format dates as YYYY-MM-DD
+    const formatDate = (date: Date) => date.toISOString().split('T')[0]
+
+    // Create design item
+    const { data: designItem, error: designItemError } = await supabase
+      .from('event_design_items')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        event_id: context.triggerEntity.id,
+        design_item_type_id: action.design_item_type_id,
+        item_name: designItemType.name,
+        design_start_date: formatDate(designStartDate),
+        design_deadline: formatDate(designDeadline),
+        production_start_date: designItemType.type === 'physical' ? formatDate(productionStartDate) : null,
+        production_deadline: designItemType.type === 'physical' ? formatDate(shippingStartDate) : null,
+        shipping_start_date: designItemType.type === 'physical' ? formatDate(shippingStartDate) : null,
+        shipping_deadline: designItemType.type === 'physical' ? formatDate(eventDateObj) : null,
+        assigned_designer_id: action.assigned_to_user_id || null,
+        status: 'not_started',
+        created_by: context.userId || null,
+        // Workflow tracking
+        auto_created: true,
+        workflow_id: action.workflow_id,
+      })
+      .select()
+      .single()
+
+    if (designItemError || !designItem) {
+      throw new Error(`Failed to create design item: ${designItemError?.message || 'Unknown error'}`)
+    }
+
+    result.success = true
+    result.createdDesignItemId = designItem.id
+
+    console.log(`[WorkflowEngine] Created design item "${designItemType.name}" (${designItem.id}) with deadline ${formatDate(designDeadline)}`)
+
+    return result
+  } catch (error) {
+    result.error = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error,
+    }
+    return result
+  }
+}
+
+/**
  * Action executor registry
  * Maps action types to their executor functions
  * Add new action types here for extensibility
  */
 const ACTION_EXECUTORS: Record<WorkflowActionType, ActionExecutor> = {
   create_task: executeCreateTaskAction,
+  create_design_item: executeCreateDesignItemAction,
   // Future action types go here:
   // send_email: executeSendEmailAction,
   // send_notification: executeSendNotificationAction,
@@ -193,6 +308,7 @@ class WorkflowEngine {
           actions:workflow_actions(
             *,
             task_template:task_templates(*),
+            design_item_type:design_item_types(*),
             assigned_to_user:users(id, first_name, last_name, email, department, department_role)
           )
         `)
@@ -352,6 +468,11 @@ class WorkflowEngine {
               .update({ workflow_execution_id: execution.id })
               .eq('id', result.createdTaskId)
           }
+          if (result.createdDesignItemId) {
+            // Note: Design items don't currently have workflow_execution_id field
+            // This could be added in future if needed for tracking
+            console.log(`[WorkflowEngine] Created design item: ${result.createdDesignItemId}`)
+          }
         } else {
           actionsFailed++
           console.error(`[WorkflowEngine] Action failed:`, result.error)
@@ -418,7 +539,12 @@ class WorkflowEngine {
    */
   async validateWorkflow(
     workflow: { event_type_id: string | null },
-    actions: Array<{ action_type: WorkflowActionType; task_template_id?: string | null; assigned_to_user_id?: string | null }>,
+    actions: Array<{ 
+      action_type: WorkflowActionType
+      task_template_id?: string | null
+      design_item_type_id?: string | null
+      assigned_to_user_id?: string | null
+    }>,
     supabase: SupabaseClient<Database>,
     dataSourceTenantId: string
   ): Promise<{ isValid: boolean; errors: string[]; warnings: string[] }> {
@@ -474,6 +600,38 @@ class WorkflowEngine {
         if (!action.assigned_to_user_id) {
           errors.push(`Action ${actionNum}: Assigned user is required`)
         } else {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', action.assigned_to_user_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!user) {
+            errors.push(`Action ${actionNum}: Assigned user does not exist`)
+          }
+        }
+      } else if (action.action_type === 'create_design_item') {
+        // Validate design item type
+        if (!action.design_item_type_id) {
+          errors.push(`Action ${actionNum}: Design item type is required`)
+        } else {
+          const { data: designItemType } = await supabase
+            .from('design_item_types')
+            .select('id, is_active')
+            .eq('id', action.design_item_type_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!designItemType) {
+            errors.push(`Action ${actionNum}: Design item type does not exist`)
+          } else if (!designItemType.is_active) {
+            warnings.push(`Action ${actionNum}: Design item type is inactive`)
+          }
+        }
+
+        // Assigned user is optional for design items (can be assigned later)
+        if (action.assigned_to_user_id) {
           const { data: user } = await supabase
             .from('users')
             .select('id')

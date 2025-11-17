@@ -29,13 +29,20 @@ export type WorkflowTriggerType = 'event_created'
 
 /**
  * Action types that can be performed by workflows
- * Currently only 'create_task', but extensible for:
- * - send_email
- * - send_notification
- * - update_field
- * - call_webhook
+ * Department-based actions:
+ * - create_task: General tasks (simple to-dos)
+ * - create_design_item: Design department (timeline-based items)
+ * 
+ * Future action types:
+ * - create_sales_task: Sales department
+ * - create_ops_task: Operations department
+ * - create_accounting_task: Accounting department
+ * - send_email: Email automation
+ * - send_notification: In-app notifications
+ * - update_field: Field updates
+ * - call_webhook: External integrations
  */
-export type WorkflowActionType = 'create_task'
+export type WorkflowActionType = 'create_task' | 'create_design_item'
 
 /**
  * Workflow execution status
@@ -59,18 +66,28 @@ export const WORKFLOW_TRIGGER_TYPES: Record<WorkflowTriggerType, {
 
 /**
  * Available action types with metadata
+ * Organized by department for UI grouping
  */
 export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
   label: string
   description: string
   icon: string
+  department: string
   requiresFields: string[]
 }> = {
   create_task: {
     label: 'Create Task',
-    description: 'Create and assign a task from a template',
+    description: 'Create and assign a simple task',
     icon: 'clipboard-check',
+    department: 'General',
     requiresFields: ['task_template_id', 'assigned_to_user_id'],
+  },
+  create_design_item: {
+    label: 'Create Design Item',
+    description: 'Create a design item with timeline calculations',
+    icon: 'palette',
+    department: 'Design',
+    requiresFields: ['design_item_type_id'],
   },
 }
 
@@ -106,6 +123,7 @@ export interface WorkflowAction {
   execution_order: number
   task_template_id: string | null
   assigned_to_user_id: string | null
+  design_item_type_id: string | null
   config: Record<string, any>
   created_at: string
   updated_at: string
@@ -172,11 +190,27 @@ export interface WorkflowEventType {
 }
 
 /**
+ * Design Item Type metadata
+ */
+export interface WorkflowDesignItemType {
+  id: string
+  name: string
+  type: 'digital' | 'physical'
+  category: 'print' | 'digital' | 'environmental' | 'promotional' | 'other'
+  default_design_days: number
+  default_production_days: number
+  default_shipping_days: number
+  client_approval_buffer_days: number
+  requires_approval: boolean
+}
+
+/**
  * Workflow Action with full relations
  * Used in UI when displaying/editing workflows
  */
 export interface WorkflowActionWithRelations extends WorkflowAction {
   task_template?: WorkflowTaskTemplate | null
+  design_item_type?: WorkflowDesignItemType | null
   assigned_to_user?: WorkflowUser | null
 }
 
@@ -232,6 +266,7 @@ export interface WorkflowActionInsert {
   action_type: WorkflowActionType
   execution_order: number
   task_template_id?: string | null
+  design_item_type_id?: string | null
   assigned_to_user_id?: string | null
   config?: Record<string, any>
 }
@@ -242,6 +277,7 @@ export interface WorkflowActionInsert {
 export interface WorkflowActionUpdate {
   execution_order?: number
   task_template_id?: string | null
+  design_item_type_id?: string | null
   assigned_to_user_id?: string | null
   config?: Record<string, any>
 }
@@ -301,6 +337,7 @@ export interface WorkflowBuilderAction {
   tempId: string // Temporary ID for UI (not saved to DB)
   actionType: WorkflowActionType
   taskTemplateId: string | null
+  designItemTypeId: string | null
   assignedToUserId: string | null
   config: Record<string, any>
 }
@@ -393,6 +430,7 @@ export interface ActionExecutionResult {
     details?: any
   }
   createdTaskId?: string // For create_task actions
+  createdDesignItemId?: string // For create_design_item actions
   output?: any // Flexible output for future action types
 }
 

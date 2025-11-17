@@ -75,6 +75,7 @@ export default function WorkflowBuilder({
           tempId: `existing-${action.id}`,
           actionType: action.action_type,
           taskTemplateId: action.task_template_id,
+          designItemTypeId: action.design_item_type_id,
           assignedToUserId: action.assigned_to_user_id,
           config: action.config || {},
         }))
@@ -88,6 +89,7 @@ export default function WorkflowBuilder({
       tempId: `new-${Date.now()}`,
       actionType: 'create_task',
       taskTemplateId: null,
+      designItemTypeId: null,
       assignedToUserId: null,
       config: {},
     }
@@ -159,6 +161,7 @@ export default function WorkflowBuilder({
         action_type: action.actionType,
         execution_order: index,
         task_template_id: action.taskTemplateId,
+        design_item_type_id: action.designItemTypeId,
         assigned_to_user_id: action.assignedToUserId,
         config: action.config,
       })),
