@@ -302,7 +302,6 @@ export default function EventTypesPage() {
             <li>• Each type must belong to a category</li>
           </ul>
         </div>
-      </div>
 
       {/* Add/Edit Modal */}
       {(showAddModal || editingType) && (

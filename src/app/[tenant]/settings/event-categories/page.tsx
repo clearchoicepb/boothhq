@@ -226,7 +226,6 @@ export default function EventCategoriesPage() {
             <li>• Operations tasks will filter based on category</li>
           </ul>
         </div>
-      </div>
 
       {/* Add/Edit Modal */}
       {(showAddModal || editingCategory) && (
