@@ -24,6 +24,7 @@ interface FloatingQuickActionsProps {
   tenantSubdomain: string
   canCreate: boolean
   onDuplicateEvent?: () => void
+  onGenerateContract?: () => void
 }
 
 export function FloatingQuickActions({
@@ -32,7 +33,8 @@ export function FloatingQuickActions({
   contactId,
   tenantSubdomain,
   canCreate,
-  onDuplicateEvent
+  onDuplicateEvent,
+  onGenerateContract
 }: FloatingQuickActionsProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -116,7 +118,9 @@ export function FloatingQuickActions({
             {/* Generate Contract */}
             <button
               onClick={() => {
-                alert('Contract generation coming soon!')
+                if (onGenerateContract) {
+                  onGenerateContract()
+                }
                 setIsExpanded(false)
               }}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
@@ -124,7 +128,7 @@ export function FloatingQuickActions({
               <FileText className="h-4 w-4 text-gray-600" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Generate Contract</p>
-                <p className="text-xs text-gray-500">Create agreement</p>
+                <p className="text-xs text-gray-500">E-signature ready</p>
               </div>
             </button>
           </div>

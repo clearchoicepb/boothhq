@@ -12,19 +12,23 @@ interface Template {
   content: string
 }
 
-interface GenerateEventAgreementModalProps {
+interface GenerateAgreementModalProps {
   isOpen: boolean
   onClose: () => void
   eventId: string
+  accountId?: string
+  contactId?: string
   onSuccess?: () => void
 }
 
-export function GenerateEventAgreementModal({
+export function GenerateAgreementModal({
   isOpen,
   onClose,
   eventId,
+  accountId,
+  contactId,
   onSuccess
-}: GenerateEventAgreementModalProps) {
+}: GenerateAgreementModalProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -248,7 +252,7 @@ export function GenerateEventAgreementModal({
               <div>
                 <span className="text-gray-600">Expires:</span>
                 <p className="font-medium text-gray-900">
-                  {contract?.expires_at ? new Date(contract.expires_at).toLocaleDateString() : 'N/A'}
+                  {new Date(contract?.expires_at).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -319,3 +323,4 @@ export function GenerateEventAgreementModal({
     </Modal>
   )
 }
+

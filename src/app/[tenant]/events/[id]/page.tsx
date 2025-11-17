@@ -793,6 +793,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
           contactId={event.contact_id}
           tenantSubdomain={tenantSubdomain}
           canCreate={canManageEvents}
+          onGenerateContract={() => setIsGenerateAgreementModalOpen(true)}
         />
       </AppLayout>
 
