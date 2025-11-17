@@ -79,14 +79,29 @@ export default function TestSMSPage() {
       if (response.ok) {
         const data = await response.json();
         
+        console.log('📥 Fetched SMS messages:', data.length);
+        console.log('🔍 Looking for phone:', testPhone, 'normalized:', normalizePhone(testPhone));
+        
         // Filter messages related to our test phone number
         const normalizedTestPhone = normalizePhone(testPhone);
         const relevantMessages = data.filter((msg: TestMessage) => {
           const fromPhone = msg.metadata?.from_number ? normalizePhone(msg.metadata.from_number) : '';
           const toPhone = msg.metadata?.to_number ? normalizePhone(msg.metadata.to_number) : '';
+          
+          console.log('📨 Message:', {
+            direction: msg.direction,
+            from: msg.metadata?.from_number,
+            to: msg.metadata?.to_number,
+            fromNormalized: fromPhone,
+            toNormalized: toPhone,
+            matches: fromPhone === normalizedTestPhone || toPhone === normalizedTestPhone
+          });
+          
           return fromPhone === normalizedTestPhone || toPhone === normalizedTestPhone;
         });
 
+        console.log('✅ Relevant messages:', relevantMessages.length);
+        
         setTestMessages(relevantMessages.sort((a: TestMessage, b: TestMessage) =>
           new Date(a.communication_date).getTime() - new Date(b.communication_date).getTime()
         ));
