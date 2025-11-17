@@ -37,6 +37,18 @@ interface MergeFieldData {
   event_load_in_notes?: string
   event_total_amount?: number
 
+  // Invoice/Financial data
+  invoice_number?: string
+  invoice_total?: number
+  invoice_amount_due?: number
+  invoice_amount_paid?: number
+  invoice_due_date?: string
+  invoice_issue_date?: string
+  invoice_deposit_amount?: number
+  invoice_balance_due?: number
+  invoice_payment_terms?: string
+  invoice_status?: string
+
   // Legacy fields (for backwards compatibility)
   first_name?: string
   last_name?: string
@@ -72,16 +84,25 @@ export function replaceMergeFields(template: string, data: MergeFieldData): stri
     let formattedValue = String(value)
 
     // Special formatting for certain fields
-    if ((key === 'amount' || key === 'opportunity_amount' || key === 'event_total_amount') && typeof value === 'number') {
-      formattedValue = `$${value.toLocaleString()}`
-    } else if ((key === 'event_date' || key === 'event_start_date' || key === 'event_end_date') && value) {
+    
+    // Currency fields
+    if ((key === 'amount' || key === 'opportunity_amount' || key === 'event_total_amount' || 
+         key === 'invoice_total' || key === 'invoice_amount_due' || key === 'invoice_amount_paid' ||
+         key === 'invoice_deposit_amount' || key === 'invoice_balance_due') && typeof value === 'number') {
+      formattedValue = `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    } 
+    // Date fields (long format)
+    else if ((key === 'event_date' || key === 'event_start_date' || key === 'event_end_date' || 
+              key === 'invoice_due_date' || key === 'invoice_issue_date') && value) {
       formattedValue = new Date(value).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
-    } else if ((key === 'event_start_time' || key === 'event_end_time' || key === 'event_setup_time' || key === 'setup_time') && value) {
+    } 
+    // Time fields
+    else if ((key === 'event_start_time' || key === 'event_end_time' || key === 'event_setup_time' || key === 'setup_time') && value) {
       // Format time from HH:MM:SS to h:MM AM/PM
       const timeParts = value.split(':')
       if (timeParts.length >= 2) {
@@ -91,6 +112,10 @@ export function replaceMergeFields(template: string, data: MergeFieldData): stri
         const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
         formattedValue = `${displayHours}:${minutes} ${period}`
       }
+    }
+    // Status fields (capitalize)
+    else if (key === 'invoice_status' && value) {
+      formattedValue = String(value).charAt(0).toUpperCase() + String(value).slice(1).toLowerCase()
     }
 
     // Replace all occurrences of {{field_name}}
@@ -112,6 +137,7 @@ export async function getMergeFieldData(params: {
   contactId?: string
   leadId?: string
   eventId?: string
+  invoiceId?: string
 }): Promise<MergeFieldData> {
   const data: MergeFieldData = {}
 
@@ -267,6 +293,37 @@ export async function getMergeFieldData(params: {
         data.email = lead.email
         data.phone = lead.phone
         data.company_name = lead.company
+      }
+    }
+
+    // Fetch invoice data
+    if (params.invoiceId) {
+      const response = await fetch(`/api/invoices/${params.invoiceId}`)
+      console.log('[getMergeFieldData] Invoice response:', response.ok)
+      if (response.ok) {
+        const invoice = await response.json()
+        console.log('[getMergeFieldData] Invoice data:', invoice)
+        
+        data.invoice_number = invoice.invoice_number || invoice.id
+        data.invoice_total = invoice.total_amount
+        data.invoice_amount_due = invoice.amount_due || invoice.total_amount
+        data.invoice_amount_paid = invoice.amount_paid || 0
+        data.invoice_balance_due = (invoice.amount_due || invoice.total_amount) - (invoice.amount_paid || 0)
+        data.invoice_due_date = invoice.due_date
+        data.invoice_issue_date = invoice.issue_date || invoice.created_at
+        data.invoice_payment_terms = invoice.payment_terms || 'Due upon receipt'
+        data.invoice_status = invoice.status
+        
+        // Calculate deposit if applicable (could be a line item or percentage)
+        if (invoice.line_items && Array.isArray(invoice.line_items)) {
+          const depositItem = invoice.line_items.find((item: any) => 
+            item.description?.toLowerCase().includes('deposit') || 
+            item.name?.toLowerCase().includes('deposit')
+          )
+          if (depositItem) {
+            data.invoice_deposit_amount = depositItem.amount || depositItem.total
+          }
+        }
       }
     }
   } catch (error) {

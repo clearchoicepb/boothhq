@@ -154,6 +154,18 @@ const MERGE_FIELDS = [
   // Opportunity Fields
   { label: 'Opportunity: Name', value: '{{opportunity_name}}' },
   { label: 'Opportunity: Amount', value: '{{opportunity_amount}}' },
+  
+  // Invoice/Financial Fields
+  { label: 'Invoice: Number', value: '{{invoice_number}}' },
+  { label: 'Invoice: Total Amount', value: '{{invoice_total}}' },
+  { label: 'Invoice: Amount Due', value: '{{invoice_amount_due}}' },
+  { label: 'Invoice: Amount Paid', value: '{{invoice_amount_paid}}' },
+  { label: 'Invoice: Due Date', value: '{{invoice_due_date}}' },
+  { label: 'Invoice: Issue Date', value: '{{invoice_issue_date}}' },
+  { label: 'Invoice: Deposit Amount', value: '{{invoice_deposit_amount}}' },
+  { label: 'Invoice: Balance Due', value: '{{invoice_balance_due}}' },
+  { label: 'Invoice: Payment Terms', value: '{{invoice_payment_terms}}' },
+  { label: 'Invoice: Status', value: '{{invoice_status}}' },
 ]
 
 export function RichTextEditor({
