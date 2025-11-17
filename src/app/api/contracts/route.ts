@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
     console.log('[contracts/route.ts] All required fields present, proceeding...')
 
     // Get event data
+    console.log('[contracts/route.ts] Fetching event with ID:', event_id)
+    console.log('[contracts/route.ts] Using tenant_id:', dataSourceTenantId)
+    
+    // Note: RLS handles tenant filtering automatically via app.current_tenant_id
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
@@ -65,12 +69,28 @@ export async function POST(request: NextRequest) {
         contacts(*)
       `)
       .eq('id', event_id)
-      .eq('tenant_id', dataSourceTenantId)
       .single()
 
+    console.log('[contracts/route.ts] Event query result:', {
+      hasEvent: !!event,
+      eventError: eventError?.message,
+      eventErrorCode: eventError?.code,
+      eventErrorDetails: eventError?.details
+    })
+
     if (eventError || !event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+      console.error('[contracts/route.ts] Event not found. Error:', eventError)
+      return NextResponse.json({ 
+        error: 'Event not found',
+        debug: {
+          event_id,
+          tenant_id: dataSourceTenantId,
+          error: eventError?.message
+        }
+      }, { status: 404 })
     }
+    
+    console.log('[contracts/route.ts] Event found:', event.id, event.title)
 
     // Fetch merge field data
     const mergeData = await getMergeFieldData({
@@ -80,13 +100,14 @@ export async function POST(request: NextRequest) {
     // Replace merge fields in template
     const processedContent = replaceMergeFields(template_content, mergeData)
 
-    // Generate contract number
-    const { data: contractCount } = await supabase
+    // Generate contract number (RLS handles tenant filtering)
+    const { count: contractCount } = await supabase
       .from('contracts')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', dataSourceTenantId)
+      .select('*', { count: 'exact', head: true })
 
-    const contractNumber = `CON-${String((contractCount?.length || 0) + 1).padStart(5, '0')}`
+    console.log('[contracts/route.ts] Contract count:', contractCount)
+    const contractNumber = `CON-${String((contractCount || 0) + 1).padStart(5, '0')}`
+    console.log('[contracts/route.ts] Generated contract number:', contractNumber)
 
     // Calculate expiration date
     const expiresAt = new Date()
@@ -156,6 +177,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
 
+    // Note: RLS handles tenant filtering automatically
     let query = supabase
       .from('contracts')
       .select(`
@@ -164,7 +186,6 @@ export async function GET(request: NextRequest) {
         accounts(name),
         contacts(first_name, last_name)
       `)
-      .eq('tenant_id', dataSourceTenantId)
       .order('created_at', { ascending: false })
 
     if (eventId) {
