@@ -13,19 +13,12 @@ export async function GET(request: NextRequest) {
 
     console.log('[Template Sections API] Fetching sections for tenant:', dataSourceTenantId)
 
-    // Fetch system sections (tenant_id = NULL or is_system = true) and tenant-specific sections
-    // Using OR filter to get both in one query
-    let query = supabase
-      .from('template_sections')
-      .select('*')
-      .or(`tenant_id.is.null,tenant_id.eq.${dataSourceTenantId},is_system.eq.true`)
-      .order('sort_order', { ascending: true })
-
-    if (category) {
-      query = query.eq('category', category)
-    }
-
-    const { data, error } = await query
+    // Use RPC function to bypass RLS and get sections
+    // This function returns both system sections and tenant-specific sections
+    const { data, error } = await supabase.rpc('get_template_sections_for_tenant', {
+      p_tenant_id: dataSourceTenantId,
+      p_category: category
+    })
 
     console.log('[Template Sections API] Query result:', {
       count: data?.length || 0,
