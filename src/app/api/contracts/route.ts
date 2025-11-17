@@ -145,23 +145,28 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expires_days)
 
-    // Create contract
-    // Note: signer_name and signer_email will be populated when the client signs
+    // Create contract with minimal columns (only those that exist in database)
+    // Note: Using only core columns - others may not exist in current schema
+    const insertData: any = {
+      tenant_id: dataSourceTenantId,
+      event_id,
+      content: processedContent,
+      status: 'draft'
+    }
+    
+    // Add optional fields only if they have values
+    if (event.account_id) insertData.account_id = event.account_id
+    if (event.contact_id) insertData.contact_id = event.contact_id
+    if (template_id) insertData.template_id = template_id
+    if (contractNumber) insertData.contract_number = contractNumber
+    if (expiresAt) insertData.expires_at = expiresAt.toISOString()
+    if (session.user.id) insertData.created_by = session.user.id
+    
+    console.log('[contracts/route.ts] Inserting with data:', Object.keys(insertData))
+    
     const { data: contract, error: contractError} = await supabase
       .from('contracts')
-      .insert({
-        tenant_id: dataSourceTenantId,
-        event_id,
-        account_id: event.account_id,
-        contact_id: event.contact_id,
-        template_id,
-        contract_number: contractNumber,
-        title,
-        content: processedContent,
-        status: 'draft',
-        expires_at: expiresAt.toISOString(),
-        created_by: session.user.id
-      })
+      .insert(insertData)
       .select()
       .single()
     
