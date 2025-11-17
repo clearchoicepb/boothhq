@@ -70,12 +70,23 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       }
 
       // Fetch design item types
+      console.log('[ActionCard] Fetching design item types...')
       const designTypesRes = await fetch('/api/design/types')
+      console.log('[ActionCard] Design types response status:', designTypesRes.status)
+      
       if (designTypesRes.ok) {
         const designTypesData = await designTypesRes.json()
-        // API returns { designTypes: [...] }
-        const types = designTypesData.designTypes || designTypesData
+        console.log('[ActionCard] Raw design types data:', designTypesData)
+        
+        // API returns { types: [...] }
+        const types = designTypesData.types || designTypesData.designTypes || designTypesData
+        console.log('[ActionCard] Extracted design types:', types)
+        console.log('[ActionCard] Is array?', Array.isArray(types))
+        console.log('[ActionCard] Count:', types?.length)
+        
         setDesignItemTypes(Array.isArray(types) ? types : [])
+      } else {
+        console.error('[ActionCard] Failed to fetch design types:', await designTypesRes.text())
       }
 
       // Fetch all users
