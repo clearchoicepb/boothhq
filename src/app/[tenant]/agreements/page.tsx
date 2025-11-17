@@ -131,7 +131,7 @@ export default function AgreementsPage() {
   }
 
   return (
-    <AccessGuard permission={permissions.contracts?.view}>
+    <AccessGuard module="contracts" action="view">
       <AppLayout>
         <div className="px-6 py-8">
           {/* Header */}

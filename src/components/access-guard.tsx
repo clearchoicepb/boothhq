@@ -8,7 +8,7 @@ import { Shield, Lock } from 'lucide-react'
 
 interface AccessGuardProps {
   children: React.ReactNode
-  module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'users' | 'settings'
+  module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'contracts' | 'users' | 'settings'
   action?: 'view' | 'create' | 'edit' | 'delete'
   fallback?: React.ReactNode
   redirectTo?: string
@@ -126,7 +126,7 @@ export function withAccessGuard<P extends object>(
 // Conditional render component
 interface PermissionGateProps {
   children: React.ReactNode
-  module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'users' | 'settings'
+  module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'contracts' | 'users' | 'settings'
   action?: 'view' | 'create' | 'edit' | 'delete'
   fallback?: React.ReactNode
 }
