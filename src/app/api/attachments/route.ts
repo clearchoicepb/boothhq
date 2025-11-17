@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
     const entityType = searchParams.get('entity_type')
     const entityId = searchParams.get('entity_id')
 
+    console.log('[attachments/route.ts] GET request:', { entityType, entityId, dataSourceTenantId })
+
     if (!entityType || !entityId) {
       return NextResponse.json(
         { error: 'entity_type and entity_id are required' },
@@ -18,7 +20,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { data: attachments, error } = await supabase
+    // Query both 'attachments' and 'files' tables to get all files
+    // (We save contracts to 'files' table, regular uploads to 'attachments' table)
+    
+    // Query attachments table
+    const { data: attachments, error: attachmentsError } = await supabase
       .from('attachments')
       .select(`
         *,
@@ -33,15 +39,50 @@ export async function GET(request: NextRequest) {
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching attachments:', error)
+    console.log('[attachments/route.ts] Attachments query result:', {
+      count: attachments?.length || 0,
+      error: attachmentsError
+    })
+
+    // Query files table (for contracts and other system files)
+    const { data: files, error: filesError } = await supabase
+      .from('files')
+      .select(`
+        *,
+        uploaded_by_user:users!uploaded_by (
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('tenant_id', dataSourceTenantId)
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .order('created_at', { ascending: false })
+
+    console.log('[attachments/route.ts] Files query result:', {
+      count: files?.length || 0,
+      error: filesError,
+      files: files
+    })
+
+    if (attachmentsError && filesError) {
+      console.error('[attachments/route.ts] Both queries failed:', { attachmentsError, filesError })
       return NextResponse.json(
-        { error: 'Failed to fetch attachments' },
+        { error: 'Failed to fetch files' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json(attachments)
+    // Merge both results
+    const allFiles = [
+      ...(attachments || []),
+      ...(files || [])
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    console.log('[attachments/route.ts] Total files returned:', allFiles.length)
+
+    return NextResponse.json(allFiles)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(

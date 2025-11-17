@@ -32,6 +32,8 @@ export function GenerateEventAgreementModal({
   const [error, setError] = useState('')
   const [contract, setContract] = useState<any>(null)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -135,15 +137,77 @@ export function GenerateEventAgreementModal({
     window.open(link, '_blank')
   }
 
+  const handleSaveAgreement = async () => {
+    if (!contract) return
+    
+    setSaving(true)
+    try {
+      // Call API to save agreement to files tab
+      const response = await fetch(`/api/contracts/${contract.id}/save-to-files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: eventId,
+          status: 'sent' // Saved agreements are marked as "sent"
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save agreement')
+      }
+
+      setSaved(true)
+      toast.success('Agreement saved to Files tab!')
+      
+      // Trigger refresh
+      if (onSuccess) {
+        onSuccess()
+      }
+    } catch (err) {
+      console.error('Error saving agreement:', err)
+      toast.error('Failed to save agreement to Files tab')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSendEmail = async () => {
     // TODO: Implement email sending
     toast.info('Email sending coming soon! For now, copy and share the link.')
   }
 
   const handleClose = () => {
+    // If not saved yet, save as draft before closing
+    if (contract && !saved) {
+      saveDraftAgreement()
+    }
     setStep('select')
     setContract(null)
+    setSaved(false)
     onClose()
+  }
+
+  const saveDraftAgreement = async () => {
+    if (!contract) return
+    
+    try {
+      // Save as draft silently
+      await fetch(`/api/contracts/${contract.id}/save-to-files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: eventId,
+          status: 'draft'
+        })
+      })
+      
+      // Still trigger refresh so draft appears
+      if (onSuccess) {
+        onSuccess()
+      }
+    } catch (err) {
+      console.error('Error saving draft agreement:', err)
+    }
   }
 
   return (
@@ -320,9 +384,50 @@ export function GenerateEventAgreementModal({
             </Button>
           </div>
 
+          {/* Save Agreement Section */}
+          {!saved ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-900">Save to Files Tab</h4>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Click "Save Agreement" to add this to the event's Files tab. 
+                    If you close without saving, it will be saved as a draft.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSaveAgreement}
+                  disabled={saving}
+                  className="ml-4 bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Save Agreement
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                <p className="text-sm text-green-800 font-medium">
+                  Agreement saved to Files tab
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end pt-4 border-t">
-            <Button onClick={handleClose} className="bg-blue-600 hover:bg-blue-700">
-              Done
+            <Button onClick={handleClose} variant="outline">
+              {saved ? 'Done' : 'Close'}
             </Button>
           </div>
         </div>

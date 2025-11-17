@@ -39,6 +39,8 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null)
 
   const fetchFiles = async () => {
+    console.log('[EventFilesList] Fetching files for event:', eventId)
+    
     try {
       setLoading(true)
       setError(null)
@@ -48,15 +50,31 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
         entity_id: eventId,
       })
 
-      const response = await fetch(`/api/attachments?${params}`)
+      const url = `/api/attachments?${params}`
+      console.log('[EventFilesList] Fetching from:', url)
+
+      const response = await fetch(url)
+
+      console.log('[EventFilesList] Response status:', response.status)
+      console.log('[EventFilesList] Response ok:', response.ok)
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[EventFilesList] Error response:', errorText)
         throw new Error('Failed to fetch files')
       }
 
       const data = await response.json()
+      console.log('[EventFilesList] Files received:', data)
+      console.log('[EventFilesList] Number of files:', data?.length || 0)
+      
+      // Log contract files specifically
+      const contractFiles = data?.filter((f: any) => f.metadata?.is_contract)
+      console.log('[EventFilesList] Contract files:', contractFiles)
+      
       setFiles(data)
     } catch (err) {
+      console.error('[EventFilesList] Error fetching files:', err)
       setError(err instanceof Error ? err.message : 'Failed to load files')
     } finally {
       setLoading(false)
