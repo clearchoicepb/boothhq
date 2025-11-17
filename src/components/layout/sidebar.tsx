@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
-import { Building2, Users, TrendingUp, FileText, FileSignature } from 'lucide-react'
+import { Building2, Users, TrendingUp, FileText, FileSignature, CheckSquare } from 'lucide-react'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
@@ -20,6 +20,12 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const { settings } = useSettings()
 
   const sidebarItems = [
+    {
+      label: 'My Tasks',
+      href: `/${tenantSubdomain}/dashboard/my-tasks`,
+      icon: CheckSquare,
+      permission: true // Always visible to authenticated users
+    },
     {
       label: 'Leads',
       href: `/${tenantSubdomain}/leads`,
