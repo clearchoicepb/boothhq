@@ -229,7 +229,8 @@ export default function TemplatesSettingsPage() {
             id: editingTemplate.id,
             name: editingTemplate.name,
             sections: (editingTemplate as any).sections || [],
-            template_type: editingTemplate.template_type
+            template_type: editingTemplate.template_type,
+            content: editingTemplate.content
           } : undefined}
           onSave={handleSaveFromBuilder}
           onCancel={() => {

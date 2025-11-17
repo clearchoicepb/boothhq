@@ -49,6 +49,7 @@ interface TemplateBuilderProps {
     name: string
     sections: TemplateSection[]
     template_type: string
+    content?: string
   }
   onSave: (template: any) => void
   onCancel: () => void
@@ -65,8 +66,11 @@ export default function TemplateBuilder({
   const [sections, setSections] = useState<TemplateSection[]>(initialTemplate?.sections || [])
   const [editingSection, setEditingSection] = useState<TemplateSection | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [editedContent, setEditedContent] = useState('')
+  const [viewMode, setViewMode] = useState<'sections' | 'editor'>(
+    // If editing existing template with content, default to editor view
+    initialTemplate?.id && initialTemplate?.content ? 'editor' : 'sections'
+  )
+  const [editedContent, setEditedContent] = useState(initialTemplate?.content || '')
   const [allLibrarySections, setAllLibrarySections] = useState<LibrarySection[]>([])
   
   const logoUrl = settings?.appearance?.logoUrl
@@ -85,12 +89,12 @@ export default function TemplateBuilder({
     fetchLibrarySections()
   }, [])
 
-  // Initialize edited content when preview opens
+  // Initialize edited content when switching to editor view
   useEffect(() => {
-    if (isPreviewOpen && !editedContent) {
+    if (viewMode === 'editor' && !editedContent && sections.length > 0) {
       setEditedContent(getHtmlPreviewContent())
     }
-  }, [isPreviewOpen])
+  }, [viewMode])
 
   // Auto-populate sections based on template type
   const autoPopulateSections = useCallback((type: string) => {
@@ -239,45 +243,21 @@ export default function TemplateBuilder({
     return convertTextToHtml(textContent)
   }
 
-  // Open preview with rich text editor
-  const handleOpenPreview = () => {
-    if (sections.length === 0) {
-      toast.error('Please add at least one section before previewing')
+  // Switch to editor view
+  const handleSwitchToEditor = () => {
+    if (sections.length === 0 && !editedContent) {
+      toast.error('Please add at least one section first')
       return
     }
-    setEditedContent(getHtmlPreviewContent())
-    setIsPreviewOpen(true)
+    if (!editedContent && sections.length > 0) {
+      setEditedContent(getHtmlPreviewContent())
+    }
+    setViewMode('editor')
   }
 
-  // Save edited preview content
-  const handleSaveEditedPreview = () => {
-    if (confirm('Save changes? This will combine all sections into a single editable section.')) {
-      // Replace all sections with a single section containing the edited content
-      const newSection: TemplateSection = {
-        id: `temp-edited-${Date.now()}`,
-        section_id: '',
-        content: editedContent,
-        order: 0,
-        name: 'Custom Edited Content'
-      }
-      setSections([newSection])
-      setIsPreviewOpen(false)
-      setEditedContent('')
-      toast.success('Preview changes applied to template')
-    }
-  }
-
-  // Close preview modal
-  const handleClosePreview = () => {
-    if (editedContent !== getHtmlPreviewContent()) {
-      if (confirm('You have unsaved changes. Close without saving?')) {
-        setIsPreviewOpen(false)
-        setEditedContent('')
-      }
-    } else {
-      setIsPreviewOpen(false)
-      setEditedContent('')
-    }
+  // Switch to sections view
+  const handleSwitchToSections = () => {
+    setViewMode('sections')
   }
 
   // Save template
@@ -287,23 +267,27 @@ export default function TemplateBuilder({
       return
     }
 
-    if (sections.length === 0) {
+    if (viewMode === 'sections' && sections.length === 0) {
       toast.error('Please add at least one section')
+      return
+    }
+
+    if (viewMode === 'editor' && !editedContent.trim()) {
+      toast.error('Template content cannot be empty')
       return
     }
 
     setIsSaving(true)
     try {
-      // Compile all sections into single content string for backward compatibility
-      const compiledContent = sections
-        .sort((a, b) => a.order - b.order)
-        .map(s => s.content)
-        .join('\n\n')
+      // Use editor content if in editor mode, otherwise compile sections
+      const finalContent = viewMode === 'editor' 
+        ? editedContent
+        : sections.sort((a, b) => a.order - b.order).map(s => s.content).join('\n\n')
 
       await onSave({
         name: templateName,
-        content: compiledContent,
-        sections: sections,
+        content: finalContent,
+        sections: viewMode === 'sections' ? sections : [],
         template_type: templateType
       })
 
@@ -318,12 +302,14 @@ export default function TemplateBuilder({
 
   return (
     <div className="flex h-full">
-      {/* Left Panel - Section Library */}
-      <div className="w-80 border-r bg-gray-50 p-4 overflow-y-auto">
-        <SectionLibrary onAddSection={handleAddSection} />
-      </div>
+      {/* Left Panel - Section Library (only show in sections mode) */}
+      {viewMode === 'sections' && (
+        <div className="w-80 border-r bg-gray-50 p-4 overflow-y-auto">
+          <SectionLibrary onAddSection={handleAddSection} />
+        </div>
+      )}
 
-      {/* Right Panel - Template Builder */}
+      {/* Main Panel - Template Builder or Editor */}
       <div className="flex-1 p-6 overflow-y-auto">
         {/* Header */}
         <div className="mb-6">
@@ -335,14 +321,27 @@ export default function TemplateBuilder({
               <Button variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleOpenPreview}
-                      disabled={sections.length === 0}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Preview & Edit
-                    </Button>
+              
+              {/* View Mode Toggle */}
+              {viewMode === 'sections' ? (
+                <Button
+                  variant="outline"
+                  onClick={handleSwitchToEditor}
+                  disabled={sections.length === 0 && !editedContent}
+                >
+                  <EditIcon className="h-4 w-4 mr-2" />
+                  Edit Content
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={handleSwitchToSections}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Manage Sections
+                </Button>
+              )}
+              
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -386,16 +385,18 @@ export default function TemplateBuilder({
           </div>
         </div>
 
-        {/* Template Canvas */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium mb-4">Template Sections</h3>
+        {/* Conditional View: Sections Builder or Content Editor */}
+        {viewMode === 'sections' ? (
+          /* Sections Builder View */
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium mb-4">Template Sections</h3>
 
-          {sections.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>No sections yet. Drag sections from the left panel to build your template.</p>
-            </div>
-          ) : (
+            {sections.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p>No sections yet. Drag sections from the left panel to build your template.</p>
+              </div>
+            ) : (
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="sections">
                 {(provided, snapshot) => (
@@ -467,8 +468,46 @@ export default function TemplateBuilder({
                 )}
               </Droppable>
             </DragDropContext>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          /* Content Editor View */
+          <div className="space-y-4">
+            {/* Logo Header */}
+            {logoUrl && (
+              <div className="bg-white p-6 border border-gray-200 rounded-lg flex justify-center">
+                <img 
+                  src={logoUrl} 
+                  alt="Company Logo" 
+                  className="h-16 w-auto object-contain"
+                />
+              </div>
+            )}
+
+            {/* Rich Text Editor */}
+            <div className="bg-white rounded-lg shadow">
+              <RichTextEditor
+                value={editedContent}
+                onChange={setEditedContent}
+                placeholder="Edit your template content..."
+                minHeight="600px"
+                showMergeFields={true}
+              />
+            </div>
+
+            {/* Info Messages */}
+            <div className="space-y-2">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                <strong>Tip:</strong> Use the <strong>+ Merge Field</strong> dropdown at the top of the editor to insert dynamic fields that will be replaced with actual data when generating agreements.
+              </div>
+              {sections.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                  <strong>Note:</strong> This template was built with sections. Switch to "Manage Sections" if you want to add or reorganize sections.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Section Editor Modal */}
@@ -479,65 +518,6 @@ export default function TemplateBuilder({
           onClose={() => setEditingSection(null)}
         />
       )}
-
-      {/* Preview & Edit Modal */}
-      <Modal
-        isOpen={isPreviewOpen}
-        onClose={handleClosePreview}
-        title={`Edit Template: ${templateName || 'Untitled Template'}`}
-        className="sm:max-w-5xl"
-      >
-        <div>
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-2 mb-4">
-            <Button
-              variant="outline"
-              onClick={handleClosePreview}
-              className="flex items-center gap-2"
-            >
-              <X className="h-4 w-4" />
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEditedPreview}
-              className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Check className="h-4 w-4" />
-              Apply Changes
-            </Button>
-          </div>
-
-          {/* Logo Header */}
-          {logoUrl && (
-            <div className="bg-white p-6 border border-gray-200 rounded-t-lg flex justify-center mb-4">
-              <img 
-                src={logoUrl} 
-                alt="Company Logo" 
-                className="h-16 w-auto object-contain"
-              />
-            </div>
-          )}
-
-          {/* Rich Text Editor */}
-          <RichTextEditor
-            value={editedContent}
-            onChange={setEditedContent}
-            placeholder="Edit your template..."
-            minHeight="500px"
-            showMergeFields={true}
-          />
-
-          {/* Info Messages */}
-          <div className="mt-3 space-y-2">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-              <strong>Tip:</strong> Use the <strong>+ Merge Field</strong> dropdown to insert dynamic fields that will be replaced with actual data when used.
-            </div>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-              <strong>Note:</strong> Applying changes will combine all existing sections into a single editable section.
-            </div>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }
