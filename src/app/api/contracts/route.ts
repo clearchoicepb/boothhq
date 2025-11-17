@@ -245,30 +245,47 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching contracts:', error)
+      console.error('[contracts/route.ts] GET Error fetching contracts:', error)
+      console.error('[contracts/route.ts] GET Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
       return NextResponse.json(
-        { error: 'Failed to fetch contracts' },
+        { error: 'Failed to fetch contracts', details: error.message },
         { status: 500 }
       )
     }
 
-    // Transform the data to match frontend expectations
-    const formattedData = data?.map(contract => ({
-      ...contract,
-      event: contract.events ? {
-        id: contract.events.id,
-        event_name: contract.events.event_name
-      } : null,
-      account: contract.accounts ? {
-        id: contract.accounts.id,
-        name: contract.accounts.name
-      } : null,
-      contact: contract.contacts ? {
-        id: contract.contacts.id,
-        full_name: `${contract.contacts.first_name} ${contract.contacts.last_name}`
-      } : null
-    }))
+    console.log('[contracts/route.ts] GET Query successful, contracts count:', data?.length || 0)
 
+    // Transform the data to match frontend expectations
+    const formattedData = (data || []).map(contract => {
+      console.log('[contracts/route.ts] Processing contract:', contract.id, {
+        has_events: !!contract.events,
+        has_accounts: !!contract.accounts,
+        has_contacts: !!contract.contacts
+      })
+      
+      return {
+        ...contract,
+        event: contract.events ? {
+          id: contract.events.id,
+          event_name: contract.events.event_name
+        } : null,
+        account: contract.accounts ? {
+          id: contract.accounts.id,
+          name: contract.accounts.name
+        } : null,
+        contact: contract.contacts ? {
+          id: contract.contacts.id,
+          full_name: `${contract.contacts.first_name || ''} ${contract.contacts.last_name || ''}`.trim()
+        } : null
+      }
+    })
+
+    console.log('[contracts/route.ts] GET Returning formatted data, count:', formattedData.length)
     return NextResponse.json(formattedData)
   } catch (error) {
     console.error('Error:', error)

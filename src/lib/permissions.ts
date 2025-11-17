@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useSettings } from '@/lib/settings-context'
 
 export interface Permission {
-  module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'users' | 'settings'
+  module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'contracts' | 'users' | 'settings'
   action: 'view' | 'create' | 'edit' | 'delete'
 }
 
@@ -15,6 +15,7 @@ export interface RolePermissions {
   opportunities: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   events: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   invoices: { view: boolean; create: boolean; edit: boolean; delete: boolean }
+  contracts: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   users: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   settings: { view: boolean; edit: boolean }
 }
@@ -28,6 +29,7 @@ const defaultRolePermissions: Record<string, RolePermissions> = {
     opportunities: { view: true, create: true, edit: true, delete: true },
     events: { view: true, create: true, edit: true, delete: true },
     invoices: { view: true, create: true, edit: true, delete: true },
+    contracts: { view: true, create: true, edit: true, delete: true },
     users: { view: true, create: true, edit: true, delete: true },
     settings: { view: true, edit: true }
   },
@@ -38,6 +40,7 @@ const defaultRolePermissions: Record<string, RolePermissions> = {
     opportunities: { view: true, create: true, edit: true, delete: true },
     events: { view: true, create: true, edit: true, delete: true },
     invoices: { view: true, create: true, edit: true, delete: true },
+    contracts: { view: true, create: true, edit: true, delete: true },
     users: { view: true, create: true, edit: true, delete: true },
     settings: { view: true, edit: true }
   },
@@ -48,6 +51,7 @@ const defaultRolePermissions: Record<string, RolePermissions> = {
     opportunities: { view: true, create: true, edit: true, delete: false },
     events: { view: true, create: true, edit: true, delete: false },
     invoices: { view: true, create: false, edit: false, delete: false },
+    contracts: { view: true, create: true, edit: true, delete: false },
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, edit: false }
   },
@@ -58,6 +62,7 @@ const defaultRolePermissions: Record<string, RolePermissions> = {
     opportunities: { view: true, create: false, edit: false, delete: false },
     events: { view: true, create: true, edit: true, delete: true },
     invoices: { view: true, create: true, edit: true, delete: false },
+    contracts: { view: true, create: true, edit: true, delete: false },
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, edit: false }
   },
@@ -68,6 +73,7 @@ const defaultRolePermissions: Record<string, RolePermissions> = {
     opportunities: { view: false, create: false, edit: false, delete: false },
     events: { view: false, create: false, edit: false, delete: false },
     invoices: { view: false, create: false, edit: false, delete: false },
+    contracts: { view: false, create: false, edit: false, delete: false },
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, edit: false }
   },
@@ -78,6 +84,7 @@ const defaultRolePermissions: Record<string, RolePermissions> = {
     opportunities: { view: false, create: false, edit: false, delete: false },
     events: { view: false, create: false, edit: false, delete: false },
     invoices: { view: false, create: false, edit: false, delete: false },
+    contracts: { view: false, create: false, edit: false, delete: false },
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, edit: false }
   }
@@ -148,6 +155,7 @@ export function usePermissions() {
         opportunities: { view: false, create: false, edit: false, delete: false },
         events: { view: false, create: false, edit: false, delete: false },
         invoices: { view: false, create: false, edit: false, delete: false },
+        contracts: { view: false, create: false, edit: false, delete: false },
         users: { view: false, create: false, edit: false, delete: false },
         settings: { view: false, edit: false }
       }
