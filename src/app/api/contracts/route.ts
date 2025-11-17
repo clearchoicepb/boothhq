@@ -255,9 +255,35 @@ export async function GET(request: NextRequest) {
 
     console.log('[contracts/route.ts] GET Query successful, contracts count:', data?.length || 0)
 
-    // Return raw data - no joins needed for now
-    // Frontend will handle missing related data gracefully
-    return NextResponse.json(data || [])
+    // Fetch event names separately to avoid schema conflicts
+    const contractsWithEventNames = await Promise.all(
+      (data || []).map(async (contract) => {
+        if (contract.event_id) {
+          try {
+            // Fetch just the event name - try different possible column names
+            const { data: event } = await supabase
+              .from('events')
+              .select('id, name, event_name, event_type')
+              .eq('id', contract.event_id)
+              .single()
+            
+            if (event) {
+              // Use whichever name field exists
+              const eventName = event.name || event.event_name || event.event_type || 'Unknown Event'
+              return {
+                ...contract,
+                event_name: eventName
+              }
+            }
+          } catch (error) {
+            console.log('[contracts/route.ts] Could not fetch event name for contract:', contract.id)
+          }
+        }
+        return contract
+      })
+    )
+
+    return NextResponse.json(contractsWithEventNames)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(

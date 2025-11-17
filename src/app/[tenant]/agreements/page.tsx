@@ -6,10 +6,11 @@ import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Plus, FileSignature, ExternalLink, Search, Filter, CheckCircle, Clock, XCircle, Eye } from 'lucide-react'
+import { Plus, FileSignature, ExternalLink, Search, Filter, CheckCircle, Clock, XCircle, Eye, Trash2 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
+import { BaseModal } from '@/components/ui/base-modal'
 
 interface Agreement {
   id: string
@@ -24,6 +25,7 @@ interface Agreement {
   expires_at: string | null
   created_at: string
   event_id: string | null
+  event_name?: string | null
   account_id: string | null
   contact_id: string | null
 }
@@ -41,6 +43,9 @@ export default function AgreementsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [agreementToDelete, setAgreementToDelete] = useState<Agreement | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (session && tenant) {
@@ -83,6 +88,7 @@ export default function AgreementsPage() {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(agreement =>
         agreement.contract_number.toLowerCase().includes(term) ||
+        agreement.event_name?.toLowerCase().includes(term) ||
         agreement.recipient_name?.toLowerCase().includes(term) ||
         agreement.recipient_email?.toLowerCase().includes(term) ||
         agreement.template_name?.toLowerCase().includes(term)
@@ -90,6 +96,45 @@ export default function AgreementsPage() {
     }
 
     setFilteredAgreements(filtered)
+  }
+
+  const handleDeleteClick = (agreement: Agreement) => {
+    setAgreementToDelete(agreement)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!agreementToDelete) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/contracts/${agreementToDelete.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete agreement')
+      }
+
+      // Remove from local state
+      setAgreements(prev => prev.filter(a => a.id !== agreementToDelete.id))
+      setDeleteModalOpen(false)
+      setAgreementToDelete(null)
+      
+      // Show success message
+      alert('Agreement deleted successfully')
+    } catch (error) {
+      console.error('Error deleting agreement:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete agreement')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false)
+    setAgreementToDelete(null)
   }
 
   const getStatusBadge = (agreement: Agreement) => {
@@ -231,7 +276,7 @@ export default function AgreementsPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Agreement #
+                        Event Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Template
@@ -255,8 +300,13 @@ export default function AgreementsPage() {
                       <tr key={agreement.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {agreement.contract_number}
+                            {agreement.event_name || agreement.contract_number}
                           </div>
+                          {agreement.event_name && (
+                            <div className="text-xs text-gray-500">
+                              #{agreement.contract_number}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
@@ -295,14 +345,26 @@ export default function AgreementsPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <Button
-                            onClick={() => handleViewAgreement(agreement.id)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              onClick={() => handleViewAgreement(agreement.id)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteClick(agreement)}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:border-red-300"
+                              disabled={agreement.status === 'signed'}
+                              title={agreement.status === 'signed' ? 'Cannot delete signed agreements' : 'Delete agreement'}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -320,6 +382,73 @@ export default function AgreementsPage() {
           )}
         </div>
       </AppLayout>
+
+      {/* Delete Confirmation Modal */}
+      <BaseModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        title="Delete Agreement"
+      >
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600">
+            Are you sure you want to delete this agreement?
+          </div>
+          
+          {agreementToDelete && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700">Event:</span>
+                <span className="text-gray-900">{agreementToDelete.event_name || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700">Template:</span>
+                <span className="text-gray-900">{agreementToDelete.template_name || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700">Recipient:</span>
+                <span className="text-gray-900">{agreementToDelete.recipient_name || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700">Status:</span>
+                <span className="text-gray-900 capitalize">{agreementToDelete.status}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-sm text-red-800">
+              <strong>Warning:</strong> This action cannot be undone. The agreement and any associated files will be permanently deleted.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              onClick={handleDeleteCancel}
+              variant="outline"
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Agreement
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </AccessGuard>
   )
 }

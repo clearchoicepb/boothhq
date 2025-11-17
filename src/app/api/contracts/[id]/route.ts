@@ -110,3 +110,75 @@ export async function PUT(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    // First, get the contract to check if it exists and if it's signed
+    const { data: contract, error: fetchError } = await supabase
+      .from('contracts')
+      .select('status, event_id')
+      .eq('id', id)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (fetchError || !contract) {
+      return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
+    }
+
+    // Optional: Prevent deletion of signed contracts
+    if (contract.status === 'signed') {
+      return NextResponse.json(
+        { error: 'Cannot delete signed contracts' },
+        { status: 400 }
+      )
+    }
+
+    // Delete the associated attachment record if it exists
+    // (Look for attachments with this contract ID in the description)
+    if (contract.event_id) {
+      await supabase
+        .from('attachments')
+        .delete()
+        .eq('entity_type', 'event')
+        .eq('entity_id', contract.event_id)
+        .like('description', `%[CONTRACT:${id}]%`)
+    }
+
+    // Delete the contract
+    const { error: deleteError } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', dataSourceTenantId)
+
+    if (deleteError) {
+      console.error('Database error:', deleteError)
+      return NextResponse.json(
+        { error: 'Failed to delete contract' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, message: 'Contract deleted successfully' })
+  } catch (error) {
+    console.error('Error deleting contract:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
