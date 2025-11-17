@@ -11,51 +11,38 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
-    // Fetch system sections (tenant_id = NULL) and tenant-specific sections
+    console.log('[Template Sections API] Fetching sections for tenant:', dataSourceTenantId)
+
+    // Fetch system sections (tenant_id = NULL or is_system = true) and tenant-specific sections
+    // Using OR filter to get both in one query
     let query = supabase
       .from('template_sections')
       .select('*')
-      .order('sort_order', { ascending: true })
-
-    // Get both system sections and tenant sections
-    // System sections: tenant_id IS NULL
-    // Tenant sections: tenant_id = dataSourceTenantId
-    const systemQuery = supabase
-      .from('template_sections')
-      .select('*')
-      .is('tenant_id', null)
-      .order('sort_order', { ascending: true })
-
-    const tenantQuery = supabase
-      .from('template_sections')
-      .select('*')
-      .eq('tenant_id', dataSourceTenantId)
+      .or(`tenant_id.is.null,tenant_id.eq.${dataSourceTenantId},is_system.eq.true`)
       .order('sort_order', { ascending: true })
 
     if (category) {
-      systemQuery.eq('category', category)
-      tenantQuery.eq('category', category)
+      query = query.eq('category', category)
     }
 
-    const [systemResult, tenantResult] = await Promise.all([
-      systemQuery,
-      tenantQuery
-    ])
+    const { data, error } = await query
 
-    if (systemResult.error) throw systemResult.error
-    if (tenantResult.error) throw tenantResult.error
+    console.log('[Template Sections API] Query result:', {
+      count: data?.length || 0,
+      error: error?.message,
+      sample: data?.[0]
+    })
 
-    // Combine system and tenant sections
-    const allSections = [...(systemResult.data || []), ...(tenantResult.data || [])]
+    if (error) {
+      console.error('[Template Sections API] Database error:', error)
+      throw error
+    }
 
-    // Sort by sort_order
-    allSections.sort((a, b) => a.sort_order - b.sort_order)
-
-    return NextResponse.json({ sections: allSections })
-  } catch (error) {
-    console.error('Error fetching template sections:', error)
+    return NextResponse.json({ sections: data || [] })
+  } catch (error: any) {
+    console.error('[Template Sections API] Error fetching template sections:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch sections' },
+      { error: 'Failed to fetch sections', details: error.message },
       { status: 500 }
     )
   }
