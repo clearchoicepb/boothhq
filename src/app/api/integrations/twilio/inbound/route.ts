@@ -1,6 +1,10 @@
-import { getTenantContext } from '@/lib/tenant-helpers'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
+
+// Create Supabase client for webhook (no auth required)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /**
  * Twilio Inbound SMS Webhook Handler
@@ -14,6 +18,8 @@ import twilio from 'twilio'
  * - NumMedia: Number of media items (0 for text-only)
  */
 export async function POST(request: NextRequest) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
   try {
     // Parse the incoming form data from Twilio
     const formData = await request.formData()

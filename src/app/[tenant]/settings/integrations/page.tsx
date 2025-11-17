@@ -879,9 +879,17 @@ export default function IntegrationsSettingsPage() {
                        settings.thirdPartyIntegrations.twilio.accountSid &&
                        settings.thirdPartyIntegrations.twilio.authToken &&
                        settings.thirdPartyIntegrations.twilio.phoneNumber && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                          ✓ Configured
-                        </span>
+                        <>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            ✓ Configured
+                          </span>
+                          <Link
+                            href={`/${tenantSubdomain}/settings/integrations/test-sms`}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                          >
+                            Test SMS
+                          </Link>
+                        </>
                       )}
                     </div>
                     <button
