@@ -96,16 +96,23 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
   }
 
   const handleDownload = async (fileId: string, fileName: string) => {
+    console.log('[EventFilesList] Downloading file:', fileId, fileName)
+    
     try {
       const response = await fetch(`/api/attachments/${fileId}`)
+
+      console.log('[EventFilesList] Download response:', response.status)
 
       if (!response.ok) {
         throw new Error('Failed to get download URL')
       }
 
       const data = await response.json()
+      console.log('[EventFilesList] Download URL:', data.download_url)
+      
       window.open(data.download_url, '_blank')
     } catch (err) {
+      console.error('[EventFilesList] Download error:', err)
       alert(err instanceof Error ? err.message : 'Failed to download file')
     }
   }

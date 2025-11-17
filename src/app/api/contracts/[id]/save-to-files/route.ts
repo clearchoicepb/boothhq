@@ -44,28 +44,26 @@ export async function POST(
       status: contract.status
     })
 
-    // Check if file entry already exists
+    // Check if file entry already exists using description field to track contract ID
     const { data: existingFile } = await supabase
-      .from('files')
-      .select('id')
+      .from('attachments')
+      .select('id, description')
       .eq('tenant_id', dataSourceTenantId)
       .eq('entity_type', 'event')
       .eq('entity_id', event_id)
-      .contains('metadata', { contract_id: contractId })
+      .like('description', `%[CONTRACT:${contractId}]%`)
       .single()
 
     if (existingFile) {
-      console.log('[save-to-files/route.ts] File entry already exists, updating status')
+      console.log('[save-to-files/route.ts] File entry already exists:', existingFile.id)
       
-      // Update existing file entry
+      // Update existing file entry description to reflect new status
+      const updatedDescription = `Agreement: ${contract.template_name || 'Contract'} [CONTRACT:${contractId}] [STATUS:${status}]`
+      
       const { error: updateError } = await supabase
-        .from('files')
+        .from('attachments')
         .update({
-          metadata: {
-            contract_id: contractId,
-            contract_status: status,
-            is_contract: true
-          }
+          description: updatedDescription
         })
         .eq('id', existingFile.id)
 
@@ -82,6 +80,7 @@ export async function POST(
     }
 
     // Create new file entry
+    // Note: attachments table requires storage_path, so we use a virtual path
     const fileData = {
       tenant_id: dataSourceTenantId,
       entity_type: 'event',
@@ -89,20 +88,15 @@ export async function POST(
       file_name: 'Event Agreement',
       file_type: 'application/pdf',
       file_size: 0, // Virtual file
-      file_url: `/contracts/${contractId}`,
-      description: `Agreement: ${contract.template_name || 'Contract'}`,
-      metadata: {
-        contract_id: contractId,
-        contract_status: status,
-        is_contract: true
-      },
+      storage_path: `/virtual/contracts/${contractId}`, // Virtual path for contract reference
+      description: `Agreement: ${contract.template_name || 'Contract'} [CONTRACT:${contractId}] [STATUS:${status}]`,
       uploaded_by: session.user.id
     }
 
     console.log('[save-to-files/route.ts] Creating file entry:', fileData)
 
     const { data: newFile, error: fileError } = await supabase
-      .from('files')
+      .from('attachments')
       .insert(fileData)
       .select()
       .single()

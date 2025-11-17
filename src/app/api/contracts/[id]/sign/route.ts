@@ -170,30 +170,37 @@ export async function POST(
       )
     }
 
-    // Update the file entry status to 'signed'
+    // Update the attachment entry status to 'signed' in description field
     if (contract.event_id) {
       try {
-        // Update the contract file entry created when agreement was generated
-        await supabase
-          .from('files')
-          .update({
-            metadata: {
-              contract_id: id,
-              contract_status: 'signed',
-              is_contract: true,
-              signed_at: signedAt,
-              signed_by: signature
-            }
-          })
+        // Find the attachment entry for this contract
+        const { data: attachment } = await supabase
+          .from('attachments')
+          .select('id, description')
           .eq('tenant_id', dataSourceTenantId)
           .eq('entity_id', contract.event_id)
           .eq('entity_type', 'event')
-          .contains('metadata', { contract_id: id })
+          .like('description', `%[CONTRACT:${id}]%`)
+          .single()
         
-        console.log('[sign/route.ts] File entry status updated to signed')
+        if (attachment) {
+          // Update description to reflect signed status
+          const updatedDescription = attachment.description.replace(/\[STATUS:[^\]]+\]/, '[STATUS:signed]')
+          
+          await supabase
+            .from('attachments')
+            .update({
+              description: updatedDescription
+            })
+            .eq('id', attachment.id)
+          
+          console.log('[sign/route.ts] Attachment entry status updated to signed')
+        } else {
+          console.log('[sign/route.ts] No attachment entry found for contract')
+        }
       } catch (err) {
-        console.error('Error updating file entry:', err)
-        // Don't fail the whole operation if file update fails
+        console.error('Error updating attachment entry:', err)
+        // Don't fail the whole operation if attachment update fails
       }
     }
 

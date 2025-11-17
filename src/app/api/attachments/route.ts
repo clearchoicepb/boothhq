@@ -20,10 +20,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Query both 'attachments' and 'files' tables to get all files
-    // (We save contracts to 'files' table, regular uploads to 'attachments' table)
-    
-    // Query attachments table
+    // Query attachments table (includes both uploaded files and contract references)
     const { data: attachments, error: attachmentsError } = await supabase
       .from('attachments')
       .select(`
@@ -44,45 +41,38 @@ export async function GET(request: NextRequest) {
       error: attachmentsError
     })
 
-    // Query files table (for contracts and other system files)
-    const { data: files, error: filesError } = await supabase
-      .from('files')
-      .select(`
-        *,
-        uploaded_by_user:users!uploaded_by (
-          first_name,
-          last_name,
-          email
-        )
-      `)
-      .eq('tenant_id', dataSourceTenantId)
-      .eq('entity_type', entityType)
-      .eq('entity_id', entityId)
-      .order('created_at', { ascending: false })
-
-    console.log('[attachments/route.ts] Files query result:', {
-      count: files?.length || 0,
-      error: filesError,
-      files: files
-    })
-
-    if (attachmentsError && filesError) {
-      console.error('[attachments/route.ts] Both queries failed:', { attachmentsError, filesError })
+    if (attachmentsError) {
+      console.error('[attachments/route.ts] Query failed:', attachmentsError)
       return NextResponse.json(
         { error: 'Failed to fetch files' },
         { status: 500 }
       )
     }
 
-    // Merge both results
-    const allFiles = [
-      ...(attachments || []),
-      ...(files || [])
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    // Parse description field to extract contract metadata if present
+    const filesWithMetadata = (attachments || []).map(file => {
+      // Check if description contains contract metadata
+      const contractMatch = file.description?.match(/\[CONTRACT:([^\]]+)\]/)
+      const statusMatch = file.description?.match(/\[STATUS:([^\]]+)\]/)
+      
+      if (contractMatch) {
+        return {
+          ...file,
+          metadata: {
+            is_contract: true,
+            contract_id: contractMatch[1],
+            contract_status: statusMatch ? statusMatch[1] : 'draft'
+          }
+        }
+      }
+      
+      return file
+    })
 
-    console.log('[attachments/route.ts] Total files returned:', allFiles.length)
+    console.log('[attachments/route.ts] Total files returned:', filesWithMetadata.length)
+    console.log('[attachments/route.ts] Contract files:', filesWithMetadata.filter(f => f.metadata?.is_contract).length)
 
-    return NextResponse.json(allFiles)
+    return NextResponse.json(filesWithMetadata)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
