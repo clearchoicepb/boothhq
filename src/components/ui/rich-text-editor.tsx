@@ -80,6 +80,7 @@ interface RichTextEditorProps {
   className?: string
   disabled?: boolean
   minHeight?: string
+  showMergeFields?: boolean
 }
 
 // Common fonts available in most systems
@@ -119,13 +120,33 @@ const TEXT_COLORS = [
   '#800080', // Purple
 ]
 
+// Merge fields for templates
+const MERGE_FIELDS = [
+  { label: 'First Name', value: '{{first_name}}' },
+  { label: 'Last Name', value: '{{last_name}}' },
+  { label: 'Email', value: '{{email}}' },
+  { label: 'Phone', value: '{{phone}}' },
+  { label: 'Company Name', value: '{{company_name}}' },
+  { label: 'Event Name', value: '{{event_name}}' },
+  { label: 'Event Location', value: '{{event_location}}' },
+  { label: 'Event Start Date', value: '{{event_start_date}}' },
+  { label: 'Event End Date', value: '{{event_end_date}}' },
+  { label: 'Event Start Time', value: '{{event_start_time}}' },
+  { label: 'Event End Time', value: '{{event_end_time}}' },
+  { label: 'Event Total Amount', value: '{{event_total_amount}}' },
+  { label: 'Setup Time', value: '{{setup_time}}' },
+  { label: 'Load In Notes', value: '{{load_in_notes}}' },
+  { label: 'Contact Name', value: '{{contact_name}}' },
+]
+
 export function RichTextEditor({
   value,
   onChange,
   placeholder = 'Start typing...',
   className = '',
   disabled = false,
-  minHeight = '150px'
+  minHeight = '150px',
+  showMergeFields = false
 }: RichTextEditorProps) {
   const [showColorPicker, setShowColorPicker] = useState(false)
 
@@ -201,10 +222,40 @@ export function RichTextEditor({
     setShowColorPicker(false)
   }
 
+  const insertMergeField = (field: string) => {
+    editor.chain().focus().insertContent(field + ' ').run()
+  }
+
   return (
     <div className={`border border-gray-300 rounded-md ${disabled ? 'bg-gray-50' : 'bg-white'} ${className}`}>
       {!disabled && (
         <div className="border-b border-gray-200 bg-gray-50 px-2 py-2 flex flex-wrap gap-1">
+          {/* Merge Fields Selector */}
+          {showMergeFields && (
+            <>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    insertMergeField(e.target.value)
+                    e.target.value = '' // Reset selection
+                  }
+                }}
+                className="text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-100 font-medium"
+                title="Insert Merge Field"
+                aria-label="Insert Merge Field"
+                defaultValue=""
+              >
+                <option value="">+ Merge Field</option>
+                {MERGE_FIELDS.map((field) => (
+                  <option key={field.value} value={field.value}>
+                    {field.label}
+                  </option>
+                ))}
+              </select>
+              <div className="w-px h-6 bg-gray-300 mx-1" />
+            </>
+          )}
+
           {/* Font Family Selector */}
           <select
             onChange={(e) => setFontFamily(e.target.value)}

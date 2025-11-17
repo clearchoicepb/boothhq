@@ -66,7 +66,6 @@ export default function TemplateBuilder({
   const [editingSection, setEditingSection] = useState<TemplateSection | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [isEditingPreview, setIsEditingPreview] = useState(false)
   const [editedContent, setEditedContent] = useState('')
   const [allLibrarySections, setAllLibrarySections] = useState<LibrarySection[]>([])
   
@@ -86,12 +85,12 @@ export default function TemplateBuilder({
     fetchLibrarySections()
   }, [])
 
-  // Initialize edited content when preview opens or editing starts
+  // Initialize edited content when preview opens
   useEffect(() => {
-    if (isPreviewOpen && isEditingPreview && !editedContent) {
+    if (isPreviewOpen && !editedContent) {
       setEditedContent(getHtmlPreviewContent())
     }
-  }, [isPreviewOpen, isEditingPreview])
+  }, [isPreviewOpen])
 
   // Auto-populate sections based on template type
   const autoPopulateSections = useCallback((type: string) => {
@@ -240,41 +239,45 @@ export default function TemplateBuilder({
     return convertTextToHtml(textContent)
   }
 
-  // Start editing in preview
-  const handleStartEditingPreview = () => {
-    if (confirm('Editing will combine all sections into a single editable section. Continue?')) {
-      setEditedContent(getHtmlPreviewContent())
-      setIsEditingPreview(true)
+  // Open preview with rich text editor
+  const handleOpenPreview = () => {
+    if (sections.length === 0) {
+      toast.error('Please add at least one section before previewing')
+      return
     }
+    setEditedContent(getHtmlPreviewContent())
+    setIsPreviewOpen(true)
   }
 
   // Save edited preview content
   const handleSaveEditedPreview = () => {
-    // Replace all sections with a single section containing the edited content
-    const newSection: TemplateSection = {
-      id: `temp-edited-${Date.now()}`,
-      section_id: '',
-      content: editedContent,
-      order: 0,
-      name: 'Custom Edited Content'
+    if (confirm('Save changes? This will combine all sections into a single editable section.')) {
+      // Replace all sections with a single section containing the edited content
+      const newSection: TemplateSection = {
+        id: `temp-edited-${Date.now()}`,
+        section_id: '',
+        content: editedContent,
+        order: 0,
+        name: 'Custom Edited Content'
+      }
+      setSections([newSection])
+      setIsPreviewOpen(false)
+      setEditedContent('')
+      toast.success('Preview changes applied to template')
     }
-    setSections([newSection])
-    setIsEditingPreview(false)
-    setIsPreviewOpen(false)
-    toast.success('Preview changes applied to template')
-  }
-
-  // Cancel editing preview
-  const handleCancelEditingPreview = () => {
-    setIsEditingPreview(false)
-    setEditedContent('')
   }
 
   // Close preview modal
   const handleClosePreview = () => {
-    setIsPreviewOpen(false)
-    setIsEditingPreview(false)
-    setEditedContent('')
+    if (editedContent !== getHtmlPreviewContent()) {
+      if (confirm('You have unsaved changes. Close without saving?')) {
+        setIsPreviewOpen(false)
+        setEditedContent('')
+      }
+    } else {
+      setIsPreviewOpen(false)
+      setEditedContent('')
+    }
   }
 
   // Save template
@@ -332,14 +335,14 @@ export default function TemplateBuilder({
               <Button variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsPreviewOpen(true)}
-                disabled={sections.length === 0}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleOpenPreview}
+                      disabled={sections.length === 0}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview & Edit
+                    </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -477,92 +480,62 @@ export default function TemplateBuilder({
         />
       )}
 
-      {/* Preview Modal */}
+      {/* Preview & Edit Modal */}
       <Modal
         isOpen={isPreviewOpen}
         onClose={handleClosePreview}
-        title={`${isEditingPreview ? 'Edit' : 'Preview'}: ${templateName || 'Untitled Template'}`}
+        title={`Edit Template: ${templateName || 'Untitled Template'}`}
         className="sm:max-w-5xl"
       >
         <div>
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 mb-4">
-            {!isEditingPreview ? (
-              <Button 
-                variant="outline"
-                onClick={handleStartEditingPreview}
-                className="flex items-center gap-2"
-              >
-                <EditIcon className="h-4 w-4" />
-                Edit with Rich Text Editor
-              </Button>
-            ) : (
-              <>
-                <Button 
-                  variant="outline"
-                  onClick={handleCancelEditingPreview}
-                  className="flex items-center gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSaveEditedPreview}
-                  className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-                >
-                  <Check className="h-4 w-4" />
-                  Apply Changes
-                </Button>
-              </>
-            )}
+            <Button
+              variant="outline"
+              onClick={handleClosePreview}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEditedPreview}
+              className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Check className="h-4 w-4" />
+              Apply Changes
+            </Button>
           </div>
 
-          {/* Content Area */}
-          {isEditingPreview ? (
-            <div>
-              {/* Logo Header */}
-              {logoUrl && (
-                <div className="bg-white p-6 border border-gray-200 rounded-t-lg flex justify-center">
-                  <img 
-                    src={logoUrl} 
-                    alt="Company Logo" 
-                    className="h-16 w-auto object-contain"
-                  />
-                </div>
-              )}
-              <RichTextEditor
-                value={editedContent}
-                onChange={setEditedContent}
-                placeholder="Edit your template..."
-                minHeight="500px"
+          {/* Logo Header */}
+          {logoUrl && (
+            <div className="bg-white p-6 border border-gray-200 rounded-t-lg flex justify-center mb-4">
+              <img 
+                src={logoUrl} 
+                alt="Company Logo" 
+                className="h-16 w-auto object-contain"
               />
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                <strong>Warning:</strong> Applying changes will combine all existing sections into a single editable section.
-              </div>
-            </div>
-          ) : (
-            <div className="prose prose-sm max-w-none">
-              <div className="bg-white p-8 border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
-                {/* Logo Header */}
-                {logoUrl && (
-                  <div className="flex justify-center mb-8 pb-6 border-b border-gray-200">
-                    <img 
-                      src={logoUrl} 
-                      alt="Company Logo" 
-                      className="h-16 w-auto object-contain"
-                    />
-                  </div>
-                )}
-                <div className="whitespace-pre-wrap">
-                  {getPreviewContent()}
-                </div>
-              </div>
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                <strong>Note:</strong> This preview shows the template with merge fields removed. 
-                When used with actual data (events, accounts, contacts), these fields will be populated automatically.
-              </div>
             </div>
           )}
+
+          {/* Rich Text Editor */}
+          <RichTextEditor
+            value={editedContent}
+            onChange={setEditedContent}
+            placeholder="Edit your template..."
+            minHeight="500px"
+            showMergeFields={true}
+          />
+
+          {/* Info Messages */}
+          <div className="mt-3 space-y-2">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+              <strong>Tip:</strong> Use the <strong>+ Merge Field</strong> dropdown to insert dynamic fields that will be replaced with actual data when used.
+            </div>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+              <strong>Note:</strong> Applying changes will combine all existing sections into a single editable section.
+            </div>
+          </div>
         </div>
       </Modal>
     </div>
