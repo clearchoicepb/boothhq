@@ -107,7 +107,7 @@ export default function SMSMessagesPage() {
         fetch('/api/contacts'),
         fetch('/api/leads'),
         fetch('/api/accounts'),
-        fetch('/api/staff')
+        fetch('/api/users')
       ])
 
       const peopleList: Person[] = []
@@ -158,15 +158,18 @@ export default function SMSMessagesPage() {
       }
 
       if (staffRes.ok) {
-        const staff = await staffRes.json()
-        staff.forEach((s: any) => {
-          if (s.phone) {
+        const users = await staffRes.json()
+        // Handle both array and object with users property
+        const usersList = Array.isArray(users) ? users : (users.users || [])
+        
+        usersList.forEach((u: any) => {
+          if (u.phone || u.phone_number) {
             peopleList.push({
-              id: s.id,
-              name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Unnamed Staff',
-              phone: s.phone,
+              id: u.id,
+              name: u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unnamed Staff',
+              phone: u.phone || u.phone_number,
               type: 'staff',
-              email: s.email
+              email: u.email
             })
           }
         })
