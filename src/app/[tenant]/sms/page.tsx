@@ -218,6 +218,24 @@ export default function SMSMessagesPage() {
   const fetchConversations = async () => {
     try {
       setLoading(true)
+      
+      // Fetch users (staff) to match phone numbers
+      const usersResponse = await fetch('/api/users')
+      let usersByPhone = new Map<string, any>()
+      
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        const usersList = Array.isArray(usersData) ? usersData : (usersData.users || [])
+        
+        usersList.forEach((u: any) => {
+          const phone = u.phone || u.phone_number
+          if (phone) {
+            const normalized = normalizePhone(phone)
+            usersByPhone.set(normalized, u)
+          }
+        })
+      }
+      
       const response = await fetch('/api/communications?communication_type=sms')
       
       if (response.ok) {
@@ -251,12 +269,20 @@ export default function SMSMessagesPage() {
           if (!conversationMap.has(normalized)) {
             // Determine display name
             let displayName = phoneNumber
+            
+            // Check for contact, lead, or account first (from database relationships)
             if (msg.contacts?.first_name) {
               displayName = `${msg.contacts.first_name} ${msg.contacts.last_name || ''}`.trim()
             } else if (msg.leads?.first_name) {
               displayName = `${msg.leads.first_name} ${msg.leads.last_name || ''}`.trim()
             } else if (msg.accounts?.name) {
               displayName = msg.accounts.name
+            } else {
+              // If no database relationship, check if phone matches a user (staff)
+              const matchedUser = usersByPhone.get(normalized)
+              if (matchedUser) {
+                displayName = matchedUser.name || `${matchedUser.first_name || ''} ${matchedUser.last_name || ''}`.trim() || phoneNumber
+              }
             }
             
             conversationMap.set(normalized, {
