@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { AppLayout } from '@/components/layout/app-layout'
-import { MessageSquare, Send, Loader2, User, Search } from 'lucide-react'
+import { MessageSquare, Send, Loader2, User, Search, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Modal } from '@/components/ui/modal'
 import { useSettings } from '@/lib/settings-context'
 
 interface Message {
@@ -44,6 +45,14 @@ interface Conversation {
   accountId?: string
 }
 
+interface Person {
+  id: string
+  name: string
+  phone: string
+  type: 'contact' | 'lead' | 'account'
+  email?: string
+}
+
 export default function SMSMessagesPage() {
   const { settings } = useSettings()
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -53,6 +62,10 @@ export default function SMSMessagesPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false)
+  const [people, setPeople] = useState<Person[]>([])
+  const [peopleLoading, setPeopleLoading] = useState(false)
+  const [peopleSearch, setPeopleSearch] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
@@ -83,6 +96,77 @@ export default function SMSMessagesPage() {
 
   const normalizePhone = (phone: string) => {
     return phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+  }
+
+  // Fetch contacts, leads, and accounts for new message
+  const fetchPeople = async () => {
+    setPeopleLoading(true)
+    try {
+      const [contactsRes, leadsRes, accountsRes] = await Promise.all([
+        fetch('/api/contacts'),
+        fetch('/api/leads'),
+        fetch('/api/accounts')
+      ])
+
+      const peopleList: Person[] = []
+
+      if (contactsRes.ok) {
+        const contacts = await contactsRes.json()
+        contacts.forEach((c: any) => {
+          if (c.phone) {
+            peopleList.push({
+              id: c.id,
+              name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed Contact',
+              phone: c.phone,
+              type: 'contact',
+              email: c.email
+            })
+          }
+        })
+      }
+
+      if (leadsRes.ok) {
+        const leads = await leadsRes.json()
+        leads.forEach((l: any) => {
+          if (l.phone) {
+            peopleList.push({
+              id: l.id,
+              name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'Unnamed Lead',
+              phone: l.phone,
+              type: 'lead',
+              email: l.email
+            })
+          }
+        })
+      }
+
+      if (accountsRes.ok) {
+        const accounts = await accountsRes.json()
+        accounts.forEach((a: any) => {
+          if (a.phone) {
+            peopleList.push({
+              id: a.id,
+              name: a.name || 'Unnamed Account',
+              phone: a.phone,
+              type: 'account',
+              email: a.email
+            })
+          }
+        })
+      }
+
+      setPeople(peopleList)
+    } catch (error) {
+      console.error('Error fetching people:', error)
+    } finally {
+      setPeopleLoading(false)
+    }
+  }
+
+  const handleSelectPerson = (person: Person) => {
+    setSelectedPhone(person.phone)
+    setIsNewMessageModalOpen(false)
+    setPeopleSearch('')
   }
 
   const fetchConversations = async () => {
@@ -278,8 +362,18 @@ export default function SMSMessagesPage() {
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Conversations List */}
           <div className="w-80 border-r border-gray-200 flex flex-col bg-gray-50">
-            {/* Search */}
-            <div className="p-4 border-b border-gray-200 bg-white">
+            {/* Search & New Message */}
+            <div className="p-4 border-b border-gray-200 bg-white space-y-2">
+              <Button
+                onClick={() => {
+                  setIsNewMessageModalOpen(true)
+                  fetchPeople()
+                }}
+                className="w-full bg-[#347dc4] hover:bg-[#2c6ba8]"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Message
+              </Button>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -433,6 +527,92 @@ export default function SMSMessagesPage() {
             )}
           </div>
         </div>
+
+        {/* New Message Modal */}
+        <Modal
+          isOpen={isNewMessageModalOpen}
+          onClose={() => {
+            setIsNewMessageModalOpen(false)
+            setPeopleSearch('')
+          }}
+          title="New Message"
+          className="sm:max-w-2xl"
+        >
+          <div className="space-y-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search contacts, leads, accounts..."
+                value={peopleSearch}
+                onChange={(e) => setPeopleSearch(e.target.value)}
+                className="pl-9"
+                autoFocus
+              />
+            </div>
+
+            {/* People List */}
+            <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+              {peopleLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <>
+                  {people
+                    .filter(p => 
+                      p.name.toLowerCase().includes(peopleSearch.toLowerCase()) ||
+                      p.phone.includes(peopleSearch) ||
+                      p.email?.toLowerCase().includes(peopleSearch.toLowerCase())
+                    )
+                    .map((person) => (
+                      <button
+                        key={`${person.type}-${person.id}`}
+                        onClick={() => handleSelectPerson(person)}
+                        className="w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                      >
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-[#347dc4] flex items-center justify-center text-white font-medium">
+                            {person.name.charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {person.name}
+                            </p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              person.type === 'contact' ? 'bg-blue-100 text-blue-800' :
+                              person.type === 'lead' ? 'bg-green-100 text-green-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {person.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 truncate">{person.phone}</p>
+                          {person.email && (
+                            <p className="text-xs text-gray-500 truncate">{person.email}</p>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  }
+                  {people.filter(p => 
+                    p.name.toLowerCase().includes(peopleSearch.toLowerCase()) ||
+                    p.phone.includes(peopleSearch) ||
+                    p.email?.toLowerCase().includes(peopleSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                      <User className="h-12 w-12 mb-2 text-gray-300" />
+                      <p className="text-sm">No contacts, leads, or accounts with phone numbers found</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </Modal>
       </div>
     </AppLayout>
   )
