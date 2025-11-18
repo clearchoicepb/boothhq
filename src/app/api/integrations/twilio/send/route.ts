@@ -91,6 +91,75 @@ export async function POST(request: NextRequest) {
 
     const twilioData = await twilioResponse.json()
 
+    // Normalize phone number for matching (remove +1, spaces, dashes, parentheses)
+    const normalizePhone = (phone: string) => {
+      return phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+    }
+    const normalizedTo = normalizePhone(to)
+
+    // If no relationship IDs provided, try to find them by phone number
+    let resolvedContactId = contact_id
+    let resolvedAccountId = account_id
+    let resolvedLeadId = lead_id
+    let resolvedOpportunityId = opportunity_id
+
+    if (!contact_id && !lead_id && !account_id) {
+      console.log('🔍 No relationship IDs provided, looking up phone number:', to)
+
+      // Search contacts by phone number
+      const { data: contactsArray } = await supabase
+        .from('contacts')
+        .select('id, account_id, phone')
+        .eq('tenant_id', dataSourceTenantId)
+
+      const matchedContact = contactsArray?.find(c => {
+        if (!c.phone) return false
+        return normalizePhone(c.phone) === normalizedTo
+      })
+
+      if (matchedContact) {
+        resolvedContactId = matchedContact.id
+        resolvedAccountId = matchedContact.account_id
+        console.log('✅ Found matching contact:', resolvedContactId)
+      }
+
+      // If no contact found, try leads
+      if (!resolvedContactId) {
+        const { data: leadsArray } = await supabase
+          .from('leads')
+          .select('id, phone')
+          .eq('tenant_id', dataSourceTenantId)
+
+        const matchedLead = leadsArray?.find(l => {
+          if (!l.phone) return false
+          return normalizePhone(l.phone) === normalizedTo
+        })
+
+        if (matchedLead) {
+          resolvedLeadId = matchedLead.id
+          console.log('✅ Found matching lead:', resolvedLeadId)
+        }
+      }
+
+      // If no contact or lead found, try accounts
+      if (!resolvedContactId && !resolvedLeadId) {
+        const { data: accountsArray } = await supabase
+          .from('accounts')
+          .select('id, phone')
+          .eq('tenant_id', dataSourceTenantId)
+
+        const matchedAccount = accountsArray?.find(a => {
+          if (!a.phone) return false
+          return normalizePhone(a.phone) === normalizedTo
+        })
+
+        if (matchedAccount) {
+          resolvedAccountId = matchedAccount.id
+          console.log('✅ Found matching account:', resolvedAccountId)
+        }
+      }
+    }
+
     // Log the communication in the database
     const communicationData: any = {
       tenant_id: dataSourceTenantId,
@@ -108,11 +177,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Add relationship IDs if provided
-    if (opportunity_id) communicationData.opportunity_id = opportunity_id
-    if (account_id) communicationData.account_id = account_id
-    if (contact_id) communicationData.contact_id = contact_id
-    if (lead_id) communicationData.lead_id = lead_id
+    // Add relationship IDs (either provided or resolved by phone lookup)
+    if (resolvedOpportunityId) communicationData.opportunity_id = resolvedOpportunityId
+    if (resolvedAccountId) communicationData.account_id = resolvedAccountId
+    if (resolvedContactId) communicationData.contact_id = resolvedContactId
+    if (resolvedLeadId) communicationData.lead_id = resolvedLeadId
     if (event_id) communicationData.event_id = event_id
 
     const { data: communication, error: dbError } = await supabase
