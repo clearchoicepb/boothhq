@@ -93,6 +93,9 @@ export default function SMSMessagesPage() {
       if (response.ok) {
         const allMessages = await response.json()
         
+        console.log('📥 Fetched', allMessages.length, 'total SMS messages')
+        console.log('📋 Sample messages:', allMessages.slice(0, 3))
+        
         // Group messages by phone number
         const conversationMap = new Map<string, Conversation>()
         
@@ -101,9 +104,19 @@ export default function SMSMessagesPage() {
             ? msg.metadata?.from_number 
             : msg.metadata?.to_number
           
-          if (!phoneNumber) return
+          if (!phoneNumber) {
+            console.warn('⚠️ Message missing phone number:', { direction: msg.direction, metadata: msg.metadata, id: msg.id })
+            return
+          }
           
           const normalized = normalizePhone(phoneNumber)
+          console.log('📞 Processing message:', { 
+            direction: msg.direction, 
+            phoneNumber, 
+            normalized,
+            hasMetadata: !!msg.metadata,
+            metadata: msg.metadata 
+          })
           
           if (!conversationMap.has(normalized)) {
             // Determine display name
@@ -140,6 +153,9 @@ export default function SMSMessagesPage() {
         const conversationsArray = Array.from(conversationMap.values()).sort(
           (a, b) => new Date(b.lastMessageDate).getTime() - new Date(a.lastMessageDate).getTime()
         )
+        
+        console.log('✅ Grouped into', conversationsArray.length, 'conversations')
+        console.log('📋 Conversations:', conversationsArray)
         
         setConversations(conversationsArray)
       }
