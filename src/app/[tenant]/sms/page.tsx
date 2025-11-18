@@ -271,6 +271,18 @@ export default function SMSMessagesPage() {
             let displayName = phoneNumber
             
             // Check for contact, lead, or account first (from database relationships)
+            console.log('🔍 Determining display name for', phoneNumber, {
+              hasContact: !!msg.contacts,
+              hasLead: !!msg.leads,
+              hasAccount: !!msg.accounts,
+              contactData: msg.contacts,
+              leadData: msg.leads,
+              accountData: msg.accounts,
+              leadId: msg.lead_id,
+              contactId: msg.contact_id,
+              accountId: msg.account_id
+            })
+            
             if (msg.contacts?.first_name) {
               displayName = `${msg.contacts.first_name} ${msg.contacts.last_name || ''}`.trim()
             } else if (msg.leads?.first_name) {
