@@ -20,6 +20,7 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({})
 
   const updateItem = useUpdateInventoryItem()
 
@@ -32,8 +33,17 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
       const nextMonday = new Date(today)
       nextMonday.setDate(today.getDate() + ((1 + 7 - today.getDay()) % 7 || 7))
       setReturnDate(nextMonday.toISOString().split('T')[0])
+      
+      // Initialize quantities for quantity-tracked items
+      const initialQuantities: Record<string, number> = {}
+      items.forEach(item => {
+        if (item.tracking_type === 'total_quantity') {
+          initialQuantities[item.id] = 1  // Default to 1
+        }
+      })
+      setItemQuantities(initialQuantities)
     }
-  }, [isOpen])
+  }, [isOpen, items])
 
   const fetchEvents = async () => {
     try {
@@ -74,29 +84,30 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
     setError(null)
 
     try {
-      // Update each item
-      for (const item of items) {
-        const updateData: any = {
+      // Use new inventory_assignments API
+      const response = await fetch('/api/inventory-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inventory_item_ids: items.map(item => item.id),
+          item_quantities: itemQuantities,  // Quantities for quantity-tracked items
           assigned_to_type: 'user',
           assigned_to_id: assignToUser,
           assignment_type: assignmentType,
-        }
-
-        if (assignmentType === 'event_checkout') {
-          updateData.expected_return_date = returnDate
-          if (selectedEventId) {
-            updateData.event_id = selectedEventId
-          }
-        }
-
-        await updateItem.mutateAsync({
-          itemId: item.id,
-          itemData: updateData
+          expected_return_date: returnDate || undefined,
+          notes: selectedEventId ? `Assigned for event ${selectedEventId}` : undefined
         })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create assignments')
       }
 
       // Success! Close modal
       onClose()
+      // Refresh the page to show updated assignments
+      window.location.reload()
     } catch (err: any) {
       setError(err.message || 'Failed to checkout items')
     } finally {
@@ -122,16 +133,52 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Items to Checkout
             </label>
-            <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-              <ul className="space-y-2">
+            <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+              <div className="space-y-3">
                 {items.map(item => (
-                  <li key={item.id} className="text-sm text-gray-700">
-                    • {item.item_name}
-                    {item.model && ` (${item.model})`}
-                    {item.serial_number && ` - S/N: ${item.serial_number}`}
-                  </li>
+                  <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">
+                        {item.item_name}
+                        {item.model && <span className="text-gray-600 ml-1">({item.model})</span>}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {item.tracking_type === 'serial_number' && item.serial_number && `S/N: ${item.serial_number}`}
+                        {item.tracking_type === 'total_quantity' && `Available: ${item.total_quantity} units`}
+                      </div>
+                    </div>
+                    
+                    {/* Quantity Input for quantity-tracked items */}
+                    {item.tracking_type === 'total_quantity' && (
+                      <div className="flex items-center space-x-2 ml-4">
+                        <label className="text-xs text-gray-600 whitespace-nowrap">Assign Qty:</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={item.total_quantity || undefined}
+                          value={itemQuantities[item.id] || 1}
+                          onChange={(e) => {
+                            const newQty = parseInt(e.target.value) || 1
+                            const maxQty = item.total_quantity || 999
+                            setItemQuantities(prev => ({
+                              ...prev,
+                              [item.id]: Math.min(Math.max(1, newQty), maxQty)
+                            }))
+                          }}
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <span className="text-xs text-gray-500">/ {item.total_quantity}</span>
+                      </div>
+                    )}
+                    
+                    {item.tracking_type === 'serial_number' && (
+                      <span className="text-xs text-gray-500 px-3 py-1 bg-gray-100 rounded ml-4">
+                        Qty: 1
+                      </span>
+                    )}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
 
