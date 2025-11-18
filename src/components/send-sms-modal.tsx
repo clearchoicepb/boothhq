@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { MessageSquare, Loader2, FileText } from 'lucide-react'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
+import { useSettings } from '@/lib/settings-context'
 
 interface Template {
   id: string
@@ -39,12 +40,16 @@ export function SendSMSModal({
   leadId,
   eventId
 }: SendSMSModalProps) {
+  const { settings } = useSettings()
   const [loading, setLoading] = useState(false)
   const [to, setTo] = useState(defaultTo)
   const [message, setMessage] = useState(defaultMessage)
   const [error, setError] = useState('')
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  
+  // Get default country code from settings
+  const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
 
   // Fetch templates
   useEffect(() => {
@@ -106,9 +111,17 @@ export function SendSMSModal({
       return
     }
 
+    // Automatically prepend country code if phone doesn't start with +
+    let formattedPhone = to.trim()
+    if (!formattedPhone.startsWith('+')) {
+      // Remove any leading zeros, spaces, dashes, etc.
+      formattedPhone = formattedPhone.replace(/^[^0-9]+/, '').replace(/[\s\-\(\)]/g, '')
+      formattedPhone = `${defaultCountryCode}${formattedPhone}`
+    }
+
     // Basic phone number validation (allow various formats)
     const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/
-    if (!phoneRegex.test(to.replace(/\s/g, ''))) {
+    if (!phoneRegex.test(formattedPhone.replace(/\s/g, ''))) {
       setError('Please enter a valid phone number (e.g., +1234567890 or 123-456-7890)')
       return
     }
@@ -123,7 +136,7 @@ export function SendSMSModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to,
+          to: formattedPhone,
           message,
           opportunity_id: opportunityId,
           account_id: accountId,
@@ -169,15 +182,21 @@ export function SendSMSModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Phone Number <span className="text-red-500">*</span>
           </label>
-          <Input
-            type="tel"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            placeholder="+1234567890 or 123-456-7890"
-            disabled={loading}
-          />
+          <div className="flex gap-2">
+            <div className="flex items-center px-3 py-2 bg-gray-100 border border-gray-300 rounded-l-md text-sm text-gray-900 font-medium min-w-[60px] justify-center">
+              {defaultCountryCode}
+            </div>
+            <Input
+              type="tel"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder="5551234567"
+              disabled={loading}
+              className="rounded-l-none"
+            />
+          </div>
           <p className="text-xs text-gray-500 mt-1">
-            Include country code (e.g., +1 for US)
+            Country code <span className="font-medium">{defaultCountryCode}</span> will be added automatically
           </p>
         </div>
 

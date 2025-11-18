@@ -99,6 +99,7 @@ interface IntegrationSettings {
       accountSid: string;
       authToken: string;
       phoneNumber: string;
+      defaultCountryCode: string;
       testMode: boolean;
     };
     zoom: {
@@ -245,6 +246,7 @@ export default function IntegrationsSettingsPage() {
         accountSid: '',
         authToken: '',
         phoneNumber: '',
+        defaultCountryCode: '+1',
         testMode: true
       },
       zoom: {
@@ -934,6 +936,33 @@ export default function IntegrationsSettingsPage() {
                           placeholder="+1234567890"
                           className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
                         />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-900">Default Country Code</label>
+                        <select
+                          value={settings.thirdPartyIntegrations.twilio.defaultCountryCode}
+                          onChange={(e) => handleSelect('thirdPartyIntegrations.twilio.defaultCountryCode', e.target.value)}
+                          className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 w-full"
+                        >
+                          <option value="+1">🇺🇸 United States (+1)</option>
+                          <option value="+44">🇬🇧 United Kingdom (+44)</option>
+                          <option value="+61">🇦🇺 Australia (+61)</option>
+                          <option value="+64">🇳🇿 New Zealand (+64)</option>
+                          <option value="+353">🇮🇪 Ireland (+353)</option>
+                          <option value="+27">🇿🇦 South Africa (+27)</option>
+                          <option value="+91">🇮🇳 India (+91)</option>
+                          <option value="+86">🇨🇳 China (+86)</option>
+                          <option value="+81">🇯🇵 Japan (+81)</option>
+                          <option value="+82">🇰🇷 South Korea (+82)</option>
+                          <option value="+33">🇫🇷 France (+33)</option>
+                          <option value="+49">🇩🇪 Germany (+49)</option>
+                          <option value="+39">🇮🇹 Italy (+39)</option>
+                          <option value="+34">🇪🇸 Spain (+34)</option>
+                          <option value="+52">🇲🇽 Mexico (+52)</option>
+                          <option value="+55">🇧🇷 Brazil (+55)</option>
+                          <option value="+7">🇷🇺 Russia (+7)</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Automatically prepend this code when sending SMS</p>
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
