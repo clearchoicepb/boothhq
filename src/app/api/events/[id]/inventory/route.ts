@@ -35,13 +35,27 @@ export async function GET(
     let availableInventory = []
     let availableProductGroups = []
 
-    // Fetch inventory already assigned to this event
-    const { data: assigned, error: assignedError } = await supabase
-      .from('inventory_items')
-      .select('*')
+    // Fetch inventory assignments for this event (NEW approach)
+    const { data: assignments, error: assignedError } = await supabase
+      .from('inventory_assignments')
+      .select(`
+        *,
+        inventory_items (
+          id,
+          item_name,
+          item_category,
+          serial_number,
+          tracking_type,
+          total_quantity,
+          model,
+          assigned_to_type,
+          assigned_to_id
+        )
+      `)
       .eq('tenant_id', dataSourceTenantId)
       .eq('event_id', eventId)
-      .order('item_name', { ascending: true })
+      .eq('assigned_to_type', 'event')
+      .order('created_at', { ascending: false })
 
     if (assignedError) {
       return NextResponse.json({
@@ -50,7 +64,16 @@ export async function GET(
       }, { status: 500 })
     }
 
-    assignedInventory = assigned || []
+    // Transform assignments into inventory items with quantity info
+    assignedInventory = (assignments || []).map((assignment: any) => ({
+      ...assignment.inventory_items,
+      assignment_id: assignment.id,
+      quantity_assigned: assignment.quantity_assigned,
+      assignment_status: assignment.status,
+      prep_status: assignment.prep_status,
+      expected_return_date: assignment.expected_return_date,
+      actual_return_date: assignment.actual_return_date
+    }))
 
     // If include_available, fetch warehouse items, staff equipment, and product groups
     if (includeAvailable) {
@@ -336,7 +359,13 @@ export async function POST(
 
     const eventId = params.id
     const body = await request.json()
-    const { inventory_item_ids, product_group_ids, expected_return_date, create_checkout_task } = body
+    const { 
+      inventory_item_ids, 
+      product_group_ids, 
+      expected_return_date, 
+      create_checkout_task,
+      item_quantities  // NEW: Object mapping item_id -> quantity (e.g., { "item-123": 2, "item-456": 3 })
+    } = body
 
     let allItemIds = [...(inventory_item_ids || [])]
 
@@ -377,29 +406,80 @@ export async function POST(
       }, { status: 404 })
     }
 
+    // Fetch inventory items to check tracking types
+    const { data: inventoryItems, error: itemsError } = await supabase
+      .from('inventory_items')
+      .select('id, item_name, tracking_type, total_quantity')
+      .in('id', allItemIds)
+      .eq('tenant_id', dataSourceTenantId)
+
+    if (itemsError || !inventoryItems) {
+      return NextResponse.json({
+        error: 'Failed to fetch inventory items',
+        details: itemsError?.message
+      }, { status: 500 })
+    }
+
     // Calculate default return date: 5 days after event start date
     const defaultReturnDate = addDays(new Date(event.start_date), 5).toISOString().split('T')[0]
 
-    // Update inventory items
-    const { data: updatedItems, error: updateError } = await supabase
-      .from('inventory_items')
-      .update({
+    // Create assignment records for each item
+    const assignments = inventoryItems.map((item: any) => {
+      // Determine quantity to assign
+      let quantityToAssign = 1  // Default for serial-tracked items
+
+      if (item.tracking_type === 'total_quantity') {
+        // Check if specific quantity was provided
+        quantityToAssign = item_quantities?.[item.id] || 1
+        
+        // Validate quantity doesn't exceed total
+        if (item.total_quantity && quantityToAssign > item.total_quantity) {
+          console.warn(`⚠️ Quantity ${quantityToAssign} exceeds total ${item.total_quantity} for item ${item.item_name}`)
+          quantityToAssign = item.total_quantity
+        }
+      }
+
+      return {
+        tenant_id: dataSourceTenantId,
+        inventory_item_id: item.id,
+        quantity_assigned: quantityToAssign,
+        assigned_to_type: 'event',
         event_id: eventId,
         assignment_type: 'event_checkout',
+        assigned_date: new Date().toISOString(),
         expected_return_date: expected_return_date || defaultReturnDate,
-        prep_status: 'needs_prep',  // Initial prep status when assigned to event
-        updated_at: new Date().toISOString()
-      })
-      .in('id', allItemIds)
-      .eq('tenant_id', dataSourceTenantId)
-      .select()
+        status: 'assigned',
+        prep_status: 'needs_prep',
+        created_by: session.user.id
+      }
+    })
 
-    if (updateError) {
+    // Insert assignment records
+    const { data: createdAssignments, error: assignmentError } = await supabase
+      .from('inventory_assignments')
+      .insert(assignments)
+      .select(`
+        *,
+        inventory_items (
+          id,
+          item_name,
+          item_category,
+          serial_number,
+          tracking_type,
+          total_quantity,
+          model
+        )
+      `)
+
+    if (assignmentError) {
+      console.error('❌ Failed to create assignments:', assignmentError)
       return NextResponse.json({
         error: 'Failed to assign inventory',
-        details: updateError.message
+        details: assignmentError.message
       }, { status: 500 })
     }
+
+    console.log(`✅ Created ${createdAssignments?.length || 0} inventory assignments for event ${eventId}`)
 
     // Create checkout task if requested
     if (create_checkout_task) {
@@ -409,8 +489,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      assigned_count: updatedItems?.length || 0,
-      items: updatedItems
+      assigned_count: createdAssignments?.length || 0,
+      assignments: createdAssignments
     })
   } catch (error) {
     console.error('Assign inventory error:', error)
@@ -433,37 +513,44 @@ export async function DELETE(
     const { supabase, dataSourceTenantId } = context
     const eventId = params.id
     const { searchParams } = new URL(request.url)
+    const assignmentIds = searchParams.get('assignment_ids')?.split(',') || []
+    
+    // Legacy support: also check for item_ids (will remove assignments for these items)
     const itemIds = searchParams.get('item_ids')?.split(',') || []
 
-    if (itemIds.length === 0) {
+    if (assignmentIds.length === 0 && itemIds.length === 0) {
       return NextResponse.json({
-        error: 'item_ids parameter is required'
+        error: 'assignment_ids or item_ids parameter is required'
       }, { status: 400 })
     }
 
-    // Remove event assignment (keep other assignments intact)
-    const { error: updateError } = await supabase
-      .from('inventory_items')
-      .update({
-        event_id: null,
-        assignment_type: null,
-        expected_return_date: null,
-        updated_at: new Date().toISOString()
-      })
-      .in('id', itemIds)
-      .eq('event_id', eventId)
+    let query = supabase
+      .from('inventory_assignments')
+      .delete()
       .eq('tenant_id', dataSourceTenantId)
+      .eq('event_id', eventId)
+      .eq('assigned_to_type', 'event')
 
-    if (updateError) {
+    if (assignmentIds.length > 0) {
+      // Delete by assignment IDs (preferred, more precise)
+      query = query.in('id', assignmentIds)
+    } else {
+      // Delete by inventory item IDs (legacy support)
+      query = query.in('inventory_item_id', itemIds)
+    }
+
+    const { error: deleteError } = await query
+
+    if (deleteError) {
       return NextResponse.json({
         error: 'Failed to remove inventory assignment',
-        details: updateError.message
+        details: deleteError.message
       }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
-      removed_count: itemIds.length
+      removed_count: assignmentIds.length || itemIds.length
     })
   } catch (error) {
     console.error('Remove inventory error:', error)
