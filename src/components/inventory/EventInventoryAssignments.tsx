@@ -68,7 +68,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
   }
 
   const handleAssignItems = async () => {
-    if (selectedItems.size === 0 && selectedGroups.size === 0) return
+    if (selectedItems.size === 0) return
 
     try {
       const response = await fetch(`/api/events/${eventId}/inventory`, {
@@ -76,8 +76,8 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           inventory_item_ids: Array.from(selectedItems),
-          product_group_ids: Array.from(selectedGroups),
-          item_quantities: selectedItemQuantities,  // NEW: Pass quantities
+          // Note: product_group_ids no longer needed - items are added directly via toggleGroupSelection
+          item_quantities: selectedItemQuantities,
           create_checkout_task: true
         })
       })
@@ -85,7 +85,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
       if (response.ok) {
         setSelectedItems(new Set())
         setSelectedGroups(new Set())
-        setSelectedItemQuantities({})  // NEW: Reset quantities
+        setSelectedItemQuantities({})
         setIsAssigning(false)
         setSearchQuery('')
         await fetchData()
@@ -139,14 +139,73 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
     }))
   }
 
-  const toggleGroupSelection = (groupId: string) => {
+  const toggleGroupSelection = async (groupId: string) => {
     const newSelection = new Set(selectedGroups)
+    const newItemSelection = new Set(selectedItems)
+    const newQuantities = { ...selectedItemQuantities }
+    
     if (newSelection.has(groupId)) {
+      // Unchecking group - remove all its items from selection
       newSelection.delete(groupId)
+      
+      // Find the group to get its items
+      const group = filteredAvailableGroups.find(g => g.id === groupId)
+      if (group && group.product_group_items) {
+        group.product_group_items.forEach((groupItem: any) => {
+          const itemId = groupItem.inventory_item_id
+          newItemSelection.delete(itemId)
+          delete newQuantities[itemId]
+        })
+      }
     } else {
+      // Checking group - add all its items to selection with quantity inputs
       newSelection.add(groupId)
+      
+      // Fetch full group details if not already loaded
+      if (!groupDetails[groupId]) {
+        try {
+          const response = await fetch(`/api/product-groups/${groupId}`)
+          if (response.ok) {
+            const data = await response.json()
+            setGroupDetails(prev => ({ ...prev, [groupId]: data }))
+            
+            // Add all items from this group to selection
+            if (data.product_group_items) {
+              data.product_group_items.forEach((groupItem: any) => {
+                const item = groupItem.inventory_items
+                if (item) {
+                  newItemSelection.add(item.id)
+                  // Initialize quantity for quantity-tracked items
+                  if (item.tracking_type === 'total_quantity') {
+                    newQuantities[item.id] = 1  // Default to 1
+                  }
+                }
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch group details:', error)
+        }
+      } else {
+        // Group details already loaded, use cached data
+        const group = groupDetails[groupId]
+        if (group.product_group_items) {
+          group.product_group_items.forEach((groupItem: any) => {
+            const item = groupItem.inventory_items
+            if (item) {
+              newItemSelection.add(item.id)
+              if (item.tracking_type === 'total_quantity') {
+                newQuantities[item.id] = 1
+              }
+            }
+          })
+        }
+      }
     }
+    
     setSelectedGroups(newSelection)
+    setSelectedItems(newItemSelection)
+    setSelectedItemQuantities(newQuantities)
   }
 
   const toggleStaffExpanded = (staffId: string) => {
@@ -431,33 +490,83 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
                     <span className="text-xs text-purple-700">({filteredAvailableGroups.length} groups)</span>
                   </div>
                   {filteredAvailableGroups.map(group => (
-                    <div key={group.id} className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100">
-                      <div className="flex items-center space-x-3 flex-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedGroups.has(group.id)}
-                          onChange={() => toggleGroupSelection(group.id)}
-                          className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900">{group.group_name}</span>
-                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                              {group.product_group_items?.length || 0} items
-                            </span>
-                          </div>
-                          {group.description && (
-                            <div className="text-sm text-gray-600 mt-0.5">{group.description}</div>
-                          )}
-                          {group.assigned_to_name && (
-                            <div className="flex items-center text-xs text-gray-500 mt-1">
-                              {group.assigned_to_type === 'user' && <User className="h-3 w-3 mr-1" />}
-                              {group.assigned_to_type === 'physical_address' && <Warehouse className="h-3 w-3 mr-1" />}
-                              {group.assigned_to_name}
+                    <div key={group.id}>
+                      <div className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedGroups.has(group.id)}
+                            onChange={() => toggleGroupSelection(group.id)}
+                            className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-gray-900">{group.group_name}</span>
+                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                                {group.product_group_items?.length || 0} items
+                              </span>
                             </div>
-                          )}
+                            {group.description && (
+                              <div className="text-sm text-gray-600 mt-0.5">{group.description}</div>
+                            )}
+                            {group.assigned_to_name && (
+                              <div className="flex items-center text-xs text-gray-500 mt-1">
+                                {group.assigned_to_type === 'user' && <User className="h-3 w-3 mr-1" />}
+                                {group.assigned_to_type === 'physical_address' && <Warehouse className="h-3 w-3 mr-1" />}
+                                {group.assigned_to_name}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      
+                      {/* Show items in group when selected */}
+                      {selectedGroups.has(group.id) && groupDetails[group.id] && (
+                        <div className="bg-purple-50 border-b border-purple-100">
+                          <div className="px-6 py-2 text-xs font-medium text-purple-900">
+                            Items in this group - adjust quantities:
+                          </div>
+                          {groupDetails[group.id].product_group_items?.map((groupItem: any) => {
+                            const item = groupItem.inventory_items
+                            if (!item) return null
+                            
+                            return (
+                              <div key={groupItem.id} className="px-6 py-2 flex items-center space-x-3 border-t border-purple-100">
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
+                                  <div className="text-xs text-gray-600">
+                                    {item.tracking_type === 'serial_number' && item.serial_number && `S/N: ${item.serial_number}`}
+                                    {item.tracking_type === 'total_quantity' && `Total Qty: ${item.total_quantity}`}
+                                  </div>
+                                </div>
+                                
+                                {/* Quantity input for quantity-tracked items */}
+                                {item.tracking_type === 'total_quantity' && (
+                                  <div className="flex items-center space-x-2">
+                                    <label className="text-xs text-gray-600">Qty:</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max={item.total_quantity || undefined}
+                                      value={selectedItemQuantities[item.id] || 1}
+                                      onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="w-16 px-2 py-1 text-sm border border-purple-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    />
+                                    <span className="text-xs text-gray-500">/ {item.total_quantity}</span>
+                                  </div>
+                                )}
+                                
+                                {item.tracking_type === 'serial_number' && (
+                                  <span className="text-xs text-gray-500 px-3 py-1 bg-gray-100 rounded">
+                                    Qty: 1 (Serial Tracked)
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
