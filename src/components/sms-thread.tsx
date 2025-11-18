@@ -20,6 +20,7 @@ interface SMSMessage {
 }
 
 interface SMSThreadProps {
+  eventId?: string
   opportunityId?: string
   contactId?: string
   accountId?: string
@@ -29,6 +30,7 @@ interface SMSThreadProps {
 }
 
 export function SMSThread({
+  eventId,
   opportunityId,
   contactId,
   accountId,
@@ -54,13 +56,14 @@ export function SMSThread({
     // Poll for new messages every 10 seconds
     const interval = setInterval(fetchMessages, 10000)
     return () => clearInterval(interval)
-  }, [opportunityId, contactId, accountId, leadId])
+  }, [eventId, opportunityId, contactId, accountId, leadId])
 
   const fetchMessages = async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
 
+      if (eventId) params.append('event_id', eventId)
       if (opportunityId) params.append('opportunity_id', opportunityId)
       if (contactId) params.append('contact_id', contactId)
       if (accountId) params.append('account_id', accountId)
@@ -97,6 +100,7 @@ export function SMSThread({
         body: JSON.stringify({
           to: contactPhone,
           message: newMessage,
+          event_id: eventId,
           opportunity_id: opportunityId,
           account_id: accountId,
           contact_id: contactId,
