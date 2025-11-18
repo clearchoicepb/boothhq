@@ -66,6 +66,7 @@ export default function SMSMessagesPage() {
   const [people, setPeople] = useState<Person[]>([])
   const [peopleLoading, setPeopleLoading] = useState(false)
   const [peopleSearch, setPeopleSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'contact' | 'lead' | 'account' | 'staff'>('all')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
@@ -171,6 +172,9 @@ export default function SMSMessagesPage() {
         })
       }
 
+      // Sort alphabetically by name
+      peopleList.sort((a, b) => a.name.localeCompare(b.name))
+      
       setPeople(peopleList)
     } catch (error) {
       console.error('Error fetching people:', error)
@@ -183,6 +187,29 @@ export default function SMSMessagesPage() {
     setSelectedPhone(person.phone)
     setIsNewMessageModalOpen(false)
     setPeopleSearch('')
+    setSelectedCategory('all')
+  }
+  
+  // Filter people by search and category
+  const filteredPeople = people.filter(p => {
+    // Apply search filter
+    const matchesSearch = p.name.toLowerCase().includes(peopleSearch.toLowerCase()) ||
+      p.phone.includes(peopleSearch) ||
+      p.email?.toLowerCase().includes(peopleSearch.toLowerCase())
+    
+    // Apply category filter
+    const matchesCategory = selectedCategory === 'all' || p.type === selectedCategory
+    
+    return matchesSearch && matchesCategory
+  })
+  
+  // Count by type
+  const counts = {
+    all: people.length,
+    contact: people.filter(p => p.type === 'contact').length,
+    lead: people.filter(p => p.type === 'lead').length,
+    account: people.filter(p => p.type === 'account').length,
+    staff: people.filter(p => p.type === 'staff').length
   }
 
   const fetchConversations = async () => {
@@ -550,6 +577,7 @@ export default function SMSMessagesPage() {
           onClose={() => {
             setIsNewMessageModalOpen(false)
             setPeopleSearch('')
+            setSelectedCategory('all')
           }}
           title="New Message"
           className="sm:max-w-2xl"
@@ -567,6 +595,60 @@ export default function SMSMessagesPage() {
                 autoFocus
               />
             </div>
+            
+            {/* Category Filters */}
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === 'all'
+                    ? 'bg-[#347dc4] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All ({counts.all})
+              </button>
+              <button
+                onClick={() => setSelectedCategory('contact')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === 'contact'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                Contacts ({counts.contact})
+              </button>
+              <button
+                onClick={() => setSelectedCategory('lead')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === 'lead'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                Leads ({counts.lead})
+              </button>
+              <button
+                onClick={() => setSelectedCategory('account')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === 'account'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                }`}
+              >
+                Accounts ({counts.account})
+              </button>
+              <button
+                onClick={() => setSelectedCategory('staff')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === 'staff'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                }`}
+              >
+                Staff ({counts.staff})
+              </button>
+            </div>
 
             {/* People List */}
             <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
@@ -576,13 +658,7 @@ export default function SMSMessagesPage() {
                 </div>
               ) : (
                 <>
-                  {people
-                    .filter(p => 
-                      p.name.toLowerCase().includes(peopleSearch.toLowerCase()) ||
-                      p.phone.includes(peopleSearch) ||
-                      p.email?.toLowerCase().includes(peopleSearch.toLowerCase())
-                    )
-                    .map((person) => (
+                  {filteredPeople.map((person) => (
                       <button
                         key={`${person.type}-${person.id}`}
                         onClick={() => handleSelectPerson(person)}
@@ -615,14 +691,18 @@ export default function SMSMessagesPage() {
                       </button>
                     ))
                   }
-                  {people.filter(p => 
-                    p.name.toLowerCase().includes(peopleSearch.toLowerCase()) ||
-                    p.phone.includes(peopleSearch) ||
-                    p.email?.toLowerCase().includes(peopleSearch.toLowerCase())
-                  ).length === 0 && (
+                  {filteredPeople.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                       <User className="h-12 w-12 mb-2 text-gray-300" />
-                      <p className="text-sm">No contacts, leads, accounts, or staff with phone numbers found</p>
+                      <p className="text-sm">
+                        {selectedCategory === 'all' 
+                          ? 'No people with phone numbers found'
+                          : `No ${selectedCategory}s with phone numbers found`
+                        }
+                      </p>
+                      {peopleSearch && (
+                        <p className="text-xs mt-1">Try adjusting your search or filter</p>
+                      )}
                     </div>
                   )}
                 </>
