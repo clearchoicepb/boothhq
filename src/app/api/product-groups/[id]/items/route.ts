@@ -18,7 +18,7 @@ export async function POST(
     const params = await routeContext.params
     const groupId = params.id
     const body = await request.json()
-    const { inventory_item_id } = body
+    const { inventory_item_id, quantity } = body
 
     if (!inventory_item_id) {
       return NextResponse.json({
@@ -26,9 +26,39 @@ export async function POST(
       }, { status: 400 })
     }
 
+    // Fetch the inventory item to check tracking type
+    const { data: inventoryItem, error: itemError } = await supabase
+      .from('inventory_items')
+      .select('id, item_name, tracking_type, total_quantity')
+      .eq('id', inventory_item_id)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (itemError || !inventoryItem) {
+      return NextResponse.json({
+        error: 'Inventory item not found',
+        details: itemError?.message
+      }, { status: 404 })
+    }
+
+    // Determine quantity to add
+    let quantityToAdd = 1  // Default for serial items
+    
+    if (inventoryItem.tracking_type === 'total_quantity') {
+      quantityToAdd = quantity || 1
+      
+      // Validate quantity doesn't exceed total
+      if (inventoryItem.total_quantity && quantityToAdd > inventoryItem.total_quantity) {
+        return NextResponse.json({
+          error: `Cannot add ${quantityToAdd} units. Only ${inventoryItem.total_quantity} available.`
+        }, { status: 400 })
+      }
+    }
+
     const linkData = {
       product_group_id: groupId,
       inventory_item_id,
+      quantity: quantityToAdd,
       tenant_id: dataSourceTenantId
     }
 

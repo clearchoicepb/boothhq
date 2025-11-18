@@ -7,7 +7,7 @@ import { PlusCircle, ChevronDown, ChevronUp, Search } from 'lucide-react'
 interface ProductGroupItemSelectorProps {
   availableItems: any[]
   excludeItemIds: string[]
-  onAddItem: (itemId: string) => void
+  onAddItem: (itemId: string, quantity?: number) => void
   isAdding: boolean
 }
 
@@ -20,6 +20,7 @@ export function ProductGroupItemSelector({
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [selectedItemId, setSelectedItemId] = useState<string>('')
+  const [quantity, setQuantity] = useState<number>(1)
 
   // Filter items based on search query and exclusions
   const filteredItems = useMemo(() => {
@@ -70,14 +71,28 @@ export function ProductGroupItemSelector({
 
   const handleAddClick = () => {
     if (selectedItemId) {
-      onAddItem(selectedItemId)
+      const selectedItem = availableItems.find(item => item.id === selectedItemId)
+      const quantityToAdd = selectedItem?.tracking_type === 'total_quantity' ? quantity : 1
+      onAddItem(selectedItemId, quantityToAdd)
       setSelectedItemId('')
+      setQuantity(1)  // Reset quantity
     }
   }
 
   const handleItemClick = (itemId: string) => {
-    setSelectedItemId(itemId === selectedItemId ? '' : itemId)
+    if (itemId === selectedItemId) {
+      // Deselecting
+      setSelectedItemId('')
+      setQuantity(1)
+    } else {
+      // Selecting new item
+      setSelectedItemId(itemId)
+      setQuantity(1)  // Reset to 1 for new selection
+    }
   }
+  
+  // Get the selected item details
+  const selectedItem = availableItems.find(item => item.id === selectedItemId)
 
   return (
     <div className="bg-white rounded-lg p-3 border border-purple-200">
@@ -169,6 +184,49 @@ export function ProductGroupItemSelector({
         )}
       </div>
 
+      {/* Quantity Input - Only for quantity-tracked items */}
+      {selectedItem && selectedItem.tracking_type === 'total_quantity' && (
+        <div className="mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-purple-900">
+              Quantity to Add
+            </label>
+            <span className="text-xs text-purple-600">
+              Available: {selectedItem.total_quantity || 0}
+            </span>
+          </div>
+          <div className="flex items-center space-x-3">
+            <input
+              type="number"
+              min="1"
+              max={selectedItem.total_quantity || 1}
+              value={quantity}
+              onChange={(e) => {
+                const newQty = parseInt(e.target.value) || 1
+                const maxQty = selectedItem.total_quantity || 1
+                setQuantity(Math.min(Math.max(1, newQty), maxQty))
+              }}
+              className="flex-1 px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <span className="text-sm text-purple-700 font-medium">
+              / {selectedItem.total_quantity || 0}
+            </span>
+          </div>
+          <p className="text-xs text-purple-600 mt-2">
+            Specify how many units of "{selectedItem.item_name}" should be in this group
+          </p>
+        </div>
+      )}
+
+      {/* Serial Item Notice */}
+      {selectedItem && selectedItem.tracking_type === 'serial_number' && (
+        <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+          <p className="text-xs text-blue-700">
+            <span className="font-medium">Serial tracked item:</span> Quantity is always 1
+          </p>
+        </div>
+      )}
+
       {/* Add Button */}
       <Button
         size="sm"
@@ -177,7 +235,9 @@ export function ProductGroupItemSelector({
         className="w-full"
       >
         <PlusCircle className="h-4 w-4 mr-1" />
-        {isAdding ? 'Adding...' : 'Add Selected Item'}
+        {isAdding ? 'Adding...' : selectedItem?.tracking_type === 'total_quantity' 
+          ? `Add ${quantity} ${selectedItem?.item_name || 'Item'}${quantity > 1 ? 's' : ''}`
+          : 'Add Selected Item'}
       </Button>
     </div>
   )

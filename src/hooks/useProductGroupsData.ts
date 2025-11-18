@@ -129,11 +129,14 @@ export function useAddItemToProductGroup() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ groupId, inventoryItemId }: { groupId: string; inventoryItemId: string }) => {
+    mutationFn: async ({ groupId, inventoryItemId, quantity }: { groupId: string; inventoryItemId: string; quantity?: number }) => {
       const response = await fetch(`/api/product-groups/${groupId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inventory_item_id: inventoryItemId })
+        body: JSON.stringify({ 
+          inventory_item_id: inventoryItemId,
+          quantity: quantity  // Pass quantity to API
+        })
       })
       if (!response.ok) {
         const error = await response.json()

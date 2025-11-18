@@ -116,11 +116,11 @@ export function ProductGroupsList() {
     setIsModalOpen(true)
   }, [])
 
-  const handleAddItemToGroup = useCallback(async (groupId: string, inventoryItemId: string) => {
+  const handleAddItemToGroup = useCallback(async (groupId: string, inventoryItemId: string, quantity?: number) => {
     if (!inventoryItemId) return
 
     try {
-      await addItemToGroup.mutateAsync({ groupId, inventoryItemId })
+      await addItemToGroup.mutateAsync({ groupId, inventoryItemId, quantity })
       // React Query mutations already invalidate the cache
     } catch (error: any) {
       console.error('Failed to add item to group:', error)
@@ -356,7 +356,7 @@ export function ProductGroupsList() {
                           <ProductGroupItemSelector
                             availableItems={allInventoryItems}
                             excludeItemIds={details.product_group_items?.map((gi: any) => gi.inventory_item_id) || []}
-                            onAddItem={(itemId) => handleAddItemToGroup(group.id, itemId)}
+                            onAddItem={(itemId, quantity) => handleAddItemToGroup(group.id, itemId, quantity)}
                             isAdding={addItemToGroup.isPending}
                           />
                         )}
@@ -412,9 +412,13 @@ export function ProductGroupsList() {
                                             {item.inventory_items.serial_number &&
                                               ` • S/N: ${item.inventory_items.serial_number}`
                                             }
-                                            {item.inventory_items.tracking_type === 'total_quantity' &&
-                                              ` • Qty: ${item.inventory_items.total_quantity}`
-                                            }
+                                            {item.inventory_items.tracking_type === 'total_quantity' && (
+                                              <>
+                                                {` • In Group: `}
+                                                <span className="font-semibold text-purple-600">{item.quantity || 1}</span>
+                                                <span className="text-gray-400"> / {item.inventory_items.total_quantity} total</span>
+                                              </>
+                                            )}
                                           </p>
                                         </div>
                                         <Button
