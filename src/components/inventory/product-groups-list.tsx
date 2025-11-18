@@ -358,6 +358,7 @@ export function ProductGroupsList() {
                             excludeItemIds={details.product_group_items?.map((gi: any) => gi.inventory_item_id) || []}
                             onAddItem={(itemId, quantity) => handleAddItemToGroup(group.id, itemId, quantity)}
                             isAdding={addItemToGroup.isPending}
+                            currentGroupId={group.id}
                           />
                         )}
 

@@ -47,10 +47,21 @@ export async function POST(
     if (inventoryItem.tracking_type === 'total_quantity') {
       quantityToAdd = quantity || 1
       
-      // Validate quantity doesn't exceed total
-      if (inventoryItem.total_quantity && quantityToAdd > inventoryItem.total_quantity) {
+      // Calculate how many units are already allocated to OTHER product groups
+      const { data: existingAllocations } = await supabase
+        .from('product_group_items')
+        .select('quantity')
+        .eq('inventory_item_id', inventory_item_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .neq('product_group_id', groupId)  // Exclude current group
+      
+      const totalAllocated = existingAllocations?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0
+      const availableQuantity = (inventoryItem.total_quantity || 0) - totalAllocated
+      
+      // Validate quantity doesn't exceed AVAILABLE (not just total)
+      if (quantityToAdd > availableQuantity) {
         return NextResponse.json({
-          error: `Cannot add ${quantityToAdd} units. Only ${inventoryItem.total_quantity} available.`
+          error: `Cannot add ${quantityToAdd} units. Only ${availableQuantity} available (${totalAllocated} already allocated to other groups).`
         }, { status: 400 })
       }
     }

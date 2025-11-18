@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { PlusCircle, ChevronDown, ChevronUp, Search } from 'lucide-react'
 
@@ -9,24 +9,76 @@ interface ProductGroupItemSelectorProps {
   excludeItemIds: string[]
   onAddItem: (itemId: string, quantity?: number) => void
   isAdding: boolean
+  currentGroupId: string  // NEW: To exclude current group from allocation calculation
 }
 
 export function ProductGroupItemSelector({
   availableItems,
   excludeItemIds,
   onAddItem,
-  isAdding
+  isAdding,
+  currentGroupId
 }: ProductGroupItemSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [selectedItemId, setSelectedItemId] = useState<string>('')
   const [quantity, setQuantity] = useState<number>(1)
+  const [itemAllocations, setItemAllocations] = useState<Record<string, number>>({})
 
-  // Filter items based on search query and exclusions
+  // Fetch allocations to calculate true available quantities
+  useEffect(() => {
+    const fetchAllocations = async () => {
+      try {
+        const response = await fetch('/api/product-groups')
+        if (response.ok) {
+          const groups = await response.json()
+          
+          // Calculate total allocated quantity for each item across ALL groups (except current)
+          const allocations: Record<string, number> = {}
+          
+          groups.forEach((group: any) => {
+            // Skip the current group we're editing
+            if (group.id === currentGroupId) return
+            
+            group.product_group_items?.forEach((item: any) => {
+              const itemId = item.inventory_item_id
+              const qty = item.quantity || 1
+              allocations[itemId] = (allocations[itemId] || 0) + qty
+            })
+          })
+          
+          setItemAllocations(allocations)
+        }
+      } catch (error) {
+        console.error('Failed to fetch allocations:', error)
+      }
+    }
+    
+    fetchAllocations()
+  }, [currentGroupId])
+
+  // Calculate true available quantity for each item
+  const getAvailableQuantity = (item: any): number => {
+    if (item.tracking_type === 'serial_number') {
+      // Serial items: available if not in any group
+      return excludeItemIds.includes(item.id) ? 0 : 1
+    }
+    
+    // Quantity-tracked items: total - allocated to other groups
+    const allocated = itemAllocations[item.id] || 0
+    const total = item.total_quantity || 0
+    return Math.max(0, total - allocated)
+  }
+
+  // Filter items based on search query, exclusions, and availability
   const filteredItems = useMemo(() => {
     return availableItems.filter((item: any) => {
       // Exclude items already in the group
       if (excludeItemIds.includes(item.id)) return false
+
+      // Exclude items with 0 available quantity
+      const available = getAvailableQuantity(item)
+      if (available <= 0) return false
 
       // Apply search filter
       if (searchQuery) {
@@ -41,7 +93,7 @@ export function ProductGroupItemSelector({
 
       return true
     })
-  }, [availableItems, excludeItemIds, searchQuery])
+  }, [availableItems, excludeItemIds, searchQuery, itemAllocations])
 
   // Group items by category
   const itemsByCategory = useMemo(() => {
@@ -161,8 +213,10 @@ export function ProductGroupItemSelector({
                               {item.model && (
                                 <span className="text-xs text-gray-500">Model: {item.model}</span>
                               )}
-                              {item.tracking_type === 'total_quantity' && item.total_quantity && (
-                                <span className="text-xs text-gray-500">Qty: {item.total_quantity}</span>
+                              {item.tracking_type === 'total_quantity' && (
+                                <span className="text-xs font-medium text-green-600">
+                                  Available: {getAvailableQuantity(item)} / {item.total_quantity || 0}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -185,38 +239,49 @@ export function ProductGroupItemSelector({
       </div>
 
       {/* Quantity Input - Only for quantity-tracked items */}
-      {selectedItem && selectedItem.tracking_type === 'total_quantity' && (
-        <div className="mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-purple-900">
-              Quantity to Add
-            </label>
-            <span className="text-xs text-purple-600">
-              Available: {selectedItem.total_quantity || 0}
-            </span>
+      {selectedItem && selectedItem.tracking_type === 'total_quantity' && (() => {
+        const availableQty = getAvailableQuantity(selectedItem)
+        const allocatedToOthers = (itemAllocations[selectedItem.id] || 0)
+        
+        return (
+          <div className="mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-purple-900">
+                Quantity to Add
+              </label>
+              <span className="text-xs text-green-700 font-semibold">
+                Available: {availableQty}
+              </span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="number"
+                min="1"
+                max={availableQty}
+                value={quantity}
+                onChange={(e) => {
+                  const newQty = parseInt(e.target.value) || 1
+                  setQuantity(Math.min(Math.max(1, newQty), availableQty))
+                }}
+                className="flex-1 px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <span className="text-sm text-purple-700 font-medium">
+                / {availableQty}
+              </span>
+            </div>
+            <div className="mt-2 text-xs">
+              <p className="text-purple-600">
+                Specify how many units of "{selectedItem.item_name}" should be in this group
+              </p>
+              {allocatedToOthers > 0 && (
+                <p className="text-orange-600 mt-1">
+                  ⚠️ {allocatedToOthers} unit{allocatedToOthers > 1 ? 's' : ''} already allocated to other groups
+                </p>
+              )}
+            </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="number"
-              min="1"
-              max={selectedItem.total_quantity || 1}
-              value={quantity}
-              onChange={(e) => {
-                const newQty = parseInt(e.target.value) || 1
-                const maxQty = selectedItem.total_quantity || 1
-                setQuantity(Math.min(Math.max(1, newQty), maxQty))
-              }}
-              className="flex-1 px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <span className="text-sm text-purple-700 font-medium">
-              / {selectedItem.total_quantity || 0}
-            </span>
-          </div>
-          <p className="text-xs text-purple-600 mt-2">
-            Specify how many units of "{selectedItem.item_name}" should be in this group
-          </p>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Serial Item Notice */}
       {selectedItem && selectedItem.tracking_type === 'serial_number' && (
