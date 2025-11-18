@@ -76,6 +76,26 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [Communications API] Returned', data?.length, 'messages')
     console.log('📊 [Communications API] Directions:', data?.map(d => d.direction).join(', '))
+    
+    // Debug relationship data for first 3 messages
+    if (data && data.length > 0) {
+      console.log('🔍 [Communications API] Sample relationship data:')
+      data.slice(0, 3).forEach((msg, i) => {
+        console.log(`  Message ${i + 1}:`, {
+          id: msg.id,
+          contact_id: msg.contact_id,
+          lead_id: msg.lead_id,
+          account_id: msg.account_id,
+          hasContactData: !!msg.contacts,
+          hasLeadData: !!msg.leads,
+          hasAccountData: !!msg.accounts,
+          contactName: msg.contacts ? `${msg.contacts.first_name} ${msg.contacts.last_name}` : null,
+          leadName: msg.leads ? `${msg.leads.first_name} ${msg.leads.last_name}` : null,
+          accountName: msg.accounts?.name || null,
+          metadata: msg.metadata
+        })
+      })
+    }
 
     return NextResponse.json(data)
   } catch (error) {
