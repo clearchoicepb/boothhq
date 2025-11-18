@@ -49,7 +49,7 @@ interface Person {
   id: string
   name: string
   phone: string
-  type: 'contact' | 'lead' | 'account'
+  type: 'contact' | 'lead' | 'account' | 'staff'
   email?: string
 }
 
@@ -98,14 +98,15 @@ export default function SMSMessagesPage() {
     return phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
   }
 
-  // Fetch contacts, leads, and accounts for new message
+  // Fetch contacts, leads, accounts, and staff for new message
   const fetchPeople = async () => {
     setPeopleLoading(true)
     try {
-      const [contactsRes, leadsRes, accountsRes] = await Promise.all([
+      const [contactsRes, leadsRes, accountsRes, staffRes] = await Promise.all([
         fetch('/api/contacts'),
         fetch('/api/leads'),
-        fetch('/api/accounts')
+        fetch('/api/accounts'),
+        fetch('/api/staff')
       ])
 
       const peopleList: Person[] = []
@@ -150,6 +151,21 @@ export default function SMSMessagesPage() {
               phone: a.phone,
               type: 'account',
               email: a.email
+            })
+          }
+        })
+      }
+
+      if (staffRes.ok) {
+        const staff = await staffRes.json()
+        staff.forEach((s: any) => {
+          if (s.phone) {
+            peopleList.push({
+              id: s.id,
+              name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Unnamed Staff',
+              phone: s.phone,
+              type: 'staff',
+              email: s.email
             })
           }
         })
@@ -544,7 +560,7 @@ export default function SMSMessagesPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search contacts, leads, accounts..."
+                placeholder="Search contacts, leads, accounts, staff..."
                 value={peopleSearch}
                 onChange={(e) => setPeopleSearch(e.target.value)}
                 className="pl-9"
@@ -585,6 +601,7 @@ export default function SMSMessagesPage() {
                             <span className={`text-xs px-2 py-0.5 rounded-full ${
                               person.type === 'contact' ? 'bg-blue-100 text-blue-800' :
                               person.type === 'lead' ? 'bg-green-100 text-green-800' :
+                              person.type === 'staff' ? 'bg-orange-100 text-orange-800' :
                               'bg-purple-100 text-purple-800'
                             }`}>
                               {person.type}
@@ -605,7 +622,7 @@ export default function SMSMessagesPage() {
                   ).length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                       <User className="h-12 w-12 mb-2 text-gray-300" />
-                      <p className="text-sm">No contacts, leads, or accounts with phone numbers found</p>
+                      <p className="text-sm">No contacts, leads, accounts, or staff with phone numbers found</p>
                     </div>
                   )}
                 </>
