@@ -19,6 +19,10 @@ interface InventoryItem {
   event_id?: string
   expected_return_date?: string
   model?: string
+  assignment_id?: string  // NEW: ID of the inventory_assignment record
+  quantity_assigned?: number  // NEW: Quantity assigned in this assignment
+  assignment_status?: string  // NEW: Status from assignment record
+  prep_status?: string  // NEW: Prep status from assignment record
 }
 
 interface EventInventoryAssignmentsProps {
@@ -34,6 +38,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
   const [isAssigning, setIsAssigning] = useState(false)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set())
+  const [selectedItemQuantities, setSelectedItemQuantities] = useState<Record<string, number>>({})  // NEW: Track quantities
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -72,6 +77,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         body: JSON.stringify({
           inventory_item_ids: Array.from(selectedItems),
           product_group_ids: Array.from(selectedGroups),
+          item_quantities: selectedItemQuantities,  // NEW: Pass quantities
           create_checkout_task: true
         })
       })
@@ -79,6 +85,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
       if (response.ok) {
         setSelectedItems(new Set())
         setSelectedGroups(new Set())
+        setSelectedItemQuantities({})  // NEW: Reset quantities
         setIsAssigning(false)
         setSearchQuery('')
         await fetchData()
@@ -88,11 +95,16 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
     }
   }
 
-  const handleRemoveItem = async (itemId: string) => {
+  const handleRemoveItem = async (item: InventoryItem) => {
     if (!confirm('Are you sure you want to remove this item from the event?')) return
 
     try {
-      const response = await fetch(`/api/events/${eventId}/inventory?item_ids=${itemId}`, {
+      // Use assignment_id if available (preferred), otherwise fall back to item_id (legacy)
+      const params = item.assignment_id 
+        ? `assignment_ids=${item.assignment_id}`
+        : `item_ids=${item.id}`
+      
+      const response = await fetch(`/api/events/${eventId}/inventory?${params}`, {
         method: 'DELETE'
       })
 
@@ -104,14 +116,27 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
     }
   }
 
-  const toggleItemSelection = (itemId: string) => {
+  const toggleItemSelection = (itemId: string, defaultQuantity: number = 1) => {
     const newSelection = new Set(selectedItems)
+    const newQuantities = { ...selectedItemQuantities }
+    
     if (newSelection.has(itemId)) {
       newSelection.delete(itemId)
+      delete newQuantities[itemId]  // Remove quantity when unchecked
     } else {
       newSelection.add(itemId)
+      newQuantities[itemId] = defaultQuantity  // Initialize quantity when checked
     }
+    
     setSelectedItems(newSelection)
+    setSelectedItemQuantities(newQuantities)
+  }
+
+  const updateItemQuantity = (itemId: string, quantity: number) => {
+    setSelectedItemQuantities(prev => ({
+      ...prev,
+      [itemId]: Math.max(1, quantity)  // Ensure minimum quantity of 1
+    }))
   }
 
   const toggleGroupSelection = (groupId: string) => {
@@ -222,12 +247,30 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         <div className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100">
           <div className="flex items-center space-x-3 flex-1">
             {isSelectable && (
-              <input
-                type="checkbox"
-                checked={selectedItems.has(item.id)}
-                onChange={() => toggleItemSelection(item.id)}
-                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.has(item.id)}
+                  onChange={() => toggleItemSelection(item.id, 1)}
+                  className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                {/* Quantity input for quantity-tracked items */}
+                {item.tracking_type === 'total_quantity' && selectedItems.has(item.id) && (
+                  <div className="flex items-center space-x-1">
+                    <label className="text-xs text-gray-600">Qty:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={item.total_quantity || undefined}
+                      value={selectedItemQuantities[item.id] || 1}
+                      onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="text-xs text-gray-500">/ {item.total_quantity}</span>
+                  </div>
+                )}
+              </div>
             )}
             <div className="flex-1">
               <div className="flex items-center space-x-2">
@@ -245,8 +288,14 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
                 {item.tracking_type === 'serial_number' && item.serial_number && (
                   <span>S/N: {item.serial_number}</span>
                 )}
-                {item.tracking_type === 'total_quantity' && item.total_quantity && (
-                  <span>Qty: {item.total_quantity}</span>
+                {item.tracking_type === 'total_quantity' && (
+                  <>
+                    {isAssigned && item.quantity_assigned ? (
+                      <span className="font-semibold text-blue-600">Assigned: {item.quantity_assigned}</span>
+                    ) : (
+                      <span>Total Qty: {item.total_quantity}</span>
+                    )}
+                  </>
                 )}
                 {item.model && <span className="ml-2">Model: {item.model}</span>}
               </div>
@@ -277,7 +326,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleRemoveItem(item.id)}
+              onClick={() => handleRemoveItem(item)}
               className="ml-2"
             >
               <Trash2 className="h-4 w-4" />
