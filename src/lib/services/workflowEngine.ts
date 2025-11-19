@@ -170,9 +170,23 @@ const executeCreateDesignItemAction: ActionExecutor = async (
   }
 
   try {
+    // Debug: Log action data
+    console.log('[WorkflowEngine] create_design_item action:', {
+      action_id: action.id,
+      design_item_type_id: action.design_item_type_id,
+      assigned_to_user_id: action.assigned_to_user_id,
+      workflow_id: action.workflow_id,
+      has_assigned_to_user: !!action.assigned_to_user,
+      action_keys: Object.keys(action),
+    })
+    
     // Validate required fields
     if (!action.design_item_type_id) {
       throw new Error('create_design_item action requires design_item_type_id')
+    }
+    
+    if (!action.assigned_to_user_id) {
+      console.warn('[WorkflowEngine] ⚠️  No assigned_to_user_id found in action!')
     }
 
     // Fetch design item type
@@ -229,21 +243,25 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     // - event.start_date (target date)
     // - design_item_type timeline settings (design_days, production_days, etc.)
     // We don't set due_date here - the dashboard computes it on-the-fly
+    const insertData = {
+      tenant_id: dataSourceTenantId,
+      event_id: context.triggerEntity.id,
+      design_item_type_id: action.design_item_type_id,
+      item_name: designItemType.name,
+      description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
+      quantity: 1,
+      status: 'pending',
+      assigned_designer_id: action.assigned_to_user_id,
+      // Workflow tracking
+      auto_created: true,
+      workflow_id: action.workflow_id,
+    }
+    
+    console.log('[WorkflowEngine] Inserting design item:', insertData)
+    
     const { data: designItem, error: designItemError } = await supabase
       .from('event_design_items')
-      .insert({
-        tenant_id: dataSourceTenantId,
-        event_id: context.triggerEntity.id,
-        design_item_type_id: action.design_item_type_id,
-        item_name: designItemType.name,
-        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
-        quantity: 1,
-        status: 'pending',
-        assigned_designer_id: action.assigned_to_user_id,
-        // Workflow tracking
-        auto_created: true,
-        workflow_id: action.workflow_id,
-      })
+      .insert(insertData)
       .select()
       .single()
 
