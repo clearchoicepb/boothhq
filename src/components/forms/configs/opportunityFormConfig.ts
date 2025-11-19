@@ -35,14 +35,7 @@ export const opportunityFormConfig: FormConfig<Opportunity> = {
       type: 'select',
       label: 'Stage',
       required: true,
-      options: [
-        { value: 'prospecting', label: 'Prospecting' },
-        { value: 'qualification', label: 'Qualification' },
-        { value: 'proposal', label: 'Proposal' },
-        { value: 'negotiation', label: 'Negotiation' },
-        { value: 'closed_won', label: 'Closed Won' },
-        { value: 'closed_lost', label: 'Closed Lost' }
-      ],
+      options: 'opportunity_stages', // Fetch from tenant's opportunity settings
       gridCols: 1
     },
     {
@@ -119,6 +112,12 @@ export const opportunityFormConfig: FormConfig<Opportunity> = {
       endpoint: '/api/event-types',
       displayField: 'name',
       valueField: 'slug' // Use slug (e.g. 'wedding', 'corporate') for compatibility with opportunity conversion
+    },
+    {
+      key: 'opportunity_stages',
+      endpoint: '/api/settings/opportunity-stages',
+      displayField: 'name',
+      valueField: 'id' // Stage ID (e.g. 'prospecting', 'qualification', or custom stage IDs)
     }
   ],
   defaultValues: {
