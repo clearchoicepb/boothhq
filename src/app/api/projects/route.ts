@@ -26,10 +26,9 @@ export async function GET(request: NextRequest) {
       .from('projects')
       .select(`
         *,
-        owner:users!projects_owner_id_fkey(id, first_name, last_name, email),
-        related_account:accounts!projects_related_account_id_fkey(id, name),
-        related_event:events!projects_related_event_id_fkey(id, title),
-        parent_project:projects!projects_parent_project_id_fkey(id, name),
+        owner:users(id, first_name, last_name, email),
+        related_account:accounts(id, name),
+        related_event:events(id, title),
         team_members:project_team_members(
           id,
           user_id,
@@ -105,9 +104,9 @@ export async function POST(request: NextRequest) {
       .insert(projectData)
       .select(`
         *,
-        owner:users!projects_owner_id_fkey(id, first_name, last_name, email),
-        related_account:accounts!projects_related_account_id_fkey(id, name),
-        related_event:events!projects_related_event_id_fkey(id, title)
+        owner:users(id, first_name, last_name, email),
+        related_account:accounts(id, name),
+        related_event:events(id, title)
       `)
       .single()
 
