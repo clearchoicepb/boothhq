@@ -206,11 +206,19 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     const event = context.triggerEntity.data
     const eventDate = event.start_date || event.event_date
 
+    console.log('[WorkflowEngine] 🔍 Design Item Date Debug:', {
+      event_id: event.id,
+      start_date: event.start_date,
+      start_date_type: typeof event.start_date,
+      event_date: event.event_date,
+      event_date_type: typeof event.event_date,
+      eventDate_selected: eventDate,
+      eventDate_type: typeof eventDate
+    })
+
     if (!eventDate) {
       throw new Error('Event date is required for design item timeline calculations')
     }
-
-    console.log('[WorkflowEngine] Event date from event:', eventDate, typeof eventDate)
 
     // Parse event date - handles both YYYY-MM-DD and full ISO timestamps
     let eventDateObj: Date
@@ -224,7 +232,12 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       eventDateObj = new Date(eventDate)
     }
 
-    console.log('[WorkflowEngine] Parsed event date:', eventDateObj.toISOString(), 'Is valid:', !isNaN(eventDateObj.getTime()))
+    console.log('[WorkflowEngine] ✅ Parsed event date:', {
+      input: eventDate,
+      parsed: eventDateObj.toISOString(),
+      isValid: !isNaN(eventDateObj.getTime()),
+      timestamp: eventDateObj.getTime()
+    })
 
     // Calculate deadlines working backwards from event date
     // Timeline: Event Date <- Shipping <- Production <- Design <- Approval Buffer
@@ -405,6 +418,14 @@ class WorkflowEngine {
         console.error('[WorkflowEngine] Event not found:', eventId)
         return []
       }
+
+      console.log('[WorkflowEngine] 📅 Event data fetched:', {
+        id: event.id,
+        start_date: event.start_date,
+        start_date_type: typeof event.start_date,
+        event_date: event.event_date,
+        all_keys: Object.keys(event)
+      })
 
       // Filter out workflows that have already been executed (duplicate prevention)
       const workflowsToExecute = workflows.filter((workflow) => {
