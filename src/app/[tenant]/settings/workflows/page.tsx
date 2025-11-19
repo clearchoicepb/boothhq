@@ -47,6 +47,7 @@ export default function WorkflowsSettingsPage() {
   const [applyPreview, setApplyPreview] = useState<any>(null)
   const [applying, setApplying] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
+  const [forceRerun, setForceRerun] = useState(false)
 
   useEffect(() => {
     fetchWorkflows()
@@ -146,7 +147,9 @@ export default function WorkflowsSettingsPage() {
     setApplying(true)
     try {
       const response = await fetch(`/api/workflows/${workflowToApply.id}/apply-to-existing`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: forceRerun })
       })
       
       const data = await response.json()
@@ -155,15 +158,16 @@ export default function WorkflowsSettingsPage() {
         throw new Error(data.error || 'Failed to apply workflow')
       }
 
-      toast.success(
-        `Successfully applied workflow to ${data.processed} event${data.processed !== 1 ? 's' : ''}!` +
-        (data.failed > 0 ? ` ${data.failed} failed.` : '') +
-        (data.skipped > 0 ? ` ${data.skipped} already had this workflow.` : '')
-      )
+      const successMessage = forceRerun
+        ? `Successfully re-ran workflow on ${data.processed} event${data.processed !== 1 ? 's' : ''}!${data.failed > 0 ? ` ${data.failed} failed.` : ''}`
+        : `Successfully applied workflow to ${data.processed} event${data.processed !== 1 ? 's' : ''}!${data.failed > 0 ? ` ${data.failed} failed.` : ''}${data.skipped > 0 ? ` ${data.skipped} already had this workflow.` : ''}`
+      
+      toast.success(successMessage)
       
       setApplyModalOpen(false)
       setWorkflowToApply(null)
       setApplyPreview(null)
+      setForceRerun(false)
     } catch (error) {
       console.error('Error applying workflow:', error)
       toast.error('Failed to apply workflow to existing events')
@@ -529,12 +533,39 @@ export default function WorkflowsSettingsPage() {
                 </>
               )}
 
+              {/* Force Rerun Option */}
+              {applyPreview && applyPreview.alreadyExecuted > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <label className="flex items-start cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={forceRerun}
+                      onChange={(e) => setForceRerun(e.target.checked)}
+                      className="mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                    />
+                    <div className="ml-3">
+                      <span className="text-sm font-medium text-orange-900">
+                        Run Anyway (Override Duplicate Check)
+                      </span>
+                      <p className="text-sm text-orange-700 mt-1">
+                        {applyPreview.alreadyExecuted} event{applyPreview.alreadyExecuted !== 1 ? 's' : ''} already {applyPreview.alreadyExecuted !== 1 ? 'have' : 'has'} this workflow. 
+                        Check this box to force re-run the workflow on all events, creating duplicate tasks.
+                      </p>
+                      <p className="text-xs text-orange-600 mt-1 font-medium">
+                        ⚠️ Warning: This will create duplicate tasks/design items if you don't delete the old ones first.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4">
                 <Button
                   onClick={() => {
                     setApplyModalOpen(false)
                     setWorkflowToApply(null)
                     setApplyPreview(null)
+                    setForceRerun(false)
                   }}
                   variant="outline"
                   disabled={applying}
@@ -544,17 +575,20 @@ export default function WorkflowsSettingsPage() {
                 <Button
                   onClick={handleApplyToExistingConfirm}
                   className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white"
-                  disabled={applying || !applyPreview || applyPreview.count === 0}
+                  disabled={applying || !applyPreview || (applyPreview.count === 0 && !forceRerun)}
                 >
                   {applying ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Applying...
+                      {forceRerun ? 'Re-running...' : 'Applying...'}
                     </>
                   ) : (
                     <>
                       <Play className="h-4 w-4 mr-2" />
-                      Apply to {applyPreview?.count || 0} Event{applyPreview?.count !== 1 ? 's' : ''}
+                      {forceRerun 
+                        ? `Re-run on ${applyPreview?.totalEvents || 0} Event${applyPreview?.totalEvents !== 1 ? 's' : ''}`
+                        : `Apply to ${applyPreview?.count || 0} Event${applyPreview?.count !== 1 ? 's' : ''}`
+                      }
                     </>
                   )}
                 </Button>

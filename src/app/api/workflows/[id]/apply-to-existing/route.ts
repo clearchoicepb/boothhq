@@ -149,7 +149,12 @@ export async function POST(
 ) {
   try {
     const { id: workflowId } = params
-    console.log('[ApplyWorkflow] POST - Looking for workflow:', workflowId)
+    
+    // Parse request body for options
+    const body = await request.json().catch(() => ({}))
+    const forceRerun = body.force === true
+    
+    console.log('[ApplyWorkflow] POST - Looking for workflow:', workflowId, 'Force rerun:', forceRerun)
     const context = await getTenantContext()
 
     if (context instanceof NextResponse) {
@@ -221,22 +226,29 @@ export async function POST(
       })
     }
 
-    // Check which events already have executions for this workflow
-    const { data: existingExecutions } = await supabase
-      .from('workflow_executions')
-      .select('trigger_entity_id')
-      .eq('workflow_id', workflowId)
-      .eq('status', 'completed')
-      .in('trigger_entity_id', events.map(e => e.id))
+    // Check which events already have executions for this workflow (unless force rerun)
+    let executedEventIds = new Set<string>()
+    let eligibleEvents = events
+    
+    if (!forceRerun) {
+      const { data: existingExecutions } = await supabase
+        .from('workflow_executions')
+        .select('trigger_entity_id')
+        .eq('workflow_id', workflowId)
+        .eq('status', 'completed')
+        .in('trigger_entity_id', events.map(e => e.id))
 
-    const executedEventIds = new Set(
-      existingExecutions?.map(e => e.trigger_entity_id) || []
-    )
+      executedEventIds = new Set(
+        existingExecutions?.map(e => e.trigger_entity_id) || []
+      )
 
-    // Filter to only events that haven't been executed yet
-    const eligibleEvents = events.filter(e => !executedEventIds.has(e.id))
-
-    console.log(`[ApplyWorkflow] Processing ${eligibleEvents.length} events for workflow ${workflowId}`)
+      // Filter to only events that haven't been executed yet
+      eligibleEvents = events.filter(e => !executedEventIds.has(e.id))
+      
+      console.log(`[ApplyWorkflow] Processing ${eligibleEvents.length} events for workflow ${workflowId} (${executedEventIds.size} already executed)`)
+    } else {
+      console.log(`[ApplyWorkflow] FORCE RERUN: Processing ${eligibleEvents.length} events for workflow ${workflowId} (skipping duplicate check)`)
+    }
 
     // Execute workflow for each eligible event
     let processed = 0
@@ -245,7 +257,7 @@ export async function POST(
 
     for (const event of eligibleEvents) {
       try {
-        const result = await workflowEngine.executeWorkflowsForEvent({
+        const workflowResults = await workflowEngine.executeWorkflowsForEvent({
           eventId: event.id,
           eventTypeId: event.event_type_id,
           tenantId,
@@ -253,28 +265,41 @@ export async function POST(
           supabase
         })
 
-        if (result.success) {
+        // Check if any workflows executed successfully
+        const hasSuccess = workflowResults.some(r => r.status === 'completed' || r.status === 'partial')
+        
+        if (hasSuccess) {
           processed++
+          
+          // Count total tasks and design items created across all workflows
+          const tasksCreated = workflowResults
+            .flatMap(r => r.createdTaskIds || [])
+            .length
+          const designItemsCreated = workflowResults
+            .flatMap(r => r.createdDesignItemIds || [])
+            .length
+          
           results.push({
             eventId: event.id,
             clientName: event.title,
             eventDate: event.start_date,
             success: true,
-            tasksCreated: result.results
-              .flatMap(r => r.result?.createdTaskIds || [])
-              .length,
-            designItemsCreated: result.results
-              .flatMap(r => r.result?.createdDesignItemIds || [])
-              .length
+            tasksCreated,
+            designItemsCreated
           })
         } else {
           failed++
+          const errors = workflowResults
+            .filter(r => r.error)
+            .map(r => r.error?.message)
+            .join(', ')
+          
           results.push({
             eventId: event.id,
             clientName: event.title,
             eventDate: event.start_date,
             success: false,
-            error: result.error
+            error: errors || 'Unknown error'
           })
         }
       } catch (error: any) {
@@ -282,7 +307,7 @@ export async function POST(
         failed++
         results.push({
           eventId: event.id,
-          clientName: event.client_name,
+          clientName: event.title,
           eventDate: event.start_date,
           success: false,
           error: error.message
