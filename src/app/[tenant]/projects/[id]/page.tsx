@@ -32,6 +32,9 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [users, setUsers] = useState<any[]>([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedRole, setSelectedRole] = useState('contributor')
 
   // Fetch project details
   useEffect(() => {
@@ -53,6 +56,22 @@ export default function ProjectDetailPage() {
       fetchProject()
     }
   }, [projectId])
+
+  // Fetch users for team member dropdown
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users')
+        if (!response.ok) throw new Error('Failed to fetch users')
+        const data = await response.json()
+        setUsers(data)
+      } catch (error) {
+        console.error('Error fetching users:', error)
+      }
+    }
+
+    fetchUsers()
+  }, [])
 
   // Handle delete
   const handleDelete = async () => {
@@ -92,6 +111,63 @@ export default function ProjectDetailPage() {
     } catch (error) {
       console.error('Error updating progress:', error)
       toast.error('Failed to update progress')
+    }
+  }
+
+  // Handle add team member
+  const handleAddTeamMember = async () => {
+    if (!selectedUserId) {
+      toast.error('Please select a user')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/team`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: selectedUserId,
+          role: selectedRole 
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to add team member')
+
+      // Refresh project data
+      const projectResponse = await fetch(`/api/projects/${projectId}`)
+      const updatedProject = await projectResponse.json()
+      setProject(updatedProject)
+
+      toast.success('Team member added')
+      setShowAddMemberModal(false)
+      setSelectedUserId('')
+      setSelectedRole('contributor')
+    } catch (error) {
+      console.error('Error adding team member:', error)
+      toast.error('Failed to add team member')
+    }
+  }
+
+  // Handle remove team member
+  const handleRemoveTeamMember = async (memberId: string) => {
+    if (!confirm('Remove this team member?')) return
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/team?member_id=${memberId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to remove team member')
+
+      // Refresh project data
+      const projectResponse = await fetch(`/api/projects/${projectId}`)
+      const updatedProject = await projectResponse.json()
+      setProject(updatedProject)
+
+      toast.success('Team member removed')
+    } catch (error) {
+      console.error('Error removing team member:', error)
+      toast.error('Failed to remove team member')
     }
   }
 
@@ -354,7 +430,7 @@ export default function ProjectDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Team Members</h2>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
                   <UserPlus className="h-4 w-4 mr-2" />
                   Add
                 </Button>
@@ -378,6 +454,14 @@ export default function ProjectDetailPage() {
                           )}
                         </div>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveTeamMember(member.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -421,6 +505,71 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Team Member Modal */}
+      {showAddMemberModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Team Member</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  User
+                </label>
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a user...</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Role
+                </label>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="lead">Lead</option>
+                  <option value="contributor">Contributor</option>
+                  <option value="reviewer">Reviewer</option>
+                  <option value="observer">Observer</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={handleAddTeamMember}
+                className="flex-1"
+              >
+                Add Member
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddMemberModal(false)
+                  setSelectedUserId('')
+                  setSelectedRole('contributor')
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }
