@@ -81,7 +81,7 @@ export async function GET(
     // Find all future events matching the event types
     const { data: events, error: eventsError } = await supabase
       .from('events')
-      .select('id, event_type_id, start_date, client_name')
+      .select('id, event_type_id, start_date, name')
       .in('event_type_id', eventTypeIds)
       .gte('start_date', new Date().toISOString().split('T')[0]) // Future events only
       .order('start_date', { ascending: true })
@@ -128,7 +128,7 @@ export async function GET(
       eventTypeName: eventTypeNames,
       events: eligibleEvents.map(e => ({
         id: e.id,
-        client_name: e.client_name,
+        client_name: e.name,
         event_date: e.start_date
       }))
     })
@@ -207,7 +207,7 @@ export async function POST(
     // Find all future events matching the event types
     const { data: events, error: eventsError } = await supabase
       .from('events')
-      .select('id, event_type_id, start_date, client_name')
+      .select('id, event_type_id, start_date, name')
       .in('event_type_id', eventTypeIds)
       .gte('start_date', new Date().toISOString().split('T')[0]) // Future events only
       .order('start_date', { ascending: true })
@@ -257,7 +257,7 @@ export async function POST(
           processed++
           results.push({
             eventId: event.id,
-            clientName: event.client_name,
+            clientName: event.name,
             eventDate: event.start_date,
             success: true,
             tasksCreated: result.results
@@ -271,7 +271,7 @@ export async function POST(
           failed++
           results.push({
             eventId: event.id,
-            clientName: event.client_name,
+            clientName: event.name,
             eventDate: event.start_date,
             success: false,
             error: result.error
