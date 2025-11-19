@@ -121,10 +121,39 @@ export function DesignDashboard() {
   const [taskNotes, setTaskNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isDesignManager, setIsDesignManager] = useState(false)
 
   // Get tenant colors from settings (with fallback defaults)
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
   const SECONDARY_COLOR = getSetting('appearance.secondaryColor', '#8b5cf6')
+
+  // Fetch current user and determine manager status (runs once on mount)
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const user = await res.json()
+          setCurrentUser(user)
+          
+          // Check if user is a design manager
+          const managerDepts = user.manager_of_departments || []
+          const isManager = managerDepts.includes('design')
+          setIsDesignManager(isManager)
+          
+          // If not a manager, automatically filter to show only their tasks
+          if (!isManager && user.id) {
+            setSelectedDesigner(user.id)
+          }
+        }
+      } catch (error) {
+        console.error('[DesignDashboard] Error fetching current user:', error)
+      }
+    }
+    
+    fetchCurrentUser()
+  }, []) // Empty dependency array - run once on mount
 
   useEffect(() => {
     console.log('[DesignDashboard] useEffect triggered')
@@ -298,13 +327,15 @@ export function DesignDashboard() {
       <div className="bg-white rounded-lg shadow-md p-4 flex items-center gap-4">
         <Filter className="h-5 w-5 text-gray-400" />
 
-        <select
-          value={selectedDesigner}
-          onChange={(e) => setSelectedDesigner(e.target.value)}
-          aria-label="Filter by designer"
-          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
-          style={{
-            '--tw-ring-color': PRIMARY_COLOR,
+        {/* Designer filter - only show to managers */}
+        {isDesignManager && (
+          <select
+            value={selectedDesigner}
+            onChange={(e) => setSelectedDesigner(e.target.value)}
+            aria-label="Filter by designer"
+            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+            style={{
+              '--tw-ring-color': PRIMARY_COLOR,
             borderColor: 'rgb(209 213 219)'
           } as React.CSSProperties}
         >
@@ -317,6 +348,7 @@ export function DesignDashboard() {
             </option>
           ))}
         </select>
+        )}
 
         <select
           value={selectedStatus}

@@ -407,6 +407,80 @@ export function BaseForm<T extends Record<string, any>>({
             </div>
           )
 
+        case 'departmentWithManager':
+          const deptOptions = field.options || []
+          const selectedDepts = Array.isArray(value) ? value : []
+          const managerFieldName = field.managerField || 'manager_of_departments'
+          const managerDepts = Array.isArray(formState.data[managerFieldName]) 
+            ? formState.data[managerFieldName] 
+            : []
+          
+          return (
+            <div className="border border-gray-200 rounded-lg overflow-hidden" role="group" aria-label={field.label}>
+              {/* Header Row */}
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 px-4 py-2 border-b border-gray-200">
+                <div className="text-sm font-semibold text-gray-700">Department</div>
+                <div className="text-sm font-semibold text-gray-700 text-center">Manager</div>
+              </div>
+              
+              {/* Department Rows */}
+              <div className="divide-y divide-gray-200">
+                {deptOptions.map((option: SelectOption) => {
+                  const isDeptSelected = selectedDepts.includes(option.value)
+                  const isManager = managerDepts.includes(option.value)
+                  
+                  return (
+                    <div key={option.value} className="grid grid-cols-2 gap-4 px-4 py-3 hover:bg-gray-50">
+                      {/* Department Checkbox */}
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`${field.name}-${option.value}`}
+                          checked={isDeptSelected}
+                          onChange={(e) => {
+                            const newDepts = e.target.checked
+                              ? [...selectedDepts, option.value]
+                              : selectedDepts.filter(v => v !== option.value)
+                            handleFieldChange(field.name, newDepts)
+                            
+                            // If unchecking department, also remove from manager
+                            if (!e.target.checked && isManager) {
+                              const newManagers = managerDepts.filter((v: string) => v !== option.value)
+                              handleFieldChange(managerFieldName, newManagers)
+                            }
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          aria-label={`Department: ${option.label}`}
+                        />
+                        <label htmlFor={`${field.name}-${option.value}`} className="text-sm text-gray-700">
+                          {option.label}
+                        </label>
+                      </div>
+                      
+                      {/* Manager Checkbox */}
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          id={`${managerFieldName}-${option.value}`}
+                          checked={isManager}
+                          disabled={!isDeptSelected}
+                          onChange={(e) => {
+                            const newManagers = e.target.checked
+                              ? [...managerDepts, option.value]
+                              : managerDepts.filter((v: string) => v !== option.value)
+                            handleFieldChange(managerFieldName, newManagers)
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label={`${option.label} Manager`}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+
         default:
           return <Input {...commonProps} />
       }

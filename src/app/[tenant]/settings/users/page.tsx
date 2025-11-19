@@ -34,6 +34,7 @@ interface User {
   job_title: string | null
   department: string | null // Legacy single department
   departments: string[] | null // New multi-department support
+  manager_of_departments: string[] | null // Departments where user is a manager
   employee_type: 'W2' | '1099' | 'International' | null
   pay_rate: number | null
   payroll_info: any | null

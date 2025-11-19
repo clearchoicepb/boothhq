@@ -63,11 +63,12 @@ export const userFormConfig: FormConfig<any> = {
     },
     {
       name: 'departments',
-      type: 'multiSelect',
-      label: 'Departments',
+      type: 'departmentWithManager',
+      label: 'Departments & Manager Roles',
       options: getDepartmentOptions(),
+      managerField: 'manager_of_departments',
       gridCols: 2,
-      placeholder: 'Select one or more departments'
+      placeholder: 'Select departments and specify manager roles'
     },
     {
       name: 'employee_type',
@@ -185,6 +186,8 @@ export const userFormConfig: FormConfig<any> = {
   defaultValues: {
     role: 'user',
     status: 'active',
-    employee_type: 'W2'
+    employee_type: 'W2',
+    departments: [],
+    manager_of_departments: []
   }
 }

@@ -1,6 +1,6 @@
 export interface FieldConfig {
   name: string
-  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect'
+  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect' | 'departmentWithManager'
   label: string
   required?: boolean
   placeholder?: string
@@ -9,6 +9,7 @@ export interface FieldConfig {
   gridCols?: 1 | 2 | 3 | 4 // For responsive grid layout
   section?: string // Group fields into sections
   conditional?: ConditionalRule
+  managerField?: string // For 'departmentWithManager' type: field name for manager array
 }
 
 export interface SelectOption {
