@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS projects (
   stage VARCHAR(100), -- Customizable: 'planning', 'in_design', 'review', 'implementation'
   
   -- Ownership
-  owner_id UUID,
+  owner_id UUID REFERENCES users(id) ON DELETE SET NULL,
   department VARCHAR(50), -- 'design', 'operations', 'marketing', 'executive'
   
   -- Timeline
@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS projects (
   progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
   
   -- Optional Relations
-  related_account_id UUID,
-  related_event_id UUID,
+  related_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+  related_event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   parent_project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
   
   -- Metadata
@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS projects (
   
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID,
-  updated_by UUID
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- ============================================================================
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS project_team_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL,
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role VARCHAR(50), -- 'lead', 'contributor', 'reviewer', 'observer'
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(project_id, user_id)

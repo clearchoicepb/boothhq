@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
       .from('projects')
       .select(`
         *,
-        owner:users(id, first_name, last_name, email),
-        related_account:accounts(id, name),
-        related_event:events(id, title),
+        owner:users!projects_owner_id_fkey(id, first_name, last_name, email),
+        related_account:accounts!projects_related_account_id_fkey(id, name),
+        related_event:events!projects_related_event_id_fkey(id, title),
         team_members:project_team_members(
           id,
           user_id,
           role,
-          user:users(id, first_name, last_name, email)
+          user:users!project_team_members_user_id_fkey(id, first_name, last_name, email)
         )
       `)
       .eq('tenant_id', dataSourceTenantId)
@@ -104,9 +104,9 @@ export async function POST(request: NextRequest) {
       .insert(projectData)
       .select(`
         *,
-        owner:users(id, first_name, last_name, email),
-        related_account:accounts(id, name),
-        related_event:events(id, title)
+        owner:users!projects_owner_id_fkey(id, first_name, last_name, email),
+        related_account:accounts!projects_related_account_id_fkey(id, name),
+        related_event:events!projects_related_event_id_fkey(id, title)
       `)
       .single()
 

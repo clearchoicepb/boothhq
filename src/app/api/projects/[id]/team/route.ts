@@ -34,7 +34,7 @@ export async function POST(
       })
       .select(`
         *,
-        user:users(id, first_name, last_name, email)
+        user:users!project_team_members_user_id_fkey(id, first_name, last_name, email)
       `)
       .single()
 
