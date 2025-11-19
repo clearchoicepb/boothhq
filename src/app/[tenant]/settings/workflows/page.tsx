@@ -22,7 +22,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  BarChart3
+  BarChart3,
+  Play
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -39,6 +40,13 @@ export default function WorkflowsSettingsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [workflowToDelete, setWorkflowToDelete] = useState<WorkflowWithRelations | null>(null)
   const [deleting, setDeleting] = useState(false)
+  
+  // Apply to existing events modal
+  const [applyModalOpen, setApplyModalOpen] = useState(false)
+  const [workflowToApply, setWorkflowToApply] = useState<WorkflowWithRelations | null>(null)
+  const [applyPreview, setApplyPreview] = useState<any>(null)
+  const [applying, setApplying] = useState(false)
+  const [loadingPreview, setLoadingPreview] = useState(false)
 
   useEffect(() => {
     fetchWorkflows()
@@ -101,6 +109,66 @@ export default function WorkflowsSettingsPage() {
       toast.error('Failed to delete workflow')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleApplyToExistingClick = async (workflow: WorkflowWithRelations) => {
+    if (!workflow.is_active) {
+      toast.error('Cannot apply inactive workflow. Please activate it first.')
+      return
+    }
+
+    setWorkflowToApply(workflow)
+    setApplyModalOpen(true)
+    setLoadingPreview(true)
+    
+    try {
+      const response = await fetch(`/api/workflows/${workflow.id}/apply-to-existing`)
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load preview')
+      }
+      
+      setApplyPreview(data)
+    } catch (error) {
+      console.error('Error loading preview:', error)
+      toast.error('Failed to load preview')
+      setApplyModalOpen(false)
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
+
+  const handleApplyToExistingConfirm = async () => {
+    if (!workflowToApply) return
+
+    setApplying(true)
+    try {
+      const response = await fetch(`/api/workflows/${workflowToApply.id}/apply-to-existing`, {
+        method: 'POST'
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to apply workflow')
+      }
+
+      toast.success(
+        `Successfully applied workflow to ${data.processed} event${data.processed !== 1 ? 's' : ''}!` +
+        (data.failed > 0 ? ` ${data.failed} failed.` : '') +
+        (data.skipped > 0 ? ` ${data.skipped} already had this workflow.` : '')
+      )
+      
+      setApplyModalOpen(false)
+      setWorkflowToApply(null)
+      setApplyPreview(null)
+    } catch (error) {
+      console.error('Error applying workflow:', error)
+      toast.error('Failed to apply workflow to existing events')
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -244,6 +312,16 @@ export default function WorkflowsSettingsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         <Button
+                          onClick={() => handleApplyToExistingClick(workflow)}
+                          variant="outline"
+                          size="sm"
+                          title="Apply to existing future events"
+                          className={workflow.is_active ? 'text-blue-600 hover:text-blue-700 hover:border-blue-300' : 'text-gray-400'}
+                          disabled={!workflow.is_active}
+                        >
+                          <Play className="h-4 w-4" />
+                        </Button>
+                        <Button
                           onClick={() => handleEditWorkflow(workflow)}
                           variant="outline"
                           size="sm"
@@ -343,6 +421,146 @@ export default function WorkflowsSettingsPage() {
               )}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Apply to Existing Events Modal */}
+      <Modal
+        isOpen={applyModalOpen}
+        onClose={() => {
+          if (!applying) {
+            setApplyModalOpen(false)
+            setWorkflowToApply(null)
+            setApplyPreview(null)
+          }
+        }}
+        title="Apply Workflow to Existing Events"
+      >
+        <div className="space-y-4">
+          {loadingPreview ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-[#347dc4]"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading preview...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-gray-600">
+                This will apply the workflow to all future events that match its event type.
+              </div>
+
+              {workflowToApply && applyPreview && (
+                <>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-700">Workflow:</span>
+                      <span className="text-gray-900">{workflowToApply.name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-700">Event Type:</span>
+                      <span className="text-gray-900">{applyPreview.eventTypeName}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-700">Actions:</span>
+                      <span className="text-gray-900">{workflowToApply.actions?.length || 0}</span>
+                    </div>
+                  </div>
+
+                  {applyPreview.count > 0 ? (
+                    <>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                          <AlertCircle className="h-5 w-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-900">
+                              {applyPreview.count} future event{applyPreview.count !== 1 ? 's' : ''} will be affected
+                            </p>
+                            <p className="text-sm text-blue-700 mt-1">
+                              Tasks and design items will be created for each event according to the workflow configuration.
+                            </p>
+                            {applyPreview.alreadyExecuted > 0 && (
+                              <p className="text-sm text-blue-700 mt-1">
+                                {applyPreview.alreadyExecuted} event{applyPreview.alreadyExecuted !== 1 ? 's' : ''} already {applyPreview.alreadyExecuted !== 1 ? 'have' : 'has'} this workflow and will be skipped.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {applyPreview.events && applyPreview.events.length > 0 && (
+                        <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 sticky top-0">
+                            <p className="text-xs font-medium text-gray-700">Events that will be processed:</p>
+                          </div>
+                          <div className="divide-y divide-gray-200">
+                            {applyPreview.events.slice(0, 10).map((event: any) => (
+                              <div key={event.id} className="px-4 py-2 text-sm">
+                                <div className="font-medium text-gray-900">{event.client_name}</div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(event.event_date).toLocaleDateString()}
+                                </div>
+                              </div>
+                            ))}
+                            {applyPreview.events.length > 10 && (
+                              <div className="px-4 py-2 text-xs text-gray-500 text-center bg-gray-50">
+                                + {applyPreview.events.length - 10} more event{applyPreview.events.length - 10 !== 1 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-900">
+                            No events to process
+                          </p>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            {applyPreview.message || 'All eligible events already have this workflow applied.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  onClick={() => {
+                    setApplyModalOpen(false)
+                    setWorkflowToApply(null)
+                    setApplyPreview(null)
+                  }}
+                  variant="outline"
+                  disabled={applying}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleApplyToExistingConfirm}
+                  className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white"
+                  disabled={applying || !applyPreview || applyPreview.count === 0}
+                >
+                  {applying ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Applying...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Apply to {applyPreview?.count || 0} Event{applyPreview?.count !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>
