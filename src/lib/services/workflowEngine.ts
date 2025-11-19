@@ -225,8 +225,10 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
     // Create design item
-    // Note: Design dashboard calculates intermediate deadlines (design_start, production_start, etc.) dynamically
-    // based on event date and design_item_type timeline settings. We only set the overall due_date here.
+    // Note: Design dashboard calculates ALL deadlines dynamically based on:
+    // - event.start_date (target date)
+    // - design_item_type timeline settings (design_days, production_days, etc.)
+    // We don't set due_date here - the dashboard computes it on-the-fly
     const { data: designItem, error: designItemError } = await supabase
       .from('event_design_items')
       .insert({
@@ -236,9 +238,8 @@ const executeCreateDesignItemAction: ActionExecutor = async (
         item_name: designItemType.name,
         description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
         quantity: 1,
-        status: 'pending', // 'pending' is a valid status (not_started is not)
-        assigned_designer_id: action.assigned_to_user_id || null,
-        due_date: formatDate(designDeadline), // Overall deadline (design dashboard will calculate intermediate steps)
+        status: 'pending',
+        assigned_designer_id: action.assigned_to_user_id,
         // Workflow tracking
         auto_created: true,
         workflow_id: action.workflow_id,
