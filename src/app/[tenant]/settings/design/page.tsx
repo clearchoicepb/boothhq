@@ -179,7 +179,7 @@ export default function DesignSettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-6 max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <Link
@@ -473,7 +473,7 @@ export default function DesignSettingsPage() {
             <li>• All deadlines are calculated based on the event date</li>
           </ul>
         </div>
-    </div>
+      </div>
   )
 }
 

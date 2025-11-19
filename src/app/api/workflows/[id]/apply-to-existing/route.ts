@@ -255,8 +255,15 @@ export async function POST(
     let failed = 0
     const results = []
 
+    console.log('[ApplyWorkflow] Starting execution loop for', eligibleEvents.length, 'events')
+    console.log('[ApplyWorkflow] Event IDs:', eligibleEvents.map(e => e.id))
+
     for (const event of eligibleEvents) {
       try {
+        console.log('[ApplyWorkflow] Processing event:', event.id, event.title)
+        console.log('[ApplyWorkflow] Event type ID:', event.event_type_id)
+        console.log('[ApplyWorkflow] Calling workflowEngine.executeWorkflowsForEvent...')
+        
         const workflowResults = await workflowEngine.executeWorkflowsForEvent({
           eventId: event.id,
           eventTypeId: event.event_type_id,
@@ -265,8 +272,11 @@ export async function POST(
           supabase
         })
 
+        console.log('[ApplyWorkflow] Workflow results for event', event.id, ':', JSON.stringify(workflowResults, null, 2))
+
         // Check if any workflows executed successfully
         const hasSuccess = workflowResults.some(r => r.status === 'completed' || r.status === 'partial')
+        console.log('[ApplyWorkflow] Has success?', hasSuccess)
         
         if (hasSuccess) {
           processed++
