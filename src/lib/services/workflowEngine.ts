@@ -209,8 +209,21 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       throw new Error('Event date is required for design item timeline calculations')
     }
 
-    // Parse event date (YYYY-MM-DD format)
-    const eventDateObj = new Date(eventDate + 'T00:00:00')
+    console.log('[WorkflowEngine] Event date from event:', eventDate, typeof eventDate)
+
+    // Parse event date - handles both YYYY-MM-DD and full ISO timestamps
+    let eventDateObj: Date
+    if (typeof eventDate === 'string') {
+      // If it's already a full ISO timestamp, just parse it directly
+      // If it's YYYY-MM-DD, add time component
+      eventDateObj = eventDate.includes('T') 
+        ? new Date(eventDate) 
+        : new Date(eventDate + 'T00:00:00')
+    } else {
+      eventDateObj = new Date(eventDate)
+    }
+
+    console.log('[WorkflowEngine] Parsed event date:', eventDateObj.toISOString(), 'Is valid:', !isNaN(eventDateObj.getTime()))
 
     // Calculate deadlines working backwards from event date
     // Timeline: Event Date <- Shipping <- Production <- Design <- Approval Buffer
