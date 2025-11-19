@@ -33,18 +33,30 @@ export async function GET(
     const { supabase, tenantId, dataSourceTenantId } = context
 
     // Fetch workflow details
+    console.log('[ApplyWorkflow] GET - Looking for workflow:', workflowId)
     const { data: workflow, error: workflowError } = await supabase
       .from('workflows')
       .select('*, event_type:event_types(*)')
       .eq('id', workflowId)
       .single()
 
-    if (workflowError || !workflow) {
+    if (workflowError) {
+      console.error('[ApplyWorkflow] GET - Error fetching workflow:', workflowError)
+      return NextResponse.json(
+        { error: 'Workflow not found', details: workflowError },
+        { status: 404 }
+      )
+    }
+
+    if (!workflow) {
+      console.error('[ApplyWorkflow] GET - No workflow returned')
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       )
     }
+
+    console.log('[ApplyWorkflow] GET - Found workflow:', workflow.name)
 
     // Get event type IDs this workflow applies to
     const eventTypeIds = Array.isArray(workflow.event_type_ids) 
@@ -129,6 +141,7 @@ export async function POST(
 ) {
   try {
     const { id: workflowId } = params
+    console.log('[ApplyWorkflow] POST - Looking for workflow:', workflowId)
     const context = await getTenantContext()
 
     if (context instanceof NextResponse) {
@@ -144,12 +157,23 @@ export async function POST(
       .eq('id', workflowId)
       .single()
 
-    if (workflowError || !workflow) {
+    if (workflowError) {
+      console.error('[ApplyWorkflow] POST - Error fetching workflow:', workflowError)
+      return NextResponse.json(
+        { error: 'Workflow not found', details: workflowError },
+        { status: 404 }
+      )
+    }
+
+    if (!workflow) {
+      console.error('[ApplyWorkflow] POST - No workflow returned')
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       )
     }
+
+    console.log('[ApplyWorkflow] POST - Found workflow:', workflow.name)
 
     if (!workflow.is_active) {
       return NextResponse.json(
