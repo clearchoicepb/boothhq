@@ -8,15 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Plus, FolderKanban, List, Grid, Download, Search, Filter } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { AccessGuard } from '@/components/access-guard'
-import { usePermissions } from '@/lib/permissions'
 import toast from 'react-hot-toast'
 import type { Project, ProjectStatus, ProjectType, ProjectPriority } from '@/types/project.types'
 
 function ProjectsPageContent() {
   const { data: session, status } = useSession()
   const { tenant, loading } = useTenant()
-  const { canCreate } = usePermissions()
   const params = useParams()
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
@@ -164,14 +161,12 @@ function ProjectsPageContent() {
             <p className="text-gray-600 mt-1">Track internal and external projects</p>
           </div>
           
-          {canCreate('projects') && (
-            <Link href={`/${tenantSubdomain}/projects/new`}>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Project
-              </Button>
-            </Link>
-          )}
+          <Link href={`/${tenantSubdomain}/projects/new`}>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Project
+            </Button>
+          </Link>
         </div>
 
         {/* Stats Cards */}
@@ -282,16 +277,14 @@ function ProjectsPageContent() {
                 <FolderKanban className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No projects found</h3>
                 <p className="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
-                {canCreate('projects') && (
-                  <div className="mt-6">
-                    <Link href={`/${tenantSubdomain}/projects/new`}>
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Project
-                      </Button>
-                    </Link>
-                  </div>
-                )}
+                <div className="mt-6">
+                  <Link href={`/${tenantSubdomain}/projects/new`}>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Project
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
@@ -425,10 +418,6 @@ function ProjectsPageContent() {
 }
 
 export default function ProjectsPage() {
-  return (
-    <AccessGuard requiredPermission="projects" action="view">
-      <ProjectsPageContent />
-    </AccessGuard>
-  )
+  return <ProjectsPageContent />
 }
 
