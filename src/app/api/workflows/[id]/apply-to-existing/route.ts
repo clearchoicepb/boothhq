@@ -81,10 +81,10 @@ export async function GET(
     // Find all future events matching the event types
     const { data: events, error: eventsError } = await supabase
       .from('events')
-      .select('id, event_type_id, event_date, client_name')
+      .select('id, event_type_id, start_date, client_name')
       .in('event_type_id', eventTypeIds)
-      .gte('event_date', new Date().toISOString().split('T')[0]) // Future events only
-      .order('event_date', { ascending: true })
+      .gte('start_date', new Date().toISOString().split('T')[0]) // Future events only
+      .order('start_date', { ascending: true })
 
     if (eventsError) {
       console.error('[ApplyWorkflow] Error fetching events:', eventsError)
@@ -129,7 +129,7 @@ export async function GET(
       events: eligibleEvents.map(e => ({
         id: e.id,
         client_name: e.client_name,
-        event_date: e.event_date
+        event_date: e.start_date
       }))
     })
 
@@ -207,10 +207,10 @@ export async function POST(
     // Find all future events matching the event types
     const { data: events, error: eventsError } = await supabase
       .from('events')
-      .select('id, event_type_id, event_date, client_name')
+      .select('id, event_type_id, start_date, client_name')
       .in('event_type_id', eventTypeIds)
-      .gte('event_date', new Date().toISOString().split('T')[0]) // Future events only
-      .order('event_date', { ascending: true })
+      .gte('start_date', new Date().toISOString().split('T')[0]) // Future events only
+      .order('start_date', { ascending: true })
 
     if (eventsError || !events || events.length === 0) {
       return NextResponse.json({
@@ -258,7 +258,7 @@ export async function POST(
           results.push({
             eventId: event.id,
             clientName: event.client_name,
-            eventDate: event.event_date,
+            eventDate: event.start_date,
             success: true,
             tasksCreated: result.results
               .flatMap(r => r.result?.createdTaskIds || [])
@@ -272,7 +272,7 @@ export async function POST(
           results.push({
             eventId: event.id,
             clientName: event.client_name,
-            eventDate: event.event_date,
+            eventDate: event.start_date,
             success: false,
             error: result.error
           })
@@ -283,7 +283,7 @@ export async function POST(
         results.push({
           eventId: event.id,
           clientName: event.client_name,
-          eventDate: event.event_date,
+          eventDate: event.start_date,
           success: false,
           error: error.message
         })
