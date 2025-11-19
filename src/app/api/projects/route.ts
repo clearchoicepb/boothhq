@@ -83,7 +83,12 @@ export async function POST(request: NextRequest) {
 
     const { supabase, dataSourceTenantId, session } = context
 
+    console.log('[Projects API] POST - Creating project')
+    console.log('[Projects API] Tenant ID:', dataSourceTenantId)
+    console.log('[Projects API] User ID:', session.user.id)
+
     const body: CreateProjectInput = await request.json()
+    console.log('[Projects API] Request body:', body)
 
     // Clean up empty date fields
     const cleanedData = { ...body }
@@ -98,6 +103,8 @@ export async function POST(request: NextRequest) {
       updated_by: session.user.id,
     }
 
+    console.log('[Projects API] Insert data:', projectData)
+
     // Insert project
     const { data: project, error } = await supabase
       .from('projects')
@@ -111,9 +118,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating project:', error)
+      console.error('[Projects API] Error creating project:', error)
+      console.error('[Projects API] Error code:', error.code)
+      console.error('[Projects API] Error details:', error.details)
+      console.error('[Projects API] Error hint:', error.hint)
+      console.error('[Projects API] Error message:', error.message)
       return NextResponse.json({ error: 'Failed to create project', details: error.message }, { status: 500 })
     }
+
+    console.log('[Projects API] Project created successfully:', project.id)
 
     // Revalidate the projects page
     revalidatePath('/[tenant]/projects')
