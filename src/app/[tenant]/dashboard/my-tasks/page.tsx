@@ -30,31 +30,11 @@ interface Task {
   status: string
   priority?: 'low' | 'medium' | 'high' | 'urgent'
   department?: string
-  assigned_to_user_id?: string
-  event_id?: string
-  opportunity_id?: string
-  account_id?: string
-  contact_id?: string
+  assigned_to?: string
+  entity_type?: string // 'event', 'opportunity', 'account', 'contact', 'lead', 'invoice'
+  entity_id?: string
   created_at: string
   completed_at?: string
-  event?: {
-    id: string
-    title: string
-    name?: string
-  }
-  opportunity?: {
-    id: string
-    title: string
-  }
-  account?: {
-    id: string
-    name: string
-  }
-  contact?: {
-    id: string
-    first_name: string
-    last_name: string
-  }
 }
 
 const PRIORITY_CONFIG = {
@@ -167,11 +147,11 @@ export default function MyTasksPage() {
   }
 
   const getEntityLabel = (task: Task) => {
-    if (task.event) return { label: task.event.title || task.event.name || 'Event', type: 'Event' }
-    if (task.opportunity) return { label: task.opportunity.title, type: 'Opportunity' }
-    if (task.account) return { label: task.account.name, type: 'Account' }
-    if (task.contact) return { label: `${task.contact.first_name} ${task.contact.last_name}`, type: 'Contact' }
-    return null
+    if (!task.entity_type) return null
+    
+    // Capitalize first letter
+    const type = task.entity_type.charAt(0).toUpperCase() + task.entity_type.slice(1)
+    return { label: task.entity_id || 'Unknown', type }
   }
 
   const getDepartmentLabel = (deptId?: string) => {

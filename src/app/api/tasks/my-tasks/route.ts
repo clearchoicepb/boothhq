@@ -24,15 +24,9 @@ export async function GET(request: Request) {
     // Build query to fetch tasks assigned to current user
     let query = supabase
       .from('tasks')
-      .select(`
-        *,
-        event:events(id, title, name),
-        opportunity:opportunities(id, title),
-        account:accounts(id, name),
-        contact:contacts(id, first_name, last_name)
-      `)
+      .select('*')
       .eq('tenant_id', dataSourceTenantId)
-      .eq('assigned_to_user_id', session.user.id)
+      .eq('assigned_to', session.user.id)
 
     // Apply filters
     if (status === 'active') {
