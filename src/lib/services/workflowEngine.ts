@@ -293,10 +293,48 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       throw new Error(`Failed to create design item: ${designItemError?.message || 'Unknown error'}`)
     }
 
+    console.log(`[WorkflowEngine] Created design item "${designItemType.name}" (${designItem.id}) with deadline ${formatDate(designDeadline)}`)
+
+    // Create associated task for the designer
+    // This ensures the design item appears in the designer's "My Tasks" list
+    const taskName = `Design: ${designItemType.name}`
+    const now = new Date()
+    const daysUntilDeadline = Math.ceil((designDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        entity_type: 'event',
+        entity_id: context.triggerEntity.id,
+        title: taskName,
+        description: `Complete ${designItemType.name} for this event. Due by ${designDeadline.toLocaleDateString()}`,
+        due_date: formatDate(designDeadline),
+        priority: daysUntilDeadline <= 7 ? 'high' : 'medium',
+        status: 'pending',
+        department: 'design',
+        assigned_to: action.assigned_to_user_id,
+        auto_created: true,
+        workflow_id: action.workflow_id
+      })
+      .select()
+      .single()
+
+    if (taskError) {
+      console.warn('[WorkflowEngine] Failed to create task for design item:', taskError)
+      // Don't fail the whole action if task creation fails
+    } else {
+      console.log(`[WorkflowEngine] Created task "${taskName}" (${task.id}) for designer`)
+      
+      // Link task to design item
+      await supabase
+        .from('event_design_items')
+        .update({ task_id: task.id })
+        .eq('id', designItem.id)
+    }
+
     result.success = true
     result.createdDesignItemId = designItem.id
-
-    console.log(`[WorkflowEngine] Created design item "${designItemType.name}" (${designItem.id}) with deadline ${formatDate(designDeadline)}`)
 
     return result
   } catch (error) {
