@@ -302,7 +302,7 @@ export async function POST(
           console.log(`[Convert to Event] Executing workflows for event type: ${event.event_type_id}`)
           
           // Import workflowEngine dynamically
-          const { default: workflowEngine } = await import('@/lib/services/workflowEngine')
+          const { workflowEngine } = await import('@/lib/services/workflowEngine')
           
           const workflowResults = await workflowEngine.executeWorkflowsForEvent({
             eventId: event.id,
