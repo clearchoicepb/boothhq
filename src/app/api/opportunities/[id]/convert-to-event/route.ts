@@ -8,7 +8,7 @@ export async function POST(
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  const { supabase, dataSourceTenantId, tenantId, session } = context
     const params = await routeContext.params
     const opportunityId = params.id
     const body = await request.json()
@@ -307,7 +307,7 @@ export async function POST(
           const workflowResults = await workflowEngine.executeWorkflowsForEvent({
             eventId: event.id,
             eventTypeId: event.event_type_id,
-            tenantId: context.tenantId,
+            tenantId,
             dataSourceTenantId,
             supabase,
             userId: session.user.id,
