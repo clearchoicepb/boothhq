@@ -14,7 +14,9 @@ import {
   ExternalLink,
   Save,
   Package,
-  Paperclip
+  Paperclip,
+  Trash2,
+  X
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -123,6 +125,10 @@ export function DesignDashboard() {
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isDesignManager, setIsDesignManager] = useState(false)
+  
+  // Bulk actions state
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Get tenant colors from settings (with fallback defaults)
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
@@ -280,6 +286,69 @@ export function DesignDashboard() {
     }
   }
 
+  // Bulk action handlers
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId)
+      } else {
+        newSet.add(itemId)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === data?.items.length) {
+      setSelectedItems(new Set())
+    } else {
+      setSelectedItems(new Set(data?.items.map(item => item.id) || []))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) return
+    
+    if (!confirm(`Are you sure you want to delete ${selectedItems.size} design item${selectedItems.size > 1 ? 's' : ''}? This cannot be undone.`)) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const deletePromises = Array.from(selectedItems).map(itemId => {
+        const item = data?.items.find(i => i.id === itemId)
+        if (!item) return Promise.resolve()
+        
+        return fetch(`/api/events/${item.event.id}/design-items/${itemId}`, {
+          method: 'DELETE'
+        })
+      })
+
+      await Promise.all(deletePromises)
+      
+      toast.success(`Successfully deleted ${selectedItems.size} item${selectedItems.size > 1 ? 's' : ''}`)
+      setSelectedItems(new Set())
+      
+      // Refresh dashboard data
+      const urlParams = new URLSearchParams()
+      if (selectedDesigner) urlParams.append('designer_id', selectedDesigner)
+      if (selectedStatus) urlParams.append('status', selectedStatus)
+      const url = `/api/design/dashboard${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+
+      const res = await fetch(url)
+      if (res.ok) {
+        const dashboardData = await res.json()
+        setData(dashboardData)
+      }
+    } catch (error) {
+      console.error('Error deleting items:', error)
+      toast.error('Failed to delete some items')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Group items by event
   const groupItemsByEvent = (items: DesignItem[]) => {
     const grouped = new Map<string, DesignItem[]>()
@@ -322,6 +391,43 @@ export function DesignDashboard() {
           <p className="text-gray-600 mt-1">Creative workflow and deadline management</p>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedItems.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-900">
+              {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={() => setSelectedItems(new Set())}
+              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              <X className="h-4 w-4" />
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium transition-colors"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Delete Selected
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-4 flex items-center gap-4">
@@ -436,6 +542,14 @@ export function DesignDashboard() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="px-3 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.size === data.items.length && data.items.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Task Name
                   </th>
@@ -486,9 +600,16 @@ export function DesignDashboard() {
                           backgroundColor: bgColor,
                           color: textColor
                         }}
-                        onClick={() => openTaskModal(item)}
                       >
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-3 py-1" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={() => toggleItemSelection(item.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           <div className="flex items-center">
                             {daysUntil < 0 && (
                               <AlertCircle className="h-3 w-3 mr-1.5 flex-shrink-0" />
@@ -499,7 +620,7 @@ export function DesignDashboard() {
                             <span className="font-medium">{itemName}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full" style={{
                             backgroundColor: isPhysical
                               ? (textColor === '#ffffff' ? 'rgba(251, 146, 60, 0.3)' : 'rgba(251, 146, 60, 0.2)')
@@ -508,7 +629,7 @@ export function DesignDashboard() {
                             {isPhysical ? '📦 Physical' : '💻 Digital'}
                           </span>
                         </td>
-                        <td className="px-4 py-1">
+                        <td className="px-4 py-1" onClick={() => openTaskModal(item)}>
                           <div className="font-medium">{item.event.title}</div>
                           {item.event.start_date && (
                             <div className="text-xs opacity-80">
@@ -516,13 +637,13 @@ export function DesignDashboard() {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           {item.event.account?.name || '-'}
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           {new Date(item.design_deadline).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           <div className="flex items-center">
                             {daysUntil < 0 ? (
                               <span className="font-bold">{Math.abs(daysUntil)} days overdue</span>
@@ -535,13 +656,13 @@ export function DesignDashboard() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           <div className="flex items-center">
                             <User className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             {designerName}
                           </div>
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap">
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{
                             backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
                           }}>
