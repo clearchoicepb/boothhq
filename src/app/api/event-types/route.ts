@@ -28,7 +28,9 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    return NextResponse.json({ eventTypes: eventTypes || [] })
+    // Return direct array for consistency with other APIs (accounts, contacts, etc.)
+    // Existing usages have defensive code: data.eventTypes || data
+    return NextResponse.json(eventTypes || [])
   } catch (error: any) {
     console.error('Error fetching event types:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })

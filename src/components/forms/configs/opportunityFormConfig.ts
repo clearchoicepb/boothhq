@@ -75,15 +75,7 @@ export const opportunityFormConfig: FormConfig<Opportunity> = {
       name: 'event_type',
       type: 'select',
       label: 'Event Type',
-      options: [
-        { value: 'wedding', label: 'Wedding' },
-        { value: 'corporate', label: 'Corporate Event' },
-        { value: 'birthday', label: 'Birthday Party' },
-        { value: 'anniversary', label: 'Anniversary' },
-        { value: 'graduation', label: 'Graduation' },
-        { value: 'holiday', label: 'Holiday Party' },
-        { value: 'other', label: 'Other' }
-      ],
+      options: 'event_types', // Fetch from tenant's event_types table
       gridCols: 1
     },
     {
@@ -121,6 +113,12 @@ export const opportunityFormConfig: FormConfig<Opportunity> = {
       endpoint: '/api/contacts',
       displayField: 'name',
       valueField: 'id'
+    },
+    {
+      key: 'event_types',
+      endpoint: '/api/event-types',
+      displayField: 'name',
+      valueField: 'slug' // Use slug (e.g. 'wedding', 'corporate') for compatibility with opportunity conversion
     }
   ],
   defaultValues: {
