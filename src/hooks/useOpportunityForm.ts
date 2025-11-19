@@ -3,7 +3,7 @@
  * Encapsulates form data, event dates, validation, and submission
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { parseLocalDate } from '@/lib/utils/date-utils'
 
@@ -26,6 +26,21 @@ interface FormData {
   actual_close_date: string
   event_type: string
   date_type: string
+}
+
+interface EventTypeOption {
+  id: string
+  name: string
+  slug: string
+  event_category_id: string
+}
+
+interface StageOption {
+  id: string
+  name: string
+  probability: number
+  color: string
+  enabled: boolean
 }
 
 interface UseOpportunityFormProps {
@@ -66,6 +81,43 @@ export function useOpportunityForm({
   const [sharedLocationId, setSharedLocationId] = useState<string>('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Dynamic options from settings
+  const [eventTypes, setEventTypes] = useState<EventTypeOption[]>([])
+  const [stages, setStages] = useState<StageOption[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(true)
+
+  // Fetch event types and stages from settings
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [eventTypesRes, stagesRes] = await Promise.all([
+          fetch('/api/event-types'),
+          fetch('/api/settings/opportunity-stages')
+        ])
+
+        if (eventTypesRes.ok) {
+          const eventTypesData = await eventTypesRes.json()
+          // API returns { eventTypes: [...] }
+          const types = eventTypesData.eventTypes || []
+          setEventTypes(types.filter((t: EventTypeOption) => t.is_active !== false))
+        }
+
+        if (stagesRes.ok) {
+          const stagesData = await stagesRes.json()
+          // API returns direct array
+          setStages(stagesData.filter((s: StageOption) => s.enabled !== false))
+        }
+      } catch (error) {
+        console.error('Error fetching form options:', error)
+        toast.error('Failed to load form options')
+      } finally {
+        setLoadingOptions(false)
+      }
+    }
+
+    fetchOptions()
+  }, [])
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -217,6 +269,10 @@ export function useOpportunityForm({
     addEventDate,
     removeEventDate,
     validateForm,
-    handleSubmit
+    handleSubmit,
+    // Dynamic options from settings
+    eventTypes,
+    stages,
+    loadingOptions
   }
 }

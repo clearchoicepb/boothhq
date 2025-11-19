@@ -98,25 +98,6 @@ export function OpportunityFormEnhanced({
     { value: 'multiple_locations', label: 'Multiple Events with Multiple Locations' }
   ]
 
-  const getEventTypeOptions = () => [
-    { value: 'wedding', label: 'Wedding' },
-    { value: 'corporate', label: 'Corporate Event' },
-    { value: 'birthday', label: 'Birthday Party' },
-    { value: 'anniversary', label: 'Anniversary' },
-    { value: 'graduation', label: 'Graduation' },
-    { value: 'holiday', label: 'Holiday Party' },
-    { value: 'other', label: 'Other' }
-  ]
-
-  const getStageOptions = () => [
-    { value: 'prospecting', label: 'Prospecting' },
-    { value: 'qualification', label: 'Qualification' },
-    { value: 'proposal', label: 'Proposal' },
-    { value: 'negotiation', label: 'Negotiation' },
-    { value: 'closed_won', label: 'Closed Won' },
-    { value: 'closed_lost', label: 'Closed Lost' }
-  ]
-
   // If this is a modal form and it's not open, return null
   if (isOpen !== undefined && !isOpen) return null
 
@@ -207,11 +188,14 @@ export function OpportunityFormEnhanced({
               value={form.formData.event_type}
               onChange={(e) => form.handleInputChange('event_type', e.target.value)}
               className={form.errors.event_type ? 'border-red-500' : ''}
+              disabled={form.loadingOptions}
             >
-              <option value="">Select event type</option>
-              {getEventTypeOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              <option value="">
+                {form.loadingOptions ? 'Loading event types...' : 'Select event type'}
+              </option>
+              {form.eventTypes.map(type => (
+                <option key={type.id} value={type.slug}>
+                  {type.name}
                 </option>
               ))}
             </Select>
@@ -242,12 +226,17 @@ export function OpportunityFormEnhanced({
             <Select
               value={form.formData.stage}
               onChange={(e) => form.handleInputChange('stage', e.target.value)}
+              disabled={form.loadingOptions}
             >
-              {getStageOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
+              {form.loadingOptions ? (
+                <option value="">Loading stages...</option>
+              ) : (
+                form.stages.map(stage => (
+                  <option key={stage.id} value={stage.id}>
+                    {stage.name}
+                  </option>
+                ))
+              )}
             </Select>
           </div>
         </div>
