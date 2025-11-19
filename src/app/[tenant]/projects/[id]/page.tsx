@@ -209,7 +209,7 @@ export default function ProjectDetailPage() {
     )
   }
 
-  const daysUntil = getDaysUntil(project.target_date)
+  const daysUntil = getDaysUntilTarget(project.target_date)
   const isOverdue = daysUntil !== null && daysUntil < 0 && project.status !== 'completed' && project.status !== 'cancelled'
 
   return (
