@@ -313,14 +313,18 @@ export async function POST(
           })
         }
       } catch (error: any) {
-        console.error(`[ApplyWorkflow] Error processing event ${event.id}:`, error)
+        console.error(`[ApplyWorkflow] ❌ CRITICAL ERROR processing event ${event.id}:`)
+        console.error('[ApplyWorkflow] Error type:', typeof error)
+        console.error('[ApplyWorkflow] Error message:', error?.message)
+        console.error('[ApplyWorkflow] Error stack:', error?.stack)
+        console.error('[ApplyWorkflow] Full error object:', JSON.stringify(error, null, 2))
         failed++
         results.push({
           eventId: event.id,
           clientName: event.title,
           eventDate: event.start_date,
           success: false,
-          error: error.message
+          error: error?.message || error?.toString() || 'Unknown error'
         })
       }
     }
