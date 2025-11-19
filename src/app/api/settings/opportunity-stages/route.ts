@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext } from '@/lib/supabase-tenant-server'
+import { NextResponse } from 'next/server'
+import { getTenantContext } from '@/lib/tenant-helpers'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -9,16 +9,12 @@ export const runtime = 'nodejs'
  * Returns the list of enabled opportunity stages from tenant settings
  * Used by the opportunities form to populate the stage dropdown
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const { supabase, dataSourceTenantId } = await getTenantContext(request)
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-    if (!dataSourceTenantId) {
-      return NextResponse.json(
-        { error: 'Tenant context not found' },
-        { status: 400 }
-      )
-    }
+    const { supabase, dataSourceTenantId } = context
 
     // Fetch all opportunity-related settings from tenant_settings table
     const { data: settingsRows, error } = await supabase
