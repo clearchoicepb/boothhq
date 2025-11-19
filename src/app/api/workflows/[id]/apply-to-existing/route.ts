@@ -147,6 +147,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.log('🚀🚀🚀 WORKFLOW APPLY ENDPOINT CALLED! 🚀🚀🚀')
+  console.log('='.repeat(80))
+  
   try {
     const { id: workflowId } = params
     
@@ -155,6 +158,7 @@ export async function POST(
     const forceRerun = body.force === true
     
     console.log('[ApplyWorkflow] POST - Looking for workflow:', workflowId, 'Force rerun:', forceRerun)
+    console.log('[ApplyWorkflow] Request body:', JSON.stringify(body, null, 2))
     const context = await getTenantContext()
 
     if (context instanceof NextResponse) {
