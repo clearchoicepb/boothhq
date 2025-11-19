@@ -151,6 +151,16 @@ export async function PUT(
 
     console.log('Event data after filtering:', JSON.stringify(cleanedEventData, null, 2))
 
+    // Fetch old event_type_id BEFORE update (for workflow trigger detection)
+    const { data: oldEvent } = await supabase
+      .from('events')
+      .select('event_type_id')
+      .eq('id', eventId)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    const oldEventTypeId = oldEvent?.event_type_id
+
     // Update the event
     const { data, error } = await supabase
       .from('events')
@@ -163,6 +173,38 @@ export async function PUT(
     if (error) {
       console.error('Error updating event:', error)
       return NextResponse.json({ error: 'Failed to update event', details: error }, { status: 500 })
+    }
+
+    // Trigger workflows if event_type_id was just added or changed
+    const newEventTypeId = cleanedEventData.event_type_id
+    const eventTypeChanged = newEventTypeId && newEventTypeId !== oldEventTypeId
+
+    if (eventTypeChanged) {
+      console.log(`[Events PUT] event_type_id changed: ${oldEventTypeId} → ${newEventTypeId}. Triggering workflows...`)
+      
+      try {
+        const { default: workflowEngine } = await import('@/lib/services/workflowEngine')
+        
+        const workflowResults = await workflowEngine.executeWorkflowsForEvent({
+          eventId: eventId,
+          eventTypeId: newEventTypeId,
+          tenantId: context.tenantId,
+          dataSourceTenantId,
+          supabase,
+          userId: session.user.id,
+        })
+        
+        if (workflowResults.length > 0) {
+          const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
+          const totalDesignItems = workflowResults.reduce((sum, result) => sum + result.createdDesignItemIds.length, 0)
+          console.log(`[Events PUT] ✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
+        } else {
+          console.log(`[Events PUT] ℹ️  No active workflows found for event type ${newEventTypeId}`)
+        }
+      } catch (error) {
+        console.error('[Events PUT] Error executing workflows:', error)
+        // Don't fail the update, just log
+      }
     }
 
     // Handle event_dates if provided

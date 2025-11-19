@@ -202,6 +202,31 @@ export async function POST(
         primaryLocationId = opportunityEventDates[0]?.location_id || null
       }
 
+      // Lookup event_type_id from event_type string (for workflow triggering)
+      let eventTypeId = null
+      let eventCategoryId = null
+
+      if (eventData?.event_type || opportunity.event_type) {
+        const eventTypeSlug = (eventData?.event_type || opportunity.event_type)
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+        
+        const { data: eventTypeData } = await supabase
+          .from('event_types')
+          .select('id, event_category_id')
+          .eq('tenant_id', dataSourceTenantId)
+          .eq('slug', eventTypeSlug)
+          .maybeSingle()
+        
+        if (eventTypeData) {
+          eventTypeId = eventTypeData.id
+          eventCategoryId = eventTypeData.event_category_id
+          console.log(`[Convert to Event] Found event_type_id: ${eventTypeId} for slug: ${eventTypeSlug}`)
+        } else {
+          console.warn(`[Convert to Event] Could not find event_type_id for slug: ${eventTypeSlug}`)
+        }
+      }
+
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
@@ -212,6 +237,8 @@ export async function POST(
           title: eventData?.title || opportunity.name,
           description: eventData?.description || opportunity.description,
           event_type: eventData?.event_type || opportunity.event_type || 'corporate',
+          event_type_id: eventTypeId,
+          event_category_id: eventCategoryId,
           start_date: eventData?.start_date || startDate,
           end_date: eventData?.end_date || endDate,
           location: eventData?.location || null,
@@ -267,6 +294,38 @@ export async function POST(
         } else {
           createdEventDates = datesData || []
         }
+      }
+
+      // 3.5. Execute workflows for this event type (if event_type_id was found)
+      if (event.event_type_id) {
+        try {
+          console.log(`[Convert to Event] Executing workflows for event type: ${event.event_type_id}`)
+          
+          // Import workflowEngine dynamically
+          const { default: workflowEngine } = await import('@/lib/services/workflowEngine')
+          
+          const workflowResults = await workflowEngine.executeWorkflowsForEvent({
+            eventId: event.id,
+            eventTypeId: event.event_type_id,
+            tenantId: context.tenantId,
+            dataSourceTenantId,
+            supabase,
+            userId: session.user.id,
+          })
+          
+          if (workflowResults.length > 0) {
+            const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
+            const totalDesignItems = workflowResults.reduce((sum, result) => sum + result.createdDesignItemIds.length, 0)
+            console.log(`[Convert to Event] ✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
+          } else {
+            console.log(`[Convert to Event] ℹ️  No active workflows found for event type ${event.event_type_id}`)
+          }
+        } catch (error) {
+          console.error('[Convert to Event] Error executing workflows:', error)
+          // Don't fail the conversion, just log
+        }
+      } else {
+        console.log('[Convert to Event] ⚠️  No event_type_id found, skipping workflow execution')
       }
 
       // 4. Update the opportunity to mark it as converted

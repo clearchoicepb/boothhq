@@ -300,6 +300,29 @@ class WorkflowEngine {
     const { eventId, eventTypeId, tenantId, dataSourceTenantId, supabase, userId } = options
 
     try {
+      // ═══════════════════════════════════════════════════════════════════════════
+      // DUPLICATE PREVENTION
+      // ═══════════════════════════════════════════════════════════════════════════
+      // Check if workflows have already been executed for this event
+      const { data: existingExecutions, error: executionsError } = await supabase
+        .from('workflow_executions')
+        .select('workflow_id, status')
+        .eq('event_id', eventId)
+        .eq('tenant_id', dataSourceTenantId)
+
+      if (executionsError) {
+        console.error('[workflowEngine] Error checking existing executions:', executionsError)
+      }
+
+      // Build a Set of workflow IDs that have already been successfully executed
+      const alreadyExecutedWorkflowIds = new Set(
+        existingExecutions
+          ?.filter(e => e.status === 'completed' || e.status === 'partial')
+          ?.map(e => e.workflow_id) || []
+      )
+
+      console.log(`[workflowEngine] Found ${alreadyExecutedWorkflowIds.size} already-executed workflows for event ${eventId}`)
+
       // Find all active workflows that include this event type
       // Uses PostgreSQL array containment operator (@>) to check if event_type_ids contains eventTypeId
       const { data: workflows, error: workflowsError } = await supabase
@@ -343,9 +366,20 @@ class WorkflowEngine {
         return []
       }
 
+      // Filter out workflows that have already been executed (duplicate prevention)
+      const workflowsToExecute = workflows.filter((workflow) => {
+        if (alreadyExecutedWorkflowIds.has(workflow.id)) {
+          console.log(`[workflowEngine] ⏭️  Skipping workflow ${workflow.id} (${workflow.name}) - already executed for event ${eventId}`)
+          return false
+        }
+        return true
+      })
+
+      console.log(`[workflowEngine] Executing ${workflowsToExecute.length} of ${workflows.length} workflows`)
+
       // Execute each workflow
       const results = await Promise.all(
-        workflows.map((workflow) =>
+        workflowsToExecute.map((workflow) =>
           this.executeWorkflow(workflow as WorkflowWithRelations, {
             tenantId,
             dataSourceTenantId,

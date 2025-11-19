@@ -13,7 +13,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, DollarSign, FileText, Zap, X } from 'lucide-react'
+import { Copy, DollarSign, FileText, Zap, X, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
@@ -25,6 +25,7 @@ interface FloatingQuickActionsProps {
   canCreate: boolean
   onDuplicateEvent?: () => void
   onGenerateContract?: () => void
+  onTriggerWorkflows?: () => void
 }
 
 export function FloatingQuickActions({
@@ -34,7 +35,8 @@ export function FloatingQuickActions({
   tenantSubdomain,
   canCreate,
   onDuplicateEvent,
-  onGenerateContract
+  onGenerateContract,
+  onTriggerWorkflows
 }: FloatingQuickActionsProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -64,6 +66,34 @@ export function FloatingQuickActions({
           console.error('Error duplicating event:', error)
           alert('Error duplicating event')
         }
+      }
+    }
+    setIsExpanded(false)
+  }
+
+  const handleTriggerWorkflows = async () => {
+    if (confirm('Manually trigger workflows for this event? This will create tasks and design items based on the event type.')) {
+      try {
+        const response = await fetch(`/api/events/${eventId}/trigger-workflows`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+          if (result.stats.workflowsExecuted === 0) {
+            alert('ℹ️ Workflows have already been executed for this event.')
+          } else {
+            alert(`✅ Success! Created ${result.stats.tasksCreated} tasks and ${result.stats.designItemsCreated} design items.`)
+            window.location.reload() // Refresh to show new tasks
+          }
+        } else {
+          alert(`❌ Failed: ${result.error}${result.hint ? `\n${result.hint}` : ''}`)
+        }
+      } catch (error) {
+        console.error('Error triggering workflows:', error)
+        alert('❌ Failed to trigger workflows')
       }
     }
     setIsExpanded(false)
@@ -129,6 +159,18 @@ export function FloatingQuickActions({
               <div>
                 <p className="text-sm font-medium text-gray-900">Generate Contract</p>
                 <p className="text-xs text-gray-500">E-signature ready</p>
+              </div>
+            </button>
+
+            {/* Trigger Workflows */}
+            <button
+              onClick={handleTriggerWorkflows}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+            >
+              <RefreshCw className="h-4 w-4 text-gray-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Trigger Workflows</p>
+                <p className="text-xs text-gray-500">Create automated tasks</p>
               </div>
             </button>
           </div>
