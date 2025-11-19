@@ -411,8 +411,8 @@ export function BaseForm<T extends Record<string, any>>({
           const deptOptions = field.options || []
           const selectedDepts = Array.isArray(value) ? value : []
           const managerFieldName = field.managerField || 'manager_of_departments'
-          const managerDepts = Array.isArray(formState.data[managerFieldName]) 
-            ? formState.data[managerFieldName] 
+          const managerDepts = Array.isArray(state.data[managerFieldName]) 
+            ? state.data[managerFieldName] 
             : []
           
           return (
