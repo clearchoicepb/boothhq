@@ -265,11 +265,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     // Format dates as YYYY-MM-DD
     const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
-    // Create design item
-    // Note: Design dashboard calculates ALL deadlines dynamically based on:
-    // - event.start_date (target date)
-    // - design_item_type timeline settings (design_days, production_days, etc.)
-    // We don't set due_date here - the dashboard computes it on-the-fly
+    // Create design item with calculated deadline
     const insertData = {
       tenant_id: dataSourceTenantId,
       event_id: context.triggerEntity.id,
@@ -279,6 +275,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       quantity: 1,
       status: 'pending',
       assigned_designer_id: action.assigned_to_user_id,
+      design_deadline: formatDate(designDeadline), // Add the calculated deadline
       // Workflow tracking
       auto_created: true,
       workflow_id: action.workflow_id,
