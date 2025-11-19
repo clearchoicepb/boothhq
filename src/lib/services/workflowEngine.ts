@@ -442,6 +442,7 @@ class WorkflowEngine {
         actionsSuccessful: 0,
         actionsFailed: 0,
         createdTaskIds: [],
+        createdDesignItemIds: [],
         actionResults: [],
         error: {
           message: 'Failed to create execution record',
@@ -472,6 +473,7 @@ class WorkflowEngine {
     // Execute all actions in order
     const actionResults: ActionExecutionResult[] = []
     const createdTaskIds: string[] = []
+    const createdDesignItemIds: string[] = []
     let actionsExecuted = 0
     let actionsSuccessful = 0
     let actionsFailed = 0
@@ -504,8 +506,14 @@ class WorkflowEngine {
               .eq('id', result.createdTaskId)
           }
           if (result.createdDesignItemId) {
-            // Note: Design items don't currently have workflow_execution_id field
-            // This could be added in future if needed for tracking
+            createdDesignItemIds.push(result.createdDesignItemId)
+            
+            // Update design item with execution_id
+            await supabase
+              .from('event_design_items')
+              .update({ workflow_execution_id: execution.id })
+              .eq('id', result.createdDesignItemId)
+            
             console.log(`[WorkflowEngine] Created design item: ${result.createdDesignItemId}`)
           }
         } else {
@@ -558,6 +566,7 @@ class WorkflowEngine {
       actionsSuccessful,
       actionsFailed,
       createdTaskIds,
+      createdDesignItemIds,
       actionResults,
     }
   }

@@ -313,9 +313,13 @@ export async function POST(
             userId: session.user.id,
           })
           
-          if (workflowResults.length > 0) {
-            const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
-            const totalDesignItems = workflowResults.reduce((sum, result) => sum + result.createdDesignItemIds.length, 0)
+          if (workflowResults && workflowResults.length > 0) {
+            const totalTasks = workflowResults.reduce((sum, result) => {
+              return sum + (result?.createdTaskIds?.length || 0)
+            }, 0)
+            const totalDesignItems = workflowResults.reduce((sum, result) => {
+              return sum + (result?.createdDesignItemIds?.length || 0)
+            }, 0)
             console.log(`[Convert to Event] ✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
           } else {
             console.log(`[Convert to Event] ℹ️  No active workflows found for event type ${event.event_type_id}`)

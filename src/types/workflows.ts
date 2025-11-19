@@ -446,6 +446,7 @@ export interface WorkflowExecutionResult {
   actionsSuccessful: number
   actionsFailed: number
   createdTaskIds: string[]
+  createdDesignItemIds: string[]
   actionResults: ActionExecutionResult[]
   error?: {
     message: string
