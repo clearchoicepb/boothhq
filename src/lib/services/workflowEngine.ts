@@ -307,7 +307,7 @@ class WorkflowEngine {
       const { data: existingExecutions, error: executionsError } = await supabase
         .from('workflow_executions')
         .select('workflow_id, status')
-        .eq('event_id', eventId)
+        .eq('trigger_entity_id', eventId)
         .eq('tenant_id', dataSourceTenantId)
 
       if (executionsError) {
