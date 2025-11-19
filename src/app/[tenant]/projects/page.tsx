@@ -10,6 +10,14 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import type { Project, ProjectStatus, ProjectType, ProjectPriority } from '@/types/project.types'
+import { 
+  getProjectStatusColor, 
+  getProjectPriorityColor, 
+  formatProjectDate,
+  getDaysUntilTarget,
+  isProjectOverdue,
+  formatProjectStatus
+} from '@/lib/project-helpers'
 
 function ProjectsPageContent() {
   const { data: session, status } = useSession()
@@ -100,43 +108,7 @@ function ProjectsPageContent() {
     }
   }
 
-  // Status badge colors
-  const getStatusColor = (status: ProjectStatus) => {
-    switch (status) {
-      case 'not_started': return 'bg-gray-100 text-gray-700'
-      case 'in_progress': return 'bg-blue-100 text-blue-700'
-      case 'on_hold': return 'bg-yellow-100 text-yellow-700'
-      case 'completed': return 'bg-green-100 text-green-700'
-      case 'cancelled': return 'bg-red-100 text-red-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  // Priority badge colors
-  const getPriorityColor = (priority: ProjectPriority) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-700'
-      case 'high': return 'bg-orange-100 text-orange-700'
-      case 'medium': return 'bg-yellow-100 text-yellow-700'
-      case 'low': return 'bg-gray-100 text-gray-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  // Format date
-  const formatDate = (date?: string) => {
-    if (!date) return '-'
-    return new Date(date).toLocaleDateString()
-  }
-
-  // Get days until target
-  const getDaysUntil = (targetDate?: string) => {
-    if (!targetDate) return null
-    const target = new Date(targetDate)
-    const today = new Date()
-    const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
-  }
+  // All helper functions moved to @/lib/project-helpers for DRY compliance
 
   if (loading || status === 'loading') {
     return (
@@ -317,9 +289,9 @@ function ProjectsPageContent() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredProjects.map((project) => {
-                    const daysUntil = getDaysUntil(project.target_date)
-                    const isOverdue = daysUntil !== null && daysUntil < 0 && project.status !== 'completed' && project.status !== 'cancelled'
+                      {filteredProjects.map((project) => {
+                        const daysUntil = getDaysUntilTarget(project.target_date)
+                        const isOverdue = isProjectOverdue(project.target_date, project.status)
                     
                     return (
                       <tr
@@ -339,12 +311,12 @@ function ProjectsPageContent() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(project.status)}`}>
-                            {project.status.replace('_', ' ')}
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getProjectStatusColor(project.status)}`}>
+                            {formatProjectStatus(project.status)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(project.priority)}`}>
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getProjectPriorityColor(project.priority)}`}>
                             {project.priority}
                           </span>
                         </td>
@@ -353,7 +325,7 @@ function ProjectsPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {formatDate(project.target_date)}
+                            {formatProjectDate(project.target_date)}
                           </div>
                           {isOverdue && (
                             <div className="text-xs text-red-600 font-medium">

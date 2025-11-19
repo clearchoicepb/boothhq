@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { 
   ArrowLeft, 
   Edit, 
@@ -20,6 +21,14 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Project, ProjectTeamMember, ProjectStatus, ProjectPriority } from '@/types/project.types'
+import { 
+  getProjectStatusColor, 
+  getProjectPriorityColor, 
+  formatProjectDate,
+  getDaysUntilTarget,
+  isProjectOverdue,
+  formatProjectStatus
+} from '@/lib/project-helpers'
 
 export default function ProjectDetailPage() {
   const router = useRouter()
@@ -171,47 +180,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Status badge colors
-  const getStatusColor = (status: ProjectStatus) => {
-    switch (status) {
-      case 'not_started': return 'bg-gray-100 text-gray-700'
-      case 'in_progress': return 'bg-blue-100 text-blue-700'
-      case 'on_hold': return 'bg-yellow-100 text-yellow-700'
-      case 'completed': return 'bg-green-100 text-green-700'
-      case 'cancelled': return 'bg-red-100 text-red-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  // Priority badge colors
-  const getPriorityColor = (priority: ProjectPriority) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-700'
-      case 'high': return 'bg-orange-100 text-orange-700'
-      case 'medium': return 'bg-yellow-100 text-yellow-700'
-      case 'low': return 'bg-gray-100 text-gray-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  // Format date
-  const formatDate = (date?: string) => {
-    if (!date) return 'Not set'
-    return new Date(date).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })
-  }
-
-  // Get days until target
-  const getDaysUntil = (targetDate?: string) => {
-    if (!targetDate) return null
-    const target = new Date(targetDate)
-    const today = new Date()
-    const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
-  }
+  // All helper functions moved to @/lib/project-helpers for DRY compliance
 
   if (loading) {
     return (
@@ -261,10 +230,10 @@ export default function ProjectDetailPage() {
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
               <div className="flex items-center gap-3 mt-3">
-                <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getStatusColor(project.status)}`}>
-                  {project.status.replace('_', ' ')}
+                <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getProjectStatusColor(project.status)}`}>
+                  {formatProjectStatus(project.status)}
                 </span>
-                <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getPriorityColor(project.priority)}`}>
+                <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getProjectPriorityColor(project.priority)}`}>
                   {project.priority} priority
                 </span>
                 {project.project_type && (
@@ -375,16 +344,16 @@ export default function ProjectDetailPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600">Start Date:</span>
-                  <span className="text-sm text-gray-900">{formatDate(project.start_date)}</span>
+                  <span className="text-sm text-gray-900">{formatProjectDate(project.start_date, 'Not set', 'long')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600">Target Date:</span>
-                  <span className="text-sm text-gray-900">{formatDate(project.target_date)}</span>
+                  <span className="text-sm text-gray-900">{formatProjectDate(project.target_date, 'Not set', 'long')}</span>
                 </div>
                 {project.completed_date && (
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-600">Completed Date:</span>
-                    <span className="text-sm text-gray-900">{formatDate(project.completed_date)}</span>
+                    <span className="text-sm text-gray-900">{formatProjectDate(project.completed_date, 'Not set', 'long')}</span>
                   </div>
                 )}
               </div>
@@ -494,11 +463,11 @@ export default function ProjectDetailPage() {
                 )}
                 <div>
                   <span className="text-sm font-medium text-gray-600">Created:</span>
-                  <div className="text-sm text-gray-900 mt-1">{formatDate(project.created_at)}</div>
+                  <div className="text-sm text-gray-900 mt-1">{formatProjectDate(project.created_at, '-', 'long')}</div>
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-600">Last Updated:</span>
-                  <div className="text-sm text-gray-900 mt-1">{formatDate(project.updated_at)}</div>
+                  <div className="text-sm text-gray-900 mt-1">{formatProjectDate(project.updated_at, '-', 'long')}</div>
                 </div>
               </div>
             </div>
@@ -507,69 +476,68 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Add Team Member Modal */}
-      {showAddMemberModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Team Member</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  User
-                </label>
-                <select
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select a user...</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.first_name} {user.last_name} ({user.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <Modal
+        isOpen={showAddMemberModal}
+        onClose={() => {
+          setShowAddMemberModal(false)
+          setSelectedUserId('')
+          setSelectedRole('contributor')
+        }}
+        title="Add Team Member"
+        className="sm:max-w-md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              User <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a user...</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.first_name} {user.last_name} ({user.email})
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
-                </label>
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="lead">Lead</option>
-                  <option value="contributor">Contributor</option>
-                  <option value="reviewer">Reviewer</option>
-                  <option value="observer">Observer</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={handleAddTeamMember}
-                className="flex-1"
-              >
-                Add Member
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowAddMemberModal(false)
-                  setSelectedUserId('')
-                  setSelectedRole('contributor')
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Role
+            </label>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="lead">Lead</option>
+              <option value="contributor">Contributor</option>
+              <option value="reviewer">Reviewer</option>
+              <option value="observer">Observer</option>
+            </select>
           </div>
         </div>
-      )}
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowAddMemberModal(false)
+              setSelectedUserId('')
+              setSelectedRole('contributor')
+            }}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleAddTeamMember}>
+            Add Member
+          </Button>
+        </div>
+      </Modal>
     </AppLayout>
   )
 }
