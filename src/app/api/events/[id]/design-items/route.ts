@@ -23,7 +23,7 @@ export async function GET(
       `)
       .eq('event_id', id)
       .eq('tenant_id', dataSourceTenantId)
-      .order('design_deadline', { ascending: true })
+      .order('created_at', { ascending: false })
 
     if (error) throw error
 

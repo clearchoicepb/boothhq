@@ -21,13 +21,19 @@ interface DesignItem {
     id: string
     name: string
     type: 'digital' | 'physical'
+    default_design_days?: number
+    default_production_days?: number
+    default_shipping_days?: number
   }
-  design_deadline: string
-  design_start_date: string
+  design_deadline?: string // Legacy field
+  due_date?: string // Actual database field
+  design_start_date?: string
   status: string
   assigned_designer?: {
     id: string
-    name: string
+    first_name: string
+    last_name: string
+    email: string
   }
   internal_notes?: string
   task_id?: string
@@ -208,10 +214,15 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
       ) : (
         <div className="space-y-4">
           {designItems.map(item => {
-            const daysUntil = getDaysUntil(item.design_deadline)
+            // Use design_deadline (legacy) or due_date, or calculate from event date + timeline
+            const deadline = item.design_deadline || item.due_date
+            const daysUntil = deadline ? getDaysUntil(deadline) : null
             const urgencyColor = getUrgencyColor(daysUntil, item.status)
             const itemName = item.item_name || item.design_item_type?.name || 'Unnamed Item'
             const itemType = item.design_item_type?.type
+            const designerName = item.assigned_designer 
+              ? `${item.assigned_designer.first_name} ${item.assigned_designer.last_name}`
+              : 'Unassigned'
 
             return (
               <div
@@ -245,31 +256,43 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
 
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
                       {/* Deadline */}
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                        <div>
-                          <p className={`font-medium ${
-                            urgencyColor === 'red' ? 'text-red-600' :
-                            urgencyColor === 'orange' ? 'text-orange-600' :
-                            'text-gray-900'
-                          }`}>
-                            {daysUntil < 0 ? `${Math.abs(daysUntil)} days overdue` :
-                             daysUntil === 0 ? 'Due today' :
-                             daysUntil === 1 ? 'Due tomorrow' :
-                             `${daysUntil} days`}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(item.design_deadline).toLocaleDateString()}
-                          </p>
+                      {deadline ? (
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                          <div>
+                            <p className={`font-medium ${
+                              urgencyColor === 'red' ? 'text-red-600' :
+                              urgencyColor === 'orange' ? 'text-orange-600' :
+                              'text-gray-900'
+                            }`}>
+                              {daysUntil! < 0 ? `${Math.abs(daysUntil!)} days overdue` :
+                               daysUntil === 0 ? 'Due today' :
+                               daysUntil === 1 ? 'Due tomorrow' :
+                               `${daysUntil} days`}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(deadline).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                          <div>
+                            <p className="font-medium text-gray-500">
+                              No deadline set
+                            </p>
+                            <p className="text-xs text-gray-500">Calculated by dashboard</p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Assigned Designer */}
                       <div className="flex items-center">
                         <User className="h-4 w-4 mr-2 text-gray-400" />
                         <div>
                           <p className="font-medium text-gray-900">
-                            {item.assigned_designer?.name || 'Unassigned'}
+                            {designerName}
                           </p>
                           <p className="text-xs text-gray-500">Designer</p>
                         </div>
