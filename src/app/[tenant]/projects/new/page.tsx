@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { CreateProjectInput, ProjectType, ProjectPriority, ProjectStatus } from '@/types/project.types'
+import { getDepartmentOptions } from '@/lib/departments'
 
 interface User {
   id: string
@@ -198,11 +199,11 @@ export default function NewProjectPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Select department...</option>
-                    <option value="design">Design</option>
-                    <option value="operations">Operations</option>
-                    <option value="marketing">Marketing</option>
-                    <option value="sales">Sales</option>
-                    <option value="executive">Executive</option>
+                    {getDepartmentOptions().map(dept => (
+                      <option key={dept.value} value={dept.value}>
+                        {dept.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

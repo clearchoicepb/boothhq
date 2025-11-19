@@ -3,6 +3,8 @@
  * Follows the same pattern as opportunities and events
  */
 
+import type { DepartmentId } from '@/lib/departments'
+
 export type ProjectType = 'design' | 'operations' | 'marketing' | 'development' | 'other'
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type ProjectStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled'
@@ -24,7 +26,7 @@ export interface Project {
   
   // Ownership
   owner_id?: string
-  department?: string
+  department?: DepartmentId
   
   // Timeline
   start_date?: string
@@ -95,7 +97,7 @@ export interface CreateProjectInput {
   status?: ProjectStatus
   stage?: string
   owner_id?: string
-  department?: string
+  department?: DepartmentId
   start_date?: string
   target_date?: string
   progress_percentage?: number
@@ -135,7 +137,7 @@ export interface ProjectFilters {
   project_type?: ProjectType | 'all'
   priority?: ProjectPriority | 'all'
   owner_id?: string | 'all'
-  department?: string | 'all'
+  department?: DepartmentId | 'all'
   date_range?: {
     start?: string
     end?: string
