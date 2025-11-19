@@ -32,11 +32,11 @@ export async function GET(
 
     const { supabase, tenantId, dataSourceTenantId } = context
 
-    // Fetch workflow details
+    // Fetch workflow details (no join - event_type_ids is an array)
     console.log('[ApplyWorkflow] GET - Looking for workflow:', workflowId)
     const { data: workflow, error: workflowError } = await supabase
       .from('workflows')
-      .select('*, event_type:event_types(*)')
+      .select('*')
       .eq('id', workflowId)
       .single()
 
@@ -69,6 +69,14 @@ export async function GET(
         message: 'Workflow has no event types configured'
       })
     }
+
+    // Fetch event type names for display
+    const { data: eventTypes } = await supabase
+      .from('event_types')
+      .select('id, name')
+      .in('id', eventTypeIds)
+
+    const eventTypeNames = eventTypes?.map(et => et.name).join(', ') || 'Unknown'
 
     // Find all future events matching the event types
     const { data: events, error: eventsError } = await supabase
@@ -117,7 +125,7 @@ export async function GET(
       count: eligibleEvents.length,
       totalEvents: events.length,
       alreadyExecuted: executedEventIds.size,
-      eventTypeName: workflow.event_type?.name || 'Unknown',
+      eventTypeName: eventTypeNames,
       events: eligibleEvents.map(e => ({
         id: e.id,
         client_name: e.client_name,
