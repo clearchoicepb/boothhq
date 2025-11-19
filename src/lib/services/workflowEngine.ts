@@ -51,6 +51,7 @@ interface ExecuteWorkflowOptions {
   dataSourceTenantId: string
   supabase: SupabaseClient<Database>
   userId?: string // User who created the event (for audit)
+  force?: boolean // Skip duplicate check and re-execute workflows
 }
 
 /**
@@ -327,31 +328,40 @@ class WorkflowEngine {
   async executeWorkflowsForEvent(
     options: ExecuteWorkflowOptions
   ): Promise<WorkflowExecutionResult[]> {
-    const { eventId, eventTypeId, tenantId, dataSourceTenantId, supabase, userId } = options
+    const { eventId, eventTypeId, tenantId, dataSourceTenantId, supabase, userId, force } = options
+
+    console.log('✨ Workflow Engine - executeWorkflowsForEvent called')
+    console.log('Force rerun:', force)
 
     try {
       // ═══════════════════════════════════════════════════════════════════════════
-      // DUPLICATE PREVENTION
+      // DUPLICATE PREVENTION (unless force = true)
       // ═══════════════════════════════════════════════════════════════════════════
-      // Check if workflows have already been executed for this event
-      const { data: existingExecutions, error: executionsError } = await supabase
-        .from('workflow_executions')
-        .select('workflow_id, status')
-        .eq('trigger_entity_id', eventId)
-        .eq('tenant_id', dataSourceTenantId)
+      let alreadyExecutedWorkflowIds = new Set<string>()
 
-      if (executionsError) {
-        console.error('[workflowEngine] Error checking existing executions:', executionsError)
+      if (!force) {
+        // Check if workflows have already been executed for this event
+        const { data: existingExecutions, error: executionsError } = await supabase
+          .from('workflow_executions')
+          .select('workflow_id, status')
+          .eq('trigger_entity_id', eventId)
+          .eq('tenant_id', dataSourceTenantId)
+
+        if (executionsError) {
+          console.error('[workflowEngine] Error checking existing executions:', executionsError)
+        }
+
+        // Build a Set of workflow IDs that have already been successfully executed
+        alreadyExecutedWorkflowIds = new Set(
+          existingExecutions
+            ?.filter(e => e.status === 'completed' || e.status === 'partial')
+            ?.map(e => e.workflow_id) || []
+        )
+
+        console.log(`[workflowEngine] Found ${alreadyExecutedWorkflowIds.size} already-executed workflows for event ${eventId}`)
+      } else {
+        console.log('[workflowEngine] 🔥 FORCE MODE: Skipping duplicate check, will re-execute all workflows')
       }
-
-      // Build a Set of workflow IDs that have already been successfully executed
-      const alreadyExecutedWorkflowIds = new Set(
-        existingExecutions
-          ?.filter(e => e.status === 'completed' || e.status === 'partial')
-          ?.map(e => e.workflow_id) || []
-      )
-
-      console.log(`[workflowEngine] Found ${alreadyExecutedWorkflowIds.size} already-executed workflows for event ${eventId}`)
 
       // Find all active workflows that include this event type
       // Uses PostgreSQL array containment operator (@>) to check if event_type_ids contains eventTypeId

@@ -273,7 +273,8 @@ export async function POST(
           eventTypeId: event.event_type_id,
           tenantId,
           dataSourceTenantId,
-          supabase
+          supabase,
+          force: forceRerun // Pass the force flag to skip duplicate check
         })
 
         console.log('[ApplyWorkflow] Workflow results for event', event.id, ':', JSON.stringify(workflowResults, null, 2))
