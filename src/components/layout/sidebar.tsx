@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
-import { Building2, Users, TrendingUp, FileText, FileSignature, CheckSquare, MessageSquare } from 'lucide-react'
+import { Building2, Users, TrendingUp, FileText, FileSignature, CheckSquare, MessageSquare, FolderKanban } from 'lucide-react'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
@@ -25,6 +25,12 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
       href: `/${tenantSubdomain}/dashboard/my-tasks`,
       icon: CheckSquare,
       permission: true // Always visible to authenticated users
+    },
+    {
+      label: 'Projects',
+      href: `/${tenantSubdomain}/projects`,
+      icon: FolderKanban,
+      permission: permissions.projects?.view || true // Default to visible
     },
     {
       label: 'Leads',
