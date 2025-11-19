@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     console.log('[Projects API] Project created successfully:', project.id)
 
     // Revalidate the projects page
-    revalidatePath('/[tenant]/projects')
+    revalidatePath('/[tenant]/projects', 'page')
 
     return NextResponse.json(project, { status: 201 })
   } catch (error) {

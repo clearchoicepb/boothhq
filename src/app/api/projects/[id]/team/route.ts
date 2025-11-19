@@ -44,7 +44,7 @@ export async function POST(
     }
 
     // Revalidate
-    revalidatePath(`/[tenant]/projects/${projectId}`)
+    revalidatePath(`/[tenant]/projects/${projectId}`, 'page')
 
     return NextResponse.json(teamMember, { status: 201 })
   } catch (error) {
@@ -85,7 +85,7 @@ export async function DELETE(
     }
 
     // Revalidate
-    revalidatePath(`/[tenant]/projects/${projectId}`)
+    revalidatePath(`/[tenant]/projects/${projectId}`, 'page')
 
     return NextResponse.json({ success: true })
   } catch (error) {

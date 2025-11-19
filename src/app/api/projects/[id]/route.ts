@@ -103,8 +103,8 @@ export async function PUT(
     }
 
     // Revalidate the projects pages
-    revalidatePath('/[tenant]/projects')
-    revalidatePath(`/[tenant]/projects/${id}`)
+    revalidatePath('/[tenant]/projects', 'page')
+    revalidatePath(`/[tenant]/projects/${id}`, 'page')
 
     return NextResponse.json(project)
   } catch (error) {
@@ -138,7 +138,7 @@ export async function DELETE(
     }
 
     // Revalidate the projects page
-    revalidatePath('/[tenant]/projects')
+    revalidatePath('/[tenant]/projects', 'page')
 
     return NextResponse.json({ success: true })
   } catch (error) {
