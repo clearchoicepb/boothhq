@@ -521,13 +521,13 @@ export default function ProjectDetailPage() {
                     <div className="text-sm text-gray-900 mt-1 capitalize">{project.department}</div>
                   </div>
                 )}
-                {project.related_account && (
+                {project.related_account && project.related_account.name && (
                   <div>
                     <span className="text-sm font-medium text-gray-600">Related Account:</span>
                     <div className="text-sm text-gray-900 mt-1">{project.related_account.name}</div>
                   </div>
                 )}
-                {project.related_event && (
+                {project.related_event && project.related_event.title && (
                   <div>
                     <span className="text-sm font-medium text-gray-600">Related Event:</span>
                     <div className="text-sm text-gray-900 mt-1">{project.related_event.title}</div>
