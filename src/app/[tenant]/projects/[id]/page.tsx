@@ -6,6 +6,10 @@ import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { NotesSection } from '@/components/notes-section'
+import AttachmentsSection from '@/components/attachments-section'
+import { TasksSection } from '@/components/tasks-section'
 import { 
   ArrowLeft, 
   Edit, 
@@ -17,7 +21,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  UserPlus
+  UserPlus,
+  Info,
+  ListTodo,
+  Paperclip,
+  FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Project, ProjectTeamMember, ProjectStatus, ProjectPriority } from '@/types/project.types'
@@ -44,6 +52,7 @@ export default function ProjectDetailPage() {
   const [users, setUsers] = useState<any[]>([])
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState('contributor')
+  const [activeTab, setActiveTab] = useState('overview')
 
   // Fetch project details
   useEffect(() => {
@@ -257,8 +266,50 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+            <TabsTrigger 
+              value="overview" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-blue-600 data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <Info className="h-4 w-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="tasks" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-blue-600 data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <ListTodo className="h-4 w-4 mr-2" />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger 
+              value="team" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-blue-600 data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Team
+            </TabsTrigger>
+            <TabsTrigger 
+              value="files" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-blue-600 data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              Files
+            </TabsTrigger>
+            <TabsTrigger 
+              value="notes" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-blue-600 data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Notes
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="mt-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -391,51 +442,68 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Project Notes */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Quick Notes</h2>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setActiveTab('notes')}
+                >
+                  View All
+                </Button>
+              </div>
+              <NotesSection
+                entityId={projectId}
+                entityType="project"
+              />
+            </div>
           </div>
 
           {/* Right Column - Team & Meta */}
           <div className="space-y-6">
-            {/* Team Members */}
+            {/* Team Members Summary */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Team Members</h2>
-                <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add
+                <h2 className="text-lg font-semibold text-gray-900">Team</h2>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setActiveTab('team')}
+                >
+                  View All
                 </Button>
               </div>
-              {project.team_members && project.team_members.length > 0 ? (
-                <div className="space-y-3">
-                  {project.team_members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-blue-700">
-                            {member.user?.first_name?.[0]}{member.user?.last_name?.[0]}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {member.user?.first_name} {member.user?.last_name}
-                          </div>
-                          {member.role && (
-                            <div className="text-xs text-gray-500 capitalize">{member.role}</div>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRemoveTeamMember(member.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-gray-400" />
+                <span className="text-2xl font-bold text-gray-900">
+                  {project.team_members?.length || 0}
+                </span>
+                <span className="text-sm text-gray-500">members</span>
+              </div>
+              {project.team_members && project.team_members.length > 0 && (
+                <div className="mt-4 flex -space-x-2">
+                  {project.team_members.slice(0, 5).map((member) => (
+                    <div 
+                      key={member.id}
+                      className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white"
+                      title={`${member.user?.first_name} ${member.user?.last_name}`}
+                    >
+                      <span className="text-xs font-medium text-blue-700">
+                        {member.user?.first_name?.[0]}{member.user?.last_name?.[0]}
+                      </span>
                     </div>
                   ))}
+                  {project.team_members.length > 5 && (
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white">
+                      <span className="text-xs font-medium text-gray-700">
+                        +{project.team_members.length - 5}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500">No team members yet</p>
               )}
             </div>
 
@@ -473,6 +541,92 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
+          </TabsContent>
+
+          {/* Tasks Tab */}
+          <TabsContent value="tasks" className="mt-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <TasksSection
+                entityType="project"
+                entityId={projectId}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Team Tab */}
+          <TabsContent value="team" className="mt-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Team Members</h2>
+                <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Member
+                </Button>
+              </div>
+              {project.team_members && project.team_members.length > 0 ? (
+                <div className="space-y-3">
+                  {project.team_members.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-sm font-medium text-blue-700">
+                            {member.user?.first_name?.[0]}{member.user?.last_name?.[0]}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {member.user?.first_name} {member.user?.last_name}
+                          </div>
+                          <div className="text-xs text-gray-500">{member.user?.email}</div>
+                          {member.role && (
+                            <div className="text-xs text-gray-500 capitalize mt-1">
+                              <span className="px-2 py-0.5 bg-gray-100 rounded">{member.role}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveTeamMember(member.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600 mb-1">No team members yet</p>
+                  <p className="text-sm text-gray-500">Add team members to collaborate on this project</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Files Tab */}
+          <TabsContent value="files" className="mt-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <AttachmentsSection
+                entityType="project"
+                entityId={projectId}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Notes Tab */}
+          <TabsContent value="notes" className="mt-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
+              <NotesSection
+                entityId={projectId}
+                entityType="project"
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Add Team Member Modal */}
