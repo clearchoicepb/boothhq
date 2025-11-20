@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { NotesSection } from '@/components/notes-section'
 import AttachmentsSection from '@/components/attachments-section'
 import { TasksSection } from '@/components/tasks-section'
+import { TaskDetailModal } from '@/components/task-detail-modal'
 import { 
   ArrowLeft, 
   Edit, 
@@ -25,7 +26,8 @@ import {
   Info,
   ListTodo,
   Paperclip,
-  FileText
+  FileText,
+  Plus
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Project, ProjectTeamMember, ProjectStatus, ProjectPriority } from '@/types/project.types'
@@ -53,6 +55,8 @@ export default function ProjectDetailPage() {
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState('contributor')
   const [activeTab, setActiveTab] = useState('overview')
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [tasksKey, setTasksKey] = useState(0)
 
   // Fetch project details
   useEffect(() => {
@@ -546,9 +550,22 @@ export default function ProjectDetailPage() {
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-6">
             <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+                <Button
+                  size="sm"
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
+              </div>
               <TasksSection
+                key={tasksKey}
                 entityType="project"
                 entityId={projectId}
+                onRefresh={() => setTasksKey(prev => prev + 1)}
               />
             </div>
           </TabsContent>
@@ -692,6 +709,17 @@ export default function ProjectDetailPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* Task Modal */}
+      <TaskDetailModal
+        isOpen={isTaskModalOpen}
+        onClose={() => {
+          setIsTaskModalOpen(false)
+          setTasksKey(prev => prev + 1)
+        }}
+        entityType="project"
+        entityId={projectId}
+      />
     </AppLayout>
   )
 }
