@@ -74,12 +74,19 @@ export default function TicketsPage() {
   }
 
   const getVoteCount = (ticket: Ticket) => {
-    return ticket.ticket_votes?.length || 0
+    const count = ticket.ticket_votes?.length || 0
+    console.log(`[Votes] Ticket "${ticket.title}": ${count} votes`, ticket.ticket_votes)
+    return count
   }
 
   const hasUserVoted = (ticket: Ticket) => {
-    if (!session?.user?.id) return false
-    return ticket.ticket_votes?.some(vote => vote.user_id === session.user.id) || false
+    if (!session?.user?.id) {
+      console.log('[Votes] No session user ID')
+      return false
+    }
+    const voted = ticket.ticket_votes?.some(vote => vote.user_id === session.user.id) || false
+    console.log(`[Votes] User ${session.user.id} voted for "${ticket.title}":`, voted)
+    return voted
   }
 
   // Sort tickets: by votes (desc), then by created_at (asc for first-come-first-served)
