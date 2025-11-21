@@ -33,12 +33,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   -- Metadata
   tags TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Constraints
-  CONSTRAINT tickets_owner_id_fkey FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT tickets_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT tickets_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for performance
