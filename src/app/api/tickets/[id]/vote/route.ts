@@ -21,6 +21,25 @@ export async function POST(
 
     const { id: ticketId } = await params
 
+    // Get ticket details to check if user is the creator
+    const { data: ticket, error: ticketError } = await supabase
+      .from('tickets')
+      .select('reported_by')
+      .eq('id', ticketId)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (ticketError || !ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+
+    // Prevent creator from voting on their own ticket
+    if (ticket.reported_by === session.user.id) {
+      return NextResponse.json({ 
+        error: 'You cannot vote on your own ticket' 
+      }, { status: 403 })
+    }
+
     // Check if user already voted
     const { data: existingVote } = await supabase
       .from('ticket_votes')

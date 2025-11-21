@@ -89,6 +89,11 @@ export default function TicketsPage() {
     return voted
   }
 
+  const isTicketCreator = (ticket: Ticket) => {
+    if (!session?.user?.id) return false
+    return ticket.reported_by === session.user.id
+  }
+
   // Sort tickets: by votes (desc), then by created_at (asc for first-come-first-served)
   const sortedTickets = tickets
     .filter(ticket =>
@@ -294,6 +299,7 @@ export default function TicketsPage() {
                   const voteCount = getVoteCount(ticket)
                   const userVoted = hasUserVoted(ticket)
                   const isVoting = votingTicket === ticket.id
+                  const isCreator = isTicketCreator(ticket)
 
                   return (
                     <div
@@ -302,24 +308,36 @@ export default function TicketsPage() {
                       className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
                     >
                       <div className="flex items-start gap-4">
-                        {/* Vote Button */}
-                        <div className="flex flex-col items-center gap-1 pt-1">
-                          <button
-                            onClick={(e) => handleVote(ticket.id, e)}
-                            disabled={isVoting}
-                            className={`p-2 rounded-lg transition-all ${
-                              userVoted
-                                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            } ${isVoting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            title={userVoted ? 'Remove vote' : 'Vote for this ticket'}
-                          >
-                            <ThumbsUp className={`h-5 w-5 ${userVoted ? 'fill-current' : ''}`} />
-                          </button>
-                          <span className={`text-sm font-semibold ${voteCount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
-                            {voteCount}
-                          </span>
-                        </div>
+                        {/* Vote Button - Hidden for ticket creator */}
+                        {!isCreator ? (
+                          <div className="flex flex-col items-center gap-1 pt-1">
+                            <button
+                              onClick={(e) => handleVote(ticket.id, e)}
+                              disabled={isVoting}
+                              className={`p-2 rounded-lg transition-all ${
+                                userVoted
+                                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              } ${isVoting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={userVoted ? 'Remove vote' : 'Vote for this ticket'}
+                            >
+                              <ThumbsUp className={`h-5 w-5 ${userVoted ? 'fill-current' : ''}`} />
+                            </button>
+                            <span className={`text-sm font-semibold ${voteCount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                              {voteCount}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1 pt-1 w-[52px]">
+                            {/* Show vote count but no button for creator */}
+                            <div className="p-2 rounded-lg bg-gray-50 text-gray-400" title="You created this ticket">
+                              <ThumbsUp className="h-5 w-5" />
+                            </div>
+                            <span className={`text-sm font-semibold ${voteCount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                              {voteCount}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Ticket Content */}
                         <div className="flex-1">
