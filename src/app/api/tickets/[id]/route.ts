@@ -21,9 +21,9 @@ export async function GET(
       .from('tickets')
       .select(`
         *,
-        assigned_to_user:users!tickets_owner_id_fkey(id, first_name, last_name, email),
-        reported_by_user:users!tickets_reported_by_fkey(id, first_name, last_name, email),
-        resolved_by_user:users!tickets_resolved_by_fkey(id, first_name, last_name, email)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
+        reported_by_user:users!reported_by(id, first_name, last_name, email),
+        resolved_by_user:users!resolved_by(id, first_name, last_name, email)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
@@ -76,9 +76,9 @@ export async function PUT(
       .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
-        assigned_to_user:users!tickets_owner_id_fkey(id, first_name, last_name, email),
-        reported_by_user:users!tickets_reported_by_fkey(id, first_name, last_name, email),
-        resolved_by_user:users!tickets_resolved_by_fkey(id, first_name, last_name, email)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
+        reported_by_user:users!reported_by(id, first_name, last_name, email),
+        resolved_by_user:users!resolved_by(id, first_name, last_name, email)
       `)
       .single()
 

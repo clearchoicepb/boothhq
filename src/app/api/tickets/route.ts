@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
       .from('tickets')
       .select(`
         *,
-        assigned_to_user:users!tickets_owner_id_fkey(id, first_name, last_name, email),
-        reported_by_user:users!tickets_reported_by_fkey(id, first_name, last_name, email),
-        resolved_by_user:users!tickets_resolved_by_fkey(id, first_name, last_name, email)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
+        reported_by_user:users!reported_by(id, first_name, last_name, email),
+        resolved_by_user:users!resolved_by(id, first_name, last_name, email)
       `)
       .eq('tenant_id', dataSourceTenantId)
 
@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
       .insert(ticketData)
       .select(`
         *,
-        assigned_to_user:users!tickets_owner_id_fkey(id, first_name, last_name, email),
-        reported_by_user:users!tickets_reported_by_fkey(id, first_name, last_name, email)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
+        reported_by_user:users!reported_by(id, first_name, last_name, email)
       `)
       .single()
 
