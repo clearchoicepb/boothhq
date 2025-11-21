@@ -4,14 +4,18 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from './sidebar'
 import { TopNav } from './top-nav'
 import { SettingsProvider } from '@/lib/settings-context'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LifeBuoy } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
+import { useRouter, useParams } from 'next/navigation'
 
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const router = useRouter()
+  const params = useParams()
+  const tenantSubdomain = params?.tenant as string
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Close mobile menu on ESC key
@@ -83,6 +87,20 @@ export function AppLayout({ children }: AppLayoutProps) {
           </main>
         </div>
       </div>
+
+      {/* Floating Report Issue Button */}
+      {tenantSubdomain && (
+        <button
+          onClick={() => router.push(`/${tenantSubdomain}/tickets/new`)}
+          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all hover:scale-110 z-50 group"
+          title="Report an Issue"
+        >
+          <LifeBuoy className="h-6 w-6" />
+          <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Report Issue
+          </span>
+        </button>
+      )}
 
       {/* Toast Notifications */}
       <Toaster
