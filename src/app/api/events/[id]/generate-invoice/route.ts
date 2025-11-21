@@ -34,21 +34,6 @@ export async function POST(
       customLineItems = []
     } = body
 
-    // Check if invoice already exists for this event
-    const { data: existingInvoice } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('event_id', id)
-      .eq('tenant_id', dataSourceTenantId)
-      .single()
-
-    if (existingInvoice) {
-      return NextResponse.json({ 
-        error: 'Invoice already exists for this event',
-        invoiceId: existingInvoice.id
-      }, { status: 400 })
-    }
-
     // Generate invoice number
     const { data: lastInvoice } = await supabase
       .from('invoices')
