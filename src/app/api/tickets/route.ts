@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
         *,
         assigned_to_user:users!assigned_to(id, first_name, last_name, email),
         reported_by_user:users!reported_by(id, first_name, last_name, email),
-        resolved_by_user:users!resolved_by(id, first_name, last_name, email)
+        resolved_by_user:users!resolved_by(id, first_name, last_name, email),
+        ticket_votes(id, user_id)
       `)
       .eq('tenant_id', dataSourceTenantId)
 

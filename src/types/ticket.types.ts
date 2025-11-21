@@ -59,6 +59,10 @@ export interface Ticket {
     last_name?: string
     email: string
   }
+  ticket_votes?: Array<{
+    id: string
+    user_id: string
+  }>
 }
 
 export interface CreateTicketInput {

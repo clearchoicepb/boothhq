@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Plus, Bug, Lightbulb, HelpCircle, TrendingUp, MoreHorizontal, Search } from 'lucide-react'
+import { Plus, Bug, Lightbulb, HelpCircle, TrendingUp, MoreHorizontal, Search, ThumbsUp } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import type { Ticket, TicketStatus, TicketType, TicketPriority } from '@/types/ticket.types'
@@ -12,6 +13,7 @@ import type { Ticket, TicketStatus, TicketType, TicketPriority } from '@/types/t
 export default function TicketsPage() {
   const router = useRouter()
   const params = useParams()
+  const { data: session } = useSession()
   const tenantSubdomain = params.tenant as string
 
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -20,6 +22,7 @@ export default function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all')
   const [typeFilter, setTypeFilter] = useState<TicketType | 'all'>('all')
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'all'>('all')
+  const [votingTicket, setVotingTicket] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTickets()
@@ -46,10 +49,59 @@ export default function TicketsPage() {
     }
   }
 
-  const filteredTickets = tickets.filter(ticket =>
-    ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const handleVote = async (ticketId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent navigating to ticket detail
+    setVotingTicket(ticketId)
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/vote`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) throw new Error('Failed to vote')
+
+      const result = await response.json()
+      toast.success(result.voted ? 'Vote added!' : 'Vote removed')
+      
+      // Refresh tickets to get updated vote counts
+      fetchTickets()
+    } catch (error) {
+      console.error('Error voting:', error)
+      toast.error('Failed to vote')
+    } finally {
+      setVotingTicket(null)
+    }
+  }
+
+  const getVoteCount = (ticket: Ticket) => {
+    return ticket.ticket_votes?.length || 0
+  }
+
+  const hasUserVoted = (ticket: Ticket) => {
+    if (!session?.user?.id) return false
+    return ticket.ticket_votes?.some(vote => vote.user_id === session.user.id) || false
+  }
+
+  // Sort tickets: by votes (desc), then by created_at (asc for first-come-first-served)
+  const sortedTickets = tickets
+    .filter(ticket =>
+      ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      const votesA = getVoteCount(a)
+      const votesB = getVoteCount(b)
+      
+      // First, sort by votes (descending - most votes first)
+      if (votesB !== votesA) {
+        return votesB - votesA
+      }
+      
+      // If votes are equal, sort by created_at (ascending - oldest first)
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    })
+
+  const filteredTickets = sortedTickets
 
   const getTypeIcon = (type: TicketType) => {
     switch (type) {
@@ -231,45 +283,71 @@ export default function TicketsPage() {
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {filteredTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    onClick={() => router.push(`/${tenantSubdomain}/tickets/${ticket.id}`)}
-                    className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(ticket.ticket_type)}`}>
-                            {getTypeIcon(ticket.ticket_type)}
-                            {ticket.ticket_type}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                            {ticket.priority}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                            {ticket.status.replace('_', ' ')}
+                {filteredTickets.map((ticket) => {
+                  const voteCount = getVoteCount(ticket)
+                  const userVoted = hasUserVoted(ticket)
+                  const isVoting = votingTicket === ticket.id
+
+                  return (
+                    <div
+                      key={ticket.id}
+                      onClick={() => router.push(`/${tenantSubdomain}/tickets/${ticket.id}`)}
+                      className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Vote Button */}
+                        <div className="flex flex-col items-center gap-1 pt-1">
+                          <button
+                            onClick={(e) => handleVote(ticket.id, e)}
+                            disabled={isVoting}
+                            className={`p-2 rounded-lg transition-all ${
+                              userVoted
+                                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            } ${isVoting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={userVoted ? 'Remove vote' : 'Vote for this ticket'}
+                          >
+                            <ThumbsUp className={`h-5 w-5 ${userVoted ? 'fill-current' : ''}`} />
+                          </button>
+                          <span className={`text-sm font-semibold ${voteCount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                            {voteCount}
                           </span>
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{ticket.title}</h3>
-                        {ticket.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2 mb-2">{ticket.description}</p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>Reported by {ticket.reported_by_user?.first_name} {ticket.reported_by_user?.last_name}</span>
-                          <span>•</span>
-                          <span>{formatDate(ticket.created_at)}</span>
-                          {ticket.assigned_to_user && (
-                            <>
-                              <span>•</span>
-                              <span>Assigned to {ticket.assigned_to_user.first_name} {ticket.assigned_to_user.last_name}</span>
-                            </>
+
+                        {/* Ticket Content */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(ticket.ticket_type)}`}>
+                              {getTypeIcon(ticket.ticket_type)}
+                              {ticket.ticket_type}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                              {ticket.priority}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                              {ticket.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{ticket.title}</h3>
+                          {ticket.description && (
+                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">{ticket.description}</p>
                           )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>Reported by {ticket.reported_by_user?.first_name} {ticket.reported_by_user?.last_name}</span>
+                            <span>•</span>
+                            <span>{formatDate(ticket.created_at)}</span>
+                            {ticket.assigned_to_user && (
+                              <>
+                                <span>•</span>
+                                <span>Assigned to {ticket.assigned_to_user.first_name} {ticket.assigned_to_user.last_name}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
