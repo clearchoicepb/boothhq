@@ -313,11 +313,23 @@ export function useEventsFilters({
       }
 
       // Assigned To filter
-      if (filters.assignedToFilter === 'my_events' && currentUserId) {
+      if (filters.assignedToFilter === 'my_events') {
+        // Only filter if currentUserId is available and event has staff assignments
+        if (!currentUserId) {
+          // If no user ID, show all events when "My Events" is selected (fallback)
+          return true
+        }
+        
         // Check if current user is assigned to this event
-        const isAssigned = event.event_staff_assignments?.some(
+        if (!event.event_staff_assignments || event.event_staff_assignments.length === 0) {
+          // No staff assignments means user is not assigned
+          return false
+        }
+        
+        const isAssigned = event.event_staff_assignments.some(
           assignment => assignment.user_id === currentUserId
         )
+        
         if (!isAssigned) {
           return false
         }

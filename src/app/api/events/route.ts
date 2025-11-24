@@ -32,13 +32,6 @@ export async function GET(request: NextRequest) {
           notes,
           status,
           locations(id, name, address_line1, city, state)
-        ),
-        event_staff_assignments(
-          id,
-          user_id,
-          event_date_id,
-          role,
-          staff_role_id
         )
       `)
       .eq('tenant_id', dataSourceTenantId)
@@ -119,14 +112,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Transform the data to include account_name, contact_name, core_tasks_ready, and task_completions
+    // Fetch staff assignments separately to avoid breaking the main query
+    let staffAssignmentsByEvent: Record<string, any[]> = {}
+    if (eventIds.length > 0) {
+      try {
+        const { data: staffData, error: staffError } = await supabase
+          .from('event_staff_assignments')
+          .select('id, user_id, event_id, event_date_id, role, staff_role_id')
+          .in('event_id', eventIds)
+
+        if (!staffError && staffData) {
+          staffData.forEach(assignment => {
+            if (!staffAssignmentsByEvent[assignment.event_id]) {
+              staffAssignmentsByEvent[assignment.event_id] = []
+            }
+            staffAssignmentsByEvent[assignment.event_id].push(assignment)
+          })
+        }
+      } catch (staffErr) {
+        console.warn('Could not fetch staff assignments:', staffErr)
+        // Continue without staff assignments rather than failing
+      }
+    }
+
+    // Transform the data to include account_name, contact_name, core_tasks_ready, task_completions, and staff assignments
     const transformedData = data?.map(event => ({
       ...event,
       account_name: event.accounts?.name || null,
       contact_name: event.contacts ?
         `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null,
       core_tasks_ready: coreTasksStatus[event.id] || false,
-      task_completions: eventTaskCompletions[event.id] || []
+      task_completions: eventTaskCompletions[event.id] || [],
+      event_staff_assignments: staffAssignmentsByEvent[event.id] || []
     })) || []
 
     const response = NextResponse.json(transformedData)
