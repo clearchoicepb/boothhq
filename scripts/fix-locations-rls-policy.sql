@@ -46,3 +46,4 @@ END $$;
 -- Test query (should work now)
 -- SELECT * FROM locations WHERE tenant_id = '5f98f4c0-5254-4c61-8633-55ea049c7f18' LIMIT 1;
 
+

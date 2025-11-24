@@ -116,10 +116,16 @@ export async function GET(request: NextRequest) {
     let staffAssignmentsByEvent: Record<string, any[]> = {}
     if (eventIds.length > 0) {
       try {
+        console.log('[EVENTS API] Fetching staff assignments for', eventIds.length, 'events')
         const { data: staffData, error: staffError } = await supabase
           .from('event_staff_assignments')
           .select('id, user_id, event_id, event_date_id, role, staff_role_id')
           .in('event_id', eventIds)
+
+        console.log('[EVENTS API] Staff assignments fetched:', staffData?.length || 0, 'assignments')
+        if (staffError) {
+          console.error('[EVENTS API] Staff assignments error:', staffError)
+        }
 
         if (!staffError && staffData) {
           staffData.forEach(assignment => {
@@ -128,9 +134,10 @@ export async function GET(request: NextRequest) {
             }
             staffAssignmentsByEvent[assignment.event_id].push(assignment)
           })
+          console.log('[EVENTS API] Staff assignments grouped by event:', Object.keys(staffAssignmentsByEvent).length, 'events have staff')
         }
       } catch (staffErr) {
-        console.warn('Could not fetch staff assignments:', staffErr)
+        console.warn('[EVENTS API] Could not fetch staff assignments:', staffErr)
         // Continue without staff assignments rather than failing
       }
     }
