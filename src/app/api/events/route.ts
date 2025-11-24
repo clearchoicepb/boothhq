@@ -116,10 +116,11 @@ export async function GET(request: NextRequest) {
     let staffAssignmentsByEvent: Record<string, any[]> = {}
     if (eventIds.length > 0) {
       try {
-        console.log('[EVENTS API] Fetching staff assignments for', eventIds.length, 'events')
+        console.log('[EVENTS API] Fetching staff assignments for', eventIds.length, 'events, tenant:', dataSourceTenantId)
         const { data: staffData, error: staffError } = await supabase
           .from('event_staff_assignments')
           .select('id, user_id, event_id, event_date_id, role, staff_role_id')
+          .eq('tenant_id', dataSourceTenantId)  // CRITICAL: Filter by tenant!
           .in('event_id', eventIds)
 
         console.log('[EVENTS API] Staff assignments fetched:', staffData?.length || 0, 'assignments')
