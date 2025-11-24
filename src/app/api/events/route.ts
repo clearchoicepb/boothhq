@@ -32,6 +32,13 @@ export async function GET(request: NextRequest) {
           notes,
           status,
           locations(id, name, address_line1, city, state)
+        ),
+        event_staff_assignments(
+          id,
+          user_id,
+          event_date_id,
+          role,
+          staff_role_id
         )
       `)
       .eq('tenant_id', dataSourceTenantId)

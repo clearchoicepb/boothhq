@@ -11,6 +11,7 @@ export interface FilterState {
   taskFilter: 'all' | 'incomplete'
   taskDateRangeFilter: number
   selectedTaskIds: string[]
+  assignedToFilter: 'all' | 'my_events' // New filter for assigned events
 }
 
 interface EventFiltersProps {
@@ -54,7 +55,8 @@ export function EventFilters({
       statusFilter: 'all',
       taskFilter: 'all',
       selectedTaskIds: [],
-      searchTerm: ''
+      searchTerm: '',
+      assignedToFilter: 'all'
     })
   }
 
@@ -65,7 +67,8 @@ export function EventFilters({
       taskFilter: 'incomplete',
       taskDateRangeFilter: 45,
       selectedTaskIds: [],
-      searchTerm: ''
+      searchTerm: '',
+      assignedToFilter: 'all'
     })
   }
 
@@ -76,7 +79,8 @@ export function EventFilters({
       statusFilter: 'all',
       taskFilter: 'all',
       selectedTaskIds: [],
-      searchTerm: ''
+      searchTerm: '',
+      assignedToFilter: 'all'
     })
   }
 
@@ -87,7 +91,8 @@ export function EventFilters({
       statusFilter: 'all',
       taskFilter: 'all',
       selectedTaskIds: [],
-      searchTerm: ''
+      searchTerm: '',
+      assignedToFilter: 'all'
     })
   }
 
@@ -98,7 +103,8 @@ export function EventFilters({
     filters.searchTerm !== '' ||
     filters.taskFilter !== 'all' ||
     filters.selectedTaskIds.length > 0 ||
-    filters.customDaysFilter !== null
+    filters.customDaysFilter !== null ||
+    filters.assignedToFilter !== 'all'
 
   const activeFilterCount = [
     filters.statusFilter !== 'all',
@@ -106,7 +112,8 @@ export function EventFilters({
     filters.searchTerm !== '',
     filters.taskFilter !== 'all',
     filters.selectedTaskIds.length > 0,
-    filters.customDaysFilter !== null
+    filters.customDaysFilter !== null,
+    filters.assignedToFilter !== 'all'
   ].filter(Boolean).length
 
   return (
@@ -271,6 +278,18 @@ export function EventFilters({
               <option value="postponed">Postponed</option>
             </select>
           </div>
+
+          {/* Assigned To Dropdown */}
+          <div className="w-full lg:w-48">
+            <select
+              value={filters.assignedToFilter}
+              onChange={(e) => updateFilter('assignedToFilter', e.target.value as FilterState['assignedToFilter'])}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent text-sm"
+            >
+              <option value="all">All Events</option>
+              <option value="my_events">My Events</option>
+            </select>
+          </div>
         </div>
 
         {/* Active Filters Summary */}
@@ -298,6 +317,18 @@ export function EventFilters({
                   Status: {filters.statusFilter}
                   <button
                     onClick={() => updateFilter('statusFilter', 'all')}
+                    className="hover:opacity-70"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {filters.assignedToFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <Users className="h-3 w-3" />
+                  My Events
+                  <button
+                    onClick={() => updateFilter('assignedToFilter', 'all')}
                     className="hover:opacity-70"
                   >
                     <X className="h-3 w-3" />

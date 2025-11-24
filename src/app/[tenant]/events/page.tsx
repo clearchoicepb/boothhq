@@ -67,6 +67,13 @@ interface Event {
   created_at: string
   core_tasks_ready?: boolean
   task_completions?: TaskCompletion[]
+  event_staff_assignments?: Array<{
+    id: string
+    user_id: string
+    event_date_id: string | null
+    role: string | null
+    staff_role_id: string | null
+  }>
   event_categories?: {
     id: string
     name: string
@@ -163,7 +170,11 @@ export default function EventsPage() {
     setSortBy,
     eventCounts,
     getIncompleteTasks
-  } = useEventsFilters({ events: explodedEvents, coreTasks })
+  } = useEventsFilters({ 
+    events: explodedEvents, 
+    coreTasks,
+    currentUserId: session?.user?.id // Pass current user ID for "My Events" filter
+  })
 
   // Aggregate loading state
   const localLoading = eventsLoading

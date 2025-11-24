@@ -22,6 +22,9 @@ interface FilterableEvent {
     core_task_template_id: string
     is_completed: boolean
   }>
+  event_staff_assignments?: Array<{
+    user_id: string
+  }>
 }
 
 // Core task template interface
@@ -51,6 +54,7 @@ export interface UseEventsFiltersParams {
   coreTasks: CoreTask[]
   initialFilters?: Partial<FilterState>
   initialSortBy?: SortOption
+  currentUserId?: string // Current user ID for "My Events" filter
 }
 
 export interface UseEventsFiltersReturn {
@@ -90,7 +94,8 @@ export function useEventsFilters({
   events,
   coreTasks,
   initialFilters,
-  initialSortBy = 'date_asc'
+  initialSortBy = 'date_asc',
+  currentUserId
 }: UseEventsFiltersParams): UseEventsFiltersReturn {
   // Filter state
   const [filters, setFilters] = useState<FilterState>(
@@ -101,7 +106,8 @@ export function useEventsFilters({
       statusFilter: 'all',
       taskFilter: 'all',
       taskDateRangeFilter: 14,
-      selectedTaskIds: []
+      selectedTaskIds: [],
+      assignedToFilter: 'all'
     }
   )
 
@@ -301,12 +307,25 @@ export function useEventsFilters({
         const matchesTaskDateRange = isWithinTaskDateRange(event)
         const matchesSpecificTasks = matchesSelectedTasks(event)
 
-        return hasIncomplete && matchesTaskDateRange && matchesSpecificTasks
+        if (!(hasIncomplete && matchesTaskDateRange && matchesSpecificTasks)) {
+          return false
+        }
+      }
+
+      // Assigned To filter
+      if (filters.assignedToFilter === 'my_events' && currentUserId) {
+        // Check if current user is assigned to this event
+        const isAssigned = event.event_staff_assignments?.some(
+          assignment => assignment.user_id === currentUserId
+        )
+        if (!isAssigned) {
+          return false
+        }
       }
 
       return true
     })
-  }, [events, filters, coreTasks])
+  }, [events, filters, coreTasks, currentUserId])
 
   /**
    * Sort filtered events based on selected sort option
