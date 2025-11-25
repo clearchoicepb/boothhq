@@ -1,6 +1,10 @@
 -- Operations System for Events Module
 -- Mirrors the Design System structure for Operations department
 -- Enables tracking of operations items, assignments, and timelines
+--
+-- NOTE: tenant_id is NOT a foreign key to tenants table because tenants
+-- table is in the application database, not the data source database.
+-- Tenant isolation is handled at the application layer.
 
 -- ============================================================================
 -- TABLE: operations_item_types
@@ -8,7 +12,8 @@
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS operations_item_types (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL, -- No FK reference - handled at app layer
+
   name VARCHAR(100) NOT NULL,
   description TEXT,
   category VARCHAR(50) CHECK (category IN ('equipment', 'staffing', 'logistics', 'venue', 'setup', 'other')),
@@ -48,7 +53,7 @@ COMMENT ON COLUMN operations_item_types.is_auto_added IS 'Whether this type is a
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS event_operations_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL, -- No FK reference - handled at app layer
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   operations_item_type_id UUID NOT NULL REFERENCES operations_item_types(id) ON DELETE RESTRICT,
 
@@ -129,63 +134,6 @@ CREATE TRIGGER update_event_operations_items_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
--- RLS POLICIES
--- Purpose: Secure multi-tenant access
--- ============================================================================
-
-ALTER TABLE operations_item_types ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_operations_items ENABLE ROW LEVEL SECURITY;
-
--- Operations Item Types policies
-DROP POLICY IF EXISTS operations_item_types_tenant_isolation ON operations_item_types;
-CREATE POLICY operations_item_types_tenant_isolation ON operations_item_types
-  FOR ALL
-  USING (tenant_id = current_setting('app.current_tenant_id', TRUE)::UUID);
-
--- Event Operations Items policies
-DROP POLICY IF EXISTS event_operations_items_tenant_isolation ON event_operations_items;
-CREATE POLICY event_operations_items_tenant_isolation ON event_operations_items
-  FOR ALL
-  USING (tenant_id = current_setting('app.current_tenant_id', TRUE)::UUID);
-
--- ============================================================================
--- FUNCTION: Create default operations types for a tenant
--- Purpose: Bootstrap new tenants with standard operations types
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION create_default_operations_types(p_tenant_id UUID)
-RETURNS void AS $$
-BEGIN
-  INSERT INTO operations_item_types (tenant_id, name, description, category, due_date_days, urgent_threshold_days, missed_deadline_days, is_auto_added, display_order)
-  VALUES
-    -- Equipment category
-    (p_tenant_id, 'Equipment Check', 'Verify all equipment is ready and functional', 'equipment', 3, 2, 1, true, 1),
-    (p_tenant_id, 'Equipment Transport', 'Arrange equipment transport to venue', 'logistics', 2, 1, 0, false, 2),
-
-    -- Staffing category
-    (p_tenant_id, 'Staff Assignment', 'Assign staff members to event', 'staffing', 14, 7, 3, true, 3),
-    (p_tenant_id, 'Staff Notification', 'Send event details to assigned staff', 'staffing', 3, 2, 1, true, 4),
-    (p_tenant_id, 'Staff Briefing', 'Conduct pre-event briefing with staff', 'staffing', 1, 0, 0, false, 5),
-
-    -- Logistics category
-    (p_tenant_id, 'Logistics Planning', 'Plan event logistics and timeline', 'logistics', 14, 7, 3, true, 6),
-    (p_tenant_id, 'Vendor Coordination', 'Coordinate with external vendors', 'logistics', 7, 3, 1, false, 7),
-
-    -- Venue category
-    (p_tenant_id, 'Venue Confirmation', 'Confirm venue details and access', 'venue', 7, 3, 1, true, 8),
-    (p_tenant_id, 'Load-In Planning', 'Plan load-in time and logistics', 'venue', 3, 2, 1, false, 9),
-
-    -- Setup category
-    (p_tenant_id, 'Booth Setup', 'Set up booth and equipment on-site', 'setup', 0, 0, 0, true, 10),
-    (p_tenant_id, 'Software Configuration', 'Configure event software and settings', 'setup', 2, 1, 0, false, 11),
-    (p_tenant_id, 'Final Walkthrough', 'Complete final setup walkthrough', 'setup', 0, 0, 0, false, 12)
-  ON CONFLICT (tenant_id, name) DO NOTHING;
-END;
-$$ LANGUAGE plpgsql;
-
-COMMENT ON FUNCTION create_default_operations_types IS 'Creates standard operations types for a new tenant';
-
--- ============================================================================
 -- FUNCTION: Calculate operations deadline
 -- Purpose: Calculate deadline based on event date and due_date_days
 -- ============================================================================
@@ -203,17 +151,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION calculate_operations_deadline IS 'Calculate operations deadline based on event date and due date days';
 
 -- ============================================================================
--- SEED: Create default operations types for existing tenants
--- Purpose: Bootstrap existing tenants with default types
+-- NOTE: Default operations types are seeded via API when tenant first
+-- accesses the operations settings page, not via database trigger.
+-- This follows the pattern established by other tenant-specific settings.
 -- ============================================================================
-
-DO $$
-DECLARE
-  tenant_record RECORD;
-BEGIN
-  FOR tenant_record IN SELECT id FROM tenants LOOP
-    PERFORM create_default_operations_types(tenant_record.id);
-  END LOOP;
-
-  RAISE NOTICE 'Default operations types created for all existing tenants';
-END $$;

@@ -310,6 +310,7 @@ export default function OperationsSettingsPage() {
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
         <h4 className="font-semibold text-amber-900 mb-2">How Operations Types Work</h4>
         <ul className="text-sm text-amber-800 space-y-1">
+          <li>• <strong>Default types</strong> are automatically created on first visit - edit or delete them as needed</li>
           <li>• <strong>Auto-added types</strong> are automatically added to every new event</li>
           <li>• <strong>Categories</strong> help organize tasks: Equipment, Staffing, Logistics, Venue, Setup</li>
           <li>• <strong>Due Date:</strong> When task must be completed by (days before event)</li>
