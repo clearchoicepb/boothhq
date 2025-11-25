@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS operations_item_types (
 
   CONSTRAINT unique_ops_type_per_tenant UNIQUE(tenant_id, name),
   CONSTRAINT check_ops_date_order CHECK (
-    due_date_days > urgent_threshold_days
-    AND urgent_threshold_days > missed_deadline_days
+    due_date_days >= urgent_threshold_days
+    AND urgent_threshold_days >= missed_deadline_days
     AND missed_deadline_days >= 0
   )
 );

@@ -5,15 +5,11 @@
  * PUT    - Update operations type
  * DELETE - Delete operations type
  *
+ * Follows the same pattern as /api/design/types/[id] for consistency.
  * Uses tenant-helpers for proper multi-tenant database isolation.
  */
 
-import {
-  getTenantContext,
-  updateWithTenantId,
-  deleteWithTenantId,
-  isErrorResponse
-} from '@/lib/tenant-helpers'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
 
 // GET - Fetch single operations type
@@ -22,14 +18,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const context = await getTenantContext()
-  if (isErrorResponse(context)) return context
+  if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId } = context
 
   try {
     const { id } = await params
     const { data, error } = await supabase
-      .from('operations_item_types')
+      .from('operations_item_types' as any)
       .select('*')
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
@@ -50,20 +46,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const context = await getTenantContext()
-  if (isErrorResponse(context)) return context
+  if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  const { supabase, dataSourceTenantId } = context
 
   try {
     const { id } = await params
     const body = await request.json()
 
-    // Use helper for proper tenant isolation and audit trail
-    const { data, error } = await updateWithTenantId(
-      supabase,
-      'operations_item_types' as any, // Type assertion needed for new table
-      id,
-      {
+    // Use direct supabase update (matches design API pattern)
+    const { data, error } = await supabase
+      .from('operations_item_types' as any)
+      .update({
         name: body.name,
         description: body.description,
         category: body.category,
@@ -73,10 +67,11 @@ export async function PUT(
         is_auto_added: body.is_auto_added,
         is_active: body.is_active,
         display_order: body.display_order
-      },
-      dataSourceTenantId,
-      session.user.id
-    )
+      })
+      .eq('id', id)
+      .eq('tenant_id', dataSourceTenantId)
+      .select()
+      .single()
 
     if (error) throw error
 
@@ -93,20 +88,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const context = await getTenantContext()
-  if (isErrorResponse(context)) return context
+  if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId } = context
 
   try {
     const { id } = await params
-
-    // Use helper for proper tenant isolation
-    const { error } = await deleteWithTenantId(
-      supabase,
-      'operations_item_types' as any, // Type assertion needed for new table
-      id,
-      dataSourceTenantId
-    )
+    const { error } = await supabase
+      .from('operations_item_types' as any)
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) throw error
 

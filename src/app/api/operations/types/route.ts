@@ -8,11 +8,7 @@
  * Uses tenant-helpers for proper multi-tenant database isolation.
  */
 
-import {
-  getTenantContext,
-  insertWithTenantId,
-  isErrorResponse
-} from '@/lib/tenant-helpers'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
 
 /**
@@ -170,7 +166,7 @@ async function seedDefaultTypesIfNeeded(
 // GET - Fetch all operations types for tenant
 export async function GET() {
   const context = await getTenantContext()
-  if (isErrorResponse(context)) return context
+  if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId } = context
 
@@ -180,7 +176,7 @@ export async function GET() {
 
     // Fetch all types for tenant
     const { data, error } = await supabase
-      .from('operations_item_types')
+      .from('operations_item_types' as any)
       .select('*')
       .eq('tenant_id', dataSourceTenantId)
       .order('display_order')
@@ -197,18 +193,17 @@ export async function GET() {
 // POST - Create new operations type
 export async function POST(request: Request) {
   const context = await getTenantContext()
-  if (isErrorResponse(context)) return context
+  if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  const { supabase, dataSourceTenantId } = context
 
   try {
     const body = await request.json()
 
-    // Use helper for proper tenant isolation and audit trail
-    const { data, error } = await insertWithTenantId(
-      supabase,
-      'operations_item_types' as any, // Type assertion needed for new table
-      {
+    // Use direct supabase insert (matches design API pattern)
+    const { data, error } = await supabase
+      .from('operations_item_types' as any)
+      .insert({
         name: body.name,
         description: body.description || null,
         category: body.category || 'other',
@@ -217,11 +212,11 @@ export async function POST(request: Request) {
         missed_deadline_days: body.missed_deadline_days ?? 1,
         is_auto_added: body.is_auto_added ?? false,
         is_active: body.is_active ?? true,
-        display_order: body.display_order ?? 0
-      },
-      dataSourceTenantId,
-      session.user.id
-    )
+        display_order: body.display_order ?? 0,
+        tenant_id: dataSourceTenantId
+      })
+      .select()
+      .single()
 
     if (error) throw error
 
