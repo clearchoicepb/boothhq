@@ -32,6 +32,18 @@ interface DesignItemType {
   client_approval_buffer_days: number
 }
 
+interface OperationsItemType {
+  id: string
+  name: string
+  description: string | null
+  category: 'equipment' | 'staffing' | 'logistics' | 'venue' | 'setup' | 'other'
+  due_date_days: number
+  urgent_threshold_days: number
+  missed_deadline_days: number
+  is_auto_added: boolean
+  is_active: boolean
+}
+
 interface UserOption {
   id: string
   first_name: string | null
@@ -49,8 +61,8 @@ interface ActionCardProps {
 
 export default function ActionCard({ action, index, onUpdate, onDelete }: ActionCardProps) {
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([])
-  const [opsTemplates, setOpsTemplates] = useState<TaskTemplate[]>([])
   const [designItemTypes, setDesignItemTypes] = useState<DesignItemType[]>([])
+  const [opsItemTypes, setOpsItemTypes] = useState<OperationsItemType[]>([])
   const [users, setUsers] = useState<UserOption[]>([])
   const [designers, setDesigners] = useState<UserOption[]>([])
   const [opsTeam, setOpsTeam] = useState<UserOption[]>([])
@@ -68,14 +80,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       const templatesRes = await fetch('/api/task-templates')
       if (templatesRes.ok) {
         const templates = await templatesRes.json()
-        const allTemplates = Array.isArray(templates) ? templates : []
-        setTaskTemplates(allTemplates)
-
-        // Filter operations-specific templates
-        setOpsTemplates(allTemplates.filter(t =>
-          t.department?.toLowerCase().includes('operations') ||
-          t.department?.toLowerCase().includes('ops')
-        ))
+        setTaskTemplates(Array.isArray(templates) ? templates : [])
       }
 
       // Fetch design item types
@@ -85,17 +90,21 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
 
       if (designTypesRes.ok) {
         const designTypesData = await designTypesRes.json()
-        console.log('[ActionCard] Raw design types data:', designTypesData)
-
-        // API returns { types: [...] }
         const types = designTypesData.types || designTypesData.designTypes || designTypesData
-        console.log('[ActionCard] Extracted design types:', types)
-        console.log('[ActionCard] Is array?', Array.isArray(types))
-        console.log('[ActionCard] Count:', types?.length)
-
         setDesignItemTypes(Array.isArray(types) ? types : [])
       } else {
         console.error('[ActionCard] Failed to fetch design types:', await designTypesRes.text())
+      }
+
+      // Fetch operations item types
+      console.log('[ActionCard] Fetching operations item types...')
+      const opsTypesRes = await fetch('/api/operations/types')
+      if (opsTypesRes.ok) {
+        const opsTypesData = await opsTypesRes.json()
+        const types = opsTypesData.types || opsTypesData
+        setOpsItemTypes(Array.isArray(types) ? types.filter((t: OperationsItemType) => t.is_active) : [])
+      } else {
+        console.error('[ActionCard] Failed to fetch operations types:', await opsTypesRes.text())
       }
 
       // Fetch all users
@@ -117,8 +126,8 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
     } catch (error) {
       console.error('Error fetching data:', error)
       setTaskTemplates([])
-      setOpsTemplates([])
       setDesignItemTypes([])
+      setOpsItemTypes([])
       setUsers([])
       setDesigners([])
       setOpsTeam([])
@@ -129,6 +138,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
 
   const selectedTemplate = taskTemplates.find(t => t.id === action.taskTemplateId)
   const selectedDesignItemType = designItemTypes.find(d => d.id === action.designItemTypeId)
+  const selectedOpsItemType = opsItemTypes.find(o => o.id === action.operationsItemTypeId)
   const selectedUser = users.find(u => u.id === action.assignedToUserId)
 
   // Action type metadata
@@ -150,8 +160,8 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       color: 'purple',
       department: 'Design Department',
     },
-    create_ops_task: {
-      label: 'Create Operations Task',
+    create_ops_item: {
+      label: 'Create Operations Item',
       icon: Briefcase,
       color: 'amber',
       department: 'Operations Department',
@@ -214,6 +224,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                   actionType: newType,
                   taskTemplateId: null,
                   designItemTypeId: null,
+                  operationsItemTypeId: null,
                   assignedToUserId: null,
                 })
               }}
@@ -226,7 +237,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                 <option value="create_design_item">Create Design Item</option>
               </optgroup>
               <optgroup label="Operations Department">
-                <option value="create_ops_task">Create Operations Task</option>
+                <option value="create_ops_item">Create Operations Item</option>
               </optgroup>
               {/* Future departments (grayed out) */}
               <optgroup label="Coming Soon" disabled>
@@ -418,48 +429,33 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
             </>
           )}
 
-          {action.actionType === 'create_ops_task' && (
+          {action.actionType === 'create_ops_item' && (
             <>
-              {/* Task Template Selection for Operations */}
+              {/* Operations Item Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Task Template *
+                  Operations Item Type *
                 </label>
                 <select
-                  value={action.taskTemplateId || ''}
-                  onChange={(e) => onUpdate({ taskTemplateId: e.target.value || null })}
+                  value={action.operationsItemTypeId || ''}
+                  onChange={(e) => onUpdate({ operationsItemTypeId: e.target.value || null })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
                 >
-                  <option value="">Select a task template...</option>
-                  {/* Show Operations templates first if available */}
-                  {opsTemplates.length > 0 ? (
-                    <>
-                      <optgroup label="Operations Templates">
-                        {opsTemplates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.name} - {template.default_title}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="All Templates">
-                        {taskTemplates.filter(t => !opsTemplates.find(ot => ot.id === t.id)).map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.name} - {template.default_title}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </>
-                  ) : (
-                    taskTemplates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name} - {template.default_title}
+                  <option value="">Select an operations type...</option>
+                  {opsItemTypes.length > 0 ? (
+                    opsItemTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name} ({type.due_date_days} days before event)
                       </option>
                     ))
+                  ) : (
+                    <option disabled>No operations types configured. Go to Settings → Operations to add them.</option>
                   )}
                 </select>
-                {selectedTemplate && (
+                {selectedOpsItemType && (
                   <div className="mt-2 text-xs text-gray-500">
-                    Department: {selectedTemplate.department} | Default: {selectedTemplate.default_title}
+                    Category: {selectedOpsItemType.category} | Due: {selectedOpsItemType.due_date_days} days before event
+                    {selectedOpsItemType.description && <div className="mt-1">{selectedOpsItemType.description}</div>}
                   </div>
                 )}
               </div>
@@ -508,24 +504,24 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                 )}
               </div>
 
-              {/* Operations Task Info */}
+              {/* Operations Info */}
               <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-start">
                   <Info className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
                   <div className="text-xs text-amber-800 space-y-1">
-                    <div><strong>Operations tasks</strong> are automatically created when events are created.</div>
-                    <div>Due dates will be calculated relative to the event date based on the template settings.</div>
+                    <div><strong>Operations items</strong> are automatically created when events are created.</div>
+                    <div>Configure operations types in <strong>Settings → Operations</strong>.</div>
                   </div>
                 </div>
               </div>
 
-              {/* Operations Task Preview */}
-              {action.taskTemplateId && (
+              {/* Operations Item Preview */}
+              {action.operationsItemTypeId && selectedOpsItemType && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start">
                     <Briefcase className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
                     <div className="text-xs text-amber-800">
-                      <strong>Will create:</strong> "{selectedTemplate?.default_title}" operations task
+                      <strong>Will create:</strong> "{selectedOpsItemType.name}" operations item
                       {action.assignedToUserId && selectedUser && (
                         <> and assign to {selectedUser.first_name && selectedUser.last_name
                           ? `${selectedUser.first_name} ${selectedUser.last_name}`
@@ -533,7 +529,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       )}
                       {!action.assignedToUserId && <> (unassigned)</>}
                       <div className="mt-1 pt-1 border-t border-amber-300 text-xs text-amber-700">
-                        ⏱ Due date will be calculated from event date
+                        ⏱ Due {selectedOpsItemType.due_date_days} days before event
                       </div>
                     </div>
                   </div>

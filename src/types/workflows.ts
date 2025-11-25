@@ -32,7 +32,7 @@ export type WorkflowTriggerType = 'event_created'
  * Department-based actions:
  * - create_task: General tasks (simple to-dos)
  * - create_design_item: Design department (timeline-based items)
- * - create_ops_task: Operations department tasks
+ * - create_ops_item: Operations department (timeline-based items)
  *
  * Future action types:
  * - create_sales_task: Sales department
@@ -42,7 +42,7 @@ export type WorkflowTriggerType = 'event_created'
  * - update_field: Field updates
  * - call_webhook: External integrations
  */
-export type WorkflowActionType = 'create_task' | 'create_design_item' | 'create_ops_task'
+export type WorkflowActionType = 'create_task' | 'create_design_item' | 'create_ops_item'
 
 /**
  * Workflow execution status
@@ -89,12 +89,12 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
     department: 'Design',
     requiresFields: ['design_item_type_id'],
   },
-  create_ops_task: {
-    label: 'Create Operations Task',
-    description: 'Create an operations task with event-relative timing',
+  create_ops_item: {
+    label: 'Create Operations Item',
+    description: 'Create an operations item with timeline calculations',
     icon: 'briefcase',
     department: 'Operations',
-    requiresFields: ['task_template_id'],
+    requiresFields: ['operations_item_type_id'],
   },
 }
 
@@ -131,6 +131,7 @@ export interface WorkflowAction {
   task_template_id: string | null
   assigned_to_user_id: string | null
   design_item_type_id: string | null
+  operations_item_type_id: string | null
   config: Record<string, any>
   created_at: string
   updated_at: string
@@ -274,6 +275,7 @@ export interface WorkflowActionInsert {
   execution_order: number
   task_template_id?: string | null
   design_item_type_id?: string | null
+  operations_item_type_id?: string | null
   assigned_to_user_id?: string | null
   config?: Record<string, any>
 }
@@ -285,6 +287,7 @@ export interface WorkflowActionUpdate {
   execution_order?: number
   task_template_id?: string | null
   design_item_type_id?: string | null
+  operations_item_type_id?: string | null
   assigned_to_user_id?: string | null
   config?: Record<string, any>
 }
@@ -345,6 +348,7 @@ export interface WorkflowBuilderAction {
   actionType: WorkflowActionType
   taskTemplateId: string | null
   designItemTypeId: string | null
+  operationsItemTypeId: string | null
   assignedToUserId: string | null
   config: Record<string, any>
 }
@@ -438,6 +442,7 @@ export interface ActionExecutionResult {
   }
   createdTaskId?: string // For create_task actions
   createdDesignItemId?: string // For create_design_item actions
+  createdOpsItemId?: string // For create_ops_item actions
   output?: any // Flexible output for future action types
 }
 
@@ -454,6 +459,7 @@ export interface WorkflowExecutionResult {
   actionsFailed: number
   createdTaskIds: string[]
   createdDesignItemIds: string[]
+  createdOpsItemIds: string[]
   actionResults: ActionExecutionResult[]
   error?: {
     message: string
