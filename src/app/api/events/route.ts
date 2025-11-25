@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
         
         const { data: staffData, error: staffError } = await supabase
           .from('event_staff_assignments')
-          .select('id, user_id, event_id, event_date_id, role, staff_role_id')
+          .select('id, user_id, event_id, event_date_id, staff_role_id, notes, start_time, end_time')
           .eq('tenant_id', dataSourceTenantId)  // CRITICAL: Filter by tenant!
           .in('event_id', eventIds)
 
