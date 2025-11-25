@@ -151,6 +151,21 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION calculate_operations_deadline IS 'Calculate operations deadline based on event date and due date days';
 
 -- ============================================================================
+-- PERMISSIONS
+-- Purpose: Grant access to Supabase roles
+-- ============================================================================
+
+-- operations_item_types permissions
+GRANT ALL ON operations_item_types TO service_role;
+GRANT ALL ON operations_item_types TO authenticated;
+GRANT ALL ON operations_item_types TO anon;
+
+-- event_operations_items permissions
+GRANT ALL ON event_operations_items TO service_role;
+GRANT ALL ON event_operations_items TO authenticated;
+GRANT ALL ON event_operations_items TO anon;
+
+-- ============================================================================
 -- NOTE: Default operations types are seeded via API when tenant first
 -- accesses the operations settings page, not via database trigger.
 -- This follows the pattern established by other tenant-specific settings.

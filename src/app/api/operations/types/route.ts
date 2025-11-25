@@ -131,14 +131,28 @@ async function seedDefaultTypesIfNeeded(
   supabase: any,
   dataSourceTenantId: string
 ): Promise<void> {
+  console.log('[Operations DEBUG] seedDefaultTypesIfNeeded called with tenantId:', dataSourceTenantId)
+
   // Check if tenant already has operations types
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from('operations_item_types')
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', dataSourceTenantId)
 
+  console.log('[Operations DEBUG] Count check result:', { count, countError })
+
+  if (countError) {
+    console.error('[Operations DEBUG] Error checking count - table may not exist:', {
+      message: countError.message,
+      code: countError.code,
+      details: countError.details,
+      hint: countError.hint
+    })
+    // Table might not exist - try to seed anyway
+  }
+
   if (count && count > 0) {
-    // Tenant already has types, don't seed
+    console.log('[Operations DEBUG] Tenant already has', count, 'types, skipping seed')
     return
   }
 
@@ -151,28 +165,51 @@ async function seedDefaultTypesIfNeeded(
     is_active: true
   }))
 
-  const { error } = await supabase
+  console.log('[Operations DEBUG] Attempting to insert', typesToInsert.length, 'default types')
+  console.log('[Operations DEBUG] First type to insert:', JSON.stringify(typesToInsert[0], null, 2))
+
+  const { data: insertedData, error } = await supabase
     .from('operations_item_types')
     .insert(typesToInsert)
+    .select()
 
   if (error) {
-    console.error('[Operations] Error seeding default types:', error)
+    console.error('[Operations DEBUG] Error seeding default types:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      fullError: JSON.stringify(error, null, 2)
+    })
     // Don't throw - let the request continue even if seeding fails
   } else {
     console.log(`[Operations] Successfully seeded ${typesToInsert.length} default types`)
+    console.log('[Operations DEBUG] Inserted data count:', insertedData?.length)
   }
 }
 
 // GET - Fetch all operations types for tenant
 export async function GET() {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+  console.log('[Operations DEBUG] GET /api/operations/types called')
 
-  const { supabase, dataSourceTenantId } = context
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) {
+    console.log('[Operations DEBUG] getTenantContext returned error response')
+    return context
+  }
+
+  const { supabase, dataSourceTenantId, tenantId } = context
+  console.log('[Operations DEBUG] Tenant context:', {
+    tenantId,
+    dataSourceTenantId,
+    supabaseExists: !!supabase
+  })
 
   try {
     // Seed default types if this is first access
     await seedDefaultTypesIfNeeded(supabase, dataSourceTenantId)
+
+    console.log('[Operations DEBUG] Fetching all types for tenant')
 
     // Fetch all types for tenant
     const { data, error } = await supabase
@@ -181,48 +218,86 @@ export async function GET() {
       .eq('tenant_id', dataSourceTenantId)
       .order('display_order')
 
+    console.log('[Operations DEBUG] Fetch result:', {
+      dataCount: data?.length,
+      error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null
+    })
+
     if (error) throw error
 
+    console.log('[Operations DEBUG] Returning', data?.length || 0, 'types')
     return NextResponse.json({ types: data || [] })
   } catch (error: any) {
-    console.error('Error fetching operations types:', error)
+    console.error('[Operations DEBUG] GET Error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
 // POST - Create new operations type
 export async function POST(request: Request) {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+  console.log('[Operations DEBUG] POST /api/operations/types called')
 
-  const { supabase, dataSourceTenantId } = context
+  const context = await getTenantContext()
+  if (context instanceof NextResponse) {
+    console.log('[Operations DEBUG] getTenantContext returned error response')
+    return context
+  }
+
+  const { supabase, dataSourceTenantId, tenantId } = context
+  console.log('[Operations DEBUG] POST Tenant context:', {
+    tenantId,
+    dataSourceTenantId,
+    supabaseExists: !!supabase
+  })
 
   try {
     const body = await request.json()
+    console.log('[Operations DEBUG] POST body received:', JSON.stringify(body, null, 2))
+
+    const insertData = {
+      name: body.name,
+      description: body.description || null,
+      category: body.category || 'other',
+      due_date_days: body.due_date_days ?? 7,
+      urgent_threshold_days: body.urgent_threshold_days ?? 3,
+      missed_deadline_days: body.missed_deadline_days ?? 1,
+      is_auto_added: body.is_auto_added ?? false,
+      is_active: body.is_active ?? true,
+      display_order: body.display_order ?? 0,
+      tenant_id: dataSourceTenantId
+    }
+    console.log('[Operations DEBUG] Insert data prepared:', JSON.stringify(insertData, null, 2))
 
     // Use direct supabase insert (matches design API pattern)
     const { data, error } = await supabase
       .from('operations_item_types' as any)
-      .insert({
-        name: body.name,
-        description: body.description || null,
-        category: body.category || 'other',
-        due_date_days: body.due_date_days ?? 7,
-        urgent_threshold_days: body.urgent_threshold_days ?? 3,
-        missed_deadline_days: body.missed_deadline_days ?? 1,
-        is_auto_added: body.is_auto_added ?? false,
-        is_active: body.is_active ?? true,
-        display_order: body.display_order ?? 0,
-        tenant_id: dataSourceTenantId
-      })
+      .insert(insertData)
       .select()
       .single()
 
+    console.log('[Operations DEBUG] POST result:', {
+      dataExists: !!data,
+      error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null
+    })
+
     if (error) throw error
 
+    console.log('[Operations DEBUG] Successfully created type:', data?.id)
     return NextResponse.json({ type: data })
   } catch (error: any) {
-    console.error('Error creating operations type:', error)
+    console.error('[Operations DEBUG] POST Error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
