@@ -116,27 +116,54 @@ export async function GET(request: NextRequest) {
     let staffAssignmentsByEvent: Record<string, any[]> = {}
     if (eventIds.length > 0) {
       try {
-        console.log('[EVENTS API] Fetching staff assignments for', eventIds.length, 'events, tenant:', dataSourceTenantId)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('🔍 [EVENTS API] STAFF ASSIGNMENTS FETCH')
+        console.log('Event IDs:', eventIds.length, 'events')
+        console.log('Tenant ID:', dataSourceTenantId)
+        
         const { data: staffData, error: staffError } = await supabase
           .from('event_staff_assignments')
           .select('id, user_id, event_id, event_date_id, role, staff_role_id')
           .eq('tenant_id', dataSourceTenantId)  // CRITICAL: Filter by tenant!
           .in('event_id', eventIds)
 
-        console.log('[EVENTS API] Staff assignments fetched:', staffData?.length || 0, 'assignments')
+        console.log('Total assignments fetched:', staffData?.length || 0)
         if (staffError) {
-          console.error('[EVENTS API] Staff assignments error:', staffError)
+          console.error('❌ Staff assignments error:', staffError)
         }
 
         if (!staffError && staffData) {
+          // Log all unique user IDs found
+          const uniqueUserIds = [...new Set(staffData.map(a => a.user_id))]
+          console.log('Unique user IDs in assignments:', uniqueUserIds)
+          
+          // Log sample assignments
+          if (staffData.length > 0) {
+            console.log('Sample assignment:', {
+              id: staffData[0].id,
+              user_id: staffData[0].user_id,
+              event_id: staffData[0].event_id,
+              role: staffData[0].role
+            })
+          }
+          
           staffData.forEach(assignment => {
             if (!staffAssignmentsByEvent[assignment.event_id]) {
               staffAssignmentsByEvent[assignment.event_id] = []
             }
             staffAssignmentsByEvent[assignment.event_id].push(assignment)
           })
-          console.log('[EVENTS API] Staff assignments grouped by event:', Object.keys(staffAssignmentsByEvent).length, 'events have staff')
+          console.log('Events with staff:', Object.keys(staffAssignmentsByEvent).length)
+          console.log('Events with assignments:', Object.entries(staffAssignmentsByEvent).map(([eventId, assignments]) => ({
+            eventId,
+            assignmentCount: assignments.length,
+            userIds: assignments.map(a => a.user_id)
+          })))
+        } else if (staffData?.length === 0) {
+          console.warn('⚠️ No staff assignments found in database!')
+          console.log('Make sure staff are assigned to events in the UI.')
         }
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       } catch (staffErr) {
         console.warn('[EVENTS API] Could not fetch staff assignments:', staffErr)
         // Continue without staff assignments rather than failing

@@ -314,9 +314,20 @@ export function useEventsFilters({
 
       // Assigned To filter
       if (filters.assignedToFilter === 'my_events') {
+        // Debug logging
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('🔍 [MY EVENTS FILTER DEBUG]')
+        console.log('Current User ID:', currentUserId)
+        console.log('Event ID:', event.id)
+        console.log('Event Title:', event.title)
+        console.log('Staff Assignments:', event.event_staff_assignments)
+        console.log('Staff Assignments Length:', event.event_staff_assignments?.length || 0)
+        
         // Only filter if currentUserId is available and event has staff assignments
         if (!currentUserId) {
-          console.warn('[EVENT FILTER] My Events selected but no currentUserId available')
+          console.warn('⚠️ [MY EVENTS FILTER] No currentUserId available!')
+          console.log('Session must provide user.id to filter "My Events"')
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
           // If no user ID, show all events when "My Events" is selected (fallback)
           return true
         }
@@ -324,15 +335,20 @@ export function useEventsFilters({
         // Check if current user is assigned to this event
         if (!event.event_staff_assignments || event.event_staff_assignments.length === 0) {
           // No staff assignments means user is not assigned
-          console.log('[EVENT FILTER] Event', event.id, 'has no staff assignments')
+          console.log('❌ Event has NO staff assignments - FILTERED OUT')
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
           return false
         }
         
         const isAssigned = event.event_staff_assignments.some(
-          assignment => assignment.user_id === currentUserId
+          assignment => {
+            console.log('  Checking assignment:', assignment.user_id, '===', currentUserId, '?', assignment.user_id === currentUserId)
+            return assignment.user_id === currentUserId
+          }
         )
         
-        console.log('[EVENT FILTER] Event', event.id, 'isAssigned:', isAssigned, 'currentUserId:', currentUserId, 'assignments:', event.event_staff_assignments.map(a => a.user_id))
+        console.log(isAssigned ? '✅ User IS assigned - SHOW EVENT' : '❌ User NOT assigned - FILTER OUT')
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
         
         if (!isAssigned) {
           return false
