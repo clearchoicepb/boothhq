@@ -347,6 +347,146 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 }
 
 /**
+ * Execute a 'create_ops_task' action
+ * Creates an operations task from a template with event-relative timing
+ * Similar to create_task but specifically for operations department with
+ * automatic due date calculation relative to the event date
+ */
+const executeCreateOpsTaskAction: ActionExecutor = async (
+  action,
+  context,
+  supabase,
+  dataSourceTenantId
+) => {
+  const result: ActionExecutionResult = {
+    success: false,
+    actionId: action.id,
+    actionType: 'create_ops_task',
+  }
+
+  try {
+    // Debug: Log action data
+    console.log('[WorkflowEngine] create_ops_task action:', {
+      action_id: action.id,
+      task_template_id: action.task_template_id,
+      assigned_to_user_id: action.assigned_to_user_id,
+      workflow_id: action.workflow_id,
+    })
+
+    // Validate required fields
+    if (!action.task_template_id) {
+      throw new Error('create_ops_task action requires task_template_id')
+    }
+
+    // Fetch task template
+    const { data: template, error: templateError } = await supabase
+      .from('task_templates')
+      .select('*')
+      .eq('id', action.task_template_id)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (templateError || !template) {
+      throw new Error(`Task template not found: ${action.task_template_id}`)
+    }
+
+    // Get event data for due date calculation
+    const event = context.triggerEntity.data
+    const eventDate = event.start_date || event.event_date
+
+    console.log('[WorkflowEngine] 🔍 Ops Task Date Debug:', {
+      event_id: event.id,
+      start_date: event.start_date,
+      event_date: event.event_date,
+      eventDate_selected: eventDate,
+      template_due_in_days: template.default_due_in_days,
+    })
+
+    // Calculate due date - either relative to event or from today
+    let dueDate: string | null = null
+    if (template.default_due_in_days !== null && template.default_due_in_days !== undefined) {
+      if (eventDate) {
+        // Calculate relative to event date (days BEFORE the event)
+        const eventDateObj = typeof eventDate === 'string'
+          ? (eventDate.includes('T') ? new Date(eventDate) : new Date(eventDate + 'T00:00:00'))
+          : new Date(eventDate)
+
+        const due = new Date(eventDateObj)
+        due.setDate(due.getDate() - template.default_due_in_days)
+        dueDate = due.toISOString().split('T')[0]
+
+        console.log('[WorkflowEngine] Calculated ops task due date relative to event:', {
+          event_date: eventDateObj.toISOString(),
+          days_before: template.default_due_in_days,
+          due_date: dueDate,
+        })
+      } else {
+        // Fallback: calculate from today
+        const due = new Date()
+        due.setDate(due.getDate() + template.default_due_in_days)
+        dueDate = due.toISOString().split('T')[0]
+
+        console.log('[WorkflowEngine] Calculated ops task due date from today:', dueDate)
+      }
+    }
+
+    // Calculate priority based on how close the due date is
+    let priority = template.default_priority || 'medium'
+    if (dueDate) {
+      const now = new Date()
+      const dueDateTime = new Date(dueDate)
+      const daysUntilDue = Math.ceil((dueDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+      if (daysUntilDue <= 2) {
+        priority = 'urgent'
+      } else if (daysUntilDue <= 7) {
+        priority = 'high'
+      }
+    }
+
+    // Create operations task from template
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        title: template.default_title,
+        description: template.default_description,
+        priority: priority,
+        due_date: dueDate,
+        assigned_to: action.assigned_to_user_id || null,
+        created_by: context.userId || action.assigned_to_user_id,
+        status: 'pending',
+        entity_type: context.triggerEntity.type,
+        entity_id: context.triggerEntity.id,
+        department: 'operations',
+        task_type: template.task_type,
+        // Workflow tracking fields
+        auto_created: true,
+        workflow_id: action.workflow_id,
+      })
+      .select()
+      .single()
+
+    if (taskError || !task) {
+      throw new Error(`Failed to create operations task: ${taskError?.message || 'Unknown error'}`)
+    }
+
+    console.log(`[WorkflowEngine] Created operations task "${template.default_title}" (${task.id}) with due date ${dueDate}`)
+
+    result.success = true
+    result.createdTaskId = task.id
+
+    return result
+  } catch (error) {
+    result.error = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error,
+    }
+    return result
+  }
+}
+
+/**
  * Action executor registry
  * Maps action types to their executor functions
  * Add new action types here for extensibility
@@ -354,6 +494,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 const ACTION_EXECUTORS: Record<WorkflowActionType, ActionExecutor> = {
   create_task: executeCreateTaskAction,
   create_design_item: executeCreateDesignItemAction,
+  create_ops_task: executeCreateOpsTaskAction,
   // Future action types go here:
   // send_email: executeSendEmailAction,
   // send_notification: executeSendNotificationAction,
@@ -773,6 +914,38 @@ class WorkflowEngine {
         }
 
         // Assigned user is optional for design items (can be assigned later)
+        if (action.assigned_to_user_id) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', action.assigned_to_user_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!user) {
+            errors.push(`Action ${actionNum}: Assigned user does not exist`)
+          }
+        }
+      } else if (action.action_type === 'create_ops_task') {
+        // Validate task template for operations task
+        if (!action.task_template_id) {
+          errors.push(`Action ${actionNum}: Task template is required for operations tasks`)
+        } else {
+          const { data: template } = await supabase
+            .from('task_templates')
+            .select('id, enabled')
+            .eq('id', action.task_template_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!template) {
+            errors.push(`Action ${actionNum}: Task template does not exist`)
+          } else if (!template.enabled) {
+            warnings.push(`Action ${actionNum}: Task template is disabled`)
+          }
+        }
+
+        // Assigned user is optional for operations tasks (can be assigned later)
         if (action.assigned_to_user_id) {
           const { data: user } = await supabase
             .from('users')

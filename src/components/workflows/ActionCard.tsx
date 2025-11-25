@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Trash2, ClipboardCheck, Palette, User, Loader2, Info } from 'lucide-react'
+import { Trash2, ClipboardCheck, Palette, User, Loader2, Info, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { WorkflowBuilderAction, WorkflowActionType } from '@/types/workflows'
 
@@ -49,9 +49,11 @@ interface ActionCardProps {
 
 export default function ActionCard({ action, index, onUpdate, onDelete }: ActionCardProps) {
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([])
+  const [opsTemplates, setOpsTemplates] = useState<TaskTemplate[]>([])
   const [designItemTypes, setDesignItemTypes] = useState<DesignItemType[]>([])
   const [users, setUsers] = useState<UserOption[]>([])
   const [designers, setDesigners] = useState<UserOption[]>([])
+  const [opsTeam, setOpsTeam] = useState<UserOption[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -61,29 +63,36 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
   const fetchData = async () => {
     try {
       setLoading(true)
-      
+
       // Fetch task templates
       const templatesRes = await fetch('/api/task-templates')
       if (templatesRes.ok) {
         const templates = await templatesRes.json()
-        setTaskTemplates(Array.isArray(templates) ? templates : [])
+        const allTemplates = Array.isArray(templates) ? templates : []
+        setTaskTemplates(allTemplates)
+
+        // Filter operations-specific templates
+        setOpsTemplates(allTemplates.filter(t =>
+          t.department?.toLowerCase().includes('operations') ||
+          t.department?.toLowerCase().includes('ops')
+        ))
       }
 
       // Fetch design item types
       console.log('[ActionCard] Fetching design item types...')
       const designTypesRes = await fetch('/api/design/types')
       console.log('[ActionCard] Design types response status:', designTypesRes.status)
-      
+
       if (designTypesRes.ok) {
         const designTypesData = await designTypesRes.json()
         console.log('[ActionCard] Raw design types data:', designTypesData)
-        
+
         // API returns { types: [...] }
         const types = designTypesData.types || designTypesData.designTypes || designTypesData
         console.log('[ActionCard] Extracted design types:', types)
         console.log('[ActionCard] Is array?', Array.isArray(types))
         console.log('[ActionCard] Count:', types?.length)
-        
+
         setDesignItemTypes(Array.isArray(types) ? types : [])
       } else {
         console.error('[ActionCard] Failed to fetch design types:', await designTypesRes.text())
@@ -94,17 +103,25 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       if (usersRes.ok) {
         const usersData = await usersRes.json()
         setUsers(Array.isArray(usersData) ? usersData : [])
-        
-        // Filter designers (users with 'design' department)
+
+        // Filter users by department
         const allUsers = Array.isArray(usersData) ? usersData : []
+        // Filter designers (users with 'design' department)
         setDesigners(allUsers.filter(u => u.department?.toLowerCase().includes('design')))
+        // Filter operations team (users with 'operations' or 'ops' department)
+        setOpsTeam(allUsers.filter(u =>
+          u.department?.toLowerCase().includes('operations') ||
+          u.department?.toLowerCase().includes('ops')
+        ))
       }
     } catch (error) {
       console.error('Error fetching data:', error)
       setTaskTemplates([])
+      setOpsTemplates([])
       setDesignItemTypes([])
       setUsers([])
       setDesigners([])
+      setOpsTeam([])
     } finally {
       setLoading(false)
     }
@@ -132,6 +149,12 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       icon: Palette,
       color: 'purple',
       department: 'Design Department',
+    },
+    create_ops_task: {
+      label: 'Create Operations Task',
+      icon: Briefcase,
+      color: 'amber',
+      department: 'Operations Department',
     },
   }
 
@@ -202,10 +225,12 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
               <optgroup label="Design Department">
                 <option value="create_design_item">Create Design Item</option>
               </optgroup>
+              <optgroup label="Operations Department">
+                <option value="create_ops_task">Create Operations Task</option>
+              </optgroup>
               {/* Future departments (grayed out) */}
               <optgroup label="Coming Soon" disabled>
                 <option disabled>Sales Tasks</option>
-                <option disabled>Operations Tasks</option>
                 <option disabled>Accounting Tasks</option>
               </optgroup>
             </select>
@@ -376,7 +401,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                   <div className="flex items-start">
                     <Palette className="h-4 w-4 text-purple-600 mr-2 mt-0.5 flex-shrink-0" />
                     <div className="text-xs text-purple-800">
-                      <strong>Will create:</strong> "{selectedDesignItemType?.name}" design item 
+                      <strong>Will create:</strong> "{selectedDesignItemType?.name}" design item
                       {action.assignedToUserId && selectedUser && (
                         <> and assign to {selectedUser.first_name && selectedUser.last_name
                           ? `${selectedUser.first_name} ${selectedUser.last_name}`
@@ -385,6 +410,130 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       {!action.assignedToUserId && <> (unassigned)</>}
                       <div className="mt-1 pt-1 border-t border-purple-300 text-xs text-purple-700">
                         ⏱ Timeline will be auto-calculated from event date
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {action.actionType === 'create_ops_task' && (
+            <>
+              {/* Task Template Selection for Operations */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Task Template *
+                </label>
+                <select
+                  value={action.taskTemplateId || ''}
+                  onChange={(e) => onUpdate({ taskTemplateId: e.target.value || null })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
+                >
+                  <option value="">Select a task template...</option>
+                  {/* Show Operations templates first if available */}
+                  {opsTemplates.length > 0 ? (
+                    <>
+                      <optgroup label="Operations Templates">
+                        {opsTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name} - {template.default_title}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="All Templates">
+                        {taskTemplates.filter(t => !opsTemplates.find(ot => ot.id === t.id)).map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name} - {template.default_title}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </>
+                  ) : (
+                    taskTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name} - {template.default_title}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {selectedTemplate && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Department: {selectedTemplate.department} | Default: {selectedTemplate.default_title}
+                  </div>
+                )}
+              </div>
+
+              {/* Operations Team Assignment (Optional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assign to Operations Team Member (Optional)
+                </label>
+                <select
+                  value={action.assignedToUserId || ''}
+                  onChange={(e) => onUpdate({ assignedToUserId: e.target.value || null })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
+                >
+                  <option value="">Unassigned (can be assigned later)</option>
+                  {opsTeam.length > 0 ? (
+                    opsTeam.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.first_name && member.last_name
+                          ? `${member.first_name} ${member.last_name}`
+                          : member.email}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No operations team members found (assign anyone below)</option>
+                  )}
+                  {/* Fallback: Show all users if no ops team members */}
+                  {opsTeam.length === 0 && users.length > 0 && (
+                    <optgroup label="All Users">
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.first_name && user.last_name
+                            ? `${user.first_name} ${user.last_name}`
+                            : user.email}
+                          {user.department && ` (${user.department})`}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+                {selectedUser && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    {selectedUser.email}
+                    {selectedUser.department && ` | Department: ${selectedUser.department}`}
+                  </div>
+                )}
+              </div>
+
+              {/* Operations Task Info */}
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start">
+                  <Info className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-amber-800 space-y-1">
+                    <div><strong>Operations tasks</strong> are automatically created when events are created.</div>
+                    <div>Due dates will be calculated relative to the event date based on the template settings.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Operations Task Preview */}
+              {action.taskTemplateId && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start">
+                    <Briefcase className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-amber-800">
+                      <strong>Will create:</strong> "{selectedTemplate?.default_title}" operations task
+                      {action.assignedToUserId && selectedUser && (
+                        <> and assign to {selectedUser.first_name && selectedUser.last_name
+                          ? `${selectedUser.first_name} ${selectedUser.last_name}`
+                          : selectedUser.email}</>
+                      )}
+                      {!action.assignedToUserId && <> (unassigned)</>}
+                      <div className="mt-1 pt-1 border-t border-amber-300 text-xs text-amber-700">
+                        ⏱ Due date will be calculated from event date
                       </div>
                     </div>
                   </div>

@@ -32,17 +32,17 @@ export type WorkflowTriggerType = 'event_created'
  * Department-based actions:
  * - create_task: General tasks (simple to-dos)
  * - create_design_item: Design department (timeline-based items)
- * 
+ * - create_ops_task: Operations department tasks
+ *
  * Future action types:
  * - create_sales_task: Sales department
- * - create_ops_task: Operations department
  * - create_accounting_task: Accounting department
  * - send_email: Email automation
  * - send_notification: In-app notifications
  * - update_field: Field updates
  * - call_webhook: External integrations
  */
-export type WorkflowActionType = 'create_task' | 'create_design_item'
+export type WorkflowActionType = 'create_task' | 'create_design_item' | 'create_ops_task'
 
 /**
  * Workflow execution status
@@ -88,6 +88,13 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
     icon: 'palette',
     department: 'Design',
     requiresFields: ['design_item_type_id'],
+  },
+  create_ops_task: {
+    label: 'Create Operations Task',
+    description: 'Create an operations task with event-relative timing',
+    icon: 'briefcase',
+    department: 'Operations',
+    requiresFields: ['task_template_id'],
   },
 }
 
