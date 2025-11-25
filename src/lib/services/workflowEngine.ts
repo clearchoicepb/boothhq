@@ -347,6 +347,164 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 }
 
 /**
+ * Execute a 'create_ops_item' action
+ * Creates an operations item with automatic timeline calculations
+ * Mirrors the create_design_item action for the Operations department
+ */
+const executeCreateOpsItemAction: ActionExecutor = async (
+  action,
+  context,
+  supabase,
+  dataSourceTenantId
+) => {
+  const result: ActionExecutionResult = {
+    success: false,
+    actionId: action.id,
+    actionType: 'create_ops_item',
+  }
+
+  try {
+    // Debug: Log action data
+    console.log('[WorkflowEngine] create_ops_item action:', {
+      action_id: action.id,
+      operations_item_type_id: action.operations_item_type_id,
+      assigned_to_user_id: action.assigned_to_user_id,
+      workflow_id: action.workflow_id,
+    })
+
+    // Validate required fields
+    if (!action.operations_item_type_id) {
+      throw new Error('create_ops_item action requires operations_item_type_id')
+    }
+
+    // Fetch operations item type
+    const { data: opsItemType, error: opsItemTypeError } = await supabase
+      .from('operations_item_types')
+      .select('*')
+      .eq('id', action.operations_item_type_id)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
+    if (opsItemTypeError || !opsItemType) {
+      throw new Error(`Operations item type not found: ${action.operations_item_type_id}`)
+    }
+
+    // Get event data to calculate deadlines
+    const event = context.triggerEntity.data
+    const eventDate = event.start_date || event.event_date
+
+    console.log('[WorkflowEngine] 🔍 Ops Item Date Debug:', {
+      event_id: event.id,
+      start_date: event.start_date,
+      event_date: event.event_date,
+      eventDate_selected: eventDate,
+      due_date_days: opsItemType.due_date_days,
+    })
+
+    if (!eventDate) {
+      throw new Error('Event date is required for operations item timeline calculations')
+    }
+
+    // Parse event date
+    let eventDateObj: Date
+    if (typeof eventDate === 'string') {
+      eventDateObj = eventDate.includes('T')
+        ? new Date(eventDate)
+        : new Date(eventDate + 'T00:00:00')
+    } else {
+      eventDateObj = new Date(eventDate)
+    }
+
+    // Calculate due date (days before event)
+    const dueDate = new Date(eventDateObj)
+    dueDate.setDate(dueDate.getDate() - (opsItemType.due_date_days || 0))
+
+    // Format dates as YYYY-MM-DD
+    const formatDate = (date: Date) => date.toISOString().split('T')[0]
+
+    // Create operations item
+    const insertData = {
+      tenant_id: dataSourceTenantId,
+      event_id: context.triggerEntity.id,
+      operations_item_type_id: action.operations_item_type_id,
+      item_name: opsItemType.name,
+      description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
+      status: 'pending',
+      assigned_to_id: action.assigned_to_user_id,
+      due_date: formatDate(dueDate),
+      // Workflow tracking
+      auto_created: true,
+      workflow_id: action.workflow_id,
+    }
+
+    console.log('[WorkflowEngine] Inserting operations item:', insertData)
+
+    const { data: opsItem, error: opsItemError } = await supabase
+      .from('event_operations_items')
+      .insert(insertData)
+      .select()
+      .single()
+
+    if (opsItemError || !opsItem) {
+      throw new Error(`Failed to create operations item: ${opsItemError?.message || 'Unknown error'}`)
+    }
+
+    console.log(`[WorkflowEngine] Created operations item "${opsItemType.name}" (${opsItem.id}) with deadline ${formatDate(dueDate)}`)
+
+    // Create associated task for the operations team member
+    const taskName = `Ops: ${opsItemType.name}`
+    const now = new Date()
+    const daysUntilDeadline = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        entity_type: 'event',
+        entity_id: context.triggerEntity.id,
+        title: taskName,
+        description: `Complete ${opsItemType.name} for this event. Due by ${dueDate.toLocaleDateString()}`,
+        due_date: formatDate(dueDate),
+        priority: daysUntilDeadline <= 3 ? 'urgent' : daysUntilDeadline <= 7 ? 'high' : 'medium',
+        status: 'pending',
+        department: 'operations',
+        assigned_to: action.assigned_to_user_id,
+        auto_created: true,
+        workflow_id: action.workflow_id
+      })
+      .select()
+      .single()
+
+    if (taskError) {
+      console.warn('[WorkflowEngine] Failed to create task for operations item:', taskError)
+      // Don't fail the whole action if task creation fails
+    } else {
+      console.log(`[WorkflowEngine] Created task "${taskName}" (${task.id}) for operations team`)
+
+      // Link task to operations item
+      await supabase
+        .from('event_operations_items')
+        .update({ task_id: task.id })
+        .eq('id', opsItem.id)
+    }
+
+    result.success = true
+    result.createdOpsItemId = opsItem.id
+    if (task) {
+      result.createdTaskId = task.id
+    }
+
+    return result
+  } catch (error) {
+    result.error = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error,
+    }
+    return result
+  }
+}
+
+/**
  * Action executor registry
  * Maps action types to their executor functions
  * Add new action types here for extensibility
@@ -354,6 +512,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 const ACTION_EXECUTORS: Record<WorkflowActionType, ActionExecutor> = {
   create_task: executeCreateTaskAction,
   create_design_item: executeCreateDesignItemAction,
+  create_ops_item: executeCreateOpsItemAction,
   // Future action types go here:
   // send_email: executeSendEmailAction,
   // send_notification: executeSendNotificationAction,
@@ -773,6 +932,38 @@ class WorkflowEngine {
         }
 
         // Assigned user is optional for design items (can be assigned later)
+        if (action.assigned_to_user_id) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', action.assigned_to_user_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!user) {
+            errors.push(`Action ${actionNum}: Assigned user does not exist`)
+          }
+        }
+      } else if (action.action_type === 'create_ops_item') {
+        // Validate operations item type
+        if (!action.operations_item_type_id) {
+          errors.push(`Action ${actionNum}: Operations item type is required`)
+        } else {
+          const { data: opsItemType } = await supabase
+            .from('operations_item_types')
+            .select('id, is_active')
+            .eq('id', action.operations_item_type_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!opsItemType) {
+            errors.push(`Action ${actionNum}: Operations item type does not exist`)
+          } else if (!opsItemType.is_active) {
+            warnings.push(`Action ${actionNum}: Operations item type is inactive`)
+          }
+        }
+
+        // Assigned user is optional for operations items (can be assigned later)
         if (action.assigned_to_user_id) {
           const { data: user } = await supabase
             .from('users')
