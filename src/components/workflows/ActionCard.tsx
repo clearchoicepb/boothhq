@@ -482,8 +482,8 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                   ) : (
                     <option disabled>No operations team members found (assign anyone below)</option>
                   )}
-                  {/* Fallback: Show all users if no ops team members */}
-                  {opsTeam.length === 0 && users.length > 0 && (
+                  {/* Always show all users as fallback option */}
+                  {users.length > 0 && (
                     <optgroup label="All Users">
                       {users.map((user) => (
                         <option key={user.id} value={user.id}>
