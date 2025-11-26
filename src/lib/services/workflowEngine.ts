@@ -547,6 +547,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
     const { data: existingAssignment } = await supabase
       .from('event_staff_assignments')
       .select('id')
+      .eq('tenant_id', dataSourceTenantId)
       .eq('event_id', eventId)
       .eq('staff_role_id', action.staff_role_id)
       .eq('user_id', action.assigned_to_user_id)
@@ -565,6 +566,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
     // Create the staff assignment
     // Operations roles use event_date_id = NULL (assigned to event, not specific date)
     const insertData = {
+      tenant_id: dataSourceTenantId,
       event_id: eventId,
       user_id: action.assigned_to_user_id,
       staff_role_id: action.staff_role_id,
