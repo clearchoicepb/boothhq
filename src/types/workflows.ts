@@ -160,21 +160,20 @@ export const CONDITION_FIELDS: Record<string, {
  * - create_task: General tasks (simple to-dos)
  * - create_design_item: Design department (timeline-based items)
  * - create_ops_item: Operations department (timeline-based items)
+ * - assign_event_role: Assign a user to an event staff role
  *
  * Future action types:
- * - create_sales_task: Sales department
- * - create_accounting_task: Accounting department
  * - send_email: Email automation
  * - send_notification: In-app notifications
  * - update_field: Field updates
  * - call_webhook: External integrations
  */
-export type WorkflowActionType = 'create_task' | 'create_design_item' | 'create_ops_item'
+export type WorkflowActionType = 'create_task' | 'create_design_item' | 'create_ops_item' | 'assign_event_role'
 
 /**
  * Workflow execution status
  */
-export type WorkflowExecutionStatus = 'running' | 'completed' | 'failed' | 'partial'
+export type WorkflowExecutionStatus = 'running' | 'completed' | 'failed' | 'partial' | 'skipped'
 
 /**
  * Available trigger types with metadata
@@ -222,6 +221,13 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
     icon: 'briefcase',
     department: 'Operations',
     requiresFields: ['operations_item_type_id'],
+  },
+  assign_event_role: {
+    label: 'Assign Event Role',
+    description: 'Assign a staff member to an event role',
+    icon: 'user-plus',
+    department: 'Staff',
+    requiresFields: ['staff_role_id', 'assigned_to_user_id'],
   },
 }
 
@@ -298,6 +304,7 @@ export interface WorkflowAction {
   assigned_to_user_id: string | null
   design_item_type_id: string | null
   operations_item_type_id: string | null
+  staff_role_id: string | null // For assign_event_role actions
   config: Record<string, any>
   created_at: string
   updated_at: string
@@ -448,6 +455,7 @@ export interface WorkflowActionInsert {
   task_template_id?: string | null
   design_item_type_id?: string | null
   operations_item_type_id?: string | null
+  staff_role_id?: string | null
   assigned_to_user_id?: string | null
   config?: Record<string, any>
 }
@@ -460,6 +468,7 @@ export interface WorkflowActionUpdate {
   task_template_id?: string | null
   design_item_type_id?: string | null
   operations_item_type_id?: string | null
+  staff_role_id?: string | null
   assigned_to_user_id?: string | null
   config?: Record<string, any>
 }
@@ -528,6 +537,7 @@ export interface WorkflowBuilderAction {
   taskTemplateId: string | null
   designItemTypeId: string | null
   operationsItemTypeId: string | null
+  staffRoleId: string | null
   assignedToUserId: string | null
   config: Record<string, any>
 }
@@ -623,6 +633,7 @@ export interface ActionExecutionResult {
   createdTaskId?: string // For create_task actions
   createdDesignItemId?: string // For create_design_item actions
   createdOpsItemId?: string // For create_ops_item actions
+  createdAssignmentId?: string // For assign_event_role actions
   output?: any // Flexible output for future action types
 }
 
@@ -640,6 +651,7 @@ export interface WorkflowExecutionResult {
   createdTaskIds: string[]
   createdDesignItemIds: string[]
   createdOpsItemIds: string[]
+  createdAssignmentIds: string[]
   actionResults: ActionExecutionResult[]
   error?: {
     message: string

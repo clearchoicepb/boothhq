@@ -507,6 +507,99 @@ const executeCreateOpsItemAction: ActionExecutor = async (
 }
 
 /**
+ * Execute an 'assign_event_role' action
+ * Assigns a user to a staff role for an event
+ * Creates an entry in event_staff_assignments table
+ */
+const executeAssignEventRoleAction: ActionExecutor = async (
+  action,
+  context,
+  supabase,
+  dataSourceTenantId
+) => {
+  const result: ActionExecutionResult = {
+    success: false,
+    actionId: action.id,
+    actionType: 'assign_event_role',
+  }
+
+  try {
+    // Debug: Log action data
+    console.log('[WorkflowEngine] assign_event_role action:', {
+      action_id: action.id,
+      staff_role_id: action.staff_role_id,
+      assigned_to_user_id: action.assigned_to_user_id,
+      workflow_id: action.workflow_id,
+    })
+
+    // Validate required fields
+    if (!action.staff_role_id) {
+      throw new Error('assign_event_role action requires staff_role_id')
+    }
+
+    if (!action.assigned_to_user_id) {
+      throw new Error('assign_event_role action requires assigned_to_user_id')
+    }
+
+    const eventId = context.triggerEntity.id
+
+    // Check if assignment already exists (to avoid duplicates)
+    const { data: existingAssignment } = await supabase
+      .from('event_staff_assignments')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('staff_role_id', action.staff_role_id)
+      .eq('user_id', action.assigned_to_user_id)
+      .is('event_date_id', null) // Operations roles have null event_date_id
+      .single()
+
+    if (existingAssignment) {
+      console.log(`[WorkflowEngine] Assignment already exists for event ${eventId}, role ${action.staff_role_id}, user ${action.assigned_to_user_id}`)
+      // Return success but note it was already assigned
+      result.success = true
+      result.createdAssignmentId = existingAssignment.id
+      result.output = { alreadyExisted: true }
+      return result
+    }
+
+    // Create the staff assignment
+    // Operations roles use event_date_id = NULL (assigned to event, not specific date)
+    const insertData = {
+      event_id: eventId,
+      user_id: action.assigned_to_user_id,
+      staff_role_id: action.staff_role_id,
+      event_date_id: null, // Operations roles assigned at event level
+      // Note: role field is deprecated, using staff_role_id instead
+    }
+
+    console.log('[WorkflowEngine] Creating event staff assignment:', insertData)
+
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('event_staff_assignments')
+      .insert(insertData)
+      .select()
+      .single()
+
+    if (assignmentError || !assignment) {
+      throw new Error(`Failed to create staff assignment: ${assignmentError?.message || 'Unknown error'}`)
+    }
+
+    console.log(`[WorkflowEngine] Created event staff assignment (${assignment.id}) for role ${action.staff_role_id}`)
+
+    result.success = true
+    result.createdAssignmentId = assignment.id
+
+    return result
+  } catch (error) {
+    result.error = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error,
+    }
+    return result
+  }
+}
+
+/**
  * Action executor registry
  * Maps action types to their executor functions
  * Add new action types here for extensibility
@@ -515,6 +608,7 @@ const ACTION_EXECUTORS: Record<WorkflowActionType, ActionExecutor> = {
   create_task: executeCreateTaskAction,
   create_design_item: executeCreateDesignItemAction,
   create_ops_item: executeCreateOpsItemAction,
+  assign_event_role: executeAssignEventRoleAction,
   // Future action types go here:
   // send_email: executeSendEmailAction,
   // send_notification: executeSendNotificationAction,
@@ -700,6 +794,8 @@ class WorkflowEngine {
         actionsFailed: 0,
         createdTaskIds: [],
         createdDesignItemIds: [],
+        createdOpsItemIds: [],
+        createdAssignmentIds: [],
         actionResults: [],
         error: {
           message: 'Failed to create execution record',
@@ -795,6 +891,8 @@ class WorkflowEngine {
     const actionResults: ActionExecutionResult[] = []
     const createdTaskIds: string[] = []
     const createdDesignItemIds: string[] = []
+    const createdOpsItemIds: string[] = []
+    const createdAssignmentIds: string[] = []
     let actionsExecuted = 0
     let actionsSuccessful = 0
     let actionsFailed = 0
@@ -828,14 +926,29 @@ class WorkflowEngine {
           }
           if (result.createdDesignItemId) {
             createdDesignItemIds.push(result.createdDesignItemId)
-            
+
             // Update design item with execution_id
             await supabase
               .from('event_design_items')
               .update({ workflow_execution_id: execution.id })
               .eq('id', result.createdDesignItemId)
-            
+
             console.log(`[WorkflowEngine] Created design item: ${result.createdDesignItemId}`)
+          }
+          if (result.createdOpsItemId) {
+            createdOpsItemIds.push(result.createdOpsItemId)
+
+            // Update operations item with execution_id
+            await supabase
+              .from('event_operations_items')
+              .update({ workflow_execution_id: execution.id })
+              .eq('id', result.createdOpsItemId)
+
+            console.log(`[WorkflowEngine] Created operations item: ${result.createdOpsItemId}`)
+          }
+          if (result.createdAssignmentId) {
+            createdAssignmentIds.push(result.createdAssignmentId)
+            console.log(`[WorkflowEngine] Created staff assignment: ${result.createdAssignmentId}`)
           }
         } else {
           actionsFailed++
@@ -892,7 +1005,8 @@ class WorkflowEngine {
       actionsFailed,
       createdTaskIds,
       createdDesignItemIds,
-      createdOpsItemIds: [], // Track ops items separately in future
+      createdOpsItemIds,
+      createdAssignmentIds,
       actionResults,
       conditionResult,
     }
@@ -914,6 +1028,8 @@ class WorkflowEngine {
       action_type: WorkflowActionType
       task_template_id?: string | null
       design_item_type_id?: string | null
+      operations_item_type_id?: string | null
+      staff_role_id?: string | null
       assigned_to_user_id?: string | null
     }>,
     supabase: SupabaseClient<Database>,
@@ -1055,6 +1171,28 @@ class WorkflowEngine {
 
         // Assigned user is optional for operations items (can be assigned later)
         if (action.assigned_to_user_id) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', action.assigned_to_user_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!user) {
+            errors.push(`Action ${actionNum}: Assigned user does not exist`)
+          }
+        }
+      } else if (action.action_type === 'assign_event_role') {
+        // Validate staff role
+        // Note: staff_role_id is cross-database (app DB), so we can only validate format
+        if (!action.staff_role_id) {
+          errors.push(`Action ${actionNum}: Staff role is required`)
+        }
+
+        // Validate assigned user (must be specified for role assignment)
+        if (!action.assigned_to_user_id) {
+          errors.push(`Action ${actionNum}: User to assign is required`)
+        } else {
           const { data: user } = await supabase
             .from('users')
             .select('id')

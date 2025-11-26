@@ -159,6 +159,8 @@ export default function WorkflowBuilder({
           actionType: action.action_type,
           taskTemplateId: action.task_template_id,
           designItemTypeId: action.design_item_type_id,
+          operationsItemTypeId: action.operations_item_type_id,
+          staffRoleId: action.staff_role_id,
           assignedToUserId: action.assigned_to_user_id,
           config: action.config || {},
         }))
@@ -173,6 +175,8 @@ export default function WorkflowBuilder({
       actionType: 'create_task',
       taskTemplateId: null,
       designItemTypeId: null,
+      operationsItemTypeId: null,
+      staffRoleId: null,
       assignedToUserId: null,
       config: {},
     }
@@ -224,6 +228,17 @@ export default function WorkflowBuilder({
         if (!action.designItemTypeId) {
           validationErrors.push(`Action ${index + 1}: Design item type is required`)
         }
+      } else if (action.actionType === 'create_ops_item') {
+        if (!action.operationsItemTypeId) {
+          validationErrors.push(`Action ${index + 1}: Operations item type is required`)
+        }
+      } else if (action.actionType === 'assign_event_role') {
+        if (!action.staffRoleId) {
+          validationErrors.push(`Action ${index + 1}: Staff role is required`)
+        }
+        if (!action.assignedToUserId) {
+          validationErrors.push(`Action ${index + 1}: User to assign is required`)
+        }
       }
     })
 
@@ -250,6 +265,8 @@ export default function WorkflowBuilder({
         execution_order: index,
         task_template_id: action.taskTemplateId,
         design_item_type_id: action.designItemTypeId,
+        operations_item_type_id: action.operationsItemTypeId,
+        staff_role_id: action.staffRoleId,
         assigned_to_user_id: action.assignedToUserId,
         config: action.config,
       })),
