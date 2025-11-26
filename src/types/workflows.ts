@@ -28,6 +28,133 @@
 export type WorkflowTriggerType = 'event_created'
 
 /**
+ * Condition operators for workflow conditions
+ * Used to compare field values against expected values
+ */
+export type ConditionOperator =
+  | 'equals'        // field === value
+  | 'not_equals'    // field !== value
+  | 'in'            // value.includes(field)
+  | 'not_in'        // !value.includes(field)
+  | 'contains'      // String(field).includes(value)
+  | 'not_contains'  // !String(field).includes(value)
+  | 'is_set'        // field != null && field !== ''
+  | 'is_not_set'    // field == null || field === ''
+  | 'greater_than'  // field > value (for numbers/dates)
+  | 'less_than'     // field < value (for numbers/dates)
+
+/**
+ * Available condition operators with metadata for UI
+ */
+export const CONDITION_OPERATORS: Record<ConditionOperator, {
+  label: string
+  description: string
+  requiresValue: boolean
+  valueType: 'single' | 'array' | 'none'
+}> = {
+  equals: {
+    label: 'Equals',
+    description: 'Field value exactly matches',
+    requiresValue: true,
+    valueType: 'single',
+  },
+  not_equals: {
+    label: 'Does Not Equal',
+    description: 'Field value does not match',
+    requiresValue: true,
+    valueType: 'single',
+  },
+  in: {
+    label: 'Is One Of',
+    description: 'Field value is in the list',
+    requiresValue: true,
+    valueType: 'array',
+  },
+  not_in: {
+    label: 'Is Not One Of',
+    description: 'Field value is not in the list',
+    requiresValue: true,
+    valueType: 'array',
+  },
+  contains: {
+    label: 'Contains',
+    description: 'Field value contains the text',
+    requiresValue: true,
+    valueType: 'single',
+  },
+  not_contains: {
+    label: 'Does Not Contain',
+    description: 'Field value does not contain the text',
+    requiresValue: true,
+    valueType: 'single',
+  },
+  is_set: {
+    label: 'Is Set',
+    description: 'Field has a value (not null/empty)',
+    requiresValue: false,
+    valueType: 'none',
+  },
+  is_not_set: {
+    label: 'Is Not Set',
+    description: 'Field is null or empty',
+    requiresValue: false,
+    valueType: 'none',
+  },
+  greater_than: {
+    label: 'Greater Than',
+    description: 'Field value is greater than',
+    requiresValue: true,
+    valueType: 'single',
+  },
+  less_than: {
+    label: 'Less Than',
+    description: 'Field value is less than',
+    requiresValue: true,
+    valueType: 'single',
+  },
+}
+
+/**
+ * Available fields that can be used in conditions
+ * Organized by entity type for UI grouping
+ */
+export const CONDITION_FIELDS: Record<string, {
+  label: string
+  description: string
+  type: 'string' | 'uuid' | 'number' | 'date' | 'boolean'
+  entity: 'event' | 'task' | 'product'
+  lookupTable?: string // For UUID fields, which table to look up display values
+}> = {
+  'event.event_type_id': {
+    label: 'Event Type',
+    description: 'The type of event (Wedding, Corporate, etc.)',
+    type: 'uuid',
+    entity: 'event',
+    lookupTable: 'event_types',
+  },
+  'event.status': {
+    label: 'Event Status',
+    description: 'Current status of the event',
+    type: 'string',
+    entity: 'event',
+  },
+  'event.account_id': {
+    label: 'Account',
+    description: 'The account/customer for the event',
+    type: 'uuid',
+    entity: 'event',
+    lookupTable: 'accounts',
+  },
+  'event.assigned_to': {
+    label: 'Assigned To',
+    description: 'Staff member assigned to the event',
+    type: 'uuid',
+    entity: 'event',
+    lookupTable: 'users',
+  },
+}
+
+/**
  * Action types that can be performed by workflows
  * Department-based actions:
  * - create_task: General tasks (simple to-dos)
@@ -99,6 +226,44 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CONDITION TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Workflow Condition
+ * Represents a single condition that must be met for workflow to execute
+ * All conditions in a workflow use AND logic (all must pass)
+ */
+export interface WorkflowCondition {
+  /** Field path to evaluate (e.g., 'event.event_type_id', 'event.status') */
+  field: string
+  /** Comparison operator */
+  operator: ConditionOperator
+  /** Value to compare against (type depends on operator) */
+  value?: string | string[] | number | boolean | null
+}
+
+/**
+ * Result of evaluating a single condition
+ */
+export interface ConditionEvaluationResult {
+  condition: WorkflowCondition
+  passed: boolean
+  actualValue: any
+  expectedValue: any
+  error?: string
+}
+
+/**
+ * Result of evaluating all conditions for a workflow
+ */
+export interface ConditionsEvaluationResult {
+  passed: boolean
+  results: ConditionEvaluationResult[]
+  evaluatedAt: string
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BASE TYPES (Database Schema)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -113,6 +278,7 @@ export interface Workflow {
   description: string | null
   trigger_type: WorkflowTriggerType
   event_type_ids: string[] // Changed from single event_type_id to array for multi-select
+  conditions: WorkflowCondition[] // Optional conditions that must all pass
   is_active: boolean
   created_by: string | null
   created_at: string
@@ -157,6 +323,10 @@ export interface WorkflowExecution {
   error_message: string | null
   error_details: Record<string, any> | null
   created_task_ids: string[]
+  // Condition tracking (Phase 1)
+  conditions_evaluated: boolean | null
+  conditions_passed: boolean | null
+  condition_results: ConditionsEvaluationResult | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -252,6 +422,7 @@ export interface WorkflowInsert {
   description?: string | null
   trigger_type: WorkflowTriggerType
   event_type_ids: string[] // Changed to array for multi-select
+  conditions?: WorkflowCondition[] // Optional conditions (defaults to empty array)
   is_active?: boolean
   created_by?: string | null
 }
@@ -263,6 +434,7 @@ export interface WorkflowUpdate {
   name?: string
   description?: string | null
   event_type_ids?: string[] // Changed to array for multi-select
+  conditions?: WorkflowCondition[] // Optional conditions
   is_active?: boolean
 }
 
@@ -315,6 +487,10 @@ export interface WorkflowExecutionUpdate {
   error_message?: string | null
   error_details?: Record<string, any> | null
   created_task_ids?: string[]
+  // Condition tracking (Phase 1)
+  conditions_evaluated?: boolean | null
+  conditions_passed?: boolean | null
+  condition_results?: ConditionsEvaluationResult | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -329,6 +505,9 @@ export interface WorkflowBuilderState {
   // Step 1: Trigger
   triggerType: WorkflowTriggerType
   eventTypeIds: string[] // Changed to array for multi-select
+
+  // Step 1.5: Conditions (optional)
+  conditions: WorkflowCondition[]
 
   // Step 2: Actions
   actions: WorkflowBuilderAction[]
@@ -426,6 +605,7 @@ export interface WorkflowExecutionContext {
     data: Record<string, any>
   }
   userId?: string // User who triggered the workflow (if manual)
+  workflowName?: string // Name of workflow for logging
 }
 
 /**
@@ -465,6 +645,8 @@ export interface WorkflowExecutionResult {
     message: string
     details?: any
   }
+  // Condition tracking (Phase 1)
+  conditionResult?: ConditionsEvaluationResult | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

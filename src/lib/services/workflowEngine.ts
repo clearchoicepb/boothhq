@@ -35,7 +35,9 @@ import type {
   WorkflowExecutionContext,
   WorkflowWithRelations,
   WorkflowActionWithRelations,
+  ConditionsEvaluationResult,
 } from '@/types/workflows'
+import { evaluateConditions } from '@/lib/services/conditionEvaluator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -708,6 +710,69 @@ class WorkflowEngine {
 
     console.log(`[WorkflowEngine] Executing workflow: ${workflow.name} (${workflow.id})`)
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 1: CONDITION EVALUATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Evaluate conditions before executing any actions
+    // If conditions fail, mark execution as 'skipped' and return early
+
+    const conditions = workflow.conditions || []
+    let conditionResult: ConditionsEvaluationResult | null = null
+
+    if (conditions.length > 0) {
+      // Build context for condition evaluation
+      const evaluationContext = {
+        event: event,
+        // Future: add more context objects (user, account, etc.)
+      }
+
+      conditionResult = evaluateConditions(conditions, evaluationContext)
+
+      console.log(`[WorkflowEngine] Condition evaluation for workflow ${workflow.name}:`, {
+        conditionsCount: conditions.length,
+        passed: conditionResult.passed,
+        results: conditionResult.results.map((r) => ({
+          field: r.condition.field,
+          operator: r.condition.operator,
+          passed: r.passed,
+        })),
+      })
+
+      // If conditions failed, skip this workflow
+      if (!conditionResult.passed) {
+        console.log(`[WorkflowEngine] ⏭️  Skipping workflow ${workflow.name} - conditions not met`)
+
+        // Update execution record to 'skipped'
+        await supabase
+          .from('workflow_executions')
+          .update({
+            status: 'skipped',
+            completed_at: new Date().toISOString(),
+            conditions_evaluated: true,
+            conditions_passed: false,
+            condition_results: conditionResult as any, // Cast for JSONB
+            actions_executed: 0,
+            actions_successful: 0,
+            actions_failed: 0,
+          })
+          .eq('id', execution.id)
+
+        return {
+          executionId: execution.id,
+          workflowId: workflow.id,
+          status: 'skipped',
+          actionsExecuted: 0,
+          actionsSuccessful: 0,
+          actionsFailed: 0,
+          createdTaskIds: [],
+          createdDesignItemIds: [],
+          createdOpsItemIds: [],
+          actionResults: [],
+          conditionResult,
+        }
+      }
+    }
+
     // Prepare execution context
     const executionContext: WorkflowExecutionContext = {
       tenantId,
@@ -719,6 +784,7 @@ class WorkflowEngine {
         data: event,
       },
       userId,
+      workflowName: workflow.name,
     }
 
     // Sort actions by execution_order
@@ -798,7 +864,7 @@ class WorkflowEngine {
       finalStatus = 'partial'
     }
 
-    // Update execution record
+    // Update execution record (including condition tracking)
     await supabase
       .from('workflow_executions')
       .update({
@@ -808,6 +874,10 @@ class WorkflowEngine {
         actions_successful: actionsSuccessful,
         actions_failed: actionsFailed,
         created_task_ids: createdTaskIds,
+        // Condition tracking (Phase 1)
+        conditions_evaluated: conditions.length > 0,
+        conditions_passed: conditions.length > 0 ? true : null, // Only set if we had conditions
+        condition_results: conditionResult as any, // Cast for JSONB (null if no conditions)
       })
       .eq('id', execution.id)
 
@@ -822,7 +892,9 @@ class WorkflowEngine {
       actionsFailed,
       createdTaskIds,
       createdDesignItemIds,
+      createdOpsItemIds: [], // Track ops items separately in future
       actionResults,
+      conditionResult,
     }
   }
 
@@ -837,8 +909,8 @@ class WorkflowEngine {
    * @returns Validation result with errors/warnings
    */
   async validateWorkflow(
-    workflow: { event_type_ids: string[] },
-    actions: Array<{ 
+    workflow: { event_type_ids: string[]; conditions?: any[] },
+    actions: Array<{
       action_type: WorkflowActionType
       task_template_id?: string | null
       design_item_type_id?: string | null
@@ -849,6 +921,24 @@ class WorkflowEngine {
   ): Promise<{ isValid: boolean; errors: string[]; warnings: string[] }> {
     const errors: string[] = []
     const warnings: string[] = []
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // VALIDATE CONDITIONS (Phase 1)
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (workflow.conditions && workflow.conditions.length > 0) {
+      const { validateConditions } = await import('@/lib/services/conditionEvaluator')
+      const conditionValidation = validateConditions(workflow.conditions)
+
+      if (!conditionValidation.valid) {
+        for (const error of conditionValidation.errors) {
+          if (error.index === -1) {
+            errors.push(`Conditions: ${error.errors.join(', ')}`)
+          } else {
+            errors.push(`Condition ${error.index + 1}: ${error.errors.join(', ')}`)
+          }
+        }
+      }
+    }
 
     // Validate trigger
     if (!workflow.event_type_ids || workflow.event_type_ids.length === 0) {
