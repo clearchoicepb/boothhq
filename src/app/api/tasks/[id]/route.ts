@@ -62,6 +62,21 @@ export async function PATCH(
       completedAt,
     } = body
 
+    // Phase 3: Fetch current task to get previous status for workflow triggers
+    let previousStatus: string | null = null
+    if (status !== undefined) {
+      const { data: currentTask } = await supabase
+        .from('tasks')
+        .select('status')
+        .eq('id', id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (currentTask) {
+        previousStatus = currentTask.status
+      }
+    }
+
     const updateData: any = {
       updated_at: new Date().toISOString(),
     }
@@ -108,6 +123,26 @@ export async function PATCH(
         error: 'Failed to update task',
         details: updateError.message
       }, { status: 500 })
+    }
+
+    // Phase 3: Trigger task_status_changed workflows if status changed (non-blocking)
+    if (previousStatus !== null && status !== undefined && previousStatus !== status) {
+      try {
+        const { workflowTriggerService } = await import('@/lib/services/workflowTriggerService')
+        // Don't await - run in background to not block the response
+        workflowTriggerService.onTaskStatusChanged({
+          task,
+          previousStatus,
+          tenantId: context.tenantId,
+          dataSourceTenantId,
+          supabase,
+          userId: session.user.id,
+        }).catch((error: Error) => {
+          console.error('[Tasks API] Error triggering task_status_changed workflows:', error)
+        })
+      } catch (error) {
+        console.error('[Tasks API] Error importing workflow trigger service:', error)
+      }
     }
 
     return NextResponse.json({ success: true, task })

@@ -196,6 +196,23 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Phase 3: Trigger task_created workflows (non-blocking)
+    try {
+      const { workflowTriggerService } = await import('@/lib/services/workflowTriggerService')
+      // Don't await - run in background to not block the response
+      workflowTriggerService.onTaskCreated({
+        task,
+        tenantId: context.tenantId,
+        dataSourceTenantId,
+        supabase,
+        userId: session.user.id,
+      }).catch((error: Error) => {
+        console.error('[Tasks API] Error triggering task_created workflows:', error)
+      })
+    } catch (error) {
+      console.error('[Tasks API] Error importing workflow trigger service:', error)
+    }
+
     return NextResponse.json({ success: true, task })
   } catch (error) {
     console.error('Error:', error)
