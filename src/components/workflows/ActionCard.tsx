@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Trash2, ClipboardCheck, Palette, User, Loader2, Info, Briefcase } from 'lucide-react'
+import { Trash2, ClipboardCheck, Palette, User, Loader2, Info, Briefcase, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { WorkflowBuilderAction, WorkflowActionType } from '@/types/workflows'
 
@@ -52,6 +52,13 @@ interface UserOption {
   department: string | null
 }
 
+interface StaffRole {
+  id: string
+  name: string
+  type: 'operations' | 'event_staff'
+  is_active: boolean
+}
+
 interface ActionCardProps {
   action: WorkflowBuilderAction
   index: number
@@ -63,6 +70,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([])
   const [designItemTypes, setDesignItemTypes] = useState<DesignItemType[]>([])
   const [opsItemTypes, setOpsItemTypes] = useState<OperationsItemType[]>([])
+  const [staffRoles, setStaffRoles] = useState<StaffRole[]>([])
   const [users, setUsers] = useState<UserOption[]>([])
   const [designers, setDesigners] = useState<UserOption[]>([])
   const [opsTeam, setOpsTeam] = useState<UserOption[]>([])
@@ -107,6 +115,18 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
         console.error('[ActionCard] Failed to fetch operations types:', await opsTypesRes.text())
       }
 
+      // Fetch staff roles (for assign_event_role actions)
+      console.log('[ActionCard] Fetching staff roles...')
+      const staffRolesRes = await fetch('/api/staff-roles')
+      if (staffRolesRes.ok) {
+        const staffRolesData = await staffRolesRes.json()
+        // Filter to only active operations roles (event-level assignments)
+        const roles = Array.isArray(staffRolesData) ? staffRolesData : (staffRolesData.roles || [])
+        setStaffRoles(roles.filter((r: StaffRole) => r.is_active && r.type === 'operations'))
+      } else {
+        console.error('[ActionCard] Failed to fetch staff roles:', await staffRolesRes.text())
+      }
+
       // Fetch all users
       const usersRes = await fetch('/api/users')
       if (usersRes.ok) {
@@ -128,6 +148,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       setTaskTemplates([])
       setDesignItemTypes([])
       setOpsItemTypes([])
+      setStaffRoles([])
       setUsers([])
       setDesigners([])
       setOpsTeam([])
@@ -139,6 +160,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
   const selectedTemplate = taskTemplates.find(t => t.id === action.taskTemplateId)
   const selectedDesignItemType = designItemTypes.find(d => d.id === action.designItemTypeId)
   const selectedOpsItemType = opsItemTypes.find(o => o.id === action.operationsItemTypeId)
+  const selectedStaffRole = staffRoles.find(r => r.id === action.staffRoleId)
   const selectedUser = users.find(u => u.id === action.assignedToUserId)
 
   // Action type metadata
@@ -165,6 +187,12 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       icon: Briefcase,
       color: 'amber',
       department: 'Operations Department',
+    },
+    assign_event_role: {
+      label: 'Assign Event Role',
+      icon: UserPlus,
+      color: 'green',
+      department: 'Staff Assignment',
     },
   }
 
@@ -225,6 +253,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                   taskTemplateId: null,
                   designItemTypeId: null,
                   operationsItemTypeId: null,
+                  staffRoleId: null,
                   assignedToUserId: null,
                 })
               }}
@@ -238,6 +267,9 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
               </optgroup>
               <optgroup label="Operations Department">
                 <option value="create_ops_item">Create Operations Item</option>
+              </optgroup>
+              <optgroup label="Staff Assignment">
+                <option value="assign_event_role">Assign Event Role</option>
               </optgroup>
               {/* Future departments (grayed out) */}
               <optgroup label="Coming Soon" disabled>
@@ -531,6 +563,91 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       <div className="mt-1 pt-1 border-t border-amber-300 text-xs text-amber-700">
                         ⏱ Due {selectedOpsItemType.due_date_days} days before event
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {action.actionType === 'assign_event_role' && (
+            <>
+              {/* Staff Role Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Staff Role *
+                </label>
+                <select
+                  value={action.staffRoleId || ''}
+                  onChange={(e) => onUpdate({ staffRoleId: e.target.value || null })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
+                >
+                  <option value="">Select a staff role...</option>
+                  {staffRoles.length > 0 ? (
+                    staffRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No operations roles configured. Go to Settings → Staff Roles to add them.</option>
+                  )}
+                </select>
+                {selectedStaffRole && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Type: {selectedStaffRole.type === 'operations' ? 'Operations (event-level)' : 'Event Staff (date-specific)'}
+                  </div>
+                )}
+              </div>
+
+              {/* User Assignment */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assign User *
+                </label>
+                <select
+                  value={action.assignedToUserId || ''}
+                  onChange={(e) => onUpdate({ assignedToUserId: e.target.value || null })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
+                >
+                  <option value="">Select a user to assign...</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name && user.last_name
+                        ? `${user.first_name} ${user.last_name}`
+                        : user.email}
+                      {user.department && ` (${user.department})`}
+                    </option>
+                  ))}
+                </select>
+                {selectedUser && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Email: {selectedUser.email}
+                    {selectedUser.department && ` | Department: ${selectedUser.department}`}
+                  </div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start">
+                  <Info className="h-4 w-4 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-green-800 space-y-1">
+                    <div><strong>Event role assignments</strong> automatically assign a staff member to a role when the event is created.</div>
+                    <div>Configure staff roles in <strong>Settings → Staff Roles</strong>.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assignment Preview */}
+              {action.staffRoleId && action.assignedToUserId && selectedStaffRole && selectedUser && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start">
+                    <UserPlus className="h-4 w-4 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-green-800">
+                      <strong>Will assign:</strong> {selectedUser.first_name && selectedUser.last_name
+                        ? `${selectedUser.first_name} ${selectedUser.last_name}`
+                        : selectedUser.email} as <strong>{selectedStaffRole.name}</strong> for this event
                     </div>
                   </div>
                 </div>

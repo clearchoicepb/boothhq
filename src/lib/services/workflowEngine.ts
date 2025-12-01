@@ -35,7 +35,9 @@ import type {
   WorkflowExecutionContext,
   WorkflowWithRelations,
   WorkflowActionWithRelations,
+  ConditionsEvaluationResult,
 } from '@/types/workflows'
+import { evaluateConditions } from '@/lib/services/conditionEvaluator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -505,6 +507,101 @@ const executeCreateOpsItemAction: ActionExecutor = async (
 }
 
 /**
+ * Execute an 'assign_event_role' action
+ * Assigns a user to a staff role for an event
+ * Creates an entry in event_staff_assignments table
+ */
+const executeAssignEventRoleAction: ActionExecutor = async (
+  action,
+  context,
+  supabase,
+  dataSourceTenantId
+) => {
+  const result: ActionExecutionResult = {
+    success: false,
+    actionId: action.id,
+    actionType: 'assign_event_role',
+  }
+
+  try {
+    // Debug: Log action data
+    console.log('[WorkflowEngine] assign_event_role action:', {
+      action_id: action.id,
+      staff_role_id: action.staff_role_id,
+      assigned_to_user_id: action.assigned_to_user_id,
+      workflow_id: action.workflow_id,
+    })
+
+    // Validate required fields
+    if (!action.staff_role_id) {
+      throw new Error('assign_event_role action requires staff_role_id')
+    }
+
+    if (!action.assigned_to_user_id) {
+      throw new Error('assign_event_role action requires assigned_to_user_id')
+    }
+
+    const eventId = context.triggerEntity.id
+
+    // Check if assignment already exists (to avoid duplicates)
+    const { data: existingAssignment } = await supabase
+      .from('event_staff_assignments')
+      .select('id')
+      .eq('tenant_id', dataSourceTenantId)
+      .eq('event_id', eventId)
+      .eq('staff_role_id', action.staff_role_id)
+      .eq('user_id', action.assigned_to_user_id)
+      .is('event_date_id', null) // Operations roles have null event_date_id
+      .single()
+
+    if (existingAssignment) {
+      console.log(`[WorkflowEngine] Assignment already exists for event ${eventId}, role ${action.staff_role_id}, user ${action.assigned_to_user_id}`)
+      // Return success but note it was already assigned
+      result.success = true
+      result.createdAssignmentId = existingAssignment.id
+      result.output = { alreadyExisted: true }
+      return result
+    }
+
+    // Create the staff assignment
+    // Operations roles use event_date_id = NULL (assigned to event, not specific date)
+    const insertData = {
+      tenant_id: dataSourceTenantId,
+      event_id: eventId,
+      user_id: action.assigned_to_user_id,
+      staff_role_id: action.staff_role_id,
+      event_date_id: null, // Operations roles assigned at event level
+      // Note: role field is deprecated, using staff_role_id instead
+    }
+
+    console.log('[WorkflowEngine] Creating event staff assignment:', insertData)
+
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('event_staff_assignments')
+      .insert(insertData)
+      .select()
+      .single()
+
+    if (assignmentError || !assignment) {
+      throw new Error(`Failed to create staff assignment: ${assignmentError?.message || 'Unknown error'}`)
+    }
+
+    console.log(`[WorkflowEngine] Created event staff assignment (${assignment.id}) for role ${action.staff_role_id}`)
+
+    result.success = true
+    result.createdAssignmentId = assignment.id
+
+    return result
+  } catch (error) {
+    result.error = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error,
+    }
+    return result
+  }
+}
+
+/**
  * Action executor registry
  * Maps action types to their executor functions
  * Add new action types here for extensibility
@@ -513,6 +610,7 @@ const ACTION_EXECUTORS: Record<WorkflowActionType, ActionExecutor> = {
   create_task: executeCreateTaskAction,
   create_design_item: executeCreateDesignItemAction,
   create_ops_item: executeCreateOpsItemAction,
+  assign_event_role: executeAssignEventRoleAction,
   // Future action types go here:
   // send_email: executeSendEmailAction,
   // send_notification: executeSendNotificationAction,
@@ -698,6 +796,8 @@ class WorkflowEngine {
         actionsFailed: 0,
         createdTaskIds: [],
         createdDesignItemIds: [],
+        createdOpsItemIds: [],
+        createdAssignmentIds: [],
         actionResults: [],
         error: {
           message: 'Failed to create execution record',
@@ -707,6 +807,69 @@ class WorkflowEngine {
     }
 
     console.log(`[WorkflowEngine] Executing workflow: ${workflow.name} (${workflow.id})`)
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 1: CONDITION EVALUATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Evaluate conditions before executing any actions
+    // If conditions fail, mark execution as 'skipped' and return early
+
+    const conditions = workflow.conditions || []
+    let conditionResult: ConditionsEvaluationResult | null = null
+
+    if (conditions.length > 0) {
+      // Build context for condition evaluation
+      const evaluationContext = {
+        event: event,
+        // Future: add more context objects (user, account, etc.)
+      }
+
+      conditionResult = evaluateConditions(conditions, evaluationContext)
+
+      console.log(`[WorkflowEngine] Condition evaluation for workflow ${workflow.name}:`, {
+        conditionsCount: conditions.length,
+        passed: conditionResult.passed,
+        results: conditionResult.results.map((r) => ({
+          field: r.condition.field,
+          operator: r.condition.operator,
+          passed: r.passed,
+        })),
+      })
+
+      // If conditions failed, skip this workflow
+      if (!conditionResult.passed) {
+        console.log(`[WorkflowEngine] ⏭️  Skipping workflow ${workflow.name} - conditions not met`)
+
+        // Update execution record to 'skipped'
+        await supabase
+          .from('workflow_executions')
+          .update({
+            status: 'skipped',
+            completed_at: new Date().toISOString(),
+            conditions_evaluated: true,
+            conditions_passed: false,
+            condition_results: conditionResult as any, // Cast for JSONB
+            actions_executed: 0,
+            actions_successful: 0,
+            actions_failed: 0,
+          })
+          .eq('id', execution.id)
+
+        return {
+          executionId: execution.id,
+          workflowId: workflow.id,
+          status: 'skipped',
+          actionsExecuted: 0,
+          actionsSuccessful: 0,
+          actionsFailed: 0,
+          createdTaskIds: [],
+          createdDesignItemIds: [],
+          createdOpsItemIds: [],
+          actionResults: [],
+          conditionResult,
+        }
+      }
+    }
 
     // Prepare execution context
     const executionContext: WorkflowExecutionContext = {
@@ -719,6 +882,7 @@ class WorkflowEngine {
         data: event,
       },
       userId,
+      workflowName: workflow.name,
     }
 
     // Sort actions by execution_order
@@ -729,6 +893,8 @@ class WorkflowEngine {
     const actionResults: ActionExecutionResult[] = []
     const createdTaskIds: string[] = []
     const createdDesignItemIds: string[] = []
+    const createdOpsItemIds: string[] = []
+    const createdAssignmentIds: string[] = []
     let actionsExecuted = 0
     let actionsSuccessful = 0
     let actionsFailed = 0
@@ -762,14 +928,29 @@ class WorkflowEngine {
           }
           if (result.createdDesignItemId) {
             createdDesignItemIds.push(result.createdDesignItemId)
-            
+
             // Update design item with execution_id
             await supabase
               .from('event_design_items')
               .update({ workflow_execution_id: execution.id })
               .eq('id', result.createdDesignItemId)
-            
+
             console.log(`[WorkflowEngine] Created design item: ${result.createdDesignItemId}`)
+          }
+          if (result.createdOpsItemId) {
+            createdOpsItemIds.push(result.createdOpsItemId)
+
+            // Update operations item with execution_id
+            await supabase
+              .from('event_operations_items')
+              .update({ workflow_execution_id: execution.id })
+              .eq('id', result.createdOpsItemId)
+
+            console.log(`[WorkflowEngine] Created operations item: ${result.createdOpsItemId}`)
+          }
+          if (result.createdAssignmentId) {
+            createdAssignmentIds.push(result.createdAssignmentId)
+            console.log(`[WorkflowEngine] Created staff assignment: ${result.createdAssignmentId}`)
           }
         } else {
           actionsFailed++
@@ -798,7 +979,7 @@ class WorkflowEngine {
       finalStatus = 'partial'
     }
 
-    // Update execution record
+    // Update execution record (including condition tracking)
     await supabase
       .from('workflow_executions')
       .update({
@@ -808,6 +989,10 @@ class WorkflowEngine {
         actions_successful: actionsSuccessful,
         actions_failed: actionsFailed,
         created_task_ids: createdTaskIds,
+        // Condition tracking (Phase 1)
+        conditions_evaluated: conditions.length > 0,
+        conditions_passed: conditions.length > 0 ? true : null, // Only set if we had conditions
+        condition_results: conditionResult as any, // Cast for JSONB (null if no conditions)
       })
       .eq('id', execution.id)
 
@@ -822,7 +1007,10 @@ class WorkflowEngine {
       actionsFailed,
       createdTaskIds,
       createdDesignItemIds,
+      createdOpsItemIds,
+      createdAssignmentIds,
       actionResults,
+      conditionResult,
     }
   }
 
@@ -837,11 +1025,13 @@ class WorkflowEngine {
    * @returns Validation result with errors/warnings
    */
   async validateWorkflow(
-    workflow: { event_type_ids: string[] },
-    actions: Array<{ 
+    workflow: { event_type_ids: string[]; conditions?: any[] },
+    actions: Array<{
       action_type: WorkflowActionType
       task_template_id?: string | null
       design_item_type_id?: string | null
+      operations_item_type_id?: string | null
+      staff_role_id?: string | null
       assigned_to_user_id?: string | null
     }>,
     supabase: SupabaseClient<Database>,
@@ -849,6 +1039,24 @@ class WorkflowEngine {
   ): Promise<{ isValid: boolean; errors: string[]; warnings: string[] }> {
     const errors: string[] = []
     const warnings: string[] = []
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // VALIDATE CONDITIONS (Phase 1)
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (workflow.conditions && workflow.conditions.length > 0) {
+      const { validateConditions } = await import('@/lib/services/conditionEvaluator')
+      const conditionValidation = validateConditions(workflow.conditions)
+
+      if (!conditionValidation.valid) {
+        for (const error of conditionValidation.errors) {
+          if (error.index === -1) {
+            errors.push(`Conditions: ${error.errors.join(', ')}`)
+          } else {
+            errors.push(`Condition ${error.index + 1}: ${error.errors.join(', ')}`)
+          }
+        }
+      }
+    }
 
     // Validate trigger
     if (!workflow.event_type_ids || workflow.event_type_ids.length === 0) {
@@ -965,6 +1173,28 @@ class WorkflowEngine {
 
         // Assigned user is optional for operations items (can be assigned later)
         if (action.assigned_to_user_id) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', action.assigned_to_user_id)
+            .eq('tenant_id', dataSourceTenantId)
+            .single()
+
+          if (!user) {
+            errors.push(`Action ${actionNum}: Assigned user does not exist`)
+          }
+        }
+      } else if (action.action_type === 'assign_event_role') {
+        // Validate staff role
+        // Note: staff_role_id is cross-database (app DB), so we can only validate format
+        if (!action.staff_role_id) {
+          errors.push(`Action ${actionNum}: Staff role is required`)
+        }
+
+        // Validate assigned user (must be specified for role assignment)
+        if (!action.assigned_to_user_id) {
+          errors.push(`Action ${actionNum}: User to assign is required`)
+        } else {
           const { data: user } = await supabase
             .from('users')
             .select('id')

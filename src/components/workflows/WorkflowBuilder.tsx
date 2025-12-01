@@ -28,11 +28,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import TriggerSelector from './TriggerSelector'
+import ConditionBuilder from './ConditionBuilder'
 import ActionsList from './ActionsList'
-import type { 
-  WorkflowWithRelations, 
+import type {
+  WorkflowWithRelations,
   WorkflowSavePayload,
-  WorkflowBuilderAction 
+  WorkflowBuilderAction,
+  WorkflowCondition,
 } from '@/types/workflows'
 
 // Types for reference data
@@ -79,6 +81,7 @@ export default function WorkflowBuilder({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [eventTypeIds, setEventTypeIds] = useState<string[]>([])
+  const [conditions, setConditions] = useState<WorkflowCondition[]>([])
   const [isActive, setIsActive] = useState(true)
   const [actions, setActions] = useState<WorkflowBuilderAction[]>([])
 
@@ -143,8 +146,9 @@ export default function WorkflowBuilder({
       setName(workflow.name)
       setDescription(workflow.description || '')
       setEventTypeIds(workflow.event_type_ids || [])
+      setConditions(workflow.conditions || [])
       setIsActive(workflow.is_active)
-      
+
       // Convert workflow actions to builder actions
       // Ensure workflow.actions is an array (handle null, undefined, or non-array)
       const workflowActions = Array.isArray(workflow.actions) ? workflow.actions : []
@@ -155,10 +159,12 @@ export default function WorkflowBuilder({
           actionType: action.action_type,
           taskTemplateId: action.task_template_id,
           designItemTypeId: action.design_item_type_id,
+          operationsItemTypeId: action.operations_item_type_id,
+          staffRoleId: action.staff_role_id,
           assignedToUserId: action.assigned_to_user_id,
           config: action.config || {},
         }))
-      
+
       setActions(builderActions)
     }
   }, [workflow])
@@ -169,6 +175,8 @@ export default function WorkflowBuilder({
       actionType: 'create_task',
       taskTemplateId: null,
       designItemTypeId: null,
+      operationsItemTypeId: null,
+      staffRoleId: null,
       assignedToUserId: null,
       config: {},
     }
@@ -220,6 +228,17 @@ export default function WorkflowBuilder({
         if (!action.designItemTypeId) {
           validationErrors.push(`Action ${index + 1}: Design item type is required`)
         }
+      } else if (action.actionType === 'create_ops_item') {
+        if (!action.operationsItemTypeId) {
+          validationErrors.push(`Action ${index + 1}: Operations item type is required`)
+        }
+      } else if (action.actionType === 'assign_event_role') {
+        if (!action.staffRoleId) {
+          validationErrors.push(`Action ${index + 1}: Staff role is required`)
+        }
+        if (!action.assignedToUserId) {
+          validationErrors.push(`Action ${index + 1}: User to assign is required`)
+        }
       }
     })
 
@@ -238,6 +257,7 @@ export default function WorkflowBuilder({
         description: description || null,
         trigger_type: 'event_created',
         event_type_ids: eventTypeIds,
+        conditions: conditions.length > 0 ? conditions : undefined,
         is_active: isActive,
       },
       actions: actions.map((action, index) => ({
@@ -245,6 +265,8 @@ export default function WorkflowBuilder({
         execution_order: index,
         task_template_id: action.taskTemplateId,
         design_item_type_id: action.designItemTypeId,
+        operations_item_type_id: action.operationsItemTypeId,
+        staff_role_id: action.staffRoleId,
         assigned_to_user_id: action.assignedToUserId,
         config: action.config,
       })),
@@ -334,10 +356,16 @@ export default function WorkflowBuilder({
 
       {/* Step Content */}
       {currentStep === 'trigger' && (
-        <TriggerSelector
-          selectedEventTypeIds={eventTypeIds}
-          onSelect={setEventTypeIds}
-        />
+        <div className="space-y-4">
+          <TriggerSelector
+            selectedEventTypeIds={eventTypeIds}
+            onSelect={setEventTypeIds}
+          />
+          <ConditionBuilder
+            conditions={conditions}
+            onChange={setConditions}
+          />
+        </div>
       )}
 
       {currentStep === 'actions' && (
@@ -429,6 +457,67 @@ export default function WorkflowBuilder({
               </div>
             </div>
           </div>
+
+          {/* Conditions Summary */}
+          {conditions.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-amber-900 mb-2">Conditions</h3>
+                  <p className="text-sm text-amber-700 mb-2">
+                    This workflow will only execute if ALL conditions are met:
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {conditions.map((condition, index) => {
+                      // Get display value for condition
+                      let displayValue = condition.value
+                      if (condition.field === 'event.event_type_id' && condition.value) {
+                        if (Array.isArray(condition.value)) {
+                          displayValue = condition.value
+                            .map(id => eventTypes.find(et => et.id === id)?.name || id)
+                            .join(', ')
+                        } else {
+                          displayValue = eventTypes.find(et => et.id === condition.value)?.name || condition.value
+                        }
+                      }
+
+                      const operatorLabels: Record<string, string> = {
+                        equals: 'equals',
+                        not_equals: 'does not equal',
+                        in: 'is one of',
+                        not_in: 'is not one of',
+                        is_set: 'is set',
+                        is_not_set: 'is not set',
+                        contains: 'contains',
+                        not_contains: 'does not contain',
+                        greater_than: 'is greater than',
+                        less_than: 'is less than',
+                      }
+
+                      const fieldLabels: Record<string, string> = {
+                        'event.event_type_id': 'Event Type',
+                        'event.status': 'Event Status',
+                        'event.account_id': 'Account',
+                        'event.assigned_to': 'Assigned To',
+                      }
+
+                      return (
+                        <div key={index} className="text-sm text-amber-900 bg-amber-100 px-3 py-2 rounded">
+                          <span className="font-medium">{index === 0 ? 'IF' : 'AND'}</span>{' '}
+                          <span className="text-amber-800">{fieldLabels[condition.field] || condition.field}</span>{' '}
+                          <span className="italic">{operatorLabels[condition.operator] || condition.operator}</span>
+                          {displayValue !== undefined && displayValue !== null && (
+                            <> <span className="font-medium">"{displayValue}"</span></>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Actions Summary */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
