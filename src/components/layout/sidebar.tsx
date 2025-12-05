@@ -6,6 +6,7 @@ import { Building2, Users, TrendingUp, FileText, FileSignature, CheckSquare, Mes
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
+import { useSMSNotifications } from '@/lib/sms-notifications-context'
 
 interface SidebarProps {
   onNavigate?: () => void
@@ -18,6 +19,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const { permissions } = usePermissions()
   const { tenant } = useTenant()
   const { settings } = useSettings()
+  const { unreadCount } = useSMSNotifications()
 
   const sidebarItems = [
     {
@@ -72,7 +74,8 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
       label: 'SMS Messages',
       href: `/${tenantSubdomain}/sms`,
       icon: MessageSquare,
-      permission: true // Always visible to authenticated users
+      permission: true, // Always visible to authenticated users
+      badge: unreadCount > 0 ? unreadCount : undefined
     }
   ]
 
@@ -119,7 +122,16 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                   }`}
                 >
                   <Icon className="h-5 w-5 mr-3" />
-                  <span>{item.label}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                      isActive
+                        ? 'bg-white text-[#347dc4]'
+                        : 'bg-red-500 text-white'
+                    }`}>
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
                 </Link>
               )
             })}

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { useSettings } from '@/lib/settings-context'
+import { useSMSNotifications } from '@/lib/sms-notifications-context'
 
 interface Message {
   id: string
@@ -55,6 +56,7 @@ interface Person {
 
 export default function SMSMessagesPage() {
   const { settings } = useSettings()
+  const { isThreadUnread, markThreadAsRead, unreadThreads } = useSMSNotifications()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -67,9 +69,17 @@ export default function SMSMessagesPage() {
   const [peopleLoading, setPeopleLoading] = useState(false)
   const [peopleSearch, setPeopleSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'contact' | 'lead' | 'account' | 'staff'>('all')
+  const [recentMessageIds, setRecentMessageIds] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const previousMessagesRef = useRef<Message[]>([])
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
+
+  // Handle selecting a conversation - mark as read immediately
+  const handleSelectConversation = (phoneNumber: string) => {
+    setSelectedPhone(phoneNumber)
+    markThreadAsRead(phoneNumber)
+  }
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -78,6 +88,31 @@ export default function SMSMessagesPage() {
 
   useEffect(() => {
     scrollToBottom()
+  }, [messages])
+
+  // Track new messages and make them bold for 5 seconds
+  useEffect(() => {
+    const previousIds = new Set(previousMessagesRef.current.map(m => m.id))
+    const newIds = messages.filter(m => !previousIds.has(m.id)).map(m => m.id)
+
+    if (newIds.length > 0) {
+      setRecentMessageIds(prev => {
+        const updated = new Set(prev)
+        newIds.forEach(id => updated.add(id))
+        return updated
+      })
+
+      // Remove from recent after 5 seconds
+      setTimeout(() => {
+        setRecentMessageIds(prev => {
+          const updated = new Set(prev)
+          newIds.forEach(id => updated.delete(id))
+          return updated
+        })
+      }, 5000)
+    }
+
+    previousMessagesRef.current = messages
   }, [messages])
 
   // Fetch all conversations
@@ -97,6 +132,13 @@ export default function SMSMessagesPage() {
 
   const normalizePhone = (phone: string) => {
     return phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+  }
+
+  // Get unread count for a specific thread
+  const getThreadUnreadCount = (phoneNumber: string) => {
+    const normalized = normalizePhone(phoneNumber)
+    const thread = unreadThreads.find(t => t.normalizedPhone === normalized)
+    return thread?.unreadCount || 0
   }
 
   // Fetch contacts, leads, accounts, and staff for new message
@@ -187,7 +229,7 @@ export default function SMSMessagesPage() {
   }
 
   const handleSelectPerson = (person: Person) => {
-    setSelectedPhone(person.phone)
+    handleSelectConversation(person.phone)
     setIsNewMessageModalOpen(false)
     setPeopleSearch('')
     setSelectedCategory('all')
@@ -482,39 +524,57 @@ export default function SMSMessagesPage() {
                   <p className="text-sm text-center">No conversations yet</p>
                 </div>
               ) : (
-                filteredConversations.map((conv) => (
-                  <button
-                    key={conv.phoneNumber}
-                    onClick={() => setSelectedPhone(conv.phoneNumber)}
-                    className={`w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
-                      selectedPhone === conv.phoneNumber ? 'bg-blue-50 border-l-4 border-l-[#347dc4]' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-[#347dc4] flex items-center justify-center text-white font-medium">
-                          {conv.displayName.charAt(0).toUpperCase()}
+                filteredConversations.map((conv) => {
+                  const unread = isThreadUnread(conv.phoneNumber)
+                  const threadUnreadCount = getThreadUnreadCount(conv.phoneNumber)
+                  return (
+                    <button
+                      key={conv.phoneNumber}
+                      onClick={() => handleSelectConversation(conv.phoneNumber)}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
+                        selectedPhone === conv.phoneNumber ? 'bg-blue-50 border-l-4 border-l-[#347dc4]' : ''
+                      } ${unread ? 'bg-blue-100 border-l-4 border-l-red-500' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 relative">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-medium ${
+                            unread ? 'bg-red-500' : 'bg-[#347dc4]'
+                          }`}>
+                            {conv.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          {unread && threadUnreadCount > 0 && (
+                            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                              <span className="text-[10px] text-white font-bold">{threadUnreadCount > 99 ? '99+' : threadUnreadCount}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className={`text-sm truncate ${unread ? 'font-black text-gray-900' : 'font-medium text-gray-900'}`}>
+                              {conv.displayName}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              {unread && threadUnreadCount > 0 && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">
+                                  {threadUnreadCount} new
+                                </span>
+                              )}
+                              <p className={`text-xs ${unread ? 'font-bold text-red-500' : 'text-gray-500'}`}>
+                                {formatTime(conv.lastMessageDate)}
+                              </p>
+                            </div>
+                          </div>
+                          <p className={`text-xs truncate ${unread ? 'font-semibold text-gray-700' : 'text-gray-600'}`}>
+                            {conv.phoneNumber}
+                          </p>
+                          <p className={`text-xs truncate mt-1 ${unread ? 'font-bold text-gray-900' : 'text-gray-500'}`}>
+                            {conv.lastMessage}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {conv.displayName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatTime(conv.lastMessageDate)}
-                          </p>
-                        </div>
-                        <p className="text-xs text-gray-600 truncate">
-                          {conv.phoneNumber}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate mt-1">
-                          {conv.lastMessage}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  )
+                })
               )}
             </div>
           </div>
@@ -540,29 +600,34 @@ export default function SMSMessagesPage() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
-                    >
+                  {messages.map((msg) => {
+                    const isRecent = recentMessageIds.has(msg.id)
+                    return (
                       <div
-                        className={`max-w-md px-4 py-2 rounded-2xl ${
-                          msg.direction === 'outbound'
-                            ? 'bg-[#347dc4] text-white rounded-br-sm'
-                            : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
-                        }`}
+                        key={msg.id}
+                        className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'} ${isRecent ? 'animate-pulse' : ''}`}
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.notes}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            msg.direction === 'outbound' ? 'text-blue-100' : 'text-gray-500'
+                        <div
+                          className={`max-w-md px-4 py-2 rounded-2xl transition-all ${
+                            msg.direction === 'outbound'
+                              ? 'bg-[#347dc4] text-white rounded-br-sm'
+                              : `bg-white text-gray-900 border rounded-bl-sm ${isRecent ? 'border-[#347dc4] border-2 shadow-md' : 'border-gray-200'}`
                           }`}
                         >
-                          {formatTime(msg.communication_date)}
-                        </p>
+                          <p className={`text-sm whitespace-pre-wrap break-words ${isRecent && msg.direction === 'inbound' ? 'font-semibold' : ''}`}>
+                            {msg.notes}
+                          </p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              msg.direction === 'outbound' ? 'text-blue-100' : 'text-gray-500'
+                            }`}
+                          >
+                            {formatTime(msg.communication_date)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 
