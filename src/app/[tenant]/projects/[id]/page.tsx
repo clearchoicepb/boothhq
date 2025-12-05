@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { NotesSection } from '@/components/notes-section'
 import AttachmentsSection from '@/components/attachments-section'
 import { TasksSection } from '@/components/tasks-section'
-import { TaskDetailModal } from '@/components/task-detail-modal'
+import { CreateTaskModal } from '@/components/create-task-modal'
 import { 
   ArrowLeft, 
   Edit, 
@@ -711,7 +711,7 @@ export default function ProjectDetailPage() {
       </Modal>
 
       {/* Task Modal */}
-      <TaskDetailModal
+      <CreateTaskModal
         isOpen={isTaskModalOpen}
         onClose={() => {
           setIsTaskModalOpen(false)
