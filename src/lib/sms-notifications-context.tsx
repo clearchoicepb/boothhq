@@ -38,6 +38,7 @@ interface SMSNotificationsProviderProps {
 }
 
 const STORAGE_KEY = 'sms_thread_read_status'
+const INIT_KEY = 'sms_feature_initialized_at'
 
 // Normalize phone number for consistent matching
 const normalizePhone = (phone: string) => {
@@ -50,6 +51,7 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
 
   // Use ref to avoid stale closure issues with the read status
   const threadReadStatusRef = useRef<ThreadReadStatus>({})
+  const featureInitializedAtRef = useRef<string | null>(null)
   const [statusLoaded, setStatusLoaded] = useState(false)
 
   // Get storage key that includes tenant ID
@@ -57,9 +59,14 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
     return tenant?.id ? `${STORAGE_KEY}_${tenant.id}` : STORAGE_KEY
   }, [tenant?.id])
 
+  const getInitKey = useCallback(() => {
+    return tenant?.id ? `${INIT_KEY}_${tenant.id}` : INIT_KEY
+  }, [tenant?.id])
+
   // Load thread read status from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && tenant?.id) {
+      // Load per-thread read status
       const stored = localStorage.getItem(getStorageKey())
       if (stored) {
         try {
@@ -68,9 +75,23 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
           threadReadStatusRef.current = {}
         }
       }
+
+      // Load or set the feature initialization timestamp
+      // This marks when the user first started using SMS notifications
+      // Only messages AFTER this time will ever be considered "new"
+      const initAt = localStorage.getItem(getInitKey())
+      if (initAt) {
+        featureInitializedAtRef.current = initAt
+      } else {
+        // First time - set to now so old messages don't show as unread
+        const now = new Date().toISOString()
+        featureInitializedAtRef.current = now
+        localStorage.setItem(getInitKey(), now)
+      }
+
       setStatusLoaded(true)
     }
-  }, [tenant?.id, getStorageKey])
+  }, [tenant?.id, getStorageKey, getInitKey])
 
   // Save thread read status to localStorage
   const saveThreadReadStatus = useCallback(() => {
@@ -88,12 +109,24 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
 
       if (response.ok) {
         const messages: SMSMessage[] = await response.json()
+        const featureInitAt = featureInitializedAtRef.current
+
+        // Only consider messages that arrived AFTER the feature was initialized
+        // This prevents old messages from showing as unread
+        if (!featureInitAt) {
+          setUnreadThreads([])
+          return
+        }
 
         // Group inbound messages by phone number
         const threadMessages = new Map<string, { phoneNumber: string; messages: SMSMessage[] }>()
 
         messages.forEach((msg) => {
+          // Only count INBOUND messages
           if (msg.direction !== 'inbound') return
+
+          // Only count messages that arrived AFTER the feature was initialized
+          if (msg.communication_date <= featureInitAt) return
 
           const phoneNumber = msg.metadata?.from_number
           if (!phoneNumber) return
@@ -106,22 +139,18 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
           threadMessages.get(normalized)!.messages.push(msg)
         })
 
-        // Calculate unread threads using the ref (always current)
+        // Calculate unread threads
         const unread: UnreadThread[] = []
         const currentReadStatus = threadReadStatusRef.current
 
         threadMessages.forEach(({ phoneNumber, messages: threadMsgs }, normalized) => {
           const lastReadAt = currentReadStatus[normalized]
 
-          let unreadMsgs: SMSMessage[]
-
-          if (lastReadAt) {
-            // Thread has been read before - count messages after last read
-            unreadMsgs = threadMsgs.filter(msg => msg.communication_date > lastReadAt)
-          } else {
-            // Thread has NEVER been read - ALL messages are unread
-            unreadMsgs = threadMsgs
-          }
+          // Filter to only messages that haven't been read
+          // A message is unread if it arrived AFTER the thread was last read
+          const unreadMsgs = lastReadAt
+            ? threadMsgs.filter(msg => msg.communication_date > lastReadAt)
+            : threadMsgs // If thread never read, all new messages are unread
 
           if (unreadMsgs.length > 0) {
             const lastMessageDate = unreadMsgs.reduce((latest, msg) =>
@@ -166,7 +195,7 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
     const normalized = normalizePhone(phoneNumber)
     const now = new Date().toISOString()
 
-    // Update the ref immediately (no stale closure issues)
+    // Update the ref immediately
     threadReadStatusRef.current = {
       ...threadReadStatusRef.current,
       [normalized]: now
@@ -200,7 +229,6 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
 export function useSMSNotifications() {
   const context = useContext(SMSNotificationsContext)
   if (context === undefined) {
-    // Return a default context instead of throwing an error
     return {
       unreadCount: 0,
       unreadThreads: [],
