@@ -56,7 +56,7 @@ interface Person {
 
 export default function SMSMessagesPage() {
   const { settings } = useSettings()
-  const { markAsRead } = useSMSNotifications()
+  const { isThreadUnread, markThreadAsRead } = useSMSNotifications()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -69,14 +69,20 @@ export default function SMSMessagesPage() {
   const [peopleLoading, setPeopleLoading] = useState(false)
   const [peopleSearch, setPeopleSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'contact' | 'lead' | 'account' | 'staff'>('all')
+  const [recentMessageIds, setRecentMessageIds] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const previousMessagesRef = useRef<Message[]>([])
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
 
-  // Mark all SMS as read when the page is viewed
-  useEffect(() => {
-    markAsRead()
-  }, [markAsRead])
+  // Handle selecting a conversation - mark as read after a short delay
+  const handleSelectConversation = (phoneNumber: string) => {
+    setSelectedPhone(phoneNumber)
+    // Mark thread as read after 500ms delay so user can see it was unread
+    setTimeout(() => {
+      markThreadAsRead(phoneNumber)
+    }, 500)
+  }
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -85,6 +91,31 @@ export default function SMSMessagesPage() {
 
   useEffect(() => {
     scrollToBottom()
+  }, [messages])
+
+  // Track new messages and make them bold for 5 seconds
+  useEffect(() => {
+    const previousIds = new Set(previousMessagesRef.current.map(m => m.id))
+    const newIds = messages.filter(m => !previousIds.has(m.id)).map(m => m.id)
+
+    if (newIds.length > 0) {
+      setRecentMessageIds(prev => {
+        const updated = new Set(prev)
+        newIds.forEach(id => updated.add(id))
+        return updated
+      })
+
+      // Remove from recent after 5 seconds
+      setTimeout(() => {
+        setRecentMessageIds(prev => {
+          const updated = new Set(prev)
+          newIds.forEach(id => updated.delete(id))
+          return updated
+        })
+      }, 5000)
+    }
+
+    previousMessagesRef.current = messages
   }, [messages])
 
   // Fetch all conversations
@@ -194,7 +225,7 @@ export default function SMSMessagesPage() {
   }
 
   const handleSelectPerson = (person: Person) => {
-    setSelectedPhone(person.phone)
+    handleSelectConversation(person.phone)
     setIsNewMessageModalOpen(false)
     setPeopleSearch('')
     setSelectedCategory('all')
@@ -489,39 +520,45 @@ export default function SMSMessagesPage() {
                   <p className="text-sm text-center">No conversations yet</p>
                 </div>
               ) : (
-                filteredConversations.map((conv) => (
-                  <button
-                    key={conv.phoneNumber}
-                    onClick={() => setSelectedPhone(conv.phoneNumber)}
-                    className={`w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
-                      selectedPhone === conv.phoneNumber ? 'bg-blue-50 border-l-4 border-l-[#347dc4]' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-[#347dc4] flex items-center justify-center text-white font-medium">
-                          {conv.displayName.charAt(0).toUpperCase()}
+                filteredConversations.map((conv) => {
+                  const unread = isThreadUnread(conv.phoneNumber)
+                  return (
+                    <button
+                      key={conv.phoneNumber}
+                      onClick={() => handleSelectConversation(conv.phoneNumber)}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
+                        selectedPhone === conv.phoneNumber ? 'bg-blue-50 border-l-4 border-l-[#347dc4]' : ''
+                      } ${unread ? 'bg-blue-50' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 relative">
+                          <div className="h-10 w-10 rounded-full bg-[#347dc4] flex items-center justify-center text-white font-medium">
+                            {conv.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          {unread && (
+                            <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className={`text-sm truncate ${unread ? 'font-bold text-gray-900' : 'font-semibold text-gray-900'}`}>
+                              {conv.displayName}
+                            </p>
+                            <p className={`text-xs ${unread ? 'font-semibold text-[#347dc4]' : 'text-gray-500'}`}>
+                              {formatTime(conv.lastMessageDate)}
+                            </p>
+                          </div>
+                          <p className="text-xs text-gray-600 truncate">
+                            {conv.phoneNumber}
+                          </p>
+                          <p className={`text-xs truncate mt-1 ${unread ? 'font-semibold text-gray-700' : 'text-gray-500'}`}>
+                            {conv.lastMessage}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {conv.displayName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatTime(conv.lastMessageDate)}
-                          </p>
-                        </div>
-                        <p className="text-xs text-gray-600 truncate">
-                          {conv.phoneNumber}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate mt-1">
-                          {conv.lastMessage}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  )
+                })
               )}
             </div>
           </div>
@@ -547,29 +584,34 @@ export default function SMSMessagesPage() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
-                    >
+                  {messages.map((msg) => {
+                    const isRecent = recentMessageIds.has(msg.id)
+                    return (
                       <div
-                        className={`max-w-md px-4 py-2 rounded-2xl ${
-                          msg.direction === 'outbound'
-                            ? 'bg-[#347dc4] text-white rounded-br-sm'
-                            : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
-                        }`}
+                        key={msg.id}
+                        className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'} ${isRecent ? 'animate-pulse' : ''}`}
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.notes}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            msg.direction === 'outbound' ? 'text-blue-100' : 'text-gray-500'
+                        <div
+                          className={`max-w-md px-4 py-2 rounded-2xl transition-all ${
+                            msg.direction === 'outbound'
+                              ? 'bg-[#347dc4] text-white rounded-br-sm'
+                              : `bg-white text-gray-900 border rounded-bl-sm ${isRecent ? 'border-[#347dc4] border-2 shadow-md' : 'border-gray-200'}`
                           }`}
                         >
-                          {formatTime(msg.communication_date)}
-                        </p>
+                          <p className={`text-sm whitespace-pre-wrap break-words ${isRecent && msg.direction === 'inbound' ? 'font-semibold' : ''}`}>
+                            {msg.notes}
+                          </p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              msg.direction === 'outbound' ? 'text-blue-100' : 'text-gray-500'
+                            }`}
+                          >
+                            {formatTime(msg.communication_date)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 

@@ -7,12 +7,27 @@ interface SMSMessage {
   id: string
   direction: 'inbound' | 'outbound'
   communication_date: string
+  metadata?: {
+    from_number?: string
+    to_number?: string
+  }
+}
+
+// Map of normalized phone number -> last read timestamp
+type ThreadReadStatus = Record<string, string>
+
+interface UnreadThread {
+  phoneNumber: string
+  normalizedPhone: string
+  unreadCount: number
+  lastMessageDate: string
 }
 
 interface SMSNotificationsContextType {
   unreadCount: number
-  lastViewedAt: string | null
-  markAsRead: () => void
+  unreadThreads: UnreadThread[]
+  isThreadUnread: (phoneNumber: string) => boolean
+  markThreadAsRead: (phoneNumber: string) => void
   refreshUnreadCount: () => Promise<void>
 }
 
@@ -22,62 +37,101 @@ interface SMSNotificationsProviderProps {
   children: ReactNode
 }
 
-const STORAGE_KEY = 'sms_last_viewed'
+const STORAGE_KEY = 'sms_thread_read_status'
+
+// Normalize phone number for consistent matching
+const normalizePhone = (phone: string) => {
+  return phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+}
 
 export function SMSNotificationsProvider({ children }: SMSNotificationsProviderProps) {
   const { tenant } = useTenant()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [lastViewedAt, setLastViewedAt] = useState<string | null>(null)
+  const [unreadThreads, setUnreadThreads] = useState<UnreadThread[]>([])
+  const [threadReadStatus, setThreadReadStatus] = useState<ThreadReadStatus>({})
 
   // Get storage key that includes tenant ID
   const getStorageKey = useCallback(() => {
     return tenant?.id ? `${STORAGE_KEY}_${tenant.id}` : STORAGE_KEY
   }, [tenant?.id])
 
-  // Load last viewed timestamp from localStorage
+  // Load thread read status from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && tenant?.id) {
       const stored = localStorage.getItem(getStorageKey())
-      setLastViewedAt(stored)
+      if (stored) {
+        try {
+          setThreadReadStatus(JSON.parse(stored))
+        } catch {
+          setThreadReadStatus({})
+        }
+      }
     }
   }, [tenant?.id, getStorageKey])
 
-  // Fetch unread count - counts inbound SMS received after lastViewedAt
+  // Save thread read status to localStorage
+  const saveThreadReadStatus = useCallback((status: ThreadReadStatus) => {
+    if (typeof window !== 'undefined' && tenant?.id) {
+      localStorage.setItem(getStorageKey(), JSON.stringify(status))
+    }
+  }, [tenant?.id, getStorageKey])
+
+  // Fetch unread count - counts threads with unread inbound messages
   const refreshUnreadCount = useCallback(async () => {
     try {
-      // Build the query URL
-      let url = '/api/communications?communication_type=sms'
-
-      // If we have a lastViewedAt, only fetch messages after that time
-      if (lastViewedAt) {
-        url += `&since=${encodeURIComponent(lastViewedAt)}`
-      }
-
-      const response = await fetch(url)
+      const response = await fetch('/api/communications?communication_type=sms')
 
       if (response.ok) {
-        const messages = await response.json()
+        const messages: SMSMessage[] = await response.json()
 
-        // Count only inbound messages (received messages)
-        const inboundCount = messages.filter((msg: SMSMessage) => msg.direction === 'inbound').length
+        // Group inbound messages by phone number
+        const threadMessages = new Map<string, { phoneNumber: string; messages: SMSMessage[] }>()
 
-        // If no lastViewedAt, set count to 0 (we assume user has seen all messages)
-        // unless there are recent messages from the last hour
-        if (!lastViewedAt) {
-          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-          const recentInbound = messages.filter((msg: SMSMessage) =>
-            msg.direction === 'inbound' &&
-            new Date(msg.communication_date) > new Date(oneHourAgo)
-          ).length
-          setUnreadCount(recentInbound)
-        } else {
-          setUnreadCount(inboundCount)
-        }
+        messages.forEach((msg) => {
+          if (msg.direction !== 'inbound') return
+
+          const phoneNumber = msg.metadata?.from_number
+          if (!phoneNumber) return
+
+          const normalized = normalizePhone(phoneNumber)
+
+          if (!threadMessages.has(normalized)) {
+            threadMessages.set(normalized, { phoneNumber, messages: [] })
+          }
+          threadMessages.get(normalized)!.messages.push(msg)
+        })
+
+        // Calculate unread threads
+        const unread: UnreadThread[] = []
+
+        threadMessages.forEach(({ phoneNumber, messages: threadMsgs }, normalized) => {
+          const lastReadAt = threadReadStatus[normalized]
+
+          // Count messages newer than last read time
+          const unreadMsgs = lastReadAt
+            ? threadMsgs.filter(msg => new Date(msg.communication_date) > new Date(lastReadAt))
+            : threadMsgs // If never read, all are unread
+
+          if (unreadMsgs.length > 0) {
+            // Find the most recent message date
+            const lastMessageDate = unreadMsgs.reduce((latest, msg) =>
+              new Date(msg.communication_date) > new Date(latest) ? msg.communication_date : latest
+            , unreadMsgs[0].communication_date)
+
+            unread.push({
+              phoneNumber,
+              normalizedPhone: normalized,
+              unreadCount: unreadMsgs.length,
+              lastMessageDate
+            })
+          }
+        })
+
+        setUnreadThreads(unread)
       }
     } catch (error) {
       console.error('Error fetching SMS unread count:', error)
     }
-  }, [lastViewedAt])
+  }, [threadReadStatus])
 
   // Initial fetch and polling
   useEffect(() => {
@@ -90,21 +144,37 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
     }
   }, [tenant?.id, refreshUnreadCount])
 
-  // Mark all messages as read
-  const markAsRead = useCallback(() => {
-    const now = new Date().toISOString()
-    setLastViewedAt(now)
-    setUnreadCount(0)
+  // Check if a specific thread has unread messages
+  const isThreadUnread = useCallback((phoneNumber: string) => {
+    const normalized = normalizePhone(phoneNumber)
+    return unreadThreads.some(t => t.normalizedPhone === normalized)
+  }, [unreadThreads])
 
-    if (typeof window !== 'undefined' && tenant?.id) {
-      localStorage.setItem(getStorageKey(), now)
+  // Mark a specific thread as read
+  const markThreadAsRead = useCallback((phoneNumber: string) => {
+    const normalized = normalizePhone(phoneNumber)
+    const now = new Date().toISOString()
+
+    const newStatus = {
+      ...threadReadStatus,
+      [normalized]: now
     }
-  }, [tenant?.id, getStorageKey])
+
+    setThreadReadStatus(newStatus)
+    saveThreadReadStatus(newStatus)
+
+    // Remove this thread from unread list
+    setUnreadThreads(prev => prev.filter(t => t.normalizedPhone !== normalized))
+  }, [threadReadStatus, saveThreadReadStatus])
+
+  // Total unread count across all threads
+  const unreadCount = unreadThreads.reduce((sum, t) => sum + t.unreadCount, 0)
 
   const value: SMSNotificationsContextType = {
     unreadCount,
-    lastViewedAt,
-    markAsRead,
+    unreadThreads,
+    isThreadUnread,
+    markThreadAsRead,
     refreshUnreadCount,
   }
 
@@ -121,8 +191,9 @@ export function useSMSNotifications() {
     // Return a default context instead of throwing an error
     return {
       unreadCount: 0,
-      lastViewedAt: null,
-      markAsRead: () => {},
+      unreadThreads: [],
+      isThreadUnread: () => false,
+      markThreadAsRead: () => {},
       refreshUnreadCount: async () => {},
     }
   }
