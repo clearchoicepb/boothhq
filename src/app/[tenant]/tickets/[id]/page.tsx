@@ -46,10 +46,18 @@ export default function TicketDetailPage() {
 
   const handleUpdate = async () => {
     try {
+      // Only send updatable fields, not joined relations
+      const updatePayload = {
+        status: editData.status,
+        priority: editData.priority,
+        description: editData.description,
+        resolution_notes: editData.resolution_notes,
+      }
+
       const response = await fetch(`/api/tickets/${ticketId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(updatePayload),
       })
 
       if (!response.ok) throw new Error('Failed to update')
