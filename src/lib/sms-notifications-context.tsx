@@ -238,7 +238,13 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
     const normalized = normalizePhone(phoneNumber)
     const now = new Date().toISOString()
 
-    console.log('[SMS Notifications] Marking thread as read:', { phoneNumber, normalized, now })
+    console.log('[SMS Notifications] markThreadAsRead CALLED:', {
+      phoneNumber,
+      normalized,
+      now,
+      currentUnreadThreads: unreadThreads.length,
+      unreadPhones: unreadThreads.map(t => t.normalizedPhone)
+    })
 
     // Update the ref immediately
     threadReadStatusRef.current = {
@@ -246,20 +252,25 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
       [normalized]: now
     }
 
+    console.log('[SMS Notifications] Updated threadReadStatusRef:', threadReadStatusRef.current)
+
     // Save to localStorage
     saveThreadReadStatus()
+    console.log('[SMS Notifications] Saved to localStorage')
 
     // Remove this thread from unread list immediately
     setUnreadThreads(prev => {
+      console.log('[SMS Notifications] setUnreadThreads called, prev:', prev)
       const newThreads = prev.filter(t => t.normalizedPhone !== normalized)
-      console.log('[SMS Notifications] Updated unread threads:', {
+      console.log('[SMS Notifications] setUnreadThreads result:', {
         before: prev.length,
         after: newThreads.length,
-        removed: prev.length - newThreads.length
+        removed: prev.length - newThreads.length,
+        normalizedToRemove: normalized
       })
       return newThreads
     })
-  }, [saveThreadReadStatus])
+  }, [saveThreadReadStatus, unreadThreads])
 
   // Total unread count across all threads
   const unreadCount = unreadThreads.reduce((sum, t) => sum + t.unreadCount, 0)
