@@ -56,7 +56,7 @@ interface Person {
 
 export default function SMSMessagesPage() {
   const { settings } = useSettings()
-  const { isThreadUnread, markThreadAsRead } = useSMSNotifications()
+  const { isThreadUnread, markThreadAsRead, unreadThreads } = useSMSNotifications()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -75,31 +75,13 @@ export default function SMSMessagesPage() {
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
 
-  // Handle selecting a conversation - mark as read after 5 seconds
-  const markAsReadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
+  // Handle selecting a conversation - mark as read immediately
   const handleSelectConversation = (phoneNumber: string) => {
-    // Clear any pending mark-as-read timeout from previous thread
-    if (markAsReadTimeoutRef.current) {
-      clearTimeout(markAsReadTimeoutRef.current)
-    }
-
     setSelectedPhone(phoneNumber)
 
-    // Mark thread as read after 5 seconds of viewing
-    markAsReadTimeoutRef.current = setTimeout(() => {
-      markThreadAsRead(phoneNumber)
-    }, 5000)
+    // Mark thread as read immediately when opened
+    markThreadAsRead(phoneNumber)
   }
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (markAsReadTimeoutRef.current) {
-        clearTimeout(markAsReadTimeoutRef.current)
-      }
-    }
-  }, [])
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -152,6 +134,13 @@ export default function SMSMessagesPage() {
 
   const normalizePhone = (phone: string) => {
     return phone.replace(/[\s\-\(\)\+]/g, '').slice(-10)
+  }
+
+  // Get unread count for a specific thread
+  const getThreadUnreadCount = (phoneNumber: string) => {
+    const normalized = normalizePhone(phoneNumber)
+    const thread = unreadThreads.find(t => t.normalizedPhone === normalized)
+    return thread?.unreadCount || 0
   }
 
   // Fetch contacts, leads, accounts, and staff for new message
@@ -539,36 +528,48 @@ export default function SMSMessagesPage() {
               ) : (
                 filteredConversations.map((conv) => {
                   const unread = isThreadUnread(conv.phoneNumber)
+                  const threadUnreadCount = getThreadUnreadCount(conv.phoneNumber)
                   return (
                     <button
                       key={conv.phoneNumber}
                       onClick={() => handleSelectConversation(conv.phoneNumber)}
                       className={`w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
                         selectedPhone === conv.phoneNumber ? 'bg-blue-50 border-l-4 border-l-[#347dc4]' : ''
-                      } ${unread ? 'bg-blue-50' : ''}`}
+                      } ${unread ? 'bg-blue-100 border-l-4 border-l-red-500' : ''}`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 relative">
-                          <div className="h-10 w-10 rounded-full bg-[#347dc4] flex items-center justify-center text-white font-medium">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-medium ${
+                            unread ? 'bg-red-500' : 'bg-[#347dc4]'
+                          }`}>
                             {conv.displayName.charAt(0).toUpperCase()}
                           </div>
-                          {unread && (
-                            <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
+                          {unread && threadUnreadCount > 0 && (
+                            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                              <span className="text-[10px] text-white font-bold">{threadUnreadCount > 99 ? '99+' : threadUnreadCount}</span>
+                            </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <p className={`text-sm truncate ${unread ? 'font-bold text-gray-900' : 'font-semibold text-gray-900'}`}>
+                            <p className={`text-sm truncate ${unread ? 'font-black text-gray-900' : 'font-medium text-gray-900'}`}>
                               {conv.displayName}
                             </p>
-                            <p className={`text-xs ${unread ? 'font-semibold text-[#347dc4]' : 'text-gray-500'}`}>
-                              {formatTime(conv.lastMessageDate)}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              {unread && threadUnreadCount > 0 && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">
+                                  {threadUnreadCount} new
+                                </span>
+                              )}
+                              <p className={`text-xs ${unread ? 'font-bold text-red-500' : 'text-gray-500'}`}>
+                                {formatTime(conv.lastMessageDate)}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-600 truncate">
+                          <p className={`text-xs truncate ${unread ? 'font-semibold text-gray-700' : 'text-gray-600'}`}>
                             {conv.phoneNumber}
                           </p>
-                          <p className={`text-xs truncate mt-1 ${unread ? 'font-semibold text-gray-700' : 'text-gray-500'}`}>
+                          <p className={`text-xs truncate mt-1 ${unread ? 'font-bold text-gray-900' : 'text-gray-500'}`}>
                             {conv.lastMessage}
                           </p>
                         </div>
