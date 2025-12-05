@@ -75,11 +75,24 @@ export default function SMSMessagesPage() {
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
 
+  // Debug: Log unreadThreads whenever it changes
+  useEffect(() => {
+    console.log('[SMS Page] unreadThreads changed:', {
+      count: unreadThreads.length,
+      threads: unreadThreads.map(t => ({
+        phone: t.normalizedPhone,
+        unreadCount: t.unreadCount
+      }))
+    })
+  }, [unreadThreads])
+
   // Handle selecting a conversation - mark as read immediately
   const handleSelectConversation = (phoneNumber: string) => {
+    console.log('[SMS Page] handleSelectConversation called:', phoneNumber)
     setSelectedPhone(phoneNumber)
 
     // Mark thread as read immediately when opened
+    console.log('[SMS Page] Calling markThreadAsRead for:', phoneNumber)
     markThreadAsRead(phoneNumber)
   }
 
@@ -526,9 +539,19 @@ export default function SMSMessagesPage() {
                   <p className="text-sm text-center">No conversations yet</p>
                 </div>
               ) : (
-                filteredConversations.map((conv) => {
+                filteredConversations.map((conv, index) => {
                   const unread = isThreadUnread(conv.phoneNumber)
                   const threadUnreadCount = getThreadUnreadCount(conv.phoneNumber)
+                  // Debug logging for first few conversations
+                  if (index < 3) {
+                    console.log('[SMS Page] Rendering conversation:', {
+                      index,
+                      phoneNumber: conv.phoneNumber,
+                      displayName: conv.displayName,
+                      unread,
+                      threadUnreadCount
+                    })
+                  }
                   return (
                     <button
                       key={conv.phoneNumber}

@@ -66,11 +66,15 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
   // Load thread read status from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && tenant?.id) {
+      console.log('[SMS Notifications] Loading status for tenant:', tenant.id)
+
       // Load per-thread read status
       const stored = localStorage.getItem(getStorageKey())
+      console.log('[SMS Notifications] Stored read status:', stored)
       if (stored) {
         try {
           threadReadStatusRef.current = JSON.parse(stored)
+          console.log('[SMS Notifications] Parsed read status:', threadReadStatusRef.current)
         } catch {
           threadReadStatusRef.current = {}
         }
@@ -80,6 +84,7 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
       // This marks when the user first started using SMS notifications
       // Only messages AFTER this time will ever be considered "new"
       const initAt = localStorage.getItem(getInitKey())
+      console.log('[SMS Notifications] Feature initialized at:', initAt)
       if (initAt) {
         featureInitializedAtRef.current = initAt
       } else {
@@ -87,9 +92,11 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
         const now = new Date().toISOString()
         featureInitializedAtRef.current = now
         localStorage.setItem(getInitKey(), now)
+        console.log('[SMS Notifications] First time init, set to:', now)
       }
 
       setStatusLoaded(true)
+      console.log('[SMS Notifications] Status loaded successfully')
     }
   }, [tenant?.id, getStorageKey, getInitKey])
 
@@ -102,6 +109,7 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
 
   // Fetch unread count - counts threads with unread inbound messages
   const refreshUnreadCount = useCallback(async () => {
+    console.log('[SMS Notifications] refreshUnreadCount called, statusLoaded:', statusLoaded)
     if (!statusLoaded) return
 
     try {
@@ -111,9 +119,13 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
         const messages: SMSMessage[] = await response.json()
         const featureInitAt = featureInitializedAtRef.current
 
+        console.log('[SMS Notifications] Fetched messages:', messages.length)
+        console.log('[SMS Notifications] Feature init at:', featureInitAt)
+
         // Only consider messages that arrived AFTER the feature was initialized
         // This prevents old messages from showing as unread
         if (!featureInitAt) {
+          console.log('[SMS Notifications] No feature init time, clearing unread')
           setUnreadThreads([])
           return
         }
@@ -121,12 +133,17 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
         // Group inbound messages by phone number
         const threadMessages = new Map<string, { phoneNumber: string; messages: SMSMessage[] }>()
 
+        let inboundCount = 0
+        let afterInitCount = 0
+
         messages.forEach((msg) => {
           // Only count INBOUND messages
           if (msg.direction !== 'inbound') return
+          inboundCount++
 
           // Only count messages that arrived AFTER the feature was initialized
           if (msg.communication_date <= featureInitAt) return
+          afterInitCount++
 
           const phoneNumber = msg.metadata?.from_number
           if (!phoneNumber) return
@@ -139,11 +156,15 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
           threadMessages.get(normalized)!.messages.push(msg)
         })
 
+        console.log('[SMS Notifications] Inbound messages:', inboundCount)
+        console.log('[SMS Notifications] Messages after init:', afterInitCount)
+        console.log('[SMS Notifications] Unique threads with new messages:', threadMessages.size)
+
         // Calculate unread threads
         const unread: UnreadThread[] = []
         const currentReadStatus = threadReadStatusRef.current
 
-        console.log('[SMS Notifications] Refresh - Current read status:', currentReadStatus)
+        console.log('[SMS Notifications] Current read status:', JSON.stringify(currentReadStatus))
 
         threadMessages.forEach(({ phoneNumber, messages: threadMsgs }, normalized) => {
           const lastReadAt = currentReadStatus[normalized]
@@ -155,11 +176,12 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
             : threadMsgs // If thread never read, all new messages are unread
 
           console.log('[SMS Notifications] Thread check:', {
+            phoneNumber,
             normalized,
             lastReadAt,
-            totalMsgs: threadMsgs.length,
+            totalMsgsAfterInit: threadMsgs.length,
             unreadMsgs: unreadMsgs.length,
-            sampleMsgDate: threadMsgs[0]?.communication_date
+            latestMsgDate: threadMsgs[threadMsgs.length - 1]?.communication_date
           })
 
           if (unreadMsgs.length > 0) {
@@ -176,11 +198,13 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
           }
         })
 
-        console.log('[SMS Notifications] Refresh complete - Unread threads:', unread.length)
+        console.log('[SMS Notifications] Final unread threads:', unread.length, unread)
         setUnreadThreads(unread)
+      } else {
+        console.error('[SMS Notifications] Failed to fetch messages:', response.status)
       }
     } catch (error) {
-      console.error('Error fetching SMS unread count:', error)
+      console.error('[SMS Notifications] Error fetching SMS unread count:', error)
     }
   }, [statusLoaded])
 
@@ -198,7 +222,15 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
   // Check if a specific thread has unread messages
   const isThreadUnread = useCallback((phoneNumber: string) => {
     const normalized = normalizePhone(phoneNumber)
-    return unreadThreads.some(t => t.normalizedPhone === normalized)
+    const isUnread = unreadThreads.some(t => t.normalizedPhone === normalized)
+    console.log('[SMS Notifications] isThreadUnread check:', {
+      phoneNumber,
+      normalized,
+      isUnread,
+      unreadThreadsCount: unreadThreads.length,
+      unreadPhones: unreadThreads.map(t => t.normalizedPhone)
+    })
+    return isUnread
   }, [unreadThreads])
 
   // Mark a specific thread as read
