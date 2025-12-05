@@ -21,15 +21,10 @@ export async function GET(request: NextRequest) {
     const assigned_to = searchParams.get('assigned_to')
     const reported_by = searchParams.get('reported_by')
 
+    // Note: Using simple select to avoid PostgREST schema cache issues with FK joins
     let query = supabase
       .from('tickets')
-      .select(`
-        *,
-        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
-        reported_by_user:users!reported_by(id, first_name, last_name, email),
-        resolved_by_user:users!resolved_by(id, first_name, last_name, email),
-        ticket_votes(id, user_id)
-      `)
+      .select('*, ticket_votes(id, user_id)')
       .eq('tenant_id', dataSourceTenantId)
 
     // Apply filters
@@ -96,11 +91,7 @@ export async function POST(request: NextRequest) {
     const { data: ticket, error } = await supabase
       .from('tickets')
       .insert(ticketData)
-      .select(`
-        *,
-        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
-        reported_by_user:users!reported_by(id, first_name, last_name, email)
-      `)
+      .select('*')
       .single()
 
     if (error) {

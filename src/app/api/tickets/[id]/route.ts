@@ -17,15 +17,10 @@ export async function GET(
     const { supabase, dataSourceTenantId } = context
     const { id } = await params
 
+    // Note: Using simple select to avoid PostgREST schema cache issues with FK joins
     const { data: ticket, error } = await supabase
       .from('tickets')
-      .select(`
-        *,
-        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
-        reported_by_user:users!reported_by(id, first_name, last_name, email),
-        resolved_by_user:users!resolved_by(id, first_name, last_name, email),
-        ticket_votes(id, user_id)
-      `)
+      .select('*, ticket_votes(id, user_id)')
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
       .single()
