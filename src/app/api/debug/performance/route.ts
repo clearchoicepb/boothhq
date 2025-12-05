@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
       }, { status: 401 });
     }
 
-    const tenantId = dataSourceTenantId;
+    const tenantId = session.user.tenantId;
 
     // Get DataSourceManager statistics
     const cacheStats = dataSourceManager.getCacheStats();

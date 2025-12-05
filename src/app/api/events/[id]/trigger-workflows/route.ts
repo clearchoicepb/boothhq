@@ -1,6 +1,6 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
-import workflowEngine from '@/lib/services/workflowEngine'
+import { workflowEngine } from '@/lib/services/workflowEngine'
 
 /**
  * POST /api/events/[id]/trigger-workflows

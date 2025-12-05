@@ -1,7 +1,13 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+
 export async function GET() {
   try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase } = context
+
     // Test if we can query the event_custom_items table
     const { data, error, count } = await supabase
       .from('event_custom_items')

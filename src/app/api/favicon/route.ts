@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { fetchFavicon, getFallbackFavicon } from '@/lib/favicon-fetcher'
 
 export async function POST(request: NextRequest) {
