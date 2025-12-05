@@ -59,10 +59,11 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    // If status is being changed to 'resolved', capture resolution info
+    // If status is being changed to 'resolved', capture resolution timestamp
+    // Note: resolved_by is not set due to dual-database architecture
+    // (session.user.id may not exist in tenant database users table)
     if (body.status === 'resolved' && !body.resolved_at) {
       body.resolved_at = new Date().toISOString()
-      body.resolved_by = session.user.id
     }
 
     // If status is being changed away from 'resolved', clear resolution info
