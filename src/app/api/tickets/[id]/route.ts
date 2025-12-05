@@ -17,7 +17,7 @@ export async function GET(
     const { supabase, dataSourceTenantId } = context
     const { id } = await params
 
-    // Note: Using simple select to avoid PostgREST schema cache issues with FK joins
+    // Fetch ticket data
     const { data: ticket, error } = await supabase
       .from('tickets')
       .select('*, ticket_votes(id, user_id)')
@@ -28,6 +28,34 @@ export async function GET(
     if (error) {
       console.error('Error fetching ticket:', error)
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+
+    // Fetch related user data separately to avoid PostgREST schema cache issues
+    const userIds = [
+      ticket.reported_by,
+      ticket.assigned_to,
+      ticket.resolved_by
+    ].filter(Boolean)
+
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds)
+
+      if (users) {
+        const userMap = new Map(users.map(u => [u.id, u]))
+
+        if (ticket.reported_by && userMap.has(ticket.reported_by)) {
+          ticket.reported_by_user = userMap.get(ticket.reported_by)
+        }
+        if (ticket.assigned_to && userMap.has(ticket.assigned_to)) {
+          ticket.assigned_to_user = userMap.get(ticket.assigned_to)
+        }
+        if (ticket.resolved_by && userMap.has(ticket.resolved_by)) {
+          ticket.resolved_by_user = userMap.get(ticket.resolved_by)
+        }
+      }
     }
 
     return NextResponse.json(ticket)
