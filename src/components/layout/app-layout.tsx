@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Sidebar } from './sidebar'
 import { TopNav } from './top-nav'
-import { SettingsProvider } from '@/lib/settings-context'
-import { SMSNotificationsProvider } from '@/lib/sms-notifications-context'
 import { Menu, X, LifeBuoy } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import { useRouter, useParams } from 'next/navigation'
@@ -32,8 +30,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [mobileMenuOpen])
 
   return (
-    <SettingsProvider>
-      <SMSNotificationsProvider>
+    <>
       <div className="flex min-h-screen bg-white">
         {/* Desktop Sidebar - Hidden on mobile/tablet */}
         <div className="hidden lg:block">
@@ -128,7 +125,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           },
         }}
       />
-      </SMSNotificationsProvider>
-    </SettingsProvider>
+    </>
   )
 }

@@ -4,6 +4,7 @@ import './globals.css'
 import { SessionProvider } from '@/components/session-provider'
 import { TenantProvider } from '@/lib/tenant-context'
 import { SettingsProvider } from '@/lib/settings-context'
+import { SMSNotificationsProvider } from '@/lib/sms-notifications-context'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { SearchPalette } from '@/components/SearchPalette'
 import { QueryProvider } from '@/lib/api/QueryProvider'
@@ -33,10 +34,12 @@ export default function RootLayout({
             <QueryProvider>
               <TenantProvider>
                 <SettingsProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    {children}
-                  </div>
-                  <SearchPalette />
+                  <SMSNotificationsProvider>
+                    <div className="min-h-screen bg-gray-50">
+                      {children}
+                    </div>
+                    <SearchPalette />
+                  </SMSNotificationsProvider>
                 </SettingsProvider>
               </TenantProvider>
             </QueryProvider>
