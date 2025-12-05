@@ -75,14 +75,31 @@ export default function SMSMessagesPage() {
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
 
-  // Handle selecting a conversation - mark as read after a short delay
+  // Handle selecting a conversation - mark as read after 5 seconds
+  const markAsReadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const handleSelectConversation = (phoneNumber: string) => {
+    // Clear any pending mark-as-read timeout from previous thread
+    if (markAsReadTimeoutRef.current) {
+      clearTimeout(markAsReadTimeoutRef.current)
+    }
+
     setSelectedPhone(phoneNumber)
-    // Mark thread as read after 500ms delay so user can see it was unread
-    setTimeout(() => {
+
+    // Mark thread as read after 5 seconds of viewing
+    markAsReadTimeoutRef.current = setTimeout(() => {
       markThreadAsRead(phoneNumber)
-    }, 500)
+    }, 5000)
   }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (markAsReadTimeoutRef.current) {
+        clearTimeout(markAsReadTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
