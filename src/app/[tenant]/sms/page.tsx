@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { useSettings } from '@/lib/settings-context'
+import { useSMSNotifications } from '@/lib/sms-notifications-context'
 
 interface Message {
   id: string
@@ -55,6 +56,7 @@ interface Person {
 
 export default function SMSMessagesPage() {
   const { settings } = useSettings()
+  const { markAsRead } = useSMSNotifications()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -70,6 +72,11 @@ export default function SMSMessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const defaultCountryCode = settings?.integrations?.thirdPartyIntegrations?.twilio?.defaultCountryCode || '+1'
+
+  // Mark all SMS as read when the page is viewed
+  useEffect(() => {
+    markAsRead()
+  }, [markAsRead])
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
