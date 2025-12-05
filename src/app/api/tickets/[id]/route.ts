@@ -77,25 +77,15 @@ export async function PUT(
       updated_at: new Date().toISOString(),
     }
 
-    // First, verify the ticket exists
-    const { data: existingTicket, error: fetchError } = await supabase
-      .from('tickets')
-      .select('id')
-      .eq('id', id)
-      .eq('tenant_id', dataSourceTenantId)
-      .single()
-
-    if (fetchError || !existingTicket) {
-      console.error('Ticket not found:', fetchError)
-      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
-    }
-
-    // Perform the update
-    const { error: updateError } = await supabase
+    // Perform the update and return basic ticket data
+    // Note: Using simple select without joins to avoid PostgREST schema cache issues
+    const { data: ticket, error: updateError } = await supabase
       .from('tickets')
       .update(updateData)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
+      .select('*')
+      .single()
 
     if (updateError) {
       console.error('Error updating ticket:', updateError)
@@ -103,26 +93,6 @@ export async function PUT(
         error: 'Failed to update ticket',
         details: updateError.message
       }, { status: 500 })
-    }
-
-    // Fetch the updated ticket with relations
-    const { data: ticket, error: refetchError } = await supabase
-      .from('tickets')
-      .select(`
-        *,
-        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
-        reported_by_user:users!reported_by(id, first_name, last_name, email),
-        resolved_by_user:users!resolved_by(id, first_name, last_name, email),
-        ticket_votes(id, user_id)
-      `)
-      .eq('id', id)
-      .eq('tenant_id', dataSourceTenantId)
-      .single()
-
-    if (refetchError) {
-      console.error('Error fetching updated ticket:', refetchError)
-      // Return success anyway since update succeeded
-      return NextResponse.json({ id, ...updateData })
     }
 
     revalidatePath('/[tenant]/tickets', 'page')
