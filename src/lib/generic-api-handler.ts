@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { getEntityConfig, validateEntityData, FilterOptions } from './api-entities'
 
 export class GenericApiHandler {
@@ -15,32 +13,19 @@ export class GenericApiHandler {
 
   async handleGet(request: NextRequest) {
     try {
-      // Try to get session with proper request context
-      const session = await getServerSession({
-        ...authOptions,
-        req: {
-          headers: request.headers,
-          url: request.url,
-          method: request.method,
-        } as any
-      })
-      
-      
-      if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized - No session found' }, { status: 401 })
-      }
+      const context = await getTenantContext()
+      if (context instanceof NextResponse) return context
 
+      const { supabase, dataSourceTenantId } = context
 
       const { searchParams } = new URL(request.url)
       const filters = this.extractFilters(searchParams)
-      
-      const supabase = createServerSupabaseClient()
 
       // Build the query
       let query = supabase
         .from(this.config.table)
         .select(this.buildSelectQuery())
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       // Apply filters
       query = this.applyFilters(query, filters)
@@ -82,11 +67,10 @@ export class GenericApiHandler {
 
   async handlePost(request: NextRequest) {
     try {
-      const session = await getServerSession({ ...authOptions, req: request })
-      
-      if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+      const context = await getTenantContext()
+      if (context instanceof NextResponse) return context
+
+      const { supabase, dataSourceTenantId } = context
 
       let body
       try {
@@ -99,40 +83,38 @@ export class GenericApiHandler {
       // Validate data
       const validation = validateEntityData(this.entity, body)
       if (!validation.isValid) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Validation failed',
-          details: validation.errors 
+          details: validation.errors
         }, { status: 400 })
       }
 
       // Transform request data if needed
-      const transformedData = this.config.transformRequest ? 
+      const transformedData = this.config.transformRequest ?
         this.config.transformRequest(body) : body
-
-      const supabase = createServerSupabaseClient()
 
       const { data, error } = await supabase
         .from(this.config.table)
         .insert({
           ...transformedData,
-          tenant_id: session.user.tenantId
+          tenant_id: dataSourceTenantId
         })
         .select()
         .single()
 
       if (error) {
         console.error(`Error creating ${this.entity}:`, error)
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: `Failed to create ${this.entity}`,
-          details: error.message 
+          details: error.message
         }, { status: 500 })
       }
 
       const response = NextResponse.json(data)
-      
+
       // Add caching headers
       response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-      
+
       return response
     } catch (error) {
       console.error(`Error in ${this.entity} POST:`, error)
@@ -145,11 +127,10 @@ export class GenericApiHandler {
 
   async handlePut(request: NextRequest, id: string) {
     try {
-      const session = await getServerSession({ ...authOptions, req: request })
-      
-      if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+      const context = await getTenantContext()
+      if (context instanceof NextResponse) return context
+
+      const { supabase, dataSourceTenantId } = context
 
       let body
       try {
@@ -163,32 +144,29 @@ export class GenericApiHandler {
       const validation = validateEntityData(this.entity, body, true)
       if (!validation.isValid) {
         console.error(`[${this.entity}] Validation failed:`, validation.errors)
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Validation failed',
-          details: validation.errors 
+          details: validation.errors
         }, { status: 400 })
       }
 
       // Transform request data if needed
-      const transformedData = this.config.transformRequest ? 
+      const transformedData = this.config.transformRequest ?
         this.config.transformRequest(body) : body
-
-
-      const supabase = createServerSupabaseClient()
 
       const { data, error } = await supabase
         .from(this.config.table)
         .update(transformedData)
         .eq('id', id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .select()
         .single()
 
       if (error) {
         console.error(`Error updating ${this.entity}:`, error)
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: `Failed to update ${this.entity}`,
-          details: error.message 
+          details: error.message
         }, { status: 500 })
       }
 
@@ -204,25 +182,22 @@ export class GenericApiHandler {
 
   async handleDelete(request: NextRequest, id: string) {
     try {
-      const session = await getServerSession({ ...authOptions, req: request })
-      
-      if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+      const context = await getTenantContext()
+      if (context instanceof NextResponse) return context
 
-      const supabase = createServerSupabaseClient()
+      const { supabase, dataSourceTenantId } = context
 
       const { error } = await supabase
         .from(this.config.table)
         .delete()
         .eq('id', id)
-        .eq('tenant_id', session.user.tenantId)
+        .eq('tenant_id', dataSourceTenantId)
 
       if (error) {
         console.error(`Error deleting ${this.entity}:`, error)
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: `Failed to delete ${this.entity}`,
-          details: error.message 
+          details: error.message
         }, { status: 500 })
       }
 
