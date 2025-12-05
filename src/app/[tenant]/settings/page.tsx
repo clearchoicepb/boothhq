@@ -143,6 +143,14 @@ const settingsStructure: SettingsCategory[] = [
         icon: UserCheck,
         href: '/staff-roles',
       },
+      {
+        id: 'operations',
+        title: 'Operations Settings',
+        description: 'Operations item types, categories, and deadlines',
+        icon: Package,
+        href: '/operations',
+        status: 'configured'
+      },
     ]
   },
   {
