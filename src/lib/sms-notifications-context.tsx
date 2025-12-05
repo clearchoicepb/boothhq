@@ -143,6 +143,8 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
         const unread: UnreadThread[] = []
         const currentReadStatus = threadReadStatusRef.current
 
+        console.log('[SMS Notifications] Refresh - Current read status:', currentReadStatus)
+
         threadMessages.forEach(({ phoneNumber, messages: threadMsgs }, normalized) => {
           const lastReadAt = currentReadStatus[normalized]
 
@@ -151,6 +153,14 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
           const unreadMsgs = lastReadAt
             ? threadMsgs.filter(msg => msg.communication_date > lastReadAt)
             : threadMsgs // If thread never read, all new messages are unread
+
+          console.log('[SMS Notifications] Thread check:', {
+            normalized,
+            lastReadAt,
+            totalMsgs: threadMsgs.length,
+            unreadMsgs: unreadMsgs.length,
+            sampleMsgDate: threadMsgs[0]?.communication_date
+          })
 
           if (unreadMsgs.length > 0) {
             const lastMessageDate = unreadMsgs.reduce((latest, msg) =>
@@ -166,6 +176,7 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
           }
         })
 
+        console.log('[SMS Notifications] Refresh complete - Unread threads:', unread.length)
         setUnreadThreads(unread)
       }
     } catch (error) {
@@ -195,6 +206,8 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
     const normalized = normalizePhone(phoneNumber)
     const now = new Date().toISOString()
 
+    console.log('[SMS Notifications] Marking thread as read:', { phoneNumber, normalized, now })
+
     // Update the ref immediately
     threadReadStatusRef.current = {
       ...threadReadStatusRef.current,
@@ -205,7 +218,15 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
     saveThreadReadStatus()
 
     // Remove this thread from unread list immediately
-    setUnreadThreads(prev => prev.filter(t => t.normalizedPhone !== normalized))
+    setUnreadThreads(prev => {
+      const newThreads = prev.filter(t => t.normalizedPhone !== normalized)
+      console.log('[SMS Notifications] Updated unread threads:', {
+        before: prev.length,
+        after: newThreads.length,
+        removed: prev.length - newThreads.length
+      })
+      return newThreads
+    })
   }, [saveThreadReadStatus])
 
   // Total unread count across all threads
