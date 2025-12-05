@@ -17,15 +17,10 @@ export async function GET(
     const { supabase, dataSourceTenantId } = context
     const { id } = await params
 
+    // Fetch ticket data
     const { data: ticket, error } = await supabase
       .from('tickets')
-      .select(`
-        *,
-        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
-        reported_by_user:users!reported_by(id, first_name, last_name, email),
-        resolved_by_user:users!resolved_by(id, first_name, last_name, email),
-        ticket_votes(id, user_id)
-      `)
+      .select('*, ticket_votes(id, user_id)')
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
       .single()
@@ -33,6 +28,34 @@ export async function GET(
     if (error) {
       console.error('Error fetching ticket:', error)
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+
+    // Fetch related user data separately to avoid PostgREST schema cache issues
+    const userIds = [
+      ticket.reported_by,
+      ticket.assigned_to,
+      ticket.resolved_by
+    ].filter(Boolean)
+
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds)
+
+      if (users) {
+        const userMap = new Map(users.map(u => [u.id, u]))
+
+        if (ticket.reported_by && userMap.has(ticket.reported_by)) {
+          ticket.reported_by_user = userMap.get(ticket.reported_by)
+        }
+        if (ticket.assigned_to && userMap.has(ticket.assigned_to)) {
+          ticket.assigned_to_user = userMap.get(ticket.assigned_to)
+        }
+        if (ticket.resolved_by && userMap.has(ticket.resolved_by)) {
+          ticket.resolved_by_user = userMap.get(ticket.resolved_by)
+        }
+      }
     }
 
     return NextResponse.json(ticket)
@@ -59,10 +82,17 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    // If status is being changed to 'resolved', capture resolution info
+    // If status is being changed to 'resolved', capture resolution timestamp
+    // Note: resolved_by is not set due to dual-database architecture
+    // (session.user.id may not exist in tenant database users table)
     if (body.status === 'resolved' && !body.resolved_at) {
       body.resolved_at = new Date().toISOString()
-      body.resolved_by = session.user.id
+    }
+
+    // If status is being changed away from 'resolved', clear resolution info
+    if (body.status && body.status !== 'resolved') {
+      body.resolved_at = null
+      body.resolved_by = null
     }
 
     const updateData = {
@@ -70,23 +100,22 @@ export async function PUT(
       updated_at: new Date().toISOString(),
     }
 
-    const { data: ticket, error } = await supabase
+    // Perform the update and return basic ticket data
+    // Note: Using simple select without joins to avoid PostgREST schema cache issues
+    const { data: ticket, error: updateError } = await supabase
       .from('tickets')
       .update(updateData)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
-      .select(`
-        *,
-        assigned_to_user:users!assigned_to(id, first_name, last_name, email),
-        reported_by_user:users!reported_by(id, first_name, last_name, email),
-        resolved_by_user:users!resolved_by(id, first_name, last_name, email),
-        ticket_votes(id, user_id)
-      `)
+      .select('*')
       .single()
 
-    if (error) {
-      console.error('Error updating ticket:', error)
-      return NextResponse.json({ error: 'Failed to update ticket' }, { status: 500 })
+    if (updateError) {
+      console.error('Error updating ticket:', updateError)
+      return NextResponse.json({
+        error: 'Failed to update ticket',
+        details: updateError.message
+      }, { status: 500 })
     }
 
     revalidatePath('/[tenant]/tickets', 'page')
