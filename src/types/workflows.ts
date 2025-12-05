@@ -23,9 +23,13 @@
 
 /**
  * Workflow trigger types
- * Currently only 'event_created', but extensible for future triggers
+ * Phase 3: Extended to support task and time-based triggers
  */
-export type WorkflowTriggerType = 'event_created'
+export type WorkflowTriggerType =
+  | 'event_created'           // When an event is created (original)
+  | 'task_created'            // When a task is created
+  | 'task_status_changed'     // When a task status changes
+  | 'event_date_approaching'  // X days before event date (cron-based)
 
 /**
  * Condition operators for workflow conditions
@@ -124,19 +128,23 @@ export const CONDITION_FIELDS: Record<string, {
   type: 'string' | 'uuid' | 'number' | 'date' | 'boolean'
   entity: 'event' | 'task' | 'product'
   lookupTable?: string // For UUID fields, which table to look up display values
+  triggerTypes?: WorkflowTriggerType[] // Which trigger types this field is available for
 }> = {
+  // Event-related fields (for event_created and event_date_approaching triggers)
   'event.event_type_id': {
     label: 'Event Type',
     description: 'The type of event (Wedding, Corporate, etc.)',
     type: 'uuid',
     entity: 'event',
     lookupTable: 'event_types',
+    triggerTypes: ['event_created', 'event_date_approaching'],
   },
   'event.status': {
     label: 'Event Status',
     description: 'Current status of the event',
     type: 'string',
     entity: 'event',
+    triggerTypes: ['event_created', 'event_date_approaching'],
   },
   'event.account_id': {
     label: 'Account',
@@ -144,6 +152,7 @@ export const CONDITION_FIELDS: Record<string, {
     type: 'uuid',
     entity: 'event',
     lookupTable: 'accounts',
+    triggerTypes: ['event_created', 'event_date_approaching'],
   },
   'event.assigned_to': {
     label: 'Assigned To',
@@ -151,6 +160,51 @@ export const CONDITION_FIELDS: Record<string, {
     type: 'uuid',
     entity: 'event',
     lookupTable: 'users',
+    triggerTypes: ['event_created', 'event_date_approaching'],
+  },
+  // Task-related fields (for task_created and task_status_changed triggers)
+  'task.status': {
+    label: 'Task Status',
+    description: 'Current status of the task',
+    type: 'string',
+    entity: 'task',
+    triggerTypes: ['task_created', 'task_status_changed'],
+  },
+  'task.priority': {
+    label: 'Task Priority',
+    description: 'Priority level of the task',
+    type: 'string',
+    entity: 'task',
+    triggerTypes: ['task_created', 'task_status_changed'],
+  },
+  'task.department': {
+    label: 'Task Department',
+    description: 'Department the task belongs to',
+    type: 'string',
+    entity: 'task',
+    triggerTypes: ['task_created', 'task_status_changed'],
+  },
+  'task.assigned_to': {
+    label: 'Task Assigned To',
+    description: 'User assigned to the task',
+    type: 'uuid',
+    entity: 'task',
+    lookupTable: 'users',
+    triggerTypes: ['task_created', 'task_status_changed'],
+  },
+  'task.entity_type': {
+    label: 'Task Entity Type',
+    description: 'Type of entity the task is linked to (event, account, etc.)',
+    type: 'string',
+    entity: 'task',
+    triggerTypes: ['task_created', 'task_status_changed'],
+  },
+  'task.auto_created': {
+    label: 'Auto Created',
+    description: 'Whether the task was created by a workflow',
+    type: 'boolean',
+    entity: 'task',
+    triggerTypes: ['task_created', 'task_status_changed'],
   },
 }
 
@@ -162,18 +216,51 @@ export const CONDITION_FIELDS: Record<string, {
  * - create_ops_item: Operations department (timeline-based items)
  * - assign_event_role: Assign a user to an event staff role
  *
+ * Phase 4 action types:
+ * - send_email: Send templated email
+ * - send_notification: In-app notification
+ * - assign_task: Assign user to existing task
+ *
  * Future action types:
- * - send_email: Email automation
- * - send_notification: In-app notifications
  * - update_field: Field updates
  * - call_webhook: External integrations
  */
-export type WorkflowActionType = 'create_task' | 'create_design_item' | 'create_ops_item' | 'assign_event_role'
+export type WorkflowActionType =
+  | 'create_task'
+  | 'create_design_item'
+  | 'create_ops_item'
+  | 'assign_event_role'
+  | 'send_email'
+  | 'send_notification'
+  | 'assign_task'
 
 /**
  * Workflow execution status
  */
 export type WorkflowExecutionStatus = 'running' | 'completed' | 'failed' | 'partial' | 'skipped'
+
+/**
+ * Trigger configuration types
+ */
+export interface TriggerConfigTaskStatusChanged {
+  from_status?: string | null  // Status to trigger on (null = any)
+  to_status?: string | null    // New status to trigger on (null = any)
+}
+
+export interface TriggerConfigEventDateApproaching {
+  days_before: number          // Number of days before event
+}
+
+export interface TriggerConfigTaskCreated {
+  task_types?: string[]        // Optional: Filter by task types
+  departments?: string[]       // Optional: Filter by departments
+}
+
+export type TriggerConfig =
+  | TriggerConfigTaskStatusChanged
+  | TriggerConfigEventDateApproaching
+  | TriggerConfigTaskCreated
+  | Record<string, any>
 
 /**
  * Available trigger types with metadata
@@ -182,11 +269,97 @@ export const WORKFLOW_TRIGGER_TYPES: Record<WorkflowTriggerType, {
   label: string
   description: string
   icon: string
+  category: 'event' | 'task' | 'time'
+  requiresEventTypes: boolean
+  configFields?: Array<{
+    key: string
+    label: string
+    type: 'select' | 'number' | 'multiselect'
+    options?: Array<{ value: string; label: string }>
+    required?: boolean
+    default?: any
+  }>
 }> = {
   event_created: {
     label: 'Event Created',
     description: 'Triggers when a new event is created',
     icon: 'calendar-plus',
+    category: 'event',
+    requiresEventTypes: true,
+  },
+  task_created: {
+    label: 'Task Created',
+    description: 'Triggers when a new task is created',
+    icon: 'clipboard-plus',
+    category: 'task',
+    requiresEventTypes: false,
+    configFields: [
+      {
+        key: 'task_types',
+        label: 'Task Types (Optional)',
+        type: 'multiselect',
+        options: [
+          { value: 'general', label: 'General' },
+          { value: 'design', label: 'Design' },
+          { value: 'production', label: 'Production' },
+          { value: 'operations', label: 'Operations' },
+        ],
+        required: false,
+      },
+    ],
+  },
+  task_status_changed: {
+    label: 'Task Status Changed',
+    description: 'Triggers when a task status changes',
+    icon: 'refresh-cw',
+    category: 'task',
+    requiresEventTypes: false,
+    configFields: [
+      {
+        key: 'from_status',
+        label: 'From Status (Optional)',
+        type: 'select',
+        options: [
+          { value: '', label: 'Any Status' },
+          { value: 'pending', label: 'Pending' },
+          { value: 'in_progress', label: 'In Progress' },
+          { value: 'on_hold', label: 'On Hold' },
+          { value: 'completed', label: 'Completed' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ],
+        required: false,
+      },
+      {
+        key: 'to_status',
+        label: 'To Status (Optional)',
+        type: 'select',
+        options: [
+          { value: '', label: 'Any Status' },
+          { value: 'pending', label: 'Pending' },
+          { value: 'in_progress', label: 'In Progress' },
+          { value: 'on_hold', label: 'On Hold' },
+          { value: 'completed', label: 'Completed' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ],
+        required: false,
+      },
+    ],
+  },
+  event_date_approaching: {
+    label: 'Event Date Approaching',
+    description: 'Triggers X days before an event date',
+    icon: 'clock',
+    category: 'time',
+    requiresEventTypes: false,
+    configFields: [
+      {
+        key: 'days_before',
+        label: 'Days Before Event',
+        type: 'number',
+        required: true,
+        default: 7,
+      },
+    ],
   },
 }
 
@@ -200,13 +373,16 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
   icon: string
   department: string
   requiresFields: string[]
+  category: 'creation' | 'communication' | 'assignment'
 }> = {
+  // Creation actions
   create_task: {
     label: 'Create Task',
     description: 'Create and assign a simple task',
     icon: 'clipboard-check',
     department: 'General',
     requiresFields: ['task_template_id', 'assigned_to_user_id'],
+    category: 'creation',
   },
   create_design_item: {
     label: 'Create Design Item',
@@ -214,6 +390,7 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
     icon: 'palette',
     department: 'Design',
     requiresFields: ['design_item_type_id'],
+    category: 'creation',
   },
   create_ops_item: {
     label: 'Create Operations Item',
@@ -221,13 +398,41 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
     icon: 'briefcase',
     department: 'Operations',
     requiresFields: ['operations_item_type_id'],
+    category: 'creation',
   },
+  // Assignment actions
   assign_event_role: {
     label: 'Assign Event Role',
     description: 'Assign a staff member to an event role',
     icon: 'user-plus',
     department: 'Staff',
     requiresFields: ['staff_role_id', 'assigned_to_user_id'],
+    category: 'assignment',
+  },
+  assign_task: {
+    label: 'Assign Task',
+    description: 'Assign a user to the triggering task',
+    icon: 'user-check',
+    department: 'General',
+    requiresFields: ['assigned_to_user_id'],
+    category: 'assignment',
+  },
+  // Communication actions
+  send_email: {
+    label: 'Send Email',
+    description: 'Send a templated email notification',
+    icon: 'mail',
+    department: 'Communication',
+    requiresFields: ['config.template_id', 'config.recipient_type'],
+    category: 'communication',
+  },
+  send_notification: {
+    label: 'Send Notification',
+    description: 'Send an in-app notification',
+    icon: 'bell',
+    department: 'Communication',
+    requiresFields: ['assigned_to_user_id', 'config.message'],
+    category: 'communication',
   },
 }
 
@@ -284,6 +489,7 @@ export interface Workflow {
   description: string | null
   trigger_type: WorkflowTriggerType
   event_type_ids: string[] // Changed from single event_type_id to array for multi-select
+  trigger_config: TriggerConfig // Phase 3: Trigger-specific configuration
   conditions: WorkflowCondition[] // Optional conditions that must all pass
   is_active: boolean
   created_by: string | null
@@ -428,7 +634,8 @@ export interface WorkflowInsert {
   name: string
   description?: string | null
   trigger_type: WorkflowTriggerType
-  event_type_ids: string[] // Changed to array for multi-select
+  event_type_ids?: string[] // Changed to array for multi-select, optional for non-event triggers
+  trigger_config?: TriggerConfig // Phase 3: Trigger-specific configuration
   conditions?: WorkflowCondition[] // Optional conditions (defaults to empty array)
   is_active?: boolean
   created_by?: string | null
@@ -440,7 +647,9 @@ export interface WorkflowInsert {
 export interface WorkflowUpdate {
   name?: string
   description?: string | null
+  trigger_type?: WorkflowTriggerType
   event_type_ids?: string[] // Changed to array for multi-select
+  trigger_config?: TriggerConfig // Phase 3: Trigger-specific configuration
   conditions?: WorkflowCondition[] // Optional conditions
   is_active?: boolean
 }
@@ -514,6 +723,7 @@ export interface WorkflowBuilderState {
   // Step 1: Trigger
   triggerType: WorkflowTriggerType
   eventTypeIds: string[] // Changed to array for multi-select
+  triggerConfig: TriggerConfig // Phase 3: Trigger-specific configuration
 
   // Step 1.5: Conditions (optional)
   conditions: WorkflowCondition[]
@@ -610,10 +820,12 @@ export interface WorkflowExecutionContext {
   dataSourceTenantId: string
   triggerType: WorkflowTriggerType
   triggerEntity: {
-    type: string
+    type: 'event' | 'task' | string
     id: string
     data: Record<string, any>
   }
+  // Phase 3: Additional context for task triggers
+  previousData?: Record<string, any> // For status change triggers, contains previous state
   userId?: string // User who triggered the workflow (if manual)
   workflowName?: string // Name of workflow for logging
 }

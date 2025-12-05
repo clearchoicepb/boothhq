@@ -35,7 +35,10 @@ import type {
   WorkflowSavePayload,
   WorkflowBuilderAction,
   WorkflowCondition,
+  WorkflowTriggerType,
+  TriggerConfig,
 } from '@/types/workflows'
+import { WORKFLOW_TRIGGER_TYPES } from '@/types/workflows'
 
 // Types for reference data
 interface EventType {
@@ -80,7 +83,9 @@ export default function WorkflowBuilder({
   // Workflow state
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [triggerType, setTriggerType] = useState<WorkflowTriggerType>('event_created')
   const [eventTypeIds, setEventTypeIds] = useState<string[]>([])
+  const [triggerConfig, setTriggerConfig] = useState<TriggerConfig>({})
   const [conditions, setConditions] = useState<WorkflowCondition[]>([])
   const [isActive, setIsActive] = useState(true)
   const [actions, setActions] = useState<WorkflowBuilderAction[]>([])
@@ -145,7 +150,9 @@ export default function WorkflowBuilder({
     if (workflow) {
       setName(workflow.name)
       setDescription(workflow.description || '')
+      setTriggerType(workflow.trigger_type || 'event_created')
       setEventTypeIds(workflow.event_type_ids || [])
+      setTriggerConfig(workflow.trigger_config || {})
       setConditions(workflow.conditions || [])
       setIsActive(workflow.is_active)
 
@@ -199,15 +206,24 @@ export default function WorkflowBuilder({
 
   const validate = (): boolean => {
     const validationErrors: string[] = []
+    const triggerMeta = WORKFLOW_TRIGGER_TYPES[triggerType]
 
     // Validate name
     if (!name.trim()) {
       validationErrors.push('Workflow name is required')
     }
 
-    // Validate trigger
-    if (eventTypeIds.length === 0) {
+    // Validate trigger (event types only required for event_created)
+    if (triggerMeta.requiresEventTypes && eventTypeIds.length === 0) {
       validationErrors.push('At least one event type is required')
+    }
+
+    // Validate trigger config for time-based triggers
+    if (triggerType === 'event_date_approaching') {
+      const config = triggerConfig as { days_before?: number }
+      if (!config.days_before || config.days_before < 1) {
+        validationErrors.push('Days before event must be at least 1')
+      }
     }
 
     // Validate actions
@@ -255,8 +271,9 @@ export default function WorkflowBuilder({
       workflow: {
         name,
         description: description || null,
-        trigger_type: 'event_created',
-        event_type_ids: eventTypeIds,
+        trigger_type: triggerType,
+        event_type_ids: eventTypeIds.length > 0 ? eventTypeIds : undefined,
+        trigger_config: Object.keys(triggerConfig).length > 0 ? triggerConfig : undefined,
         conditions: conditions.length > 0 ? conditions : undefined,
         is_active: isActive,
       },
@@ -275,7 +292,11 @@ export default function WorkflowBuilder({
     await onSave(payload)
   }
 
-  const canProceedToActions = eventTypeIds.length > 0
+  // Phase 3: Updated validation to handle different trigger types
+  const triggerMeta = WORKFLOW_TRIGGER_TYPES[triggerType]
+  const canProceedToActions = triggerMeta.requiresEventTypes
+    ? eventTypeIds.length > 0
+    : true // Task and time-based triggers don't require event types
   const canProceedToReview = canProceedToActions && actions.length > 0
 
   return (
@@ -358,8 +379,12 @@ export default function WorkflowBuilder({
       {currentStep === 'trigger' && (
         <div className="space-y-4">
           <TriggerSelector
+            triggerType={triggerType}
+            onTriggerTypeChange={setTriggerType}
             selectedEventTypeIds={eventTypeIds}
-            onSelect={setEventTypeIds}
+            onEventTypesChange={setEventTypeIds}
+            triggerConfig={triggerConfig}
+            onTriggerConfigChange={setTriggerConfig}
           />
           <ConditionBuilder
             conditions={conditions}
@@ -435,23 +460,62 @@ export default function WorkflowBuilder({
             <div className="flex">
               <Calendar className="h-5 w-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-blue-900 mb-2">Workflow Triggers</h3>
+                <h3 className="text-sm font-medium text-blue-900 mb-2">Workflow Trigger</h3>
                 <p className="text-sm text-blue-700 mb-2">
-                  This workflow will execute when any of these event types are created:
+                  <strong>Type:</strong> {triggerMeta.label}
                 </p>
-                {loadingReferenceData ? (
-                  <div className="text-sm text-blue-700">Loading event types...</div>
-                ) : (
-                  <div className="mt-2 space-y-1">
-                    {eventTypeIds.map(typeId => {
-                      const eventType = eventTypes.find(et => et.id === typeId)
-                      return (
-                        <div key={typeId} className="flex items-center text-sm text-blue-900">
-                          <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600" />
-                          <span className="font-medium">{eventType?.name || 'Unknown Event Type'}</span>
-                        </div>
-                      )
-                    })}
+                <p className="text-xs text-blue-600 mb-2">
+                  {triggerMeta.description}
+                </p>
+
+                {/* Show event types for event_created trigger */}
+                {triggerType === 'event_created' && eventTypeIds.length > 0 && (
+                  <>
+                    <p className="text-sm text-blue-700 mt-3 mb-1">Event Types:</p>
+                    {loadingReferenceData ? (
+                      <div className="text-sm text-blue-700">Loading event types...</div>
+                    ) : (
+                      <div className="space-y-1">
+                        {eventTypeIds.map(typeId => {
+                          const eventType = eventTypes.find(et => et.id === typeId)
+                          return (
+                            <div key={typeId} className="flex items-center text-sm text-blue-900">
+                              <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600" />
+                              <span className="font-medium">{eventType?.name || 'Unknown Event Type'}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Show config for task_status_changed */}
+                {triggerType === 'task_status_changed' && (
+                  <div className="mt-3 text-sm text-blue-700">
+                    {(triggerConfig as any).from_status && (
+                      <div>From Status: <strong>{(triggerConfig as any).from_status}</strong></div>
+                    )}
+                    {(triggerConfig as any).to_status && (
+                      <div>To Status: <strong>{(triggerConfig as any).to_status}</strong></div>
+                    )}
+                    {!(triggerConfig as any).from_status && !(triggerConfig as any).to_status && (
+                      <div>Triggers on <strong>any status change</strong></div>
+                    )}
+                  </div>
+                )}
+
+                {/* Show config for event_date_approaching */}
+                {triggerType === 'event_date_approaching' && (
+                  <div className="mt-3 text-sm text-blue-700">
+                    Triggers <strong>{(triggerConfig as any).days_before || 7} days</strong> before event date
+                  </div>
+                )}
+
+                {/* Show config for task_created */}
+                {triggerType === 'task_created' && (triggerConfig as any).task_types?.length > 0 && (
+                  <div className="mt-3 text-sm text-blue-700">
+                    Task Types: <strong>{(triggerConfig as any).task_types.join(', ')}</strong>
                   </div>
                 )}
               </div>
