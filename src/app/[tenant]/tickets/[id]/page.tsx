@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { NotesSection } from '@/components/notes-section'
 import AttachmentsSection from '@/components/attachments-section'
 import { ArrowLeft, Edit, Trash2, Info, Paperclip, FileText, Bug, Lightbulb, HelpCircle, TrendingUp, MoreHorizontal } from 'lucide-react'
+import { TicketStatusButton } from '@/components/tickets/ticket-status-button'
 import toast from 'react-hot-toast'
 import type { Ticket, TicketStatus, TicketPriority } from '@/types/ticket.types'
 
@@ -190,6 +191,12 @@ export default function TicketDetailPage() {
               </div>
 
               <div className="flex gap-2">
+                <TicketStatusButton
+                  ticketId={ticketId}
+                  currentStatus={ticket.status}
+                  targetStatus="resolved"
+                  onStatusChange={() => fetchTicket()}
+                />
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
                   <Edit className="h-4 w-4 mr-2" />
                   {isEditing ? 'Cancel' : 'Edit'}

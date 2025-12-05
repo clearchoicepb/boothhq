@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Plus, Bug, Lightbulb, HelpCircle, TrendingUp, MoreHorizontal, Search, ThumbsUp } from 'lucide-react'
+import { TicketStatusButton } from '@/components/tickets/ticket-status-button'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import type { Ticket, TicketStatus, TicketType, TicketPriority } from '@/types/ticket.types'
@@ -368,6 +369,17 @@ export default function TicketsPage() {
                               </>
                             )}
                           </div>
+                        </div>
+
+                        {/* Quick Resolve Action */}
+                        <div className="flex-shrink-0 ml-4">
+                          <TicketStatusButton
+                            ticketId={ticket.id}
+                            currentStatus={ticket.status}
+                            targetStatus="resolved"
+                            onStatusChange={() => fetchTickets()}
+                            size="sm"
+                          />
                         </div>
                       </div>
                     </div>
