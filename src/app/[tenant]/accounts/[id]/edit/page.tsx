@@ -10,6 +10,7 @@ import { ArrowLeft, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('edit')
 
@@ -82,7 +83,7 @@ export default function EditAccountPage() {
       router.push(`/${tenantSubdomain}/accounts/${accountId}`)
     } catch (error) {
       log.error({ error }, 'Error saving account')
-      alert('Failed to save account. Please try again.')
+      toast.error('Failed to save account. Please try again.')
     } finally {
       setLoading(false)
     }

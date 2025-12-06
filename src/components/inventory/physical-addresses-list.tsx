@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('inventory')
 import {
@@ -35,7 +36,7 @@ export function PhysicalAddressesList() {
       setEditingAddress(null)
     } catch (error: any) {
       log.error({ error }, 'Failed to save physical address')
-      alert(error.message || 'Failed to save physical address')
+      toast(error.message || 'Failed to save physical address')
     }
   }
 
@@ -45,7 +46,7 @@ export function PhysicalAddressesList() {
     try {
       await deleteAddress.mutateAsync(addressId)
     } catch (error: any) {
-      alert(error.message || 'Failed to delete physical address')
+      toast(error.message || 'Failed to delete physical address')
     }
   }
 

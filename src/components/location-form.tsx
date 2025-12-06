@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal'
 import { AddressInput } from '@/components/ui/address-input'
 import { Location, LocationInsert, LocationUpdate } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -101,7 +102,7 @@ export function LocationForm({
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      alert('Location name is required')
+      toast('Location name is required')
       return
     }
 
@@ -114,7 +115,7 @@ export function LocationForm({
     } catch (error: any) {
       log.error({ error }, '[LocationForm] Error saving location')
       const errorMessage = error.message || 'Failed to save location. Please try again.'
-      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`)
+      toast.error('${errorMessage}\n\nCheck console for details.')
     } finally {
       setIsLoading(false)
     }

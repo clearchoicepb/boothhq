@@ -18,6 +18,7 @@ import { AssignmentHistory } from './assignment-history'
 import { BulkCheckoutModal } from './bulk-checkout-modal'
 import { format, isWithinInterval, addDays, startOfWeek, endOfWeek } from 'date-fns'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('inventory')
 
@@ -217,7 +218,7 @@ export function InventoryItemsList() {
     } catch (error: any) {
       log.error({ error }, 'Failed to save inventory item')
       // Show user-friendly error
-      alert(`Failed to save: ${error.message}`)
+      toast.error('Failed to save: ${error.message}')
     }
   }, [editingItem, updateItem, addItem])
 

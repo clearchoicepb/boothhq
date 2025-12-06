@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('new')
 
@@ -242,12 +243,12 @@ export default function NewInvoicePage() {
     e.preventDefault()
 
     if (!formData.account_id) {
-      alert('Please select an account')
+      toast.error('Please select an account')
       return
     }
 
     if (lineItems.some(item => !item.description || item.quantity <= 0 || item.unit_price <= 0)) {
-      alert('Please fill in all line items with valid values')
+      toast.error('Please fill in all line items with valid values')
       return
     }
 
@@ -278,7 +279,7 @@ export default function NewInvoicePage() {
       if (!response.ok) {
         const errorData = await response.json()
         log.error({ errorData }, 'Error creating invoice')
-        alert('Error creating invoice. Please try again.')
+        toast.error('Error creating invoice. Please try again.')
         return
       }
 
@@ -291,7 +292,7 @@ export default function NewInvoicePage() {
       router.push(redirectUrl)
     } catch (error) {
       log.error({ error }, 'Error')
-      alert('Error creating invoice. Please try again.')
+      toast.error('Error creating invoice. Please try again.')
     } finally {
       setLocalLoading(false)
     }

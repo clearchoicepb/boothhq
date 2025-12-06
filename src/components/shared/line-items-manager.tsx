@@ -25,6 +25,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('shared')
 
@@ -342,11 +343,11 @@ export function LineItemsManager({
       } else {
         const errorData = await response.json()
         log.error({ errorData }, 'Error response')
-        alert(`Failed to save item: ${errorData.error || 'Unknown error'}`)
+        toast.error(`Failed to save item: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error saving line item')
-      alert('Failed to save line item. Please try again.')
+      toast.error('Failed to save line item. Please try again.')
     }
   }
 
@@ -418,7 +419,7 @@ export function LineItemsManager({
       if (onUpdate) await onUpdate()
     } catch (error) {
       log.error({ error }, 'Error updating item order')
-      alert(error instanceof Error ? error.message : 'Failed to save new order. Please try again.')
+      toast(error instanceof Error ? error.message : 'Failed to save new order. Please try again.')
       // Revert the optimistic update on error
       await fetchData()
     }

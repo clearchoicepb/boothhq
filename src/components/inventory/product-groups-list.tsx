@@ -17,6 +17,7 @@ import { useInventoryItemsData, useUpdateInventoryItem } from '@/hooks/useInvent
 import { useQueryClient } from '@tanstack/react-query'
 import { ProductGroupItemSelector } from './ProductGroupItemSelector'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('inventory')
 
@@ -172,7 +173,7 @@ export function ProductGroupsList() {
       })
     } catch (error: any) {
       log.error({ error }, 'Failed to update assignment')
-      alert(`Failed to update assignment: ${error.message}`)
+      toast.error('Failed to update assignment: ${error.message}')
     }
   }, [updateGroup])
 

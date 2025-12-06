@@ -229,11 +229,11 @@ export default function OpportunityDetailPage() {
           return newState
         })
       } else {
-        alert('Failed to save notes')
+        toast.error('Failed to save notes')
       }
     } catch (error) {
       log.error({ error }, 'Error saving notes')
-      alert('Error saving notes')
+      toast.error('Error saving notes')
     } finally {
       setSavingNotes(prev => ({ ...prev, [eventDateId]: false }))
     }
@@ -450,11 +450,11 @@ export default function OpportunityDetailPage() {
         refreshOpportunityData()
         setIsEditingAccountContact(false)
       } else {
-        alert('Failed to update account/contact')
+        toast.error('Failed to update account/contact')
       }
     } catch (error) {
       log.error({ error }, 'Error updating account/contact')
-      alert('Error updating account/contact')
+      toast.error('Error updating account/contact')
     }
   }
 
@@ -480,7 +480,7 @@ export default function OpportunityDetailPage() {
         refreshOpportunityData()
 
         // Show success message
-        alert('Lead converted successfully!')
+        toast.success('Lead converted successfully!')
       } else {
         throw new Error('Failed to convert lead')
       }
@@ -510,7 +510,7 @@ export default function OpportunityDetailPage() {
         const result = await response.json()
 
         // Show success message
-        alert('Opportunity converted to event successfully!')
+        toast.success('Opportunity converted to event successfully!')
 
         // Navigate to the events list (since we don't have event detail page yet)
         router.push(`/${tenantSubdomain}/events`)
@@ -520,7 +520,7 @@ export default function OpportunityDetailPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error converting opportunity to event')
-      alert(`Failed to convert opportunity to event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Failed to convert opportunity to event: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -661,7 +661,7 @@ export default function OpportunityDetailPage() {
                             const quote = await response.json()
                             router.push(`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`)
                           } else {
-                            alert('Failed to generate quote')
+                            toast.error('Failed to generate quote')
                           }
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
@@ -688,7 +688,7 @@ export default function OpportunityDetailPage() {
                               })
 
                               if (!updateResponse.ok) {
-                                alert('Failed to update opportunity stage')
+                                toast.error('Failed to update opportunity stage')
                                 return
                               }
                             }
@@ -708,15 +708,15 @@ export default function OpportunityDetailPage() {
 
                             if (response.ok) {
                               const result = await response.json()
-                              alert(result.message || 'Opportunity converted to event successfully!')
+                              toast(result.message || 'Opportunity converted to event successfully!')
                               router.push(`/${tenantSubdomain}/events/${result.event.id}`)
                             } else {
                               const error = await response.json()
-                              alert(`Failed to convert: ${error.error || 'Unknown error'}`)
+                              toast.error(`Failed to convert: ${error.error || 'Unknown error'}`)
                             }
                           } catch (error) {
                             log.error({ error }, 'Error converting to event')
-                            alert('Failed to convert opportunity to event')
+                            toast.error('Failed to convert opportunity to event')
                           }
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"
@@ -877,7 +877,7 @@ export default function OpportunityDetailPage() {
                   const quote = await response.json()
                   router.push(`/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`)
                 } else {
-                  alert('Failed to generate quote')
+                  toast.error('Failed to generate quote')
                 }
               }}
             />
@@ -966,7 +966,7 @@ export default function OpportunityDetailPage() {
         onClose={() => setIsEmailModalOpen(false)}
         onSuccess={() => {
           fetchCommunications()
-          alert('Email sent successfully!')
+          toast.success('Email sent successfully!')
         }}
         defaultSubject={opportunity ? `Regarding: ${opportunity.name}` : ''}
         opportunityId={opportunityId}
@@ -981,7 +981,7 @@ export default function OpportunityDetailPage() {
         onClose={() => setIsSMSModalOpen(false)}
         onSuccess={() => {
           fetchCommunications()
-          alert('SMS sent successfully!')
+          toast.success('SMS sent successfully!')
         }}
         opportunityId={opportunityId}
         accountId={opportunity?.account_id || undefined}
@@ -998,7 +998,7 @@ export default function OpportunityDetailPage() {
         contactId={opportunity?.contact_id || undefined}
         leadId={opportunity?.lead_id || undefined}
         onSuccess={() => {
-          alert('Contract generated successfully!')
+          toast.success('Contract generated successfully!')
         }}
       />
 

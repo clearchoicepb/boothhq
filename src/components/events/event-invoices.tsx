@@ -14,6 +14,7 @@ import { InlineEditField } from './detail/shared/InlineEditField'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 import { useSession } from 'next-auth/react'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('events')
 
@@ -94,7 +95,7 @@ export function EventInvoices({
 
   const handleCreateInvoice = async () => {
     if (!accountId) {
-      alert('This event must have an account assigned before creating an invoice')
+      toast('This event must have an account assigned before creating an invoice')
       return
     }
 
@@ -140,7 +141,7 @@ export function EventInvoices({
       setExpandedInvoiceId(invoice.id) // Auto-expand the new invoice
     } catch (error) {
       log.error({ error }, 'Error creating invoice')
-      alert('Failed to create invoice')
+      toast.error('Failed to create invoice')
     } finally {
       setCreatingInvoice(false)
     }
@@ -169,7 +170,7 @@ export function EventInvoices({
       await onRefresh()
     } catch (error) {
       log.error({ error }, 'Error deleting invoice')
-      alert('Failed to delete invoice')
+      toast.error('Failed to delete invoice')
     }
   }
 
@@ -197,7 +198,7 @@ export function EventInvoices({
       setEditingField(null)
     } catch (error) {
       log.error({ error }, 'Error updating invoice ${field}')
-      alert(`Failed to update invoice ${field}`)
+      toast.error('Failed to update invoice ${field}')
     } finally {
       setSavingField(null)
     }
@@ -219,18 +220,18 @@ export function EventInvoices({
       document.body.removeChild(a)
     } catch (error) {
       log.error({ error }, 'Error downloading PDF')
-      alert('Failed to download PDF')
+      toast.error('Failed to download PDF')
     }
   }
 
   const handleCopyPublicLink = async (invoice: Invoice) => {
     if (!invoice.public_token) {
-      alert('Public link is not available for this invoice')
+      toast('Public link is not available for this invoice')
       return
     }
 
     if (!session?.user?.tenantId) {
-      alert('Tenant information is not available')
+      toast('Tenant information is not available')
       return
     }
 
@@ -244,7 +245,7 @@ export function EventInvoices({
       }, 2000)
     } catch (error) {
       log.error({ error }, 'Error copying link')
-      alert('Failed to copy link to clipboard')
+      toast.error('Failed to copy link to clipboard')
     }
   }
 
@@ -277,10 +278,10 @@ export function EventInvoices({
       await queryClient.invalidateQueries({ queryKey: ['invoices'] })
       await onRefresh()
 
-      alert('Payment added successfully!')
+      toast.success('Payment added successfully!')
     } catch (error) {
       log.error({ error }, 'Error saving payment')
-      alert(error instanceof Error ? error.message : 'Failed to save payment')
+      toast(error instanceof Error ? error.message : 'Failed to save payment')
     }
   }
 
@@ -302,10 +303,10 @@ export function EventInvoices({
       await queryClient.invalidateQueries({ queryKey: ['invoices'] })
       await onRefresh()
 
-      alert('Invoice activated successfully!')
+      toast.success('Invoice activated successfully!')
     } catch (error) {
       log.error({ error }, 'Error activating invoice')
-      alert('Failed to activate invoice')
+      toast.error('Failed to activate invoice')
     } finally {
       setActivatingInvoiceId(null)
     }

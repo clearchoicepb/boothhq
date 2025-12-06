@@ -17,6 +17,7 @@ import { Copy, DollarSign, FileText, Zap, X, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('shared')
 
@@ -63,11 +64,11 @@ export function FloatingQuickActions({
             const data = await response.json()
             window.location.href = `/${tenantSubdomain}/events/${data.id}`
           } else {
-            alert('Failed to duplicate event')
+            toast.error('Failed to duplicate event')
           }
         } catch (error) {
           log.error({ error }, 'Error duplicating event')
-          alert('Error duplicating event')
+          toast.error('Error duplicating event')
         }
       }
     }
@@ -86,17 +87,17 @@ export function FloatingQuickActions({
 
         if (response.ok) {
           if (result.stats.workflowsExecuted === 0) {
-            alert('ℹ️ Workflows have already been executed for this event.')
+            toast('ℹ️ Workflows have already been executed for this event.')
           } else {
-            alert(`✅ Success! Created ${result.stats.tasksCreated} tasks and ${result.stats.designItemsCreated} design items.`)
+            toast.success('✅ Success! Created ${result.stats.tasksCreated} tasks and ${result.stats.designItemsCreated} design items.')
             window.location.reload() // Refresh to show new tasks
           }
         } else {
-          alert(`❌ Failed: ${result.error}${result.hint ? `\n${result.hint}` : ''}`)
+          toast.error(`Failed: ${result.error}${result.hint ? ` - ${result.hint}` : ''}`)
         }
       } catch (error) {
         log.error({ error }, 'Error triggering workflows')
-        alert('❌ Failed to trigger workflows')
+        toast.error('❌ Failed to trigger workflows')
       }
     }
     setIsExpanded(false)

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
+import toast from 'react-hot-toast'
 
 interface EventInventoryProps {
   eventId: string
@@ -166,7 +167,7 @@ export function EventInventory({
       // Refresh data
       fetchEventInventory()
     } catch (err: any) {
-      alert(err.message || 'Failed to mark item as returned')
+      toast(err.message || 'Failed to mark item as returned')
     }
   }
 

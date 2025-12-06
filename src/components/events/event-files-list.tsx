@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Paperclip, Download, Trash2, FileText, CheckCircle, Clock, Eye } from 'lucide-react'
 import { ContractManagerModal } from '@/components/contracts/ContractManagerModal'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('events')
 
@@ -116,7 +117,7 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
       window.open(data.download_url, '_blank')
     } catch (err) {
       log.error({ err }, '[EventFilesList] Download error')
-      alert(err instanceof Error ? err.message : 'Failed to download file')
+      toast(err instanceof Error ? err.message : 'Failed to download file')
     }
   }
 
@@ -138,7 +139,7 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
 
       setFiles(prev => prev.filter(f => f.id !== fileId))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete file')
+      toast(err instanceof Error ? err.message : 'Failed to delete file')
     } finally {
       setDeletingId(null)
     }

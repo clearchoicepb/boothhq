@@ -10,6 +10,7 @@ import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X } from 'lucide-
 import { useQueryClient } from '@tanstack/react-query'
 import { useQuote } from '@/hooks/useQuote'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('id')
 
@@ -79,7 +80,7 @@ export default function QuoteDetailPage() {
       window.open(`/api/quotes/${quoteId}/pdf`, '_blank')
     } catch (error) {
       log.error({ error }, 'Error downloading PDF')
-      alert('Failed to download PDF')
+      toast.error('Failed to download PDF')
     }
   }
 
@@ -94,11 +95,11 @@ export default function QuoteDetailPage() {
 
       if (!response.ok) throw new Error('Failed to send quote')
 
-      alert('Quote sent successfully!')
+      toast.success('Quote sent successfully!')
       queryClient.invalidateQueries({ queryKey: ['quote', quoteId] })
     } catch (error) {
       log.error({ error }, 'Error sending quote')
-      alert('Failed to send quote')
+      toast.error('Failed to send quote')
     } finally {
       setUpdating(false)
     }
@@ -117,11 +118,11 @@ export default function QuoteDetailPage() {
 
       if (!response.ok) throw new Error('Failed to update quote')
 
-      alert('Quote marked as accepted!')
+      toast('Quote marked as accepted!')
       queryClient.invalidateQueries({ queryKey: ['quote', quoteId] })
     } catch (error) {
       log.error({ error }, 'Error updating quote')
-      alert('Failed to update quote')
+      toast.error('Failed to update quote')
     } finally {
       setUpdating(false)
     }
@@ -140,7 +141,7 @@ export default function QuoteDetailPage() {
       router.push(`/${tenantSubdomain}/quotes`)
     } catch (error) {
       log.error({ error }, 'Error deleting quote')
-      alert('Failed to delete quote')
+      toast.error('Failed to delete quote')
     }
   }
 

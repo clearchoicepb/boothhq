@@ -9,6 +9,7 @@ import { LeadForm } from '@/components/lead-form'
 import { ArrowLeft, User, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('edit')
 
@@ -94,7 +95,7 @@ export default function EditLeadPage() {
       router.push(`/${tenantSubdomain}/leads/${leadId}`)
     } catch (error) {
       log.error({ error }, 'Error saving lead')
-      alert('Failed to save lead. Please try again.')
+      toast.error('Failed to save lead. Please try again.')
     }
   }
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('invoices')
 import {
@@ -260,7 +261,7 @@ export default function InvoicesSettingsPage() {
 
   const removeTemplate = (templateId: string) => {
     if (settings.templates.length <= 1) {
-      alert('You must have at least 1 template');
+      toast('You must have at least 1 template');
       return;
     }
     setSettings(prev => ({
@@ -283,10 +284,10 @@ export default function InvoicesSettingsPage() {
         ...globalSettings,
         invoices: settings
       });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       log.error({ error }, 'Error saving settings');
-      alert('Error saving settings. Please try again.');
+      toast.error('Error saving settings. Please try again.');
     } finally {
       setSaving(false);
     }

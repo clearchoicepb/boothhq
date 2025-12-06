@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('notifications')
 import { 
@@ -195,10 +196,10 @@ export default function NotificationsSettingsPage() {
         ...globalSettings,
         notifications: settings
       });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       log.error({ error }, 'Error saving settings');
-      alert('Error saving settings. Please try again.');
+      toast.error('Error saving settings. Please try again.');
     } finally {
       setSaving(false);
     }

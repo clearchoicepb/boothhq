@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { Opportunity } from '@/lib/supabase-client'
 import { useOpportunitiesList, useDeleteOpportunity } from './useOpportunitiesList'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('hooks')
 
@@ -92,10 +93,10 @@ export function useOpportunitiesData({
     if (confirm('Are you sure you want to delete this opportunity?')) {
       try {
         await deleteMutation.mutateAsync(opportunityId)
-        alert('Opportunity deleted successfully')
+        toast.success('Opportunity deleted successfully')
       } catch (error: any) {
         log.error({ error }, 'Error deleting opportunity')
-        alert(`Failed to delete opportunity: ${error.message || 'Unknown error'}`)
+        toast.error(`Failed to delete opportunity: ${error.message || 'Unknown error'}`)
       }
     }
   }, [deleteMutation])

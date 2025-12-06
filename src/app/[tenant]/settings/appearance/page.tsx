@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('appearance')
 import {
@@ -144,13 +145,13 @@ export default function AppearanceSettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
+      toast.error('Please upload an image file');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      toast('File size must be less than 5MB');
       return;
     }
 
@@ -173,7 +174,7 @@ export default function AppearanceSettingsPage() {
       setSettings(prev => ({ ...prev, logoUrl: data.url }));
     } catch (error) {
       log.error({ error }, 'Error uploading logo');
-      alert('Error uploading logo. Please try again.');
+      toast.error('Error uploading logo. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -197,10 +198,10 @@ export default function AppearanceSettingsPage() {
         ...globalSettings,
         appearance: settings
       });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       log.error({ error }, 'Error saving settings');
-      alert('Error saving settings. Please try again.');
+      toast.error('Error saving settings. Please try again.');
     } finally {
       setSaving(false);
     }

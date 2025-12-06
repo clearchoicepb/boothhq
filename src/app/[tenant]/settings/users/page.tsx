@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/modal'
 import { EntityForm } from '@/components/forms/EntityForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('users')
 
@@ -124,11 +125,11 @@ export default function UsersSettingsPage() {
         await fetchUsers()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to delete user'}`)
+        toast.error(`Error: ${error.message || 'Failed to delete user'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error deleting user')
-      alert('Failed to delete user')
+      toast.error('Failed to delete user')
     }
   }
 
@@ -144,7 +145,7 @@ export default function UsersSettingsPage() {
 
       // Validate password for new users
       if (!editingUser && !data.password) {
-        alert('Password is required for new users')
+        toast('Password is required for new users')
         return
       }
 
@@ -183,11 +184,11 @@ export default function UsersSettingsPage() {
       } else {
         const error = await response.json()
         log.error({ error }, '[Frontend] API Error Response')
-        alert(`Error: ${error.error || error.message || 'Failed to save user'}`)
+        toast.error(`Error: ${error.error || error.message || 'Failed to save user'}`)
       }
     } catch (error) {
       log.error({ error }, '[Frontend] Exception saving user')
-      alert('Failed to save user: ' + (error instanceof Error ? error.message : String(error)))
+      toast.error('Failed to save user: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -234,14 +235,14 @@ export default function UsersSettingsPage() {
         await fetchUsers()
         setSelectedUsers(new Set())
         setBulkAction('')
-        alert(`Successfully ${action}d ${userIds.length} user(s)`)
+        toast.success('Successfully ${action}d ${userIds.length} user(s)')
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to perform bulk action'}`)
+        toast.error(`Error: ${error.message || 'Failed to perform bulk action'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error performing bulk action')
-      alert('Failed to perform bulk action')
+      toast.error('Failed to perform bulk action')
     } finally {
       setProcessingBulk(false)
     }
@@ -249,12 +250,12 @@ export default function UsersSettingsPage() {
 
   const handleResetPassword = async () => {
     if (!resetPasswordUser || !newPassword) {
-      alert('Please enter a new password')
+      toast.error('Please enter a new password')
       return
     }
 
     if (newPassword.length < 8) {
-      alert('Password must be at least 8 characters')
+      toast('Password must be at least 8 characters')
       return
     }
 
@@ -268,16 +269,16 @@ export default function UsersSettingsPage() {
       })
 
       if (response.ok) {
-        alert(`Password reset successfully for ${resetPasswordUser.email}`)
+        toast.success('Password reset successfully for ${resetPasswordUser.email}')
         setResetPasswordUser(null)
         setNewPassword('')
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to reset password'}`)
+        toast.error(`Error: ${error.error || 'Failed to reset password'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error resetting password')
-      alert('Failed to reset password')
+      toast.error('Failed to reset password')
     } finally {
       setIsResettingPassword(false)
     }

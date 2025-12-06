@@ -38,6 +38,7 @@ import { OpportunityTable } from '@/components/opportunities/opportunity-table'
 import { OpportunityPipelineView } from '@/components/opportunities/opportunity-pipeline-view'
 import { OpportunitySourceSelector } from '@/components/opportunity-source-selector'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('opportunities')
 
@@ -635,7 +636,7 @@ function OpportunitiesPageContent() {
         }}
         onSuccess={() => {
           fetchOpportunities()
-          alert('Email sent successfully!')
+          toast.success('Email sent successfully!')
         }}
         defaultSubject={selectedOpportunity ? `Regarding: ${selectedOpportunity.name}` : ''}
         opportunityId={selectedOpportunity?.id}
@@ -652,7 +653,7 @@ function OpportunitiesPageContent() {
         }}
         onSuccess={() => {
           fetchOpportunities()
-          alert('SMS sent successfully!')
+          toast.success('SMS sent successfully!')
         }}
         opportunityId={selectedOpportunity?.id}
         accountId={selectedOpportunity?.account_id || undefined}

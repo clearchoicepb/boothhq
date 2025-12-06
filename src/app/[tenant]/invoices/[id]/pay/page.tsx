@@ -9,6 +9,7 @@ import { ArrowLeft, CreditCard, Check } from 'lucide-react'
 import Link from 'next/link'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('pay')
 import {
@@ -274,7 +275,7 @@ export default function InvoicePaymentPage() {
 
       // Check if invoice has a balance
       if (data.invoice.balance_amount <= 0) {
-        alert('Invoice does not have a balance')
+        toast('Invoice does not have a balance')
         router.push(`/${tenantSubdomain}/invoices/${invoiceId}`)
         return
       }

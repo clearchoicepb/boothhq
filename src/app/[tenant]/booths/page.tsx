@@ -9,6 +9,7 @@ import { Search, Plus, Box, Edit, Trash2, Eye, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('booths')
 
@@ -113,11 +114,11 @@ export default function BoothsPage() {
         await fetchBooths()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to delete booth'}`)
+        toast.error(`Error: ${error.error || 'Failed to delete booth'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error deleting booth')
-      alert('Failed to delete booth')
+      toast.error('Failed to delete booth')
     }
   }
 

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Send, Loader2, Phone } from 'lucide-react'
 import { format, isToday, isYesterday, isSameDay, parseISO } from 'date-fns'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -123,7 +124,7 @@ export function SMSThread({
       await fetchMessages()
     } catch (error) {
       log.error({ error }, 'Error sending SMS')
-      alert('Failed to send SMS. Please try again.')
+      toast.error('Failed to send SMS. Please try again.')
     } finally {
       setSending(false)
     }
