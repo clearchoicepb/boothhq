@@ -443,7 +443,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       </option>
                     ))
                   ) : (
-                    <option disabled>No designers found (assign anyone below)</option>
+                    <option disabled>No designers found</option>
                   )}
                   {/* Fallback: Show all users if no designers */}
                   {designers.length === 0 && users.length > 0 && (
@@ -541,10 +541,10 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       </option>
                     ))
                   ) : (
-                    <option disabled>No operations team members found (assign anyone below)</option>
+                    <option disabled>No operations team found</option>
                   )}
-                  {/* Always show all users as fallback option */}
-                  {users.length > 0 && (
+                  {/* Fallback: Show all users if no ops team */}
+                  {opsTeam.length === 0 && users.length > 0 && (
                     <optgroup label="All Users">
                       {users.map((user) => (
                         <option key={user.id} value={user.id}>
