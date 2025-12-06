@@ -1,4 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
+
+const log = createLogger('hooks')
 
 export type PrepStatus =
   | 'unassigned'
@@ -58,6 +62,11 @@ export function useUpdatePrepStatus() {
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] })
       queryClient.invalidateQueries({ queryKey: ['weekend-prep'] })
+      toast.success('Prep status updated')
+    },
+    onError: (error: Error) => {
+      log.error({ error }, 'Failed to update prep status')
+      toast.error(error.message || 'Failed to update prep status')
     }
   })
 }
@@ -83,10 +92,15 @@ export function useBulkUpdatePrepStatus() {
 
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: (_, params) => {
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] })
       queryClient.invalidateQueries({ queryKey: ['weekend-prep'] })
+      toast.success(`Updated ${params.item_ids.length} items`)
+    },
+    onError: (error: Error) => {
+      log.error({ error }, 'Failed to bulk update prep status')
+      toast.error(error.message || 'Failed to bulk update prep status')
     }
   })
 }

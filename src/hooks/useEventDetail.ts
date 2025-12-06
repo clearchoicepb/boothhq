@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { EventWithRelations } from './useEventData'
 import { queryKeys } from '@/lib/queryKeys'
+import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
+
+const log = createLogger('hooks')
 
 async function fetchEvent(eventId: string): Promise<EventWithRelations> {
   const response = await fetch(`/api/events/${eventId}`)
@@ -42,6 +46,11 @@ export function useUpdateEvent(eventId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.events.detail(eventId) })
+      toast.success('Event updated successfully')
+    },
+    onError: (error: Error) => {
+      log.error({ error, eventId }, 'Failed to update event')
+      toast.error(error.message || 'Failed to update event')
     }
   })
 }
@@ -65,6 +74,11 @@ export function useDeleteEvent(eventId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.events.list() })
       queryClient.removeQueries({ queryKey: queryKeys.events.detail(eventId) })
+      toast.success('Event deleted successfully')
+    },
+    onError: (error: Error) => {
+      log.error({ error, eventId }, 'Failed to delete event')
+      toast.error(error.message || 'Failed to delete event')
     }
   })
 }

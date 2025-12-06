@@ -1,4 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
+
+const log = createLogger('hooks')
 
 export interface InventoryItemsFilter {
   // Pagination
@@ -132,6 +136,11 @@ export function useAddInventoryItem() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] })
+      toast.success('Inventory item created')
+    },
+    onError: (error: Error) => {
+      log.error({ error }, 'Failed to create inventory item')
+      toast.error(error.message || 'Failed to create inventory item')
     }
   })
 }
@@ -160,6 +169,11 @@ export function useUpdateInventoryItem() {
       queryClient.invalidateQueries({ queryKey: ['inventory-items', variables.itemId] })
       // Also invalidate product groups cache since item membership may have changed
       queryClient.invalidateQueries({ queryKey: ['product-groups'] })
+      toast.success('Inventory item updated')
+    },
+    onError: (error: Error) => {
+      log.error({ error }, 'Failed to update inventory item')
+      toast.error(error.message || 'Failed to update inventory item')
     }
   })
 }
@@ -183,6 +197,11 @@ export function useDeleteInventoryItem() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] })
+      toast.success('Inventory item deleted')
+    },
+    onError: (error: Error) => {
+      log.error({ error }, 'Failed to delete inventory item')
+      toast.error(error.message || 'Failed to delete inventory item')
     }
   })
 }
