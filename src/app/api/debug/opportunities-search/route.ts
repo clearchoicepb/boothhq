@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +39,7 @@ export async function GET(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error searching opportunities:', error)
+      log.error({ error }, 'Error searching opportunities')
       return NextResponse.json({ error: 'Failed to search opportunities', details: error.message }, { status: 500 })
     }
 
@@ -77,7 +80,7 @@ export async function GET(request: NextRequest) {
       }))
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

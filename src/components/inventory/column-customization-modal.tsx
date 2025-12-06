@@ -5,6 +5,9 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { GripVertical } from 'lucide-react'
 import { useSettings } from '@/lib/settings-context'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 export interface ColumnConfig {
   id: string
@@ -219,7 +222,7 @@ export function useColumnPreferences() {
 
         setColumns(mergedColumns)
       } catch (error) {
-        console.error('Failed to load column preferences:', error)
+        log.error({ error }, 'Failed to load column preferences')
         setColumns(settingsBasedDefaults)
       }
     } else {

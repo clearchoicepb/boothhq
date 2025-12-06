@@ -11,6 +11,9 @@ import { ArrowLeft, Edit, Trash2, Info, Paperclip, FileText, Bug, Lightbulb, Hel
 import { TicketStatusButton } from '@/components/tickets/ticket-status-button'
 import toast from 'react-hot-toast'
 import type { Ticket, TicketStatus, TicketPriority } from '@/types/ticket.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 export default function TicketDetailPage() {
   const router = useRouter()
@@ -37,7 +40,7 @@ export default function TicketDetailPage() {
         setEditData(data)
       }
     } catch (error) {
-      console.error('Error fetching ticket:', error)
+      log.error({ error }, 'Error fetching ticket')
       toast.error('Failed to load ticket')
     } finally {
       setLoading(false)
@@ -67,7 +70,7 @@ export default function TicketDetailPage() {
       setIsEditing(false)
       toast.success('Ticket updated successfully!')
     } catch (error) {
-      console.error('Error updating ticket:', error)
+      log.error({ error }, 'Error updating ticket')
       toast.error('Failed to update ticket')
     }
   }
@@ -85,7 +88,7 @@ export default function TicketDetailPage() {
       toast.success('Ticket deleted successfully!')
       router.push(`/${tenantSubdomain}/tickets`)
     } catch (error) {
-      console.error('Error deleting ticket:', error)
+      log.error({ error }, 'Error deleting ticket')
       toast.error('Failed to delete ticket')
     }
   }

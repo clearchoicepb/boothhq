@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:integrations')
 export async function POST(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
         phoneNumber: twilioSettings?.phoneNumber 
       })
     } else {
-      console.warn('⚠️ Failed to load settings from API, will use env vars')
+      log.warn('⚠️ Failed to load settings from API, will use env vars')
     }
 
     let accountSid: string | undefined
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!accountSid || !authToken || !fromNumber) {
-      console.error('❌ Twilio credentials not configured')
+      log.error('❌ Twilio credentials not configured')
       return NextResponse.json({ error: 'Twilio credentials not configured' }, { status: 500 })
     }
 
@@ -83,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     if (!twilioResponse.ok) {
       const errorData = await twilioResponse.json()
-      console.error('Twilio API error:', errorData)
+      log.error({ errorData }, 'Twilio API error')
       return NextResponse.json({
         error: errorData.message || 'Failed to send SMS'
       }, { status: twilioResponse.status })
@@ -191,7 +194,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      console.error('Database error:', dbError)
+      log.error({ dbError }, 'Database error')
       // SMS was sent but logging failed - still return success
       return NextResponse.json({
         success: true,
@@ -207,7 +210,7 @@ export async function POST(request: NextRequest) {
       twilio_sid: twilioData.sid
     })
   } catch (error) {
-    console.error('Error sending SMS:', error)
+    log.error({ error }, 'Error sending SMS')
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Failed to send SMS'
     }, { status: 500 })

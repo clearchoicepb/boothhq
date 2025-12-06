@@ -42,6 +42,9 @@ import { FloatingQuickActions } from '@/components/events/detail/shared/Floating
 import { eventsService } from '@/lib/api/services/eventsService'
 import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 import { GenerateEventAgreementModal } from '@/components/generate-event-agreement-modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface EventDetailContentProps {
   eventData: ReturnType<typeof useEventData>
@@ -206,7 +209,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
       )
       toast.success('Account and contact updated successfully')
     } catch (error) {
-      console.error('Error updating account/contact:', error)
+      log.error({ error }, 'Error updating account/contact')
       toast.error('Error updating account/contact')
     }
   }
@@ -254,7 +257,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
       finishEditingEventDate()
       toast.success('Event date updated successfully')
     } catch (error) {
-      console.error('Error updating event date:', error)
+      log.error({ error }, 'Error updating event date')
       toast.error('Error updating event date')
     }
   }
@@ -267,7 +270,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
       await context.saveEditPaymentStatus(newStatus)
       toast.success('Payment status updated successfully')
     } catch (error) {
-      console.error('Error updating payment status:', error)
+      log.error({ error }, 'Error updating payment status')
       toast.error('Error updating payment status')
     }
   }
@@ -280,7 +283,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
       await context.saveEditDescription(contextEditing.editedDescription)
       toast.success('Description updated successfully')
     } catch (error) {
-      console.error('Error updating event scope/details:', error)
+      log.error({ error }, 'Error updating event scope/details')
       toast.error('Error updating event scope/details')
     }
   }
@@ -345,11 +348,12 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   }
 
   const handleAddStaff = async () => {
-    console.log('[CLIENT-STAFF] ========== handleAddStaff called ==========')
-    console.log('[CLIENT-STAFF] Selected User ID:', selectedUserId)
-    console.log('[CLIENT-STAFF] Selected Staff Role ID:', selectedStaffRoleId)
-    console.log('[CLIENT-STAFF] Selected Date Times:', selectedDateTimes)
-    console.log('[CLIENT-STAFF] Staff Notes:', staffNotes)
+    log.debug({ 
+      selectedUserId, 
+      selectedStaffRoleId, 
+      selectedDateTimes, 
+      staffNotes 
+    }, 'handleAddStaff called')
 
     if (!selectedUserId) {
       toast.error('Please select a user')
@@ -363,7 +367,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
 
     // Get the selected role to check its type
     const selectedRole = staffRoles.find(r => r.id === selectedStaffRoleId)
-    console.log('[CLIENT-STAFF] Selected Role:', selectedRole)
+    log.debug({ selectedRole }, 'Staff role selected')
 
     // Validate that dates are selected for event_staff roles
     if (selectedRole?.type === 'event_staff' && selectedDateTimes.length === 0) {
@@ -373,11 +377,11 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
 
     try {
       const isEditing = !!editingStaffId
-      console.log('[CLIENT-STAFF] Is Editing:', isEditing)
+      log.debug({ isEditing }, 'Edit mode status')
 
       // For editing Event Staff: delete all existing assignments for this user+role, then create new ones
       if (isEditing && selectedRole?.type === 'event_staff') {
-        console.log('[CLIENT-STAFF] Deleting existing event_staff assignments...')
+        log.debug('Deleting existing event_staff assignments...')
         const existingAssignments = staffAssignments.filter(
           s => s.user_id === selectedUserId && s.staff_role_id === selectedStaffRoleId
         )
@@ -390,7 +394,7 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
 
       // For Operations roles: create/update single record
       if (selectedRole?.type === 'operations') {
-        console.log('[CLIENT-STAFF] Processing OPERATIONS role...')
+        log.debug('Processing OPERATIONS role...')
 
         const requestBody: any = {
           staff_role_id: selectedStaffRoleId,
@@ -405,22 +409,21 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
           requestBody.event_date_id = null
         }
 
-        console.log('[CLIENT-STAFF] Request body:', requestBody)
+        log.debug({ requestBody }, 'Operations role request')
 
         try {
           const responseData = isEditing
             ? await eventsService.updateStaffAssignment(editingStaffId, requestBody)
             : await eventsService.createStaffAssignment(requestBody)
 
-          console.log('[CLIENT-STAFF] Response data:', responseData)
+          log.debug({ responseData }, 'Operations role response')
         } catch (error: any) {
-          console.error('[CLIENT-STAFF] Error:', error)
+          log.error({ error }, '[CLIENT-STAFF] Error')
           toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${error.message || 'Unknown error'}`)
           return
         }
       } else {
-        console.log('[CLIENT-STAFF] Processing EVENT_STAFF role...')
-        console.log('[CLIENT-STAFF] Will create', selectedDateTimes.length, 'assignments')
+        log.debug({ assignmentCount: selectedDateTimes.length }, 'Processing EVENT_STAFF role')
 
         // For Event Staff roles: create one record per selected date
         for (const dateTime of selectedDateTimes) {
@@ -434,14 +437,13 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
             notes: staffNotes || null
           }
 
-          console.log('[CLIENT-STAFF] Creating staff assignment for date:', dateTime.dateId)
-          console.log('[CLIENT-STAFF] Request body:', requestBody)
+          log.debug({ dateId: dateTime.dateId, requestBody }, 'Creating staff assignment')
 
           try {
             const responseData = await eventsService.createStaffAssignment(requestBody)
-            console.log('[CLIENT-STAFF] Response data:', responseData)
+            log.debug({ responseData }, 'Staff assignment created')
           } catch (error: any) {
-            console.error('[CLIENT-STAFF] Error:', error)
+            log.error({ error }, '[CLIENT-STAFF] Error')
             // Check for duplicate constraint error
             if (error.code === '23505' || error.message?.includes('already exists')) {
               toast.error(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
@@ -454,13 +456,13 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
       }
 
       // Success - refresh and reset
-      console.log('[CLIENT-STAFF] Success! Refreshing staff list...')
+      log.debug('Success! Refreshing staff list...')
       await refetchStaff()
       resetAddStaffForm()
       toast.success('Staff assigned successfully')
-      console.log('[CLIENT-STAFF] ========== handleAddStaff complete ==========')
+      log.debug('========== handleAddStaff complete ==========')
     } catch (error) {
-      console.error('[CLIENT-STAFF] ❌ Error saving staff:', error)
+      log.error({ error }, '[CLIENT-STAFF] ❌ Error saving staff')
       toast.error('Error saving staff')
     }
   }

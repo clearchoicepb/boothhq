@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contracts')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -8,7 +11,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log('[save-to-files/route.ts] POST request received')
+  log.debug('POST request received')
   
   try {
     const context = await getTenantContext()
@@ -19,7 +22,7 @@ export async function POST(
     const body = await request.json()
     const { event_id, status = 'sent' } = body
 
-    console.log('[save-to-files/route.ts] Request params:', { contractId, event_id, status })
+    log.debug('Request params:', { contractId, event_id, status })
 
     if (!event_id) {
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
@@ -34,11 +37,11 @@ export async function POST(
       .single()
 
     if (contractError || !contract) {
-      console.error('[save-to-files/route.ts] Contract not found:', contractError)
+      log.error({ contractError }, '[save-to-files/route.ts] Contract not found')
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
 
-    console.log('[save-to-files/route.ts] Contract found:', {
+    log.debug('Contract found:', {
       id: contract.id,
       template_name: contract.template_name,
       status: contract.status
@@ -55,7 +58,7 @@ export async function POST(
       .single()
 
     if (existingFile) {
-      console.log('[save-to-files/route.ts] File entry already exists:', existingFile.id)
+      log.debug('File entry already exists:', existingFile.id)
       
       // Update existing file entry description to reflect new status
       const updatedDescription = `Agreement: ${contract.template_name || 'Contract'} [CONTRACT:${contractId}] [STATUS:${status}]`
@@ -68,14 +71,14 @@ export async function POST(
         .eq('id', existingFile.id)
 
       if (updateError) {
-        console.error('[save-to-files/route.ts] Error updating file entry:', updateError)
+        log.error({ updateError }, '[save-to-files/route.ts] Error updating file entry')
         return NextResponse.json(
           { error: 'Failed to update file entry' },
           { status: 500 }
         )
       }
 
-      console.log('[save-to-files/route.ts] File entry updated successfully')
+      log.debug('File entry updated successfully')
       return NextResponse.json({ success: true, fileId: existingFile.id })
     }
 
@@ -93,7 +96,7 @@ export async function POST(
       uploaded_by: session.user.id
     }
 
-    console.log('[save-to-files/route.ts] Creating file entry:', fileData)
+    log.debug('Creating file entry:', fileData)
 
     const { data: newFile, error: fileError } = await supabase
       .from('attachments')
@@ -102,7 +105,7 @@ export async function POST(
       .single()
 
     if (fileError) {
-      console.error('[save-to-files/route.ts] Error creating file entry:', fileError)
+      log.error({ fileError }, '[save-to-files/route.ts] Error creating file entry')
       console.error('[save-to-files/route.ts] Error details:', {
         code: fileError.code,
         message: fileError.message,
@@ -115,7 +118,7 @@ export async function POST(
       )
     }
 
-    console.log('[save-to-files/route.ts] File entry created successfully:', newFile.id)
+    log.debug('File entry created successfully:', newFile.id)
 
     // Also update contract status to match
     if (status === 'sent') {
@@ -141,7 +144,7 @@ export async function POST(
       }
     })
   } catch (error) {
-    console.error('[save-to-files/route.ts] ERROR:', error)
+    log.error({ error }, '[save-to-files/route.ts] ERROR')
     console.error('[save-to-files/route.ts] Error stack:', error instanceof Error ? error.stack : 'No stack')
     return NextResponse.json(
       { 

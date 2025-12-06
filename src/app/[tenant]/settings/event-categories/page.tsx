@@ -13,6 +13,9 @@ import {
   Save
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('event-categories')
 
 interface EventCategory {
   id: string
@@ -42,7 +45,7 @@ export default function EventCategoriesPage() {
       const data = await res.json()
       setCategories(data.categories || [])
     } catch (error) {
-      console.error('Error fetching categories:', error)
+      log.error({ error }, 'Error fetching categories')
       toast.error('Failed to load categories')
     } finally {
       setLoading(false)

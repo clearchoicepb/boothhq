@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboard')
 import { 
   Users, 
   UserPlus, 
@@ -263,7 +266,7 @@ export function StatsDashboard() {
         trends
       })
     } catch (err) {
-      console.error('Error fetching stats:', err)
+      log.error({ err }, 'Error fetching stats')
       setError(err instanceof Error ? err.message : 'Failed to load statistics')
     } finally {
       setLoading(false)

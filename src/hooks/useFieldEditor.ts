@@ -6,6 +6,9 @@
 import { useState, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface UseFieldEditorProps<T> {
   initialValue: T
@@ -24,7 +27,7 @@ export function useFieldEditor<T>({ initialValue, onSave }: UseFieldEditorProps<
       toast.success('Saved successfully')
     },
     onError: (error) => {
-      console.error('Error saving:', error)
+      log.error({ error }, 'Error saving')
       toast.error('Failed to save changes')
     }
   })

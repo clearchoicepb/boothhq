@@ -8,6 +8,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Search, Plus, Box, Edit, Trash2, Eye, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('booths')
 
 interface Booth {
   id: string
@@ -52,14 +55,14 @@ export default function BoothsPage() {
       const response = await fetch(`/api/booths?status=${statusFilter}&booth_type=${boothTypeFilter}`)
 
       if (!response.ok) {
-        console.error('Error fetching booths')
+        log.error('Error fetching booths')
         return
       }
 
       const data = await response.json()
       setBooths(data || [])
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
     } finally {
       setLocalLoading(false)
     }
@@ -113,7 +116,7 @@ export default function BoothsPage() {
         alert(`Error: ${error.error || 'Failed to delete booth'}`)
       }
     } catch (error) {
-      console.error('Error deleting booth:', error)
+      log.error({ error }, 'Error deleting booth')
       alert('Failed to delete booth')
     }
   }

@@ -7,6 +7,9 @@
 
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:workflows')
 
 export async function PATCH(
   request: NextRequest,
@@ -47,7 +50,7 @@ export async function PATCH(
       .eq('workflow_id', workflowId)
 
     if (deleteError) {
-      console.error('[workflows/[id]/actions] Error deleting actions:', deleteError)
+      log.error({ deleteError }, '[workflows/[id]/actions] Error deleting actions')
       return NextResponse.json(
         { error: 'Failed to delete existing actions', details: deleteError.message },
         { status: 500 }
@@ -67,7 +70,7 @@ export async function PATCH(
         .insert(actionsToInsert)
 
       if (insertError) {
-        console.error('[workflows/[id]/actions] Error inserting actions:', insertError)
+        log.error({ insertError }, '[workflows/[id]/actions] Error inserting actions')
         return NextResponse.json(
           { error: 'Failed to create actions', details: insertError.message },
           { status: 500 }
@@ -115,7 +118,7 @@ export async function PATCH(
 
     return NextResponse.json(completeWorkflow)
   } catch (error) {
-    console.error('[workflows/[id]/actions] Error:', error)
+    log.error({ error }, '[workflows/[id]/actions] Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

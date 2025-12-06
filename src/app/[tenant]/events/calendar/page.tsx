@@ -9,6 +9,9 @@ import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { eventsService } from '@/lib/api/services/eventsService'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('calendar')
 
 interface Event {
   id: string
@@ -95,7 +98,7 @@ export default function EventsCalendarPage() {
       })
       setEvents(data as Event[])
     } catch (error) {
-      console.error('Error fetching events:', error)
+      log.error({ error }, 'Error fetching events')
     } finally {
       setEventsLoading(false)
     }

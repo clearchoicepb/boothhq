@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { AddressInput } from '@/components/ui/address-input'
 import { Location, LocationInsert, LocationUpdate } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface LocationFormProps {
   location?: Location | null
@@ -104,12 +107,12 @@ export function LocationForm({
 
     setIsLoading(true)
     try {
-      console.log('[LocationForm] Submitting location data:', formData)
+      log.debug('Submitting location data:', formData)
       await onSave(formData)
-      console.log('[LocationForm] onSave completed successfully')
+      log.debug('onSave completed successfully')
       onClose()
     } catch (error: any) {
-      console.error('[LocationForm] Error saving location:', error)
+      log.error({ error }, '[LocationForm] Error saving location')
       const errorMessage = error.message || 'Failed to save location. Please try again.'
       alert(`ERROR: ${errorMessage}\n\nCheck console for details.`)
     } finally {

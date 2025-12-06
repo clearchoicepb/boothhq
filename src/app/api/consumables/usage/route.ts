@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:consumables')
 
 /**
  * GET - Get consumable usage log with filters
@@ -73,7 +76,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching consumable usage log:', error)
+      log.error({ error }, 'Error fetching consumable usage log')
       return NextResponse.json(
         { error: 'Failed to fetch consumable usage log', details: error.message },
         { status: 500 }
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -160,7 +163,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error logging consumable usage:', error)
+      log.error({ error }, 'Error logging consumable usage')
       return NextResponse.json(
         { error: 'Failed to log consumable usage', details: error.message },
         { status: 500 }
@@ -171,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-staff')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -10,7 +13,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id')
     const eventDateId = searchParams.get('event_date_id')
 
-    console.log('[EVENT-STAFF-GET] Starting query for tenant:', dataSourceTenantId, 'eventId:', eventId)
+    log.debug('Starting query for tenant:', dataSourceTenantId, 'eventId:', eventId)
 
     let query = supabase
       .from('event_staff_assignments')
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('[EVENT-STAFF-GET] Supabase error:', JSON.stringify(error, null, 2))
+      log.error({ error }, '[EVENT-STAFF-GET] Supabase error')
       return NextResponse.json({
         error: 'Failed to fetch event staff',
         details: error.message,
@@ -58,38 +61,38 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('[EVENT-STAFF-GET] Success, found', data?.length || 0, 'records')
+    log.debug('Success, found', data?.length || 0, 'records')
     return NextResponse.json(data)
   } catch (error) {
-    console.error('[EVENT-STAFF-GET] Caught exception:', error)
+    log.error({ error }, '[EVENT-STAFF-GET] Caught exception')
     return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[EVENT-STAFF-POST] ========== START POST REQUEST ==========')
+    log.debug('========== START POST REQUEST ==========')
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
-      console.log('[EVENT-STAFF-POST] Unauthorized - no session')
+      log.debug('Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('[EVENT-STAFF-POST] User authenticated:', session.user.email, 'Tenant:', dataSourceTenantId)
+    log.debug('User authenticated:', session.user.email, 'Tenant:', dataSourceTenantId)
 
     const body = await request.json()
-    console.log('[EVENT-STAFF-POST] Request body received:', JSON.stringify(body, null, 2))
+    log.debug('Request body received:', JSON.stringify(body, null, 2))
 
     const staffData = {
       ...body,
       tenant_id: dataSourceTenantId
     }
 
-    console.log('[EVENT-STAFF-POST] Data to insert:', JSON.stringify(staffData, null, 2))
-    console.log('[EVENT-STAFF-POST] Calling Supabase insert...')
+    log.debug('Data to insert:', JSON.stringify(staffData, null, 2))
+    log.debug('Calling Supabase insert...')
 
     const { data, error } = await supabase
       .from('event_staff_assignments')
@@ -118,9 +121,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[EVENT-STAFF-POST] ❌ INSERT FAILED')
-      console.error('[EVENT-STAFF-POST] Error:', JSON.stringify(error, null, 2))
-      console.error('[EVENT-STAFF-POST] Staff data attempted:', JSON.stringify(staffData, null, 2))
+      log.error('[EVENT-STAFF-POST] ❌ INSERT FAILED')
+      log.error({ error }, '[EVENT-STAFF-POST] Error')
+      log.error({ staffData }, '[EVENT-STAFF-POST] Staff data attempted')
       return NextResponse.json({
         error: 'Failed to create event staff assignment',
         details: error.message,
@@ -129,12 +132,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('[EVENT-STAFF-POST] ✅ INSERT SUCCESSFUL')
-    console.log('[EVENT-STAFF-POST] Inserted data:', JSON.stringify(data, null, 2))
-    console.log('[EVENT-STAFF-POST] ========== END POST REQUEST ==========')
+    log.debug('✅ INSERT SUCCESSFUL')
+    log.debug('Inserted data:', JSON.stringify(data, null, 2))
+    log.debug('========== END POST REQUEST ==========')
     return NextResponse.json(data)
   } catch (error) {
-    console.error('[EVENT-STAFF-POST] ❌ EXCEPTION CAUGHT:', error)
+    log.error({ error }, '[EVENT-STAFF-POST] ❌ EXCEPTION CAUGHT')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -6,6 +6,9 @@ import { formatDate, formatTime } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import type { EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface EventPreviewModalProps {
   isOpen: boolean
@@ -28,7 +31,7 @@ export function EventPreviewModal({
   // Debug: Log what date we're supposed to show
   useEffect(() => {
     if (isOpen) {
-      console.log('[PREVIEW MODAL] Opening with:', {
+      log.debug('Opening with:', {
         eventId,
         selectedEventDate,
         hasSelectedDate: !!selectedEventDate,
@@ -50,7 +53,7 @@ export function EventPreviewModal({
       const data = await response.json()
       setEvent(data)
     } catch (error) {
-      console.error('Error fetching event details:', error)
+      log.error({ error }, 'Error fetching event details')
     } finally {
       setLoading(false)
     }

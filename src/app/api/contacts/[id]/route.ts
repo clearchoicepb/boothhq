@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contacts')
 
 export async function GET(
   request: NextRequest,
@@ -32,7 +35,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching contact:', error)
+      log.error({ error }, 'Error fetching contact')
       return NextResponse.json({ error: 'Failed to fetch contact' }, { status: 500 })
     }
 
@@ -85,7 +88,7 @@ export async function GET(
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -111,7 +114,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating contact:', error)
+      log.error({ error }, 'Error updating contact')
       return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 })
     }
 
@@ -172,7 +175,7 @@ export async function PUT(
             })
           
           if (junctionError) {
-            console.error('Failed to create contact_accounts entry:', junctionError)
+            log.error({ junctionError }, 'Failed to create contact_accounts entry')
             // Don't fail the request, junction entry is supplementary
           }
         }
@@ -185,7 +188,7 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -208,7 +211,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting contact:', error)
+      log.error({ error }, 'Error deleting contact')
       return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 })
     }
 
@@ -218,7 +221,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

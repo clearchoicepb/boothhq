@@ -12,6 +12,9 @@ import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { EntityForm } from '@/components/forms/EntityForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('users')
 
 interface User {
   id: string
@@ -76,10 +79,10 @@ export default function UsersSettingsPage() {
           const data = await response.json()
           setUsers(data)
         } else {
-          console.error('Failed to fetch users')
+          log.error('Failed to fetch users')
         }
       } catch (error) {
-        console.error('Error fetching users:', error)
+        log.error({ error }, 'Error fetching users')
       } finally {
         setLoading(false)
       }
@@ -98,7 +101,7 @@ export default function UsersSettingsPage() {
         setUserHistory(data)
       }
     } catch (error) {
-      console.error('Error fetching user history:', error)
+      log.error({ error }, 'Error fetching user history')
     } finally {
       setLoadingHistory(false)
     }
@@ -124,7 +127,7 @@ export default function UsersSettingsPage() {
         alert(`Error: ${error.message || 'Failed to delete user'}`)
       }
     } catch (error) {
-      console.error('Error deleting user:', error)
+      log.error({ error }, 'Error deleting user')
       alert('Failed to delete user')
     }
   }
@@ -151,7 +154,7 @@ export default function UsersSettingsPage() {
         tenant_id: tenant?.id
       }
 
-      console.log('[Frontend] Submitting user with payload:', {
+      log.debug('Submitting user with payload:', {
         ...payload,
         password: payload.password ? '***REDACTED***' : undefined,
         tenant_id: payload.tenant_id
@@ -179,11 +182,11 @@ export default function UsersSettingsPage() {
         handleFormClose()
       } else {
         const error = await response.json()
-        console.error('[Frontend] API Error Response:', error)
+        log.error({ error }, '[Frontend] API Error Response')
         alert(`Error: ${error.error || error.message || 'Failed to save user'}`)
       }
     } catch (error) {
-      console.error('[Frontend] Exception saving user:', error)
+      log.error({ error }, '[Frontend] Exception saving user')
       alert('Failed to save user: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
@@ -237,7 +240,7 @@ export default function UsersSettingsPage() {
         alert(`Error: ${error.message || 'Failed to perform bulk action'}`)
       }
     } catch (error) {
-      console.error('Error performing bulk action:', error)
+      log.error({ error }, 'Error performing bulk action')
       alert('Failed to perform bulk action')
     } finally {
       setProcessingBulk(false)
@@ -273,7 +276,7 @@ export default function UsersSettingsPage() {
         alert(`Error: ${error.error || 'Failed to reset password'}`)
       }
     } catch (error) {
-      console.error('Error resetting password:', error)
+      log.error({ error }, 'Error resetting password')
       alert('Failed to reset password')
     } finally {
       setIsResettingPassword(false)

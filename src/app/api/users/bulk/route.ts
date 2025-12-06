@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdmin, type UserRole } from '@/lib/roles'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:users')
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
           try {
             await supabase.auth.admin.deleteUser(userId)
           } catch (authError) {
-            console.error(`Error deleting auth user ${userId}:`, authError)
+            log.error({ authError }, 'Error deleting auth user ${userId}')
             // Continue with other deletions
           }
         }
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
       count: userIds.length
     })
   } catch (error) {
-    console.error('Error in POST /api/users/bulk:', error)
+    log.error({ error }, 'Error in POST /api/users/bulk')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

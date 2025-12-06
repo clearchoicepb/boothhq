@@ -9,6 +9,9 @@ import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { CreateProjectInput, ProjectType, ProjectPriority, ProjectStatus } from '@/types/project.types'
 import { getDepartmentOptions } from '@/lib/departments'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 interface User {
   id: string
@@ -44,7 +47,7 @@ export default function NewProjectPage() {
           setUsers(data)
         }
       } catch (error) {
-        console.error('Error fetching users:', error)
+        log.error({ error }, 'Error fetching users')
       }
     }
     fetchUsers()
@@ -70,7 +73,7 @@ export default function NewProjectPage() {
       toast.success('Project created successfully!')
       router.push(`/${tenantSubdomain}/projects/${project.id}`)
     } catch (error) {
-      console.error('Error creating project:', error)
+      log.error({ error }, 'Error creating project')
       toast.error(error instanceof Error ? error.message : 'Failed to create project')
     } finally {
       setLoading(false)

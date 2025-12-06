@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getEntityConfig, validateEntityData } from '@/lib/api-entities'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:entities')
 
 export async function GET(
   request: NextRequest,
@@ -137,7 +140,7 @@ export async function GET(
     
     return response
   } catch (error) {
-    console.error(`Error in ${entity} GET:`, error)
+    log.error({ error }, 'Error in ${entity} GET')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -161,7 +164,7 @@ export async function POST(
     try {
       body = await request.json()
     } catch (error) {
-      console.error('Error parsing request body:', error)
+      log.error({ error }, 'Error parsing request body')
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
@@ -220,7 +223,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error(`Error creating ${entity}:`, error)
+      log.error({ error }, 'Error creating ${entity}')
       return NextResponse.json({ 
         error: `Failed to create ${entity}`,
         details: error.message 
@@ -247,7 +250,7 @@ export async function POST(
           .insert(eventDatesData)
 
         if (datesError) {
-          console.error('Error creating event dates:', datesError)
+          log.error({ datesError }, 'Error creating event dates')
           // Don't fail the entire request, just log the error
         }
       }
@@ -260,7 +263,7 @@ export async function POST(
     
     return response
   } catch (error) {
-    console.error(`Error in ${entity} POST:`, error)
+    log.error({ error }, 'Error in ${entity} POST')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

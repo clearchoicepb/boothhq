@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-notifications')
 
 /**
  * POST - Send notification via email
@@ -92,7 +95,7 @@ export async function POST(
         })
         return { success: true, recipient }
       } catch (error) {
-        console.error(`Failed to send email to ${recipient}:`, error)
+        log.error({ error }, 'Failed to send email to ${recipient}')
         return { success: false, recipient, error: String(error) }
       }
     })
@@ -113,7 +116,7 @@ export async function POST(
       .single()
 
     if (updateError) {
-      console.error('Error updating notification status:', updateError)
+      log.error({ updateError }, 'Error updating notification status')
     }
 
     return NextResponse.json({
@@ -123,7 +126,7 @@ export async function POST(
       notification_id: id
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

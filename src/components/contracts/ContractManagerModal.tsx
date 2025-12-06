@@ -17,6 +17,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('contracts')
 
 interface ContractManagerModalProps {
   isOpen: boolean
@@ -66,7 +69,7 @@ export function ContractManagerModal({
       const data = await response.json()
       setContract(data)
     } catch (error) {
-      console.error('Error fetching contract:', error)
+      log.error({ error }, 'Error fetching contract')
       toast.error('Failed to load agreement')
     } finally {
       setLoading(false)
@@ -127,7 +130,7 @@ export function ContractManagerModal({
       setIsEditing(false)
       toast.success('Agreement updated successfully!')
     } catch (error) {
-      console.error('Error updating agreement:', error)
+      log.error({ error }, 'Error updating agreement')
       toast.error('Failed to update agreement')
     } finally {
       setSaving(false)

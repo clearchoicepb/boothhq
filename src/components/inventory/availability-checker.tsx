@@ -6,6 +6,9 @@ import { Search, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-reac
 import { useItemCategoriesData } from '@/hooks/useItemCategoriesData'
 import { BookingModal } from './booking-modal'
 import { format } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface AvailabilityResult {
   available: any[]
@@ -60,7 +63,7 @@ export function AvailabilityChecker() {
       setResults(data)
     } catch (err) {
       setError('Failed to check availability. Please try again.')
-      console.error('Error checking availability:', err)
+      log.error({ err }, 'Error checking availability')
     } finally {
       setLoading(false)
     }

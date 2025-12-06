@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:maintenance')
 
 /**
  * GET - Get single maintenance history record by ID
@@ -30,7 +33,7 @@ export async function GET(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Maintenance record not found' }, { status: 404 })
       }
-      console.error('Error fetching maintenance history:', error)
+      log.error({ error }, 'Error fetching maintenance history')
       return NextResponse.json(
         { error: 'Failed to fetch maintenance history', details: error.message },
         { status: 500 }
@@ -39,7 +42,7 @@ export async function GET(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -75,7 +78,7 @@ export async function PATCH(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Maintenance record not found' }, { status: 404 })
       }
-      console.error('Error updating maintenance history:', error)
+      log.error({ error }, 'Error updating maintenance history')
       return NextResponse.json(
         { error: 'Failed to update maintenance history', details: error.message },
         { status: 500 }
@@ -84,7 +87,7 @@ export async function PATCH(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -110,7 +113,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting maintenance history:', error)
+      log.error({ error }, 'Error deleting maintenance history')
       return NextResponse.json(
         { error: 'Failed to delete maintenance history', details: error.message },
         { status: 500 }
@@ -119,7 +122,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

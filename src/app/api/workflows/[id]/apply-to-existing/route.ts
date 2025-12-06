@@ -13,6 +13,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { workflowEngine } from '@/lib/services/workflowEngine'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:workflows')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -33,7 +36,7 @@ export async function GET(
     const { supabase, tenantId, dataSourceTenantId } = context
 
     // Fetch workflow details (no join - event_type_ids is an array)
-    console.log('[ApplyWorkflow] GET - Looking for workflow:', workflowId)
+    log.debug('GET - Looking for workflow:', workflowId)
     const { data: workflow, error: workflowError } = await supabase
       .from('workflows')
       .select('*')
@@ -41,7 +44,7 @@ export async function GET(
       .single()
 
     if (workflowError) {
-      console.error('[ApplyWorkflow] GET - Error fetching workflow:', workflowError)
+      log.error({ workflowError }, '[ApplyWorkflow] GET - Error fetching workflow')
       return NextResponse.json(
         { error: 'Workflow not found', details: workflowError },
         { status: 404 }
@@ -49,14 +52,14 @@ export async function GET(
     }
 
     if (!workflow) {
-      console.error('[ApplyWorkflow] GET - No workflow returned')
+      log.error('[ApplyWorkflow] GET - No workflow returned')
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       )
     }
 
-    console.log('[ApplyWorkflow] GET - Found workflow:', workflow.name)
+    log.debug('GET - Found workflow:', workflow.name)
 
     // Get event type IDs this workflow applies to
     const eventTypeIds = Array.isArray(workflow.event_type_ids) 
@@ -87,7 +90,7 @@ export async function GET(
       .order('start_date', { ascending: true })
 
     if (eventsError) {
-      console.error('[ApplyWorkflow] Error fetching events:', eventsError)
+      log.error({ eventsError }, '[ApplyWorkflow] Error fetching events')
       return NextResponse.json(
         { error: 'Failed to fetch events' },
         { status: 500 }
@@ -111,7 +114,7 @@ export async function GET(
       .in('trigger_entity_id', events.map(e => e.id))
 
     if (executionsError) {
-      console.error('[ApplyWorkflow] Error checking executions:', executionsError)
+      log.error({ executionsError }, '[ApplyWorkflow] Error checking executions')
     }
 
     const executedEventIds = new Set(
@@ -134,7 +137,7 @@ export async function GET(
     })
 
   } catch (error: any) {
-    console.error('[ApplyWorkflow] GET Error:', error)
+    log.error({ error }, '[ApplyWorkflow] GET Error')
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
@@ -147,7 +150,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  console.log('🚀🚀🚀 WORKFLOW APPLY ENDPOINT CALLED! 🚀🚀🚀')
+  log.debug('🚀🚀🚀 WORKFLOW APPLY ENDPOINT CALLED! 🚀🚀🚀')
   console.log('='.repeat(80))
   
   try {
@@ -157,8 +160,8 @@ export async function POST(
     const body = await request.json().catch(() => ({}))
     const forceRerun = body.force === true
     
-    console.log('[ApplyWorkflow] POST - Looking for workflow:', workflowId, 'Force rerun:', forceRerun)
-    console.log('[ApplyWorkflow] Request body:', JSON.stringify(body, null, 2))
+    log.debug('POST - Looking for workflow:', workflowId, 'Force rerun:', forceRerun)
+    log.debug('Request body:', JSON.stringify(body, null, 2))
     const context = await getTenantContext()
 
     if (context instanceof NextResponse) {
@@ -175,7 +178,7 @@ export async function POST(
       .single()
 
     if (workflowError) {
-      console.error('[ApplyWorkflow] POST - Error fetching workflow:', workflowError)
+      log.error({ workflowError }, '[ApplyWorkflow] POST - Error fetching workflow')
       return NextResponse.json(
         { error: 'Workflow not found', details: workflowError },
         { status: 404 }
@@ -183,14 +186,14 @@ export async function POST(
     }
 
     if (!workflow) {
-      console.error('[ApplyWorkflow] POST - No workflow returned')
+      log.error('[ApplyWorkflow] POST - No workflow returned')
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       )
     }
 
-    console.log('[ApplyWorkflow] POST - Found workflow:', workflow.name)
+    log.debug('POST - Found workflow:', workflow.name)
 
     if (!workflow.is_active) {
       return NextResponse.json(
@@ -249,9 +252,9 @@ export async function POST(
       // Filter to only events that haven't been executed yet
       eligibleEvents = events.filter(e => !executedEventIds.has(e.id))
       
-      console.log(`[ApplyWorkflow] Processing ${eligibleEvents.length} events for workflow ${workflowId} (${executedEventIds.size} already executed)`)
+      log.debug(`Processing ${eligibleEvents.length} events for workflow ${workflowId} (${executedEventIds.size} already executed)`)
     } else {
-      console.log(`[ApplyWorkflow] FORCE RERUN: Processing ${eligibleEvents.length} events for workflow ${workflowId} (skipping duplicate check)`)
+      log.debug(`FORCE RERUN: Processing ${eligibleEvents.length} events for workflow ${workflowId} (skipping duplicate check)`)
     }
 
     // Execute workflow for each eligible event
@@ -259,14 +262,14 @@ export async function POST(
     let failed = 0
     const results = []
 
-    console.log('[ApplyWorkflow] Starting execution loop for', eligibleEvents.length, 'events')
-    console.log('[ApplyWorkflow] Event IDs:', eligibleEvents.map(e => e.id))
+    log.debug('Starting execution loop for', eligibleEvents.length, 'events')
+    log.debug('Event IDs:', eligibleEvents.map(e => e.id))
 
     for (const event of eligibleEvents) {
       try {
-        console.log('[ApplyWorkflow] Processing event:', event.id, event.title)
-        console.log('[ApplyWorkflow] Event type ID:', event.event_type_id)
-        console.log('[ApplyWorkflow] Calling workflowEngine.executeWorkflowsForEvent...')
+        log.debug('Processing event:', event.id, event.title)
+        log.debug('Event type ID:', event.event_type_id)
+        log.debug('Calling workflowEngine.executeWorkflowsForEvent...')
         
         const workflowResults = await workflowEngine.executeWorkflowsForEvent({
           eventId: event.id,
@@ -277,11 +280,11 @@ export async function POST(
           force: forceRerun // Pass the force flag to skip duplicate check
         })
 
-        console.log('[ApplyWorkflow] Workflow results for event', event.id, ':', JSON.stringify(workflowResults, null, 2))
+        log.debug('Workflow results for event', event.id, ':', JSON.stringify(workflowResults, null, 2))
 
         // Check if any workflows executed successfully
         const hasSuccess = workflowResults.some(r => r.status === 'completed' || r.status === 'partial')
-        console.log('[ApplyWorkflow] Has success?', hasSuccess)
+        log.debug('Has success?', hasSuccess)
         
         if (hasSuccess) {
           processed++
@@ -318,11 +321,11 @@ export async function POST(
           })
         }
       } catch (error: any) {
-        console.error(`[ApplyWorkflow] ❌ CRITICAL ERROR processing event ${event.id}:`)
+        log.error('[ApplyWorkflow] ❌ CRITICAL ERROR processing event ${event.id}:')
         console.error('[ApplyWorkflow] Error type:', typeof error)
         console.error('[ApplyWorkflow] Error message:', error?.message)
         console.error('[ApplyWorkflow] Error stack:', error?.stack)
-        console.error('[ApplyWorkflow] Full error object:', JSON.stringify(error, null, 2))
+        log.error({ error }, '[ApplyWorkflow] Full error object')
         failed++
         results.push({
           eventId: event.id,
@@ -334,7 +337,7 @@ export async function POST(
       }
     }
 
-    console.log(`[ApplyWorkflow] Complete. Processed: ${processed}, Failed: ${failed}`)
+    log.debug(`Complete. Processed: ${processed}, Failed: ${failed}`)
 
     return NextResponse.json({
       success: true,
@@ -346,7 +349,7 @@ export async function POST(
     })
 
   } catch (error: any) {
-    console.error('[ApplyWorkflow] POST Error:', error)
+    log.error({ error }, '[ApplyWorkflow] POST Error')
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

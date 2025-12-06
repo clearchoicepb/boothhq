@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,7 +27,7 @@ export async function GET(
       .single()
 
     if (invoiceError) {
-      console.error('Error fetching invoice:', invoiceError)
+      log.error({ invoiceError }, 'Error fetching invoice')
       return NextResponse.json({ error: 'Failed to fetch invoice' }, { status: 500 })
     }
 
@@ -41,7 +44,7 @@ export async function GET(
       .order('sort_order', { ascending: true })
 
     if (lineItemsError) {
-      console.error('Error fetching line items:', lineItemsError)
+      log.error({ lineItemsError }, 'Error fetching line items')
     }
 
     // Get opportunity name if opportunity_id exists
@@ -80,7 +83,7 @@ export async function GET(
     response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -100,7 +103,7 @@ export async function PUT(
     try {
       body = await request.json()
     } catch (error) {
-      console.error('Error parsing request body:', error)
+      log.error({ error }, 'Error parsing request body')
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
@@ -129,7 +132,7 @@ export async function PUT(
       .single()
 
     if (invoiceError) {
-      console.error('Error updating invoice:', invoiceError)
+      log.error({ invoiceError }, 'Error updating invoice')
       return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 })
     }
 
@@ -155,7 +158,7 @@ export async function PUT(
           .insert(lineItemsData)
 
         if (lineItemsError) {
-          console.error('Error updating line items:', lineItemsError)
+          log.error({ lineItemsError }, 'Error updating line items')
         }
       }
     }
@@ -165,7 +168,7 @@ export async function PUT(
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -196,7 +199,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting invoice:', error)
+      log.error({ error }, 'Error deleting invoice')
       return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 })
     }
 
@@ -205,7 +208,7 @@ export async function DELETE(
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

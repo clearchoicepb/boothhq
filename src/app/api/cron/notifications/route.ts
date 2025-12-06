@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:cron')
 
 /**
  * Vercel Cron Job - Send Pending Notifications
@@ -33,7 +36,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
 
     if (tenantsError) {
-      console.error('Error fetching tenants:', tenantsError)
+      log.error({ tenantsError }, 'Error fetching tenants')
       return NextResponse.json(
         { error: 'Failed to fetch tenants', details: tenantsError.message },
         { status: 500 }
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
           .limit(50) // Limit to avoid overwhelming email server
 
         if (notificationsError) {
-          console.error(`Error fetching notifications for tenant ${tenant.subdomain}:`, notificationsError)
+          log.error({ notificationsError }, 'Error fetching notifications for tenant ${tenant.subdomain}')
           continue
         }
 
@@ -144,7 +147,7 @@ export async function GET(request: NextRequest) {
                 })
                 return true
               } catch (error) {
-                console.error(`Failed to send email to ${recipient}:`, error)
+                log.error({ error }, 'Failed to send email to ${recipient}')
                 return false
               }
             })
@@ -167,16 +170,16 @@ export async function GET(request: NextRequest) {
               totalFailed++
             }
           } catch (error) {
-            console.error(`Error processing notification ${notification.id}:`, error)
+            log.error({ error }, 'Error processing notification ${notification.id}')
             totalFailed++
           }
         }
       } catch (error) {
-        console.error(`Error processing tenant ${tenant.subdomain}:`, error)
+        log.error({ error }, 'Error processing tenant ${tenant.subdomain}')
       }
     }
 
-    console.log(`Notifications cron completed: ${totalSent} sent, ${totalFailed} failed`)
+    log.debug('Notifications cron completed: ${totalSent} sent, ${totalFailed} failed')
 
     return NextResponse.json({
       success: true,
@@ -188,7 +191,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error: any) {
-    console.error('Cron error:', error)
+    log.error({ error }, 'Cron error')
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

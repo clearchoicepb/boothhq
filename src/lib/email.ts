@@ -1,4 +1,7 @@
 import nodemailer from 'nodemailer'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 export interface EmailOptions {
   to: string | string[]
@@ -42,7 +45,7 @@ export const sendEmail = async (options: EmailOptions) => {
     const result = await transporter.sendMail(mailOptions)
     return { success: true, messageId: result.messageId }
   } catch (error) {
-    console.error('Error sending email:', error)
+    log.error({ error }, 'Error sending email')
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }

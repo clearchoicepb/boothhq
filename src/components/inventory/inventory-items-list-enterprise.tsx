@@ -23,6 +23,9 @@ import { ColumnCustomizationModal, useColumnPreferences } from './column-customi
 import { ExportModal } from './export-modal'
 import { InventoryTableView } from './inventory-table-view'
 import { groupAndSortInventoryItems } from './inventory-grouping'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 export function InventoryItemsListEnterprise() {
   // View state
@@ -131,7 +134,7 @@ export function InventoryItemsListEnterprise() {
       setIsFormModalOpen(false)
       setEditingItem(null)
     } catch (error: any) {
-      console.error('Failed to save inventory item:', error)
+      log.error({ error }, 'Failed to save inventory item')
       alert(`Failed to save: ${error.message}`)
     }
   }, [editingItem, updateItem, addItem])
@@ -142,7 +145,7 @@ export function InventoryItemsListEnterprise() {
     try {
       await deleteItem.mutateAsync(itemId)
     } catch (error: any) {
-      console.error('Failed to delete inventory item:', error)
+      log.error({ error }, 'Failed to delete inventory item')
     }
   }, [deleteItem])
 
@@ -185,7 +188,7 @@ export function InventoryItemsListEnterprise() {
       setSelectAllPages(false)
       setBulkMode(false)
     } catch (error: any) {
-      console.error('Failed to mark items as returned:', error)
+      log.error({ error }, 'Failed to mark items as returned')
     }
   }, [selectedItems, selectAllPages, pagination.total, items, updateItem])
 

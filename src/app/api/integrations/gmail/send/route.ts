@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:integrations')
 // Helper to refresh access token if expired
 async function refreshAccessToken(refreshToken: string) {
   const clientId = process.env.GOOGLE_CLIENT_ID
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     if (!sendResponse.ok) {
       const errorText = await sendResponse.text()
-      console.error('Gmail API error:', errorText)
+      log.error({ errorText }, 'Gmail API error')
       return NextResponse.json(
         { error: 'Failed to send email via Gmail API' },
         { status: 500 }
@@ -146,7 +149,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (commError) {
-      console.error('Error logging communication:', commError)
+      log.error({ commError }, 'Error logging communication')
       // Don't fail the request if logging fails
     }
 
@@ -157,7 +160,7 @@ export async function POST(request: NextRequest) {
       communication,
     })
   } catch (error) {
-    console.error('Error sending email:', error)
+    log.error({ error }, 'Error sending email')
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

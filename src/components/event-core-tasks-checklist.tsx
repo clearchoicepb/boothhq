@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface CoreTaskCompletion {
   id: string
@@ -66,7 +69,7 @@ export function EventCoreTasksChecklist({ eventId, onCompletionChange }: EventCo
         }
       }
     } catch (error) {
-      console.error('Error fetching core tasks:', error)
+      log.error({ error }, 'Error fetching core tasks')
     } finally {
       setLoading(false)
     }
@@ -78,7 +81,7 @@ export function EventCoreTasksChecklist({ eventId, onCompletionChange }: EventCo
         method: 'POST'
       })
     } catch (error) {
-      console.error('Error initializing core tasks:', error)
+      log.error({ error }, 'Error initializing core tasks')
     }
   }
 
@@ -99,7 +102,7 @@ export function EventCoreTasksChecklist({ eventId, onCompletionChange }: EventCo
         await fetchCoreTasks()
       }
     } catch (error) {
-      console.error('Error updating core task:', error)
+      log.error({ error }, 'Error updating core task')
     } finally {
       setUpdating(prev => {
         const next = new Set(prev)

@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:migrations')
 
 export async function POST() {
   try {
@@ -96,7 +99,7 @@ export async function POST() {
       message: 'Migration executed successfully - event_custom_items table created'
     })
   } catch (error: any) {
-    console.error('Error creating table:', error)
+    log.error({ error }, 'Error creating table')
     return NextResponse.json({
       error: error.message,
       details: error

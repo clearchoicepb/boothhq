@@ -7,6 +7,9 @@ import { Modal } from '@/components/ui/modal'
 import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText } from 'lucide-react'
 import TemplateBuilder from '@/components/templates/TemplateBuilder'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('templates')
 
 interface Template {
   id: string
@@ -61,7 +64,7 @@ export default function TemplatesSettingsPage() {
         setTemplates(data)
       }
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
     } finally {
       setLoading(false)
     }
@@ -118,7 +121,7 @@ export default function TemplatesSettingsPage() {
       setEditingTemplate(null)
       fetchTemplates()
     } catch (error) {
-      console.error('Error saving template:', error)
+      log.error({ error }, 'Error saving template')
       throw error
     }
   }
@@ -151,7 +154,7 @@ export default function TemplatesSettingsPage() {
         alert('Failed to save template')
       }
     } catch (error) {
-      console.error('Error saving template:', error)
+      log.error({ error }, 'Error saving template')
       alert('Error saving template')
     } finally {
       setSaving(false)
@@ -174,7 +177,7 @@ export default function TemplatesSettingsPage() {
         alert('Failed to delete template')
       }
     } catch (error) {
-      console.error('Error deleting template:', error)
+      log.error({ error }, 'Error deleting template')
       alert('Error deleting template')
     }
   }

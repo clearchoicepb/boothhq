@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { opportunitiesApi } from '@/lib/db/opportunities'
 import { DollarSign, TrendingUp, Users, Calendar } from 'lucide-react'
 import type { Opportunity } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface OpportunityWithRelations extends Opportunity {
   accounts: {
@@ -28,7 +31,7 @@ export function OpportunityStats() {
         const data = await opportunitiesApi.getAll()
         setOpportunities(data)
       } catch (error) {
-        console.error('Error fetching opportunities:', error)
+        log.error({ error }, 'Error fetching opportunities')
       } finally {
         setLoading(false)
       }

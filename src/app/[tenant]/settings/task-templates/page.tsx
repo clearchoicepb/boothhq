@@ -7,6 +7,9 @@ import { useTaskTemplates, useTaskTemplateMutations } from '@/hooks/useTaskTempl
 import { DEPARTMENTS, getDepartmentById, type DepartmentId } from '@/lib/departments'
 import type { TaskTemplate } from '@/lib/api/services/taskTemplateService'
 import { TaskTemplateForm } from '@/components/task-templates/task-template-form'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('task-templates')
 
 /**
  * Task Templates Settings Page
@@ -30,7 +33,7 @@ export default function TaskTemplatesSettingsPage() {
     try {
       await deleteTemplate.mutateAsync(template.id)
     } catch (error) {
-      console.error('Failed to delete template:', error)
+      log.error({ error }, 'Failed to delete template')
     }
   }
 
@@ -41,7 +44,7 @@ export default function TaskTemplatesSettingsPage() {
         enabled: !template.enabled,
       })
     } catch (error) {
-      console.error('Failed to toggle template:', error)
+      log.error({ error }, 'Failed to toggle template')
     }
   }
 

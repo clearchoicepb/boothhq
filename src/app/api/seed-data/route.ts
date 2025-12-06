@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:seed-data')
 
 // Realistic data arrays
 const firstNames = [
@@ -136,10 +139,10 @@ export async function POST(request: Request) {
     const threeMonthsFromNow = new Date(now.getTime() + 3 * 30 * 24 * 60 * 60 * 1000)
     const sixMonthsFromNow = new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000)
 
-    console.log('Starting seed data generation...')
+    log.debug('Starting seed data generation...')
 
     // STEP 1: Create Leads (45 records)
-    console.log('Creating leads...')
+    log.debug('Creating leads...')
     const leadStatuses = [
       ...Array(14).fill('new'),
       ...Array(11).fill('contacted'),
@@ -185,10 +188,10 @@ export async function POST(request: Request) {
       .select()
 
     if (leadsError) throw leadsError
-    console.log(`Created ${leads?.length} leads`)
+    log.debug('Created ${leads?.length} leads')
 
     // STEP 2: Create Accounts (45 records)
-    console.log('Creating accounts...')
+    log.debug('Creating accounts...')
     const accountTypes = [...Array(27).fill('company'), ...Array(18).fill('individual')]
     const accountStatuses = [...Array(32).fill('active'), ...Array(9).fill('inactive'), ...Array(4).fill('suspended')]
 
@@ -226,10 +229,10 @@ export async function POST(request: Request) {
       .select()
 
     if (accountsError) throw accountsError
-    console.log(`Created ${accounts?.length} accounts`)
+    log.debug('Created ${accounts?.length} accounts')
 
     // STEP 3: Create Contacts (45 records, 80% linked to accounts)
-    console.log('Creating contacts...')
+    log.debug('Creating contacts...')
     const contactsData = []
     for (let i = 0; i < 45; i++) {
       const firstName = random(firstNames)
@@ -267,10 +270,10 @@ export async function POST(request: Request) {
       .select()
 
     if (contactsError) throw contactsError
-    console.log(`Created ${contacts?.length} contacts`)
+    log.debug('Created ${contacts?.length} contacts')
 
     // STEP 4: Create Opportunities (35 records)
-    console.log('Creating opportunities...')
+    log.debug('Creating opportunities...')
     const stages = [
       ...Array(7).fill('prospecting'),
       ...Array(7).fill('qualification'),
@@ -341,10 +344,10 @@ export async function POST(request: Request) {
       .select()
 
     if (opportunitiesError) throw opportunitiesError
-    console.log(`Created ${opportunities?.length} opportunities`)
+    log.debug('Created ${opportunities?.length} opportunities')
 
     // STEP 5: Create Events (from won opportunities, 25 max)
-    console.log('Creating events...')
+    log.debug('Creating events...')
     const wonOpportunities = opportunities?.filter(o => o.stage === 'closed_won') || []
     const eventsToCreate = Math.min(25, wonOpportunities.length)
 
@@ -385,10 +388,10 @@ export async function POST(request: Request) {
       .select()
 
     if (eventsError) throw eventsError
-    console.log(`Created ${events?.length} events`)
+    log.debug('Created ${events?.length} events')
 
     // STEP 6: Create Invoices (from events, 20 max)
-    console.log('Creating invoices...')
+    log.debug('Creating invoices...')
     const invoicesToCreate = Math.min(20, events?.length || 0)
     const invoiceStatuses = [
       ...Array(8).fill('paid'),
@@ -434,10 +437,10 @@ export async function POST(request: Request) {
       .select()
 
     if (invoicesError) throw invoicesError
-    console.log(`Created ${invoices?.length} invoices`)
+    log.debug('Created ${invoices?.length} invoices')
 
     // STEP 7: Create Quotes (from open opportunities, 12 max)
-    console.log('Creating quotes...')
+    log.debug('Creating quotes...')
     const openOpportunities = opportunities?.filter(o => !['closed_won', 'closed_lost'].includes(o.stage)) || []
     const quotesToCreate = Math.min(12, openOpportunities.length)
     const quoteStatuses = [
@@ -484,7 +487,7 @@ export async function POST(request: Request) {
       .select()
 
     if (quotesError) throw quotesError
-    console.log(`Created ${quotes?.length} quotes`)
+    log.debug('Created ${quotes?.length} quotes')
 
     // Return summary
     return NextResponse.json({
@@ -504,7 +507,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('Seed data error:', error)
+    log.error({ error }, 'Seed data error')
     return NextResponse.json({
       error: error.message || 'Failed to create seed data',
       details: error
@@ -535,7 +538,7 @@ export async function DELETE() {
     })
 
   } catch (error: any) {
-    console.error('Delete error:', error)
+    log.error({ error }, 'Delete error')
     return NextResponse.json({
       error: error.message || 'Failed to delete data'
     }, { status: 500 })

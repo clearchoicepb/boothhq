@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('staff-roles')
 import {
   ArrowLeft,
   UserCheck,
@@ -53,7 +56,7 @@ export default function StaffRolesSettingsPage() {
         setRoles(data);
       }
     } catch (error) {
-      console.error('Error fetching staff roles:', error);
+      log.error({ error }, 'Error fetching staff roles');
     } finally {
       setLoading(false);
     }
@@ -72,7 +75,7 @@ export default function StaffRolesSettingsPage() {
         setRoles(roles.map(r => r.id === role.id ? updated : r));
       }
     } catch (error) {
-      console.error('Error toggling role:', error);
+      log.error({ error }, 'Error toggling role');
       alert('Failed to update role status');
     }
   };
@@ -102,7 +105,7 @@ export default function StaffRolesSettingsPage() {
         setEditingName('');
       }
     } catch (error) {
-      console.error('Error updating role:', error);
+      log.error({ error }, 'Error updating role');
       alert('Failed to update role name');
     }
   };
@@ -124,7 +127,7 @@ export default function StaffRolesSettingsPage() {
         alert(error.error || 'Failed to delete role');
       }
     } catch (error) {
-      console.error('Error deleting role:', error);
+      log.error({ error }, 'Error deleting role');
       alert('Failed to delete role');
     }
   };
@@ -156,7 +159,7 @@ export default function StaffRolesSettingsPage() {
         alert(error.error || 'Failed to create role');
       }
     } catch (error) {
-      console.error('Error creating role:', error);
+      log.error({ error }, 'Error creating role');
       alert('Failed to create role');
     }
   };

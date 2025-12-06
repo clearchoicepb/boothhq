@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface ValidationRule {
   id: string
@@ -121,7 +124,7 @@ export function DataValidation({ recordType, onValidationComplete }: DataValidat
         onValidationComplete(validationResults)
       }
     } catch (error) {
-      console.error('Validation error:', error)
+      log.error({ error }, 'Validation error')
     } finally {
       setValidating(false)
     }

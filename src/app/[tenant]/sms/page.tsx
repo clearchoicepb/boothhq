@@ -9,6 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { useSettings } from '@/lib/settings-context'
 import { useSMSNotifications } from '@/lib/sms-notifications-context'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('sms')
 
 interface Message {
   id: string
@@ -222,7 +225,7 @@ export default function SMSMessagesPage() {
       
       setPeople(peopleList)
     } catch (error) {
-      console.error('Error fetching people:', error)
+      log.error({ error }, 'Error fetching people')
     } finally {
       setPeopleLoading(false)
     }
@@ -370,7 +373,7 @@ export default function SMSMessagesPage() {
         setConversations(conversationsArray)
       }
     } catch (error) {
-      console.error('Error fetching conversations:', error)
+      log.error({ error }, 'Error fetching conversations')
     } finally {
       setLoading(false)
     }
@@ -400,7 +403,7 @@ export default function SMSMessagesPage() {
         setMessages(threadMessages)
       }
     } catch (error) {
-      console.error('Error fetching messages:', error)
+      log.error({ error }, 'Error fetching messages')
     }
   }
 
@@ -438,7 +441,7 @@ export default function SMSMessagesPage() {
         alert(`Failed to send SMS: ${error.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error sending SMS:', error)
+      log.error({ error }, 'Error sending SMS')
       alert('Failed to send SMS. Please try again.')
     } finally {
       setSending(false)

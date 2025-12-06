@@ -8,6 +8,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 export default function NewBoothPage() {
   const { data: session } = useSession()
@@ -94,7 +97,7 @@ export default function NewBoothPage() {
         alert(`Error: ${error.error || 'Failed to create booth'}`)
       }
     } catch (error) {
-      console.error('Error creating booth:', error)
+      log.error({ error }, 'Error creating booth')
       alert('Failed to create booth')
     } finally {
       setSaving(false)

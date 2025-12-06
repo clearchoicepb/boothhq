@@ -3,6 +3,9 @@
 import React from 'react'
 import { EntityForm } from './EntityForm'
 import type { Account } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('forms')
 
 interface AccountFormProps {
   account?: Account | null
@@ -38,7 +41,7 @@ export function AccountForm({
       const savedAccount = await response.json()
       await onSubmit(savedAccount)
     } catch (error) {
-      console.error('Error saving account:', error)
+      log.error({ error }, 'Error saving account')
       throw error
     }
   }

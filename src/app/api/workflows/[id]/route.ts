@@ -11,6 +11,9 @@
 
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:workflows')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GET - Get workflow by ID
@@ -112,7 +115,7 @@ export async function GET(
 
     return NextResponse.json(workflow)
   } catch (error) {
-    console.error('[workflows/[id]/route.ts] Error:', error)
+    log.error({ error }, '[workflows/[id]/route.ts] Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -151,7 +154,7 @@ export async function PATCH(
       .single()
 
     if (updateError || !updatedWorkflow) {
-      console.error('[workflows/[id]/route.ts] Error updating workflow:', updateError)
+      log.error({ updateError }, '[workflows/[id]/route.ts] Error updating workflow')
       return NextResponse.json(
         { error: 'Failed to update workflow', details: updateError?.message },
         { status: 500 }
@@ -204,7 +207,7 @@ export async function PATCH(
 
     return NextResponse.json(completeWorkflow || updatedWorkflow)
   } catch (error) {
-    console.error('[workflows/[id]/route.ts] Error:', error)
+    log.error({ error }, '[workflows/[id]/route.ts] Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -240,7 +243,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
-      console.error('[workflows/[id]/route.ts] Error deleting workflow:', deleteError)
+      log.error({ deleteError }, '[workflows/[id]/route.ts] Error deleting workflow')
       return NextResponse.json(
         { error: 'Failed to delete workflow', details: deleteError.message },
         { status: 500 }
@@ -249,7 +252,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Workflow deleted successfully' })
   } catch (error) {
-    console.error('[workflows/[id]/route.ts] Error:', error)
+    log.error({ error }, '[workflows/[id]/route.ts] Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

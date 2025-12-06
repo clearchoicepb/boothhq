@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantStripe, getTenantStripeConfig, formatAmountForStripe } from '@/lib/stripe'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 export async function POST(
   request: NextRequest,
@@ -92,7 +95,7 @@ export async function POST(
           .eq('tenant_id', dataSourceTenantId)
 
         if (updateError) {
-          console.error('Error updating invoice after payment:', updateError)
+          log.error({ updateError }, 'Error updating invoice after payment')
           return NextResponse.json({ error: 'Payment succeeded but failed to update invoice' }, { status: 500 })
         }
 
@@ -133,14 +136,14 @@ export async function POST(
         })
       }
     } catch (stripeError: any) {
-      console.error('Stripe error:', stripeError)
+      log.error({ stripeError }, 'Stripe error')
       return NextResponse.json({
         success: false,
         error: stripeError.message || 'Payment processing failed',
       }, { status: 400 })
     }
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -212,7 +215,7 @@ export async function GET(
       }
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

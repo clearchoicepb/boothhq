@@ -34,6 +34,9 @@ import toast from 'react-hot-toast'
 import { useSettings } from '@/lib/settings-context'
 import { getStageName } from '@/lib/utils/stage-utils'
 import type { EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface Opportunity {
   id: string
@@ -166,7 +169,7 @@ export default function OpportunityDetailPage() {
         setLead(leadData)
       }
     } catch (error) {
-      console.error('Error fetching lead:', error)
+      log.error({ error }, 'Error fetching lead')
     }
   }
 
@@ -198,7 +201,7 @@ export default function OpportunityDetailPage() {
         setLocations(locationsMap)
       }
     } catch (error) {
-      console.error('Error fetching locations:', error)
+      log.error({ error }, 'Error fetching locations')
     }
   }
 
@@ -229,7 +232,7 @@ export default function OpportunityDetailPage() {
         alert('Failed to save notes')
       }
     } catch (error) {
-      console.error('Error saving notes:', error)
+      log.error({ error }, 'Error saving notes')
       alert('Error saving notes')
     } finally {
       setSavingNotes(prev => ({ ...prev, [eventDateId]: false }))
@@ -326,7 +329,7 @@ export default function OpportunityDetailPage() {
                 toast.error(`Failed to convert: ${error.error || 'Unknown error'}`, { id: convertToastId })
               }
             } catch (error) {
-              console.error('Error converting to event:', error)
+              log.error({ error }, 'Error converting to event')
               toast.error('Failed to convert opportunity to event')
             }
           }
@@ -335,7 +338,7 @@ export default function OpportunityDetailPage() {
         toast.error('Failed to update stage', { id: toastId })
       }
     } catch (error) {
-      console.error('Error updating stage:', error)
+      log.error({ error }, 'Error updating stage')
       toast.error('Error updating stage', { id: toastId })
     } finally {
       setUpdatingStage(false)
@@ -393,7 +396,7 @@ export default function OpportunityDetailPage() {
 
       toast.success('Owner updated successfully!', { id: toastId })
     } catch (error) {
-      console.error('Error updating owner:', error)
+      log.error({ error }, 'Error updating owner')
 
       // Rollback optimistic update
       if (opportunity) {
@@ -414,7 +417,7 @@ export default function OpportunityDetailPage() {
         setCommunications(data)
       }
     } catch (error) {
-      console.error('Error fetching communications:', error)
+      log.error({ error }, 'Error fetching communications')
     }
   }
 
@@ -450,7 +453,7 @@ export default function OpportunityDetailPage() {
         alert('Failed to update account/contact')
       }
     } catch (error) {
-      console.error('Error updating account/contact:', error)
+      log.error({ error }, 'Error updating account/contact')
       alert('Error updating account/contact')
     }
   }
@@ -482,7 +485,7 @@ export default function OpportunityDetailPage() {
         throw new Error('Failed to convert lead')
       }
     } catch (error) {
-      console.error('Error converting lead:', error)
+      log.error({ error }, 'Error converting lead')
       throw error
     }
   }
@@ -516,7 +519,7 @@ export default function OpportunityDetailPage() {
         throw new Error(errorData.error || 'Failed to convert opportunity to event')
       }
     } catch (error) {
-      console.error('Error converting opportunity to event:', error)
+      log.error({ error }, 'Error converting opportunity to event')
       alert(`Failed to convert opportunity to event: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -712,7 +715,7 @@ export default function OpportunityDetailPage() {
                               alert(`Failed to convert: ${error.error || 'Unknown error'}`)
                             }
                           } catch (error) {
-                            console.error('Error converting to event:', error)
+                            log.error({ error }, 'Error converting to event')
                             alert('Failed to convert opportunity to event')
                           }
                         }}

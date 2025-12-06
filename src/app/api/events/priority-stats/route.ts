@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 /**
  * GET /api/events/priority-stats
  *
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
       .order('start_date', { ascending: true })
 
     if (eventsError) {
-      console.error('Error fetching events for priority stats:', eventsError)
+      log.error({ eventsError }, 'Error fetching events for priority stats')
       return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
     }
 
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
 
     if (tasksError) {
-      console.error('Error fetching core tasks:', tasksError)
+      log.error({ tasksError }, 'Error fetching core tasks')
     }
 
     const totalTasksPerEvent = coreTasks?.length || 0
@@ -63,7 +66,7 @@ export async function GET(request: NextRequest) {
         .in('event_id', eventIds)
 
       if (completionsError) {
-        console.error('Error fetching task completions:', completionsError)
+        log.error({ completionsError }, 'Error fetching task completions')
       }
 
       // Group completion data by event_id
@@ -163,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Error in events priority stats API:', error)
+    log.error({ error }, 'Error in events priority stats API')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

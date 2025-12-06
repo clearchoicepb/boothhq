@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Users, Building2, Target, Calendar, DollarSign, Clock } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface DashboardStats {
   totalLeads: number
@@ -142,7 +145,7 @@ export function DashboardStats({ className = '' }: DashboardStatsProps) {
           revenueGrowth
         })
       } catch (error) {
-        console.error('Error fetching dashboard stats:', error)
+        log.error({ error }, 'Error fetching dashboard stats')
       } finally {
         setIsLoading(false)
       }

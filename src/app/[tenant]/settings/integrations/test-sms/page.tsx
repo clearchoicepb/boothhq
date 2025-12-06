@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('test-sms')
 
 interface TestMessage {
   id: string;
@@ -116,7 +119,7 @@ export default function TestSMSPage() {
         }
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      log.error({ error }, 'Error fetching messages');
     }
   };
 
@@ -197,7 +200,7 @@ export default function TestSMSPage() {
       startReplyWatch(phoneNumber);
       
     } catch (err) {
-      console.error('Error sending test SMS:', err);
+      log.error({ err }, 'Error sending test SMS');
       setError(err instanceof Error ? err.message : 'Failed to send SMS');
     } finally {
       setSending(false);

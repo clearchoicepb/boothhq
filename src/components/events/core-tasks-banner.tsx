@@ -9,6 +9,9 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle, X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface CoreTasksBannerProps {
   eventId: string
@@ -38,7 +41,7 @@ export function CoreTasksBanner({ eventId, onViewTasks }: CoreTasksBannerProps) 
           setTasks(data)
         }
       } catch (error) {
-        console.error('Error fetching core tasks:', error)
+        log.error({ error }, 'Error fetching core tasks')
       } finally {
         setLoading(false)
       }

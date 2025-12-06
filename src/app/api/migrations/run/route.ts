@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:migrations')
 
 // WARNING: This endpoint should be secured or removed in production
 export async function POST(request: Request) {
@@ -33,7 +36,7 @@ export async function POST(request: Request) {
       await pool.end()
     }
   } catch (error: any) {
-    console.error('Error running migration:', error)
+    log.error({ error }, 'Error running migration')
     return NextResponse.json({
       error: error.message,
       detail: error.detail || '',

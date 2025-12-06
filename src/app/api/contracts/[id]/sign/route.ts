@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import jsPDF from 'jspdf'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contracts')
 
 // Get client IP address
 function getClientIp(request: NextRequest): string {
@@ -163,7 +166,7 @@ export async function POST(
       .single()
 
     if (updateError) {
-      console.error('Error updating contract:', updateError)
+      log.error({ updateError }, 'Error updating contract')
       return NextResponse.json(
         { error: 'Failed to save signature' },
         { status: 500 }
@@ -194,12 +197,12 @@ export async function POST(
             })
             .eq('id', attachment.id)
           
-          console.log('[sign/route.ts] Attachment entry status updated to signed')
+          log.debug('Attachment entry status updated to signed')
         } else {
-          console.log('[sign/route.ts] No attachment entry found for contract')
+          log.debug('No attachment entry found for contract')
         }
       } catch (err) {
-        console.error('Error updating attachment entry:', err)
+        log.error({ err }, 'Error updating attachment entry')
         // Don't fail the whole operation if attachment update fails
       }
     }
@@ -210,7 +213,7 @@ export async function POST(
       message: 'Contract signed successfully'
     })
   } catch (error) {
-    console.error('Error signing contract:', error)
+    log.error({ error }, 'Error signing contract')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

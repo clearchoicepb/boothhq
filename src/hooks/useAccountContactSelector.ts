@@ -4,6 +4,9 @@
  */
 
 import { useState, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface Account {
   id: string
@@ -66,7 +69,7 @@ export function useAccountContactSelector({
         setAccounts(data)
       }
     } catch (error) {
-      console.error('Error fetching accounts:', error)
+      log.error({ error }, 'Error fetching accounts')
     } finally {
       setLoadingAccounts(false)
     }
@@ -86,7 +89,7 @@ export function useAccountContactSelector({
         setContacts(data)
       }
     } catch (error) {
-      console.error('Error fetching contacts for account:', error)
+      log.error({ error }, 'Error fetching contacts for account')
     } finally {
       setLoadingContacts(false)
     }

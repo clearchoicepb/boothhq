@@ -5,6 +5,9 @@ import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { useUsers } from '@/hooks/useUsers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface DesignItemDetails {
   id: string
@@ -52,7 +55,7 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess, i
       const data = (await res.json()) as { statuses?: DesignStatusOption[] }
       setDesignStatuses(data.statuses?.filter(Boolean) ?? [])
     } catch (_error) {
-      console.error('Error fetching design statuses:', _error)
+      log.error({ _error }, 'Error fetching design statuses')
     }
   }
 

@@ -31,6 +31,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Project, ProjectTeamMember, ProjectStatus, ProjectPriority } from '@/types/project.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 import { 
   getProjectStatusColor, 
   getProjectPriorityColor, 
@@ -67,7 +70,7 @@ export default function ProjectDetailPage() {
         const data = await response.json()
         setProject(data)
       } catch (error) {
-        console.error('Error fetching project:', error)
+        log.error({ error }, 'Error fetching project')
         toast.error('Failed to load project')
       } finally {
         setLoading(false)
@@ -88,7 +91,7 @@ export default function ProjectDetailPage() {
         const data = await response.json()
         setUsers(data)
       } catch (error) {
-        console.error('Error fetching users:', error)
+        log.error({ error }, 'Error fetching users')
       }
     }
 
@@ -111,7 +114,7 @@ export default function ProjectDetailPage() {
       toast.success('Project deleted successfully')
       router.push(`/${tenantSubdomain}/projects`)
     } catch (error) {
-      console.error('Error deleting project:', error)
+      log.error({ error }, 'Error deleting project')
       toast.error('Failed to delete project')
     }
   }
@@ -131,7 +134,7 @@ export default function ProjectDetailPage() {
       setProject(updatedProject)
       toast.success('Progress updated')
     } catch (error) {
-      console.error('Error updating progress:', error)
+      log.error({ error }, 'Error updating progress')
       toast.error('Failed to update progress')
     }
   }
@@ -165,7 +168,7 @@ export default function ProjectDetailPage() {
       setSelectedUserId('')
       setSelectedRole('contributor')
     } catch (error) {
-      console.error('Error adding team member:', error)
+      log.error({ error }, 'Error adding team member')
       toast.error('Failed to add team member')
     }
   }
@@ -188,7 +191,7 @@ export default function ProjectDetailPage() {
 
       toast.success('Team member removed')
     } catch (error) {
-      console.error('Error removing team member:', error)
+      log.error({ error }, 'Error removing team member')
       toast.error('Failed to remove team member')
     }
   }

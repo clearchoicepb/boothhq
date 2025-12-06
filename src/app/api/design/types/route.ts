@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:design')
 // GET - Fetch all design types for tenant
 export async function GET() {
   const context = await getTenantContext()
@@ -17,7 +20,7 @@ export async function GET() {
 
     return NextResponse.json({ types: data || [] })
   } catch (error: any) {
-    console.error('Error fetching design types:', error)
+    log.error({ error }, 'Error fetching design types')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -44,7 +47,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ type: data })
   } catch (error: any) {
-    console.error('Error creating design type:', error)
+    log.error({ error }, 'Error creating design type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

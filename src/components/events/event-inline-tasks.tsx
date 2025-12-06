@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle2, Circle, Loader2, CheckCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface Task {
   id: string // This is the completion_id
@@ -92,7 +95,7 @@ export function EventInlineTasks({
         onAllTasksComplete()
       }
     } catch (error) {
-      console.error('Error updating task:', error)
+      log.error({ error }, 'Error updating task')
       toast.error('❌ Failed to update task - please try again')
 
       // ROLLBACK optimistic update on error
@@ -150,7 +153,7 @@ export function EventInlineTasks({
         onAllTasksComplete()
       }
     } catch (error) {
-      console.error('Error marking all tasks complete:', error)
+      log.error({ error }, 'Error marking all tasks complete')
       toast.error('❌ Failed to complete all tasks - please try again')
 
       // ROLLBACK optimistic update on error

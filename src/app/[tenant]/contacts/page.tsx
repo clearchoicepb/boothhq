@@ -15,6 +15,9 @@ import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { ContactForm } from '@/components/forms'
 import type { Contact } from '@/lib/supabase-client' // cspell:ignore supabase
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('contacts')
 
 interface ContactWithAccount extends Contact {
   account_name: string | null
@@ -48,7 +51,7 @@ export default function ContactsPage() {
       const response = await fetch('/api/contacts')
       
       if (!response.ok) {
-        console.error('Error fetching contacts')
+        log.error('Error fetching contacts')
         return
       }
 
@@ -80,7 +83,7 @@ export default function ContactsPage() {
       setContacts(paginatedData)
       setTotalPages(Math.ceil(filteredData.length / itemsPerPage))
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
     } finally {
       setLoading(false)
     }
@@ -110,7 +113,7 @@ export default function ContactsPage() {
           fetchContacts()
         }
       } catch (error) {
-        console.error('Error deleting contact:', error)
+        log.error({ error }, 'Error deleting contact')
       }
     }
   }
@@ -132,7 +135,7 @@ export default function ContactsPage() {
       setIsFormOpen(false)
       setEditingContact(null)
     } catch (error) {
-      console.error('Error saving contact:', error)
+      log.error({ error }, 'Error saving contact')
     }
   }
 
@@ -155,7 +158,7 @@ export default function ContactsPage() {
         }
       })
     } catch (error) {
-      console.error('Error saving view preference:', error)
+      log.error({ error }, 'Error saving view preference')
     }
   }
 

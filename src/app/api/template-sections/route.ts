@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:template-sections')
 
 // GET - List all sections (system + tenant custom)
 export async function GET(request: NextRequest) {
@@ -11,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
-    console.log('[Template Sections API] Fetching sections for tenant:', dataSourceTenantId)
+    log.debug('Fetching sections for tenant:', dataSourceTenantId)
 
     // Use RPC function to bypass RLS and get sections
     // This function returns both system sections and tenant-specific sections
@@ -20,20 +23,20 @@ export async function GET(request: NextRequest) {
       p_category: category
     })
 
-    console.log('[Template Sections API] Query result:', {
+    log.debug('Query result:', {
       count: data?.length || 0,
       error: error?.message,
       sample: data?.[0]
     })
 
     if (error) {
-      console.error('[Template Sections API] Database error:', error)
+      log.error({ error }, '[Template Sections API] Database error')
       throw error
     }
 
     return NextResponse.json({ sections: data || [] })
   } catch (error: any) {
-    console.error('[Template Sections API] Error fetching template sections:', error)
+    log.error({ error }, '[Template Sections API] Error fetching template sections')
     return NextResponse.json(
       { error: 'Failed to fetch sections', details: error.message },
       { status: 500 }
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to create section' },
         { status: 500 }
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ section: data })
   } catch (error) {
-    console.error('Error creating section:', error)
+    log.error({ error }, 'Error creating section')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tickets')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data: tickets, error } = await query
 
     if (error) {
-      console.error('Error fetching tickets:', error)
+      log.error({ error }, 'Error fetching tickets')
       return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 })
     }
 
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(tickets || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -128,7 +131,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating ticket:', error)
+      log.error({ error }, 'Error creating ticket')
       return NextResponse.json({ error: 'Failed to create ticket' }, { status: 500 })
     }
 
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(ticket)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

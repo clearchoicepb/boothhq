@@ -1,5 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
+
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -8,7 +12,7 @@ export async function GET(
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
-    const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const params = await routeContext.params
     const { data, error } = await supabase
       .from('opportunities')
@@ -24,7 +28,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching opportunity:', error)
+      log.error({ error, opportunityId: params.id }, 'Failed to fetch opportunity')
       return NextResponse.json({ error: 'Failed to fetch opportunity' }, { status: 500 })
     }
 
@@ -42,7 +46,7 @@ export async function GET(
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in GET /api/opportunities/[id]')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -55,7 +59,7 @@ export async function PUT(
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
-    const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
 
     const body = await request.json()
     const { event_dates, ...opportunityData } = body
@@ -68,7 +72,6 @@ export async function PUT(
       'is_converted', 'converted_at',
       'converted_event_id', 'converted_from_opportunity_id',
       'close_reason', 'close_notes'
-      // Not yet in schema: 'updated_by', 'created_by', 'mailing_address_*'
     ]
 
     const filteredData = Object.keys(opportunityData)
@@ -154,23 +157,24 @@ export async function PUT(
       updated_at: new Date().toISOString()
     }
 
+    const resolvedParams = await params
     const { data, error } = await supabase
       .from('opportunities')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', resolvedParams.id)
       .eq('tenant_id', dataSourceTenantId)
       .select()
       .single()
 
     if (error) {
-      console.error('Error updating opportunity:', error)
+      log.error({ error, opportunityId: resolvedParams.id }, 'Failed to update opportunity')
       return NextResponse.json({ error: 'Failed to update opportunity', details: error.message }, { status: 500 })
     }
 
     // Handle event dates if provided
     if (event_dates && Array.isArray(event_dates)) {
       // Delete existing event dates for this opportunity
-      const opportunityId = params.id
+      const opportunityId = resolvedParams.id
       await supabase
         .from('event_dates')
         .delete()
@@ -194,15 +198,15 @@ export async function PUT(
           .insert(eventDatesToInsert)
 
         if (eventDatesError) {
-          console.error('Error updating event dates:', eventDatesError)
-          // Don't fail the entire request, just log the error
+          log.error({ error: eventDatesError }, 'Failed to update event dates')
         }
       }
     }
 
+    log.info({ opportunityId: resolvedParams.id }, 'Opportunity updated successfully')
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in PUT /api/opportunities/[id]')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -225,7 +229,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting opportunity:', error)
+      log.error({ error, opportunityId: params.id }, 'Failed to delete opportunity')
       return NextResponse.json({ error: 'Failed to delete opportunity' }, { status: 500 })
     }
 
@@ -234,15 +238,10 @@ export async function DELETE(
     const { revalidatePath } = await import('next/cache')
     revalidatePath(`/${tenantSubdomain}/opportunities`)
 
+    log.info({ opportunityId: params.id }, 'Opportunity deleted successfully')
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in DELETE /api/opportunities/[id]')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-
-
-
-

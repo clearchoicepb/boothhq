@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:add-ons')
 // GET - Fetch all add-ons
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { data: addOns, error } = await query
 
     if (error) {
-      console.error('Error fetching add-ons:', error)
+      log.error({ error }, 'Error fetching add-ons')
       return NextResponse.json({
         error: 'Failed to fetch add-ons',
         details: error.message
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(addOns || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (createError) {
-      console.error('Error creating add-on:', createError)
+      log.error({ createError }, 'Error creating add-on')
       return NextResponse.json({
         error: 'Failed to create add-on',
         details: createError.message
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, addOn })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

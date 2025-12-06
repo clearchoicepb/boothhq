@@ -15,6 +15,9 @@
 
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:workflows')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GET - List workflows with filters
@@ -118,7 +121,7 @@ export async function GET(request: NextRequest) {
     )
 
     if (error) {
-      console.error('[workflows/route.ts] Error fetching workflows:', error)
+      log.error({ error }, '[workflows/route.ts] Error fetching workflows')
       return NextResponse.json(
         { error: 'Failed to fetch workflows', details: error.message },
         { status: 500 }
@@ -127,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('[workflows/route.ts] Error:', error)
+    log.error({ error }, '[workflows/route.ts] Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -168,7 +171,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (workflowError || !createdWorkflow) {
-      console.error('[workflows/route.ts] Error creating workflow:', workflowError)
+      log.error({ workflowError }, '[workflows/route.ts] Error creating workflow')
       return NextResponse.json(
         { error: 'Failed to create workflow', details: workflowError?.message },
         { status: 500 }
@@ -194,7 +197,7 @@ export async function POST(request: NextRequest) {
           .delete()
           .eq('id', createdWorkflow.id)
 
-        console.error('[workflows/route.ts] Error creating actions:', actionsError)
+        log.error({ actionsError }, '[workflows/route.ts] Error creating actions')
         return NextResponse.json(
           { error: 'Failed to create workflow actions', details: actionsError.message },
           { status: 500 }
@@ -247,7 +250,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError || !completeWorkflow) {
-      console.error('[workflows/route.ts] Error fetching created workflow:', fetchError)
+      log.error({ fetchError }, '[workflows/route.ts] Error fetching created workflow')
       // Workflow was created, but we can't fetch it with relations
       // Return basic workflow data
       return NextResponse.json({
@@ -261,7 +264,7 @@ export async function POST(request: NextRequest) {
       workflow: completeWorkflow,
     })
   } catch (error) {
-    console.error('[workflows/route.ts] Error:', error)
+    log.error({ error }, '[workflows/route.ts] Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 /**
  * POST /api/invoices/recalculate-balances
@@ -13,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const { supabase, dataSourceTenantId, session } = context
 
-    console.log('[Recalculate Balances] Starting recalculation for tenant:', dataSourceTenantId)
+    log.debug('Starting recalculation for tenant:', dataSourceTenantId)
 
     // Get all invoices for the tenant
     const { data: invoices, error: fetchError } = await supabase
@@ -22,7 +25,7 @@ export async function POST(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
 
     if (fetchError) {
-      console.error('[Recalculate Balances] Error fetching invoices:', fetchError)
+      log.error({ fetchError }, '[Recalculate Balances] Error fetching invoices')
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
@@ -33,7 +36,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`[Recalculate Balances] Found ${invoices.length} invoices`)
+    log.debug(`Found ${invoices.length} invoices`)
 
     // Recalculate balance for each invoice
     let updatedCount = 0
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
 
       // Only update if balance or status is incorrect
       if (needsUpdate) {
-        console.log(`[Recalculate Balances] Invoice ${invoice.id}: Fixing balance from ${invoice.balance_amount} to ${correctBalance}, status: ${currentInvoice?.status} -> ${correctStatus}`)
+        log.debug(`Invoice ${invoice.id}: Fixing balance from ${invoice.balance_amount} to ${correctBalance}, status: ${currentInvoice?.status} -> ${correctStatus}`)
 
         const updateData: any = {
           balance_amount: correctBalance,
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
           .eq('tenant_id', dataSourceTenantId)
 
         if (updateError) {
-          console.error(`[Recalculate Balances] Error updating invoice ${invoice.id}:`, updateError)
+          log.error({ updateError }, '[Recalculate Balances] Error updating invoice ${invoice.id}')
           errorCount++
           errors.push({ invoiceId: invoice.id, error: updateError.message })
         } else {
@@ -95,7 +98,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Recalculate Balances] Complete. Updated: ${updatedCount}, Errors: ${errorCount}`)
+    log.debug(`Complete. Updated: ${updatedCount}, Errors: ${errorCount}`)
 
     return NextResponse.json({
       message: 'Balance recalculation complete',
@@ -106,7 +109,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Recalculate Balances] Unexpected error:', error)
+    log.error({ error }, '[Recalculate Balances] Unexpected error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

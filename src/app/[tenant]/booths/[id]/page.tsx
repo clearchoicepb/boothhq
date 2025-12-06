@@ -20,6 +20,9 @@ import {
   ClipboardList
 } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface Booth {
   id: string
@@ -111,7 +114,7 @@ export default function BoothDetailPage() {
         setAssignments(assignmentsData)
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
     } finally {
       setLoading(false)
     }
@@ -129,7 +132,7 @@ export default function BoothDetailPage() {
         router.push(`/${tenantSubdomain}/booths`)
       }
     } catch (error) {
-      console.error('Error deleting booth:', error)
+      log.error({ error }, 'Error deleting booth')
     }
   }
 

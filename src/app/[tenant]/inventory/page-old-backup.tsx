@@ -10,6 +10,9 @@ import { Search, Plus, Package, Edit, Trash2, Eye, Wrench, MapPin, DollarSign } 
 import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface EquipmentItem {
   id: string
@@ -59,14 +62,14 @@ export default function InventoryPage() {
       const response = await fetch(`/api/equipment-items?status=${statusFilter}&equipment_type=${equipmentTypeFilter}`)
 
       if (!response.ok) {
-        console.error('Error fetching equipment items')
+        log.error('Error fetching equipment items')
         return
       }
 
       const data = await response.json()
       setEquipment(data || [])
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
     } finally {
       setLocalLoading(false)
     }
@@ -155,7 +158,7 @@ export default function InventoryPage() {
         alert(`Error: ${error.error || 'Failed to delete equipment item'}`)
       }
     } catch (error) {
-      console.error('Error deleting equipment item:', error)
+      log.error({ error }, 'Error deleting equipment item')
       alert('Failed to delete equipment item')
     }
   }
@@ -186,7 +189,7 @@ export default function InventoryPage() {
         alert(`Error: ${error.error || 'Failed to save equipment item'}`)
       }
     } catch (error) {
-      console.error('Error saving equipment item:', error)
+      log.error({ error }, 'Error saving equipment item')
       alert('Failed to save equipment item')
     }
   }

@@ -10,6 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { EntityForm } from '@/components/forms/EntityForm'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('roles')
 
 interface Role {
   id: string
@@ -74,7 +77,7 @@ export default function RolesSettingsPage() {
           ])
         }
       } catch (error) {
-        console.error('Error fetching roles:', error)
+        log.error({ error }, 'Error fetching roles')
         // Use mock data on error
         setRoles([
           {
@@ -115,7 +118,7 @@ export default function RolesSettingsPage() {
         alert(`Error: ${error.message || 'Failed to delete role'}`)
       }
     } catch (error) {
-      console.error('Error deleting role:', error)
+      log.error({ error }, 'Error deleting role')
       alert('Failed to delete role')
     }
   }
@@ -152,7 +155,7 @@ export default function RolesSettingsPage() {
         alert(`Error: ${error.message || 'Failed to save role'}`)
       }
     } catch (error) {
-      console.error('Error saving role:', error)
+      log.error({ error }, 'Error saving role')
       alert('Failed to save role')
     }
   }

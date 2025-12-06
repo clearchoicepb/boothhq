@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tickets')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -57,7 +60,7 @@ export async function POST(
         .eq('id', existingVote.id)
 
       if (error) {
-        console.error('Error removing vote:', error)
+        log.error({ error }, 'Error removing vote')
         return NextResponse.json({ error: 'Failed to remove vote' }, { status: 500 })
       }
 
@@ -76,7 +79,7 @@ export async function POST(
         })
 
       if (error) {
-        console.error('Error adding vote:', error)
+        log.error({ error }, 'Error adding vote')
         return NextResponse.json({ error: 'Failed to add vote' }, { status: 500 })
       }
 
@@ -86,7 +89,7 @@ export async function POST(
       return NextResponse.json({ voted: true, message: 'Vote added' })
     }
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

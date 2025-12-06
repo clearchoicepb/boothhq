@@ -10,6 +10,9 @@
 
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:operations')
 
 /**
  * Default operations types to seed for new tenants
@@ -131,7 +134,7 @@ async function seedDefaultTypesIfNeeded(
   supabase: any,
   dataSourceTenantId: string
 ): Promise<void> {
-  console.log('[Operations DEBUG] seedDefaultTypesIfNeeded called with tenantId:', dataSourceTenantId)
+  log.debug('seedDefaultTypesIfNeeded called with tenantId:', dataSourceTenantId)
 
   // Check if tenant already has operations types
   const { count, error: countError } = await supabase
@@ -139,7 +142,7 @@ async function seedDefaultTypesIfNeeded(
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', dataSourceTenantId)
 
-  console.log('[Operations DEBUG] Count check result:', { count, countError })
+  log.debug('Count check result:', { count, countError })
 
   if (countError) {
     console.error('[Operations DEBUG] Error checking count - table may not exist:', {
@@ -152,11 +155,11 @@ async function seedDefaultTypesIfNeeded(
   }
 
   if (count && count > 0) {
-    console.log('[Operations DEBUG] Tenant already has', count, 'types, skipping seed')
+    log.debug('Tenant already has', count, 'types, skipping seed')
     return
   }
 
-  console.log(`[Operations] Seeding default types for tenant ${dataSourceTenantId}`)
+  log.debug(`Seeding default types for tenant ${dataSourceTenantId}`)
 
   // Insert all default types
   const typesToInsert = DEFAULT_OPERATIONS_TYPES.map(type => ({
@@ -165,8 +168,8 @@ async function seedDefaultTypesIfNeeded(
     is_active: true
   }))
 
-  console.log('[Operations DEBUG] Attempting to insert', typesToInsert.length, 'default types')
-  console.log('[Operations DEBUG] First type to insert:', JSON.stringify(typesToInsert[0], null, 2))
+  log.debug('Attempting to insert', typesToInsert.length, 'default types')
+  log.debug('First type to insert:', JSON.stringify(typesToInsert[0], null, 2))
 
   const { data: insertedData, error } = await supabase
     .from('operations_item_types')
@@ -183,23 +186,23 @@ async function seedDefaultTypesIfNeeded(
     })
     // Don't throw - let the request continue even if seeding fails
   } else {
-    console.log(`[Operations] Successfully seeded ${typesToInsert.length} default types`)
-    console.log('[Operations DEBUG] Inserted data count:', insertedData?.length)
+    log.debug(`Successfully seeded ${typesToInsert.length} default types`)
+    log.debug('Inserted data count:', insertedData?.length)
   }
 }
 
 // GET - Fetch all operations types for tenant
 export async function GET() {
-  console.log('[Operations DEBUG] GET /api/operations/types called')
+  log.debug('GET /api/operations/types called')
 
   const context = await getTenantContext()
   if (context instanceof NextResponse) {
-    console.log('[Operations DEBUG] getTenantContext returned error response')
+    log.debug('getTenantContext returned error response')
     return context
   }
 
   const { supabase, dataSourceTenantId, tenantId } = context
-  console.log('[Operations DEBUG] Tenant context:', {
+  log.debug('Tenant context:', {
     tenantId,
     dataSourceTenantId,
     supabaseExists: !!supabase
@@ -209,7 +212,7 @@ export async function GET() {
     // Seed default types if this is first access
     await seedDefaultTypesIfNeeded(supabase, dataSourceTenantId)
 
-    console.log('[Operations DEBUG] Fetching all types for tenant')
+    log.debug('Fetching all types for tenant')
 
     // Fetch all types for tenant
     const { data, error } = await supabase
@@ -218,14 +221,14 @@ export async function GET() {
       .eq('tenant_id', dataSourceTenantId)
       .order('display_order')
 
-    console.log('[Operations DEBUG] Fetch result:', {
+    log.debug('Fetch result:', {
       dataCount: data?.length,
       error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null
     })
 
     if (error) throw error
 
-    console.log('[Operations DEBUG] Returning', data?.length || 0, 'types')
+    log.debug('Returning', data?.length || 0, 'types')
     return NextResponse.json({ types: data || [] })
   } catch (error: any) {
     console.error('[Operations DEBUG] GET Error:', {
@@ -241,16 +244,16 @@ export async function GET() {
 
 // POST - Create new operations type
 export async function POST(request: Request) {
-  console.log('[Operations DEBUG] POST /api/operations/types called')
+  log.debug('POST /api/operations/types called')
 
   const context = await getTenantContext()
   if (context instanceof NextResponse) {
-    console.log('[Operations DEBUG] getTenantContext returned error response')
+    log.debug('getTenantContext returned error response')
     return context
   }
 
   const { supabase, dataSourceTenantId, tenantId } = context
-  console.log('[Operations DEBUG] POST Tenant context:', {
+  log.debug('POST Tenant context:', {
     tenantId,
     dataSourceTenantId,
     supabaseExists: !!supabase
@@ -258,7 +261,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    console.log('[Operations DEBUG] POST body received:', JSON.stringify(body, null, 2))
+    log.debug('POST body received:', JSON.stringify(body, null, 2))
 
     const insertData = {
       name: body.name,
@@ -272,7 +275,7 @@ export async function POST(request: Request) {
       display_order: body.display_order ?? 0,
       tenant_id: dataSourceTenantId
     }
-    console.log('[Operations DEBUG] Insert data prepared:', JSON.stringify(insertData, null, 2))
+    log.debug('Insert data prepared:', JSON.stringify(insertData, null, 2))
 
     // Use direct supabase insert (matches design API pattern)
     const { data, error } = await supabase
@@ -281,14 +284,14 @@ export async function POST(request: Request) {
       .select()
       .single()
 
-    console.log('[Operations DEBUG] POST result:', {
+    log.debug('POST result:', {
       dataExists: !!data,
       error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null
     })
 
     if (error) throw error
 
-    console.log('[Operations DEBUG] Successfully created type:', data?.id)
+    log.debug('Successfully created type:', data?.id)
     return NextResponse.json({ type: data })
   } catch (error: any) {
     console.error('[Operations DEBUG] POST Error:', {

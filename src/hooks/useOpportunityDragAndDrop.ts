@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react'
 import type { OpportunityWithRelations } from './useOpportunitiesData'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface UseOpportunityDragAndDropProps {
   opportunities: OpportunityWithRelations[]
@@ -106,11 +109,11 @@ export function useOpportunityDragAndDrop({
           setTimeout(() => setShowAnimation(null), 2000)
         }
       } else {
-        console.error('Failed to update opportunity stage')
+        log.error('Failed to update opportunity stage')
         throw new Error('Failed to update opportunity stage')
       }
     } catch (error) {
-      console.error('Error updating opportunity stage:', error)
+      log.error({ error }, 'Error updating opportunity stage')
       throw error
     }
   }, [opportunities, setOpportunities])

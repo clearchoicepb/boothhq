@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:core-task-templates')
 // GET - Fetch core task templates for the tenant
 export async function GET(request: NextRequest) {
   try {
@@ -14,13 +17,13 @@ export async function GET(request: NextRequest) {
       .order('display_order', { ascending: true })
 
     if (error) {
-      console.error('Error fetching core task templates:', error)
+      log.error({ error }, 'Error fetching core task templates')
       return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
     }
 
     return NextResponse.json(templates || [])
   } catch (error) {
-    console.error('Error in GET /api/core-task-templates:', error)
+    log.error({ error }, 'Error in GET /api/core-task-templates')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -52,13 +55,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating core task template:', error)
+      log.error({ error }, 'Error creating core task template')
       return NextResponse.json({ error: 'Failed to create template' }, { status: 500 })
     }
 
     return NextResponse.json(template)
   } catch (error) {
-    console.error('Error in POST /api/core-task-templates:', error)
+    log.error({ error }, 'Error in POST /api/core-task-templates')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -96,13 +99,13 @@ export async function PATCH(request: NextRequest) {
     // Check for errors
     const errors = results.filter(r => r.error)
     if (errors.length > 0) {
-      console.error('Error updating core task templates:', errors)
+      log.error({ errors }, 'Error updating core task templates')
       return NextResponse.json({ error: 'Failed to update templates' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error in PATCH /api/core-task-templates:', error)
+    log.error({ error }, 'Error in PATCH /api/core-task-templates')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

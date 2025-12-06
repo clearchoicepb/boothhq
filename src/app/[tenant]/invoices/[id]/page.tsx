@@ -9,6 +9,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus, Pencil } from 'lucide-react'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface InvoiceLineItem {
   id: string
@@ -113,11 +116,11 @@ export default function InvoiceDetailPage() {
           setPayments(paymentsData)
         }
       } catch (error) {
-        console.error('Error fetching payments:', error)
+        log.error({ error }, 'Error fetching payments')
         // Don't fail if payments can't be fetched
       }
     } catch (error) {
-      console.error('Error fetching invoice:', error)
+      log.error({ error }, 'Error fetching invoice')
     } finally {
       setLocalLoading(false)
     }
@@ -138,7 +141,7 @@ export default function InvoiceDetailPage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Error downloading PDF:', error)
+      log.error({ error }, 'Error downloading PDF')
       alert('Failed to download PDF')
     }
   }
@@ -157,7 +160,7 @@ export default function InvoiceDetailPage() {
       alert('Invoice sent successfully!')
       fetchInvoice()
     } catch (error) {
-      console.error('Error sending invoice:', error)
+      log.error({ error }, 'Error sending invoice')
       alert('Failed to send invoice')
     } finally {
       setUpdating(false)
@@ -180,7 +183,7 @@ export default function InvoiceDetailPage() {
       alert('Invoice marked as paid!')
       fetchInvoice()
     } catch (error) {
-      console.error('Error updating invoice:', error)
+      log.error({ error }, 'Error updating invoice')
       alert('Failed to update invoice')
     } finally {
       setUpdating(false)
@@ -203,7 +206,7 @@ export default function InvoiceDetailPage() {
       alert('Invoice activated successfully!')
       fetchInvoice()
     } catch (error) {
-      console.error('Error activating invoice:', error)
+      log.error({ error }, 'Error activating invoice')
       alert('Failed to activate invoice')
     } finally {
       setUpdating(false)
@@ -222,7 +225,7 @@ export default function InvoiceDetailPage() {
 
       router.push(`/${tenantSubdomain}/invoices`)
     } catch (error) {
-      console.error('Error deleting invoice:', error)
+      log.error({ error }, 'Error deleting invoice')
       alert('Failed to delete invoice')
     }
   }
@@ -248,7 +251,7 @@ export default function InvoiceDetailPage() {
         setLinkCopied(false)
       }, 2000)
     } catch (error) {
-      console.error('Error copying link:', error)
+      log.error({ error }, 'Error copying link')
       alert('Failed to copy link to clipboard')
     }
   }
@@ -283,7 +286,7 @@ export default function InvoiceDetailPage() {
 
       alert(`Payment ${isEditing ? 'updated' : 'added'} successfully!`)
     } catch (error) {
-      console.error('Error saving payment:', error)
+      log.error({ error }, 'Error saving payment')
       alert(error instanceof Error ? error.message : 'Failed to save payment')
     } finally {
       setUpdating(false)
@@ -316,7 +319,7 @@ export default function InvoiceDetailPage() {
       await fetchInvoice()
       alert('Payment deleted successfully!')
     } catch (error) {
-      console.error('Error deleting payment:', error)
+      log.error({ error }, 'Error deleting payment')
       alert(error instanceof Error ? error.message : 'Failed to delete payment')
     } finally {
       setUpdating(false)
@@ -351,7 +354,7 @@ export default function InvoiceDetailPage() {
       setEditingInvoiceNumber(false)
       alert('Invoice number updated successfully!')
     } catch (error) {
-      console.error('Error updating invoice number:', error)
+      log.error({ error }, 'Error updating invoice number')
       alert(error instanceof Error ? error.message : 'Failed to update invoice number')
     } finally {
       setUpdating(false)

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -12,7 +15,7 @@ export async function GET(
     const params = await routeContext.params
     const eventId = params.id
 
-    console.log('[Activity] Fetching activities for event:', eventId, 'tenant:', dataSourceTenantId)
+    log.debug('Fetching activities for event:', eventId, 'tenant:', dataSourceTenantId)
 
     // Fetch all activity types with user information
     const [communications, tasks, invoices, notes, attachments] = await Promise.all([
@@ -101,7 +104,7 @@ export async function GET(
     ])
 
     // Debug logging
-    console.log('[Activity] Query results:', {
+    log.debug('Query results:', {
       communications: { count: communications.data?.length || 0, error: communications.error?.message },
       tasks: { count: tasks.data?.length || 0, error: tasks.error?.message },
       invoices: { count: invoices.data?.length || 0, error: invoices.error?.message },
@@ -241,7 +244,7 @@ export async function GET(
 
     return response
   } catch (error) {
-    console.error('Error fetching activity:', error)
+    log.error({ error }, 'Error fetching activity')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

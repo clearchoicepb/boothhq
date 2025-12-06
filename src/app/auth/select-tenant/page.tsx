@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Building2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('select-tenant')
 
 interface TenantOption {
   id: string
@@ -39,7 +42,7 @@ function SelectTenantContent() {
         }
       })
       .catch(error => {
-        console.error('Error fetching tenants:', error)
+        log.error({ error }, 'Error fetching tenants')
         router.push('/auth/signin?error=TenantFetchError')
       })
       .finally(() => setLoading(false))
@@ -71,7 +74,7 @@ function SelectTenantContent() {
         router.push('/auth/signin?error=TenantSelectionFailed')
       }
     } catch (error) {
-      console.error('Error selecting tenant:', error)
+      log.error({ error }, 'Error selecting tenant')
     } finally {
       setSelecting(false)
     }

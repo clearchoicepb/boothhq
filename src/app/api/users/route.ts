@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { ROLES, isAdmin, type UserRole } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:users')
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,26 +23,26 @@ export async function GET(request: NextRequest) {
       .order('first_name', { ascending: true })
 
     if (error) {
-      console.error('Error fetching users:', error)
+      log.error({ error }, 'Error fetching users')
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
     }
 
     return NextResponse.json(users || [])
   } catch (error) {
-    console.error('Error in GET /api/users:', error)
+    log.error({ error }, 'Error in GET /api/users')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== CREATE USER API START ===')
+    log.debug('=== CREATE USER API START ===')
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
     if (!session?.user) {
-      console.error('[Create User] No session found')
+      log.error('[Create User] No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('[Create User] Request body:', {
+    log.debug('Request body:', {
       email: body.email,
       first_name: body.first_name,
       last_name: body.last_name,
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
       if (!last_name) missing.push('last_name')
       if (!tenant_id) missing.push('tenant_id')
       
-      console.error('[Create User] Missing required fields:', missing)
+      log.error({ missing }, '[Create User] Missing required fields')
       return NextResponse.json({
         error: `Missing required fields: ${missing.join(', ')}`
       }, { status: 400 })
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     // Validate password for new users
     if (!password) {
-      console.error('[Create User] Password is required')
+      log.error('[Create User] Password is required')
       return NextResponse.json({
         error: 'Password is required for new users'
       }, { status: 400 })
@@ -111,10 +114,10 @@ export async function POST(request: NextRequest) {
 
     // Normalize email to lowercase for consistency
     const normalizedEmail = email.toLowerCase()
-    console.log('[Create User] Normalized email:', normalizedEmail)
+    log.debug('Normalized email:', normalizedEmail)
 
     // Check if user already exists in Tenant DB users table
-    console.log('[Create User] Checking if user exists in Tenant DB...')
+    log.debug('Checking if user exists in Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
     const tenantSupabase = await getTenantDatabaseClient(tenant_id)
     
@@ -126,19 +129,19 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (existingUser) {
-      console.error('[Create User] User already exists in users table:', normalizedEmail)
+      log.error({ normalizedEmail }, '[Create User] User already exists in users table')
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
     }
 
     // Check if user already exists in Supabase Auth
-    console.log('[Create User] Checking if user exists in Supabase Auth...')
+    log.debug('Checking if user exists in Supabase Auth...')
     const { data: existingAuthUsers } = await appSupabase.auth.admin.listUsers()
     const existingAuthUser = existingAuthUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
     let authUserId: string
 
     if (existingAuthUser) {
-      console.log('[Create User] User exists in Supabase Auth but not in Tenant DB - reusing auth user:', normalizedEmail)
+      log.debug('User exists in Supabase Auth but not in Tenant DB - reusing auth user:', normalizedEmail)
       // User was previously deleted from Tenant DB but still exists in Auth
       // Update their password and reuse the account
       const { error: updateError } = await appSupabase.auth.admin.updateUserById(
@@ -156,15 +159,15 @@ export async function POST(request: NextRequest) {
       )
 
       if (updateError) {
-        console.error('[Create User] Error updating existing auth user:', updateError)
+        log.error({ updateError }, '[Create User] Error updating existing auth user')
         return NextResponse.json({ error: `Failed to update auth user: ${updateError.message}` }, { status: 500 })
       }
 
       authUserId = existingAuthUser.id
-      console.log('[Create User] Reusing existing auth user:', authUserId)
+      log.debug('Reusing existing auth user:', authUserId)
     } else {
       // Step 1: Create new auth user in Supabase Auth
-      console.log('[Create User] Creating new user in Supabase Auth...')
+      log.debug('Creating new user in Supabase Auth...')
       const { data: authData, error: authError } = await appSupabase.auth.admin.createUser({
         email: normalizedEmail,
         password,
@@ -177,25 +180,25 @@ export async function POST(request: NextRequest) {
       })
 
       if (authError) {
-        console.error('[Create User] Supabase Auth error:', authError)
+        log.error({ authError }, '[Create User] Supabase Auth error')
         return NextResponse.json({ error: `Failed to create auth user: ${authError.message}` }, { status: 500 })
       }
 
       if (!authData.user) {
-        console.error('[Create User] No user returned from Supabase Auth')
+        log.error('[Create User] No user returned from Supabase Auth')
         return NextResponse.json({ error: 'Failed to create auth user' }, { status: 500 })
       }
 
       authUserId = authData.user.id
-      console.log('[Create User] User created in Supabase Auth:', authUserId)
+      log.debug('User created in Supabase Auth:', authUserId)
     }
 
     // Step 2: Hash the password for Tenant DB
-    console.log('[Create User] Hashing password for Tenant DB...')
+    log.debug('Hashing password for Tenant DB...')
     const password_hash = await bcrypt.hash(password, 10)
 
     // Step 3: Create user record in Tenant DB users table with the auth user's ID
-    console.log('[Create User] Creating user record in Tenant DB with ID:', authUserId)
+    log.debug('Creating user record in Tenant DB with ID:', authUserId)
 
     // Prepare insert data
     const insertData: any = {
@@ -238,20 +241,20 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError) {
-      console.error('[Create User] Error creating user in Tenant DB:', userError)
+      log.error({ userError }, '[Create User] Error creating user in Tenant DB')
       // Rollback: delete the auth user if we can't create the user record (only if it was newly created)
       if (!existingAuthUser) {
-        console.log('[Create User] Rolling back newly created Supabase Auth user...')
+        log.debug('Rolling back newly created Supabase Auth user...')
         await appSupabase.auth.admin.deleteUser(authUserId)
       }
       return NextResponse.json({ error: `Failed to create user record: ${userError.message}` }, { status: 500 })
     }
 
-    console.log('[Create User] User created successfully:', user.id)
-    console.log('=== CREATE USER API END (SUCCESS) ===')
+    log.debug('User created successfully:', user.id)
+    log.debug('=== CREATE USER API END (SUCCESS) ===')
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
-    console.error('[Create User] Caught exception:', error)
+    log.error({ error }, '[Create User] Caught exception')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

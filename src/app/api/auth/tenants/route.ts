@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:auth')
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
       .eq('tenants.status', 'active')
 
     if (error) {
-      console.error('Error fetching user tenants:', error)
+      log.error({ error }, 'Error fetching user tenants')
       return NextResponse.json({ error: 'Failed to fetch tenants' }, { status: 500 })
     }
 
@@ -52,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ tenants })
   } catch (error) {
-    console.error('Error in tenants API:', error)
+    log.error({ error }, 'Error in tenants API')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

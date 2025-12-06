@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:attachments')
 // GET - List attachments for an entity
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +14,7 @@ export async function GET(request: NextRequest) {
     const entityType = searchParams.get('entity_type')
     const entityId = searchParams.get('entity_id')
 
-    console.log('[attachments/route.ts] GET request:', { entityType, entityId, dataSourceTenantId })
+    log.debug('GET request:', { entityType, entityId, dataSourceTenantId })
 
     if (!entityType || !entityId) {
       return NextResponse.json(
@@ -36,13 +39,13 @@ export async function GET(request: NextRequest) {
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
 
-    console.log('[attachments/route.ts] Attachments query result:', {
+    log.debug('Attachments query result:', {
       count: attachments?.length || 0,
       error: attachmentsError
     })
 
     if (attachmentsError) {
-      console.error('[attachments/route.ts] Query failed:', attachmentsError)
+      log.error({ attachmentsError }, '[attachments/route.ts] Query failed')
       return NextResponse.json(
         { error: 'Failed to fetch files' },
         { status: 500 }
@@ -69,12 +72,12 @@ export async function GET(request: NextRequest) {
       return file
     })
 
-    console.log('[attachments/route.ts] Total files returned:', filesWithMetadata.length)
-    console.log('[attachments/route.ts] Contract files:', filesWithMetadata.filter(f => f.metadata?.is_contract).length)
+    log.debug('Total files returned:', filesWithMetadata.length)
+    log.debug('Contract files:', filesWithMetadata.filter(f => f.metadata?.is_contract).length)
 
     return NextResponse.json(filesWithMetadata)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -129,7 +132,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError)
+      log.error({ uploadError }, 'Storage upload error')
       return NextResponse.json(
         { error: 'Failed to upload file' },
         { status: 500 }
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      console.error('Database error:', dbError)
+      log.error({ dbError }, 'Database error')
       // Clean up uploaded file
       await supabase.storage.from('attachments').remove([storagePath])
       return NextResponse.json(
@@ -172,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(attachment)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

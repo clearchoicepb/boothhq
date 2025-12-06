@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-staff')
 export async function PUT(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -50,7 +53,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating event staff assignment:', error)
+      log.error({ error }, 'Error updating event staff assignment')
       return NextResponse.json({
         error: 'Failed to update event staff assignment',
         details: error.message
@@ -59,7 +62,7 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -83,7 +86,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting event staff assignment:', error)
+      log.error({ error }, 'Error deleting event staff assignment')
       return NextResponse.json({
         error: 'Failed to delete event staff assignment',
         details: error.message
@@ -92,7 +95,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

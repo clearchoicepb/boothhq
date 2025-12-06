@@ -11,6 +11,9 @@
 
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:operations')
 
 // GET - Fetch single operations type
 export async function GET(
@@ -35,7 +38,7 @@ export async function GET(
 
     return NextResponse.json({ type: data })
   } catch (error: any) {
-    console.error('Error fetching operations type:', error)
+    log.error({ error }, 'Error fetching operations type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -77,7 +80,7 @@ export async function PUT(
 
     return NextResponse.json({ type: data })
   } catch (error: any) {
-    console.error('Error updating operations type:', error)
+    log.error({ error }, 'Error updating operations type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -104,7 +107,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting operations type:', error)
+    log.error({ error }, 'Error deleting operations type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

@@ -1,4 +1,7 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('automation')
 
 /**
  * Automation service for maintenance-related tasks
@@ -88,7 +91,7 @@ export class MaintenanceAutomation {
         errors
       }
     } catch (error: any) {
-      console.error('Error in createMaintenanceTasks:', error)
+      log.error({ error }, 'Error in createMaintenanceTasks')
       return {
         created: created.length,
         errors: [...errors, error.message]
@@ -167,7 +170,7 @@ export class MaintenanceAutomation {
         errors
       }
     } catch (error: any) {
-      console.error('Error in createOverdueNotifications:', error)
+      log.error({ error }, 'Error in createOverdueNotifications')
       return {
         created: created.length,
         errors: [...errors, error.message]
@@ -214,7 +217,7 @@ export class MaintenanceAutomation {
 
       return { success: true }
     } catch (error: any) {
-      console.error('Error in updateItemAfterMaintenance:', error)
+      log.error({ error }, 'Error in updateItemAfterMaintenance')
       return { success: false, error: error.message }
     }
   }

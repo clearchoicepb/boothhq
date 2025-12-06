@@ -7,6 +7,9 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { parseLocalDate } from '@/lib/utils/date-utils'
 import type { EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface FormData {
   name: string
@@ -101,7 +104,7 @@ export function useOpportunityForm({
           setStages(stagesData.filter((s: StageOption) => s.enabled !== false))
         }
       } catch (error) {
-        console.error('Error fetching form options:', error)
+        log.error({ error }, 'Error fetching form options')
         toast.error('Failed to load form options')
       } finally {
         setLoadingOptions(false)
@@ -241,7 +244,7 @@ export function useOpportunityForm({
         onSave(opportunityData)
       }
     } catch (error) {
-      console.error('Error saving opportunity:', error)
+      log.error({ error }, 'Error saving opportunity')
     } finally {
       setIsSubmitting(false)
     }

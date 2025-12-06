@@ -13,6 +13,9 @@ import { SkeletonTable } from './detail/shared/SkeletonLoader'
 import { InlineEditField } from './detail/shared/InlineEditField'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 import { useSession } from 'next-auth/react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface Invoice {
   id: string
@@ -136,7 +139,7 @@ export function EventInvoices({
       setIsCreatingInvoice(false)
       setExpandedInvoiceId(invoice.id) // Auto-expand the new invoice
     } catch (error) {
-      console.error('Error creating invoice:', error)
+      log.error({ error }, 'Error creating invoice')
       alert('Failed to create invoice')
     } finally {
       setCreatingInvoice(false)
@@ -165,7 +168,7 @@ export function EventInvoices({
       // Wait for refresh to complete
       await onRefresh()
     } catch (error) {
-      console.error('Error deleting invoice:', error)
+      log.error({ error }, 'Error deleting invoice')
       alert('Failed to delete invoice')
     }
   }
@@ -193,7 +196,7 @@ export function EventInvoices({
 
       setEditingField(null)
     } catch (error) {
-      console.error(`Error updating invoice ${field}:`, error)
+      log.error({ error }, 'Error updating invoice ${field}')
       alert(`Failed to update invoice ${field}`)
     } finally {
       setSavingField(null)
@@ -215,7 +218,7 @@ export function EventInvoices({
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Error downloading PDF:', error)
+      log.error({ error }, 'Error downloading PDF')
       alert('Failed to download PDF')
     }
   }
@@ -240,7 +243,7 @@ export function EventInvoices({
         setLinkCopiedInvoiceId(null)
       }, 2000)
     } catch (error) {
-      console.error('Error copying link:', error)
+      log.error({ error }, 'Error copying link')
       alert('Failed to copy link to clipboard')
     }
   }
@@ -276,7 +279,7 @@ export function EventInvoices({
 
       alert('Payment added successfully!')
     } catch (error) {
-      console.error('Error saving payment:', error)
+      log.error({ error }, 'Error saving payment')
       alert(error instanceof Error ? error.message : 'Failed to save payment')
     }
   }
@@ -301,7 +304,7 @@ export function EventInvoices({
 
       alert('Invoice activated successfully!')
     } catch (error) {
-      console.error('Error activating invoice:', error)
+      log.error({ error }, 'Error activating invoice')
       alert('Failed to activate invoice')
     } finally {
       setActivatingInvoiceId(null)

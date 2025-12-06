@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:quotes')
 export async function POST(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -28,7 +31,7 @@ export async function POST(
       .single()
 
     if (quoteError || !quote) {
-      console.error('Error fetching quote:', quoteError)
+      log.error({ quoteError }, 'Error fetching quote')
       return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
     }
 
@@ -46,7 +49,7 @@ export async function POST(
       .single()
 
     if (eventError || !event) {
-      console.error('Error fetching event:', eventError)
+      log.error({ eventError }, 'Error fetching event')
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
@@ -105,7 +108,7 @@ export async function POST(
       .single()
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
+      log.error({ invoiceError }, 'Error creating invoice')
       return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 })
     }
 
@@ -131,7 +134,7 @@ export async function POST(
         .insert(invoiceLineItemsData)
 
       if (lineItemsError) {
-        console.error('Error creating invoice line items:', lineItemsError)
+        log.error({ lineItemsError }, 'Error creating invoice line items')
       }
     }
 
@@ -148,7 +151,7 @@ export async function POST(
       invoice_number: invoice.invoice_number
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

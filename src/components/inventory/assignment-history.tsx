@@ -4,6 +4,9 @@ import React, { useState } from 'react'
 import { format } from 'date-fns'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface HistoryEntry {
   id: string
@@ -56,7 +59,7 @@ export function AssignmentHistory({ itemId, itemName }: AssignmentHistoryProps) 
       setHistory(data.history || [])
     } catch (err) {
       setError('Failed to load assignment history')
-      console.error('Error fetching history:', err)
+      log.error({ err }, 'Error fetching history')
     } finally {
       setLoading(false)
     }

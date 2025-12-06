@@ -24,6 +24,9 @@ import { groupAndSortInventoryItems } from './inventory-grouping'
 import { useUpdatePrepStatus, useBulkUpdatePrepStatus, getStatusDisplayInfo, PrepStatus } from '@/hooks/usePrepStatus'
 import { BaseForm } from '@/components/forms/BaseForm'
 import { FormConfig } from '@/components/forms/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface WeekendPrepData {
   weekend_start: string
@@ -279,7 +282,7 @@ export function WeekendPrepDashboard() {
       setSelectedItems(new Set())
       await fetchWeekendData()
     } catch (error) {
-      console.error('Failed to mark items as ready:', error)
+      log.error({ error }, 'Failed to mark items as ready')
     }
   }
 
@@ -300,7 +303,7 @@ export function WeekendPrepDashboard() {
       setSelectedItems(new Set())
       await fetchWeekendData()
     } catch (error) {
-      console.error('Failed to mark items as delivered:', error)
+      log.error({ error }, 'Failed to mark items as delivered')
     }
   }
 
@@ -326,7 +329,7 @@ export function WeekendPrepDashboard() {
       })
       await fetchWeekendData()
     } catch (error) {
-      console.error('Failed to update item status:', error)
+      log.error({ error }, 'Failed to update item status')
     }
   }
 

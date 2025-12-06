@@ -2,6 +2,9 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import type { UpdateProjectInput } from '@/types/project.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:projects')
 
 export const dynamic = 'force-dynamic'
 
@@ -37,13 +40,13 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching project:', error)
+      log.error({ error }, 'Error fetching project')
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
     return NextResponse.json(project)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -98,7 +101,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating project:', error)
+      log.error({ error }, 'Error updating project')
       return NextResponse.json({ error: 'Failed to update project', details: error.message }, { status: 500 })
     }
 
@@ -108,7 +111,7 @@ export async function PUT(
 
     return NextResponse.json(project)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -133,7 +136,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting project:', error)
+      log.error({ error }, 'Error deleting project')
       return NextResponse.json({ error: 'Failed to delete project' }, { status: 500 })
     }
 
@@ -142,7 +145,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

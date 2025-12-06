@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { workflowEngine } from '@/lib/services/workflowEngine'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 
 /**
  * POST /api/events/[id]/trigger-workflows
@@ -25,7 +28,7 @@ export async function POST(
     const params = await routeContext.params
     const eventId = params.id
 
-    console.log(`[Trigger Workflows] Manual trigger requested for event ${eventId}`)
+    log.debug(`Manual trigger requested for event ${eventId}`)
 
     // Fetch the event to get event_type_id
     const { data: event, error: eventError } = await supabase
@@ -36,19 +39,19 @@ export async function POST(
       .single()
 
     if (eventError || !event) {
-      console.error('[Trigger Workflows] Event not found:', eventError)
+      log.error({ eventError }, '[Trigger Workflows] Event not found')
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
     if (!event.event_type_id) {
-      console.warn(`[Trigger Workflows] Event ${eventId} has no event_type_id`)
+      log.warn('[Trigger Workflows] Event ${eventId} has no event_type_id')
       return NextResponse.json({ 
         error: 'Cannot trigger workflows: Event type is not set',
         hint: 'Please set an event type first'
       }, { status: 400 })
     }
 
-    console.log(`[Trigger Workflows] Executing workflows for event type: ${event.event_type_id}`)
+    log.debug(`Executing workflows for event type: ${event.event_type_id}`)
 
     // Execute workflows (duplicate prevention is handled inside workflowEngine)
     const workflowResults = await workflowEngine.executeWorkflowsForEvent({
@@ -65,7 +68,7 @@ export async function POST(
 
     // If no workflows executed (because of duplicate prevention), inform user
     if (workflowResults.length === 0) {
-      console.log(`[Trigger Workflows] No workflows executed (already completed or none found)`)
+      log.debug(`No workflows executed (already completed or none found)`)
       return NextResponse.json({
         success: true,
         message: 'Workflows have already been executed for this event',
@@ -77,7 +80,7 @@ export async function POST(
       })
     }
 
-    console.log(`[Trigger Workflows] ✅ Success: ${workflowResults.length} workflows, ${totalTasks} tasks, ${totalDesignItems} design items`)
+    log.debug(`✅ Success: ${workflowResults.length} workflows, ${totalTasks} tasks, ${totalDesignItems} design items`)
 
     return NextResponse.json({
       success: true,
@@ -89,7 +92,7 @@ export async function POST(
       }
     })
   } catch (error) {
-    console.error('[Trigger Workflows] Error:', error)
+    log.error({ error }, '[Trigger Workflows] Error')
     return NextResponse.json({ 
       error: 'Failed to trigger workflows',
       details: error instanceof Error ? error.message : 'Unknown error'

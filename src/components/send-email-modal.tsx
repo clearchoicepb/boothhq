@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Mail, Loader2, FileText } from 'lucide-react'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Template {
   id: string
@@ -65,7 +68,7 @@ export function SendEmailModal({
         setTemplates(data)
       }
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
     }
   }
 
@@ -154,7 +157,7 @@ export function SendEmailModal({
 
       onClose()
     } catch (err) {
-      console.error('Error sending email:', err)
+      log.error({ err }, 'Error sending email')
       setError(err instanceof Error ? err.message : 'Failed to send email. Please try again.')
     } finally {
       setLoading(false)

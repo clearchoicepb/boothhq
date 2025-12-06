@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:locations')
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -19,7 +22,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching location:', error)
+      log.error({ error }, 'Error fetching location')
       return NextResponse.json({ error: 'Failed to fetch location' }, { status: 500 })
     }
 
@@ -29,7 +32,7 @@ export async function GET(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -56,13 +59,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating location:', error)
+      log.error({ error }, 'Error updating location')
       return NextResponse.json({ error: 'Failed to update location', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -86,13 +89,13 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting location:', error)
+      log.error({ error }, 'Error deleting location')
       return NextResponse.json({ error: 'Failed to delete location' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { InlineSearchableSelect, InlineSearchableOption } from '@/components/ui/inline-searchable-select'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Account {
   id: string
@@ -45,7 +48,7 @@ export function InlineAccountSelect({
           setAccounts(data)
         }
       } catch (error) {
-        console.error('Error fetching accounts:', error)
+        log.error({ error }, 'Error fetching accounts')
       } finally {
         setLoading(false)
       }

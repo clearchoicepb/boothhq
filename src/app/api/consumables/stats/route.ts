@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:consumables')
 
 /**
  * GET - Get consumable usage statistics
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
     const { data: usageLog, error } = await query
 
     if (error) {
-      console.error('Error fetching usage statistics:', error)
+      log.error({ error }, 'Error fetching usage statistics')
       return NextResponse.json(
         { error: 'Failed to fetch usage statistics', details: error.message },
         { status: 500 }
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
       total_events: totalEvents
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -15,6 +15,9 @@ import { DuplicateContactWarning } from '@/components/duplicate-contact-warning'
 import { useParams } from 'next/navigation'
 // Remove the db import - we'll use API routes instead
 import type { Contact, ContactInsert, ContactUpdate, Account } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface ContactFormProps {
   contact?: Contact
@@ -117,7 +120,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
               setAccountRelationships([])
             }
           } catch (error) {
-            console.error('Error loading account relationships:', error)
+            log.error({ error }, 'Error loading account relationships')
             // Fallback to old account_id
             if (contact.account_id) {
               setAccountRelationships([{
@@ -173,7 +176,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
           setAccounts(data || [])
         }
       } catch (error) {
-        console.error('Error fetching accounts:', error)
+        log.error({ error }, 'Error fetching accounts')
       }
     }
     fetchAccounts()
@@ -274,7 +277,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
       onSubmit(result)
       onClose()
     } catch (error) {
-      console.error('Error saving contact:', error)
+      log.error({ error }, 'Error saving contact')
       toast.error('Failed to save contact')
     } finally {
       setLoading(false)

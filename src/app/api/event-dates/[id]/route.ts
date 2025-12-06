@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-dates')
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -28,7 +31,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching event date:', error)
+      log.error({ error }, 'Error fetching event date')
       return NextResponse.json({ error: 'Failed to fetch event date' }, { status: 500 })
     }
 
@@ -39,7 +42,7 @@ export async function GET(
 
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -49,7 +52,7 @@ export async function PUT(
   routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('=== EVENT DATE UPDATE API START ===')
+    log.debug('=== EVENT DATE UPDATE API START ===')
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
@@ -58,14 +61,14 @@ export async function PUT(
     const params = await routeContext.params
     const eventDateId = params.id
     const body = await request.json()
-    console.log('[Event Date API] Received body:', JSON.stringify(body, null, 2))
+    log.debug('Received body:', JSON.stringify(body, null, 2))
     
     // Sanitize UUID fields: convert empty strings to null
     const sanitizedBody = {
       ...body,
       location_id: body.location_id === '' ? null : body.location_id,
     }
-    console.log('[Event Date API] Sanitized body:', JSON.stringify(sanitizedBody, null, 2))
+    log.debug('Sanitized body:', JSON.stringify(sanitizedBody, null, 2))
 
     const { data, error } = await supabase
       .from('event_dates')
@@ -85,7 +88,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('[Event Date API] Supabase error:', JSON.stringify(error, null, 2))
+      log.error({ error }, '[Event Date API] Supabase error')
       return NextResponse.json({ 
         error: 'Failed to update event date', 
         details: error.message,
@@ -94,15 +97,15 @@ export async function PUT(
       }, { status: 500 })
     }
 
-    console.log('[Event Date API] Update successful')
-    console.log('=== EVENT DATE UPDATE API END ===')
+    log.debug('Update successful')
+    log.debug('=== EVENT DATE UPDATE API END ===')
     
     const response = NextResponse.json(data)
     // Disable caching to ensure fresh data
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
     return response
   } catch (error: any) {
-    console.error('[Event Date API] Caught exception:', error)
+    log.error({ error }, '[Event Date API] Caught exception')
     console.error('[Event Date API] Error stack:', error.stack)
     return NextResponse.json({ 
       error: 'Internal server error',
@@ -130,13 +133,13 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting event date:', error)
+      log.error({ error }, 'Error deleting event date')
       return NextResponse.json({ error: 'Failed to delete event date', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

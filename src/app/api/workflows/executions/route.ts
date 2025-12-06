@@ -12,6 +12,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:workflows')
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,7 +71,7 @@ export async function GET(request: NextRequest) {
     const { data: executions, error } = await query
 
     if (error) {
-      console.error('[Workflow Executions API] Error:', error)
+      log.error({ error }, '[Workflow Executions API] Error')
       return NextResponse.json({
         error: 'Failed to fetch executions',
         details: error.message,
@@ -80,7 +83,7 @@ export async function GET(request: NextRequest) {
       count: executions?.length || 0,
     })
   } catch (error) {
-    console.error('[Workflow Executions API] Error:', error)
+    log.error({ error }, '[Workflow Executions API] Error')
     return NextResponse.json({
       error: 'Internal server error',
     }, { status: 500 })

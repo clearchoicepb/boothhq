@@ -24,6 +24,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('operations')
 
 interface OperationsItemType {
   id?: string
@@ -79,7 +82,7 @@ export default function OperationsSettingsPage() {
       const data = await res.json()
       setOpsTypes(data.types || [])
     } catch (error) {
-      console.error('Error fetching operations types:', error)
+      log.error({ error }, 'Error fetching operations types')
       toast.error('Failed to load operations types')
     } finally {
       setLoading(false)

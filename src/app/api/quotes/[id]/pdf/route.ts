@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateQuotePDF } from '@/lib/pdf-generator'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:quotes')
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +31,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching quote:', error)
+      log.error({ error }, 'Error fetching quote')
       return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
     }
 
@@ -104,7 +107,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

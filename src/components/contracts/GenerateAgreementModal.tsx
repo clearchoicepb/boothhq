@@ -5,6 +5,9 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FileText, Loader2, Send, Copy, CheckCircle, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('contracts')
 
 interface Template {
   id: string
@@ -56,7 +59,7 @@ export function GenerateAgreementModal({
         setTemplates(data)
       }
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
       setError('Failed to load contract templates')
     } finally {
       setLoading(false)
@@ -101,7 +104,7 @@ export function GenerateAgreementModal({
         onSuccess()
       }
     } catch (err: any) {
-      console.error('Error generating agreement:', err)
+      log.error({ err }, 'Error generating agreement')
       setError(err.message || 'Failed to generate agreement')
     } finally {
       setLoading(false)

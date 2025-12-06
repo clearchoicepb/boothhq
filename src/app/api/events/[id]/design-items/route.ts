@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
 import { createDesignItemForEvent, createDesignItemsForProduct } from '@/lib/design-helpers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 
 // GET - Fetch all design items for an event
 export async function GET(
@@ -29,7 +32,7 @@ export async function GET(
 
     return NextResponse.json({ designItems: designItems || [] })
   } catch (error: any) {
-    console.error('Error fetching design items:', error)
+    log.error({ error }, 'Error fetching design items')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -175,7 +178,7 @@ export async function POST(
 
     return NextResponse.json({ designItem: newDesignItem })
   } catch (error: any) {
-    console.error('Error creating design item:', error)
+    log.error({ error }, 'Error creating design item')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

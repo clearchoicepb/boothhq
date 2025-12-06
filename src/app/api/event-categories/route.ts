@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-categories')
 // GET - Fetch all event categories for tenant
 export async function GET(request: Request) {
   const context = await getTenantContext()
@@ -20,7 +23,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ categories: categories || [] })
   } catch (error: any) {
-    console.error('Error fetching event categories:', error)
+    log.error({ error }, 'Error fetching event categories')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ category }, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating event category:', error)
+    log.error({ error }, 'Error creating event category')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -116,7 +119,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error updating event categories:', error)
+    log.error({ error }, 'Error updating event categories')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

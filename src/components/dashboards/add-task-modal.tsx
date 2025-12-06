@@ -13,6 +13,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useCreateTask } from '@/hooks/useTaskActions'
 import { DEPARTMENTS, DEPARTMENT_TASK_TYPES, type DepartmentId } from '@/lib/departments'
 import { Plus } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboards')
 
 interface AddTaskModalProps {
   isOpen: boolean
@@ -68,7 +71,7 @@ export function AddTaskModal({
 
       onClose()
     } catch (error) {
-      console.error('Failed to create task:', error)
+      log.error({ error }, 'Failed to create task')
     }
   }
 

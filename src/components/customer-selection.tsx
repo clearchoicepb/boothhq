@@ -9,6 +9,9 @@ import { User, Building2, Plus, Search } from 'lucide-react'
 import { LeadForm } from './lead-form'
 import { AccountForm } from './account-form'
 import { ContactForm } from './contact-form'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Customer {
   id: string
@@ -92,7 +95,7 @@ export function CustomerSelection({ isOpen, onClose, onCustomerSelected, preSele
         })))
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
     } finally {
       setLoading(false)
     }
@@ -106,7 +109,7 @@ export function CustomerSelection({ isOpen, onClose, onCustomerSelected, preSele
         setContacts(contactsData)
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
     }
   }
 

@@ -14,6 +14,9 @@ import {
   ConnectionInfo,
 } from './types';
 import crypto from 'crypto';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('data-sources')
 
 /**
  * Cache entry for tenant connection configuration
@@ -170,7 +173,7 @@ export class DataSourceManager {
     // Fetch tenant connection config
     const { config } = await this.getTenantConnectionConfig(tenantId);
 
-    console.log('[DataSourceManager] Creating client for tenant:', tenantId, 'URL:', config.supabaseUrl);
+    log.debug('Creating client for tenant:', tenantId, 'URL:', config.supabaseUrl);
 
     // Create Supabase client
     const key = useServiceRole ? config.supabaseServiceKey : config.supabaseAnonKey;
@@ -289,7 +292,7 @@ export class DataSourceManager {
         tenant = await getCachedTenantConfig(tenantId);
       } catch (error) {
         // Fallback to direct fetch if Next.js cache is not available
-        console.warn('Next.js cache not available, falling back to direct fetch:', error);
+        log.warn({ error }, 'Next.js cache not available, falling back to direct fetch');
         tenant = await this.fetchTenantConfigFromDatabase(tenantId);
       }
     } else {
@@ -494,7 +497,7 @@ export class DataSourceManager {
         revalidateTag(`tenant-config-${tenantId}`);
       } catch (error) {
         // revalidateTag may fail in non-serverless environments or client-side
-        console.warn(`Failed to revalidate Next.js cache for tenant ${tenantId}:`, error);
+        log.warn({ error }, 'Failed to revalidate Next.js cache for tenant ${tenantId}');
       }
     }
   }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 /**
  * GET /api/opportunities/stats
  * 
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest) {
     const { data: opportunities, error } = await query
     
     if (error) {
-      console.error('Error fetching opportunities for stats:', error)
+      log.error({ error }, 'Error fetching opportunities for stats')
       return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
     }
     
@@ -103,7 +106,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error in opportunities stats API:', error)
+    log.error({ error }, 'Error in opportunities stats API')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

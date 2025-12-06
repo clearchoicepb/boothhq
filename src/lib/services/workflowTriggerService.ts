@@ -40,6 +40,9 @@ import type {
   TriggerConfigTaskCreated,
 } from '@/types/workflows'
 import { evaluateConditions } from '@/lib/services/conditionEvaluator'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('services')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -77,11 +80,11 @@ class WorkflowTriggerService {
   async onTaskCreated(options: TaskCreatedOptions): Promise<WorkflowExecutionResult[]> {
     const { task, tenantId, dataSourceTenantId, supabase, userId } = options
 
-    console.log('[WorkflowTriggerService] onTaskCreated called for task:', task.id)
+    log.debug('onTaskCreated called for task:', task.id)
 
     // Don't trigger workflows for auto-created tasks (to prevent infinite loops)
     if (task.auto_created) {
-      console.log('[WorkflowTriggerService] Skipping auto-created task to prevent loops')
+      log.debug('Skipping auto-created task to prevent loops')
       return []
     }
 
@@ -113,11 +116,11 @@ class WorkflowTriggerService {
       })
 
       if (workflows.length === 0) {
-        console.log('[WorkflowTriggerService] No matching task_created workflows found')
+        log.debug('No matching task_created workflows found')
         return []
       }
 
-      console.log(`[WorkflowTriggerService] Found ${workflows.length} matching task_created workflow(s)`)
+      log.debug(`Found ${workflows.length} matching task_created workflow(s)`)
 
       // Execute each workflow
       const results = await Promise.all(
@@ -139,7 +142,7 @@ class WorkflowTriggerService {
 
       return results
     } catch (error) {
-      console.error('[WorkflowTriggerService] Error in onTaskCreated:', error)
+      log.error({ error }, '[WorkflowTriggerService] Error in onTaskCreated')
       return []
     }
   }
@@ -150,7 +153,7 @@ class WorkflowTriggerService {
   async onTaskStatusChanged(options: TaskStatusChangedOptions): Promise<WorkflowExecutionResult[]> {
     const { task, previousStatus, tenantId, dataSourceTenantId, supabase, userId } = options
 
-    console.log('[WorkflowTriggerService] onTaskStatusChanged called:', {
+    log.debug('onTaskStatusChanged called:', {
       taskId: task.id,
       from: previousStatus,
       to: task.status,
@@ -158,13 +161,13 @@ class WorkflowTriggerService {
 
     // Don't trigger if status didn't actually change
     if (previousStatus === task.status) {
-      console.log('[WorkflowTriggerService] Status unchanged, skipping')
+      log.debug('Status unchanged, skipping')
       return []
     }
 
     // Don't trigger workflows for auto-created tasks (to prevent infinite loops)
     if (task.auto_created) {
-      console.log('[WorkflowTriggerService] Skipping auto-created task to prevent loops')
+      log.debug('Skipping auto-created task to prevent loops')
       return []
     }
 
@@ -192,11 +195,11 @@ class WorkflowTriggerService {
       })
 
       if (workflows.length === 0) {
-        console.log('[WorkflowTriggerService] No matching task_status_changed workflows found')
+        log.debug('No matching task_status_changed workflows found')
         return []
       }
 
-      console.log(`[WorkflowTriggerService] Found ${workflows.length} matching task_status_changed workflow(s)`)
+      log.debug(`Found ${workflows.length} matching task_status_changed workflow(s)`)
 
       // Execute each workflow
       const results = await Promise.all(
@@ -219,7 +222,7 @@ class WorkflowTriggerService {
 
       return results
     } catch (error) {
-      console.error('[WorkflowTriggerService] Error in onTaskStatusChanged:', error)
+      log.error({ error }, '[WorkflowTriggerService] Error in onTaskStatusChanged')
       return []
     }
   }
@@ -230,7 +233,7 @@ class WorkflowTriggerService {
   async onEventDateApproaching(options: EventDateApproachingOptions): Promise<WorkflowExecutionResult[]> {
     const { event, daysUntilEvent, tenantId, dataSourceTenantId, supabase, userId } = options
 
-    console.log('[WorkflowTriggerService] onEventDateApproaching called:', {
+    log.debug('onEventDateApproaching called:', {
       eventId: event.id,
       daysUntilEvent,
     })
@@ -248,11 +251,11 @@ class WorkflowTriggerService {
       })
 
       if (workflows.length === 0) {
-        console.log('[WorkflowTriggerService] No matching event_date_approaching workflows found')
+        log.debug('No matching event_date_approaching workflows found')
         return []
       }
 
-      console.log(`[WorkflowTriggerService] Found ${workflows.length} matching event_date_approaching workflow(s)`)
+      log.debug(`Found ${workflows.length} matching event_date_approaching workflow(s)`)
 
       // Execute each workflow
       const results = await Promise.all(
@@ -274,7 +277,7 @@ class WorkflowTriggerService {
 
       return results
     } catch (error) {
-      console.error('[WorkflowTriggerService] Error in onEventDateApproaching:', error)
+      log.error({ error }, '[WorkflowTriggerService] Error in onEventDateApproaching')
       return []
     }
   }
@@ -312,7 +315,7 @@ class WorkflowTriggerService {
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('[WorkflowTriggerService] Error fetching workflows:', error)
+      log.error({ error }, '[WorkflowTriggerService] Error fetching workflows')
       return []
     }
 
@@ -367,7 +370,7 @@ class WorkflowTriggerService {
       .single()
 
     if (existingExecution) {
-      console.log(`[WorkflowTriggerService] Workflow ${workflow.id} already executed for ${triggerEntity.type} ${triggerEntity.id}`)
+      log.debug(`Workflow ${workflow.id} already executed for ${triggerEntity.type} ${triggerEntity.id}`)
       return {
         executionId: existingExecution.id,
         workflowId: workflow.id,
@@ -394,7 +397,7 @@ class WorkflowTriggerService {
       const conditionResult = evaluateConditions(conditions, evaluationContext)
 
       if (!conditionResult.passed) {
-        console.log(`[WorkflowTriggerService] Workflow ${workflow.name} conditions not met, skipping`)
+        log.debug(`Workflow ${workflow.name} conditions not met, skipping`)
 
         // Create skipped execution record
         const { data: execution } = await supabase
@@ -453,7 +456,7 @@ class WorkflowTriggerService {
       .single()
 
     if (executionError || !execution) {
-      console.error('[WorkflowTriggerService] Failed to create execution record:', executionError)
+      log.error({ executionError }, '[WorkflowTriggerService] Failed to create execution record')
       return {
         executionId: 'unknown',
         workflowId: workflow.id,
@@ -521,7 +524,7 @@ class WorkflowTriggerService {
       })
       .eq('id', execution.id)
 
-    console.log(`[WorkflowTriggerService] Workflow ${workflow.name} execution completed: ${finalStatus}`)
+    log.debug(`Workflow ${workflow.name} execution completed: ${finalStatus}`)
 
     return {
       executionId: execution.id,

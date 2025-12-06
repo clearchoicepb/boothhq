@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Select } from '@/components/ui/select'
 import { Trash2, Edit, Tag, Download, XCircle } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface BulkOperationsProps {
   selectedItems: string[]
@@ -59,7 +62,7 @@ export function BulkOperations({
       await onBulkAction(selectedAction, selectedItems)
       setSelectedAction('')
     } catch (error) {
-      console.error('Bulk action failed:', error)
+      log.error({ error }, 'Bulk action failed')
     } finally {
       setIsProcessing(false)
     }
@@ -243,7 +246,7 @@ export function BulkActionModal({
       await onConfirm(formData)
       onClose()
     } catch (error) {
-      console.error('Bulk action failed:', error)
+      log.error({ error }, 'Bulk action failed')
     } finally {
       setIsProcessing(false)
     }

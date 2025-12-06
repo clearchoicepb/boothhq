@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contracts')
 
 export async function POST(
   request: NextRequest,
@@ -26,7 +29,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('Error marking contract as viewed:', error)
+      log.error({ error }, 'Error marking contract as viewed')
       return NextResponse.json(
         { error: 'Failed to update contract status' },
         { status: 500 }
@@ -35,7 +38,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, contract: data })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

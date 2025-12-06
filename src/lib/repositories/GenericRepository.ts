@@ -4,6 +4,9 @@ import { cacheManager, CacheManager } from './CacheManager'
 import { getTenantClient, getTenantIdInDataSource } from '@/lib/data-sources'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('repositories')
 
 export interface QueryOptions {
   select?: string[]
@@ -95,7 +98,7 @@ export class GenericRepository<T = any> {
       return this.config.transformResponse ?
         this.config.transformResponse([result])[0] : result
     } catch (error) {
-      console.error(`Error creating ${this.entity}:`, error)
+      log.error({ error }, 'Error creating ${this.entity}')
       throw error
     }
   }
@@ -145,7 +148,7 @@ export class GenericRepository<T = any> {
 
       return result
     } catch (error) {
-      console.error(`Error finding ${this.entity} by ID:`, error)
+      log.error({ error }, 'Error finding ${this.entity} by ID')
       throw error
     }
   }
@@ -194,7 +197,7 @@ export class GenericRepository<T = any> {
       return this.config.transformResponse ?
         this.config.transformResponse(data) : data
     } catch (error) {
-      console.error(`Error finding ${this.entity} records:`, error)
+      log.error({ error }, 'Error finding ${this.entity} records')
       throw error
     }
   }
@@ -231,7 +234,7 @@ export class GenericRepository<T = any> {
       return this.config.transformResponse ?
         this.config.transformResponse([result])[0] : result
     } catch (error) {
-      console.error(`Error updating ${this.entity}:`, error)
+      log.error({ error }, 'Error updating ${this.entity}')
       throw error
     }
   }
@@ -265,7 +268,7 @@ export class GenericRepository<T = any> {
 
       return true
     } catch (error) {
-      console.error(`Error deleting ${this.entity}:`, error)
+      log.error({ error }, 'Error deleting ${this.entity}')
       throw error
     }
   }
@@ -316,7 +319,7 @@ export class GenericRepository<T = any> {
       return this.config.transformResponse ?
         this.config.transformResponse(data) : data
     } catch (error) {
-      console.error(`Error searching ${this.entity}:`, error)
+      log.error({ error }, 'Error searching ${this.entity}')
       throw error
     }
   }
@@ -346,7 +349,7 @@ export class GenericRepository<T = any> {
 
       return count || 0
     } catch (error) {
-      console.error(`Error counting ${this.entity}:`, error)
+      log.error({ error }, 'Error counting ${this.entity}')
       throw error
     }
   }
@@ -385,7 +388,7 @@ export class GenericRepository<T = any> {
         count: results.length
       }
     } catch (error) {
-      console.error(`Error bulk creating ${this.entity}:`, error)
+      log.error({ error }, 'Error bulk creating ${this.entity}')
       return {
         success: false,
         errors: [error instanceof Error ? error.message : 'Unknown error'],
@@ -418,7 +421,7 @@ export class GenericRepository<T = any> {
         count: results.length
       }
     } catch (error) {
-      console.error(`Error bulk updating ${this.entity}:`, error)
+      log.error({ error }, 'Error bulk updating ${this.entity}')
       return {
         success: false,
         errors: [error instanceof Error ? error.message : 'Unknown error'],
@@ -456,7 +459,7 @@ export class GenericRepository<T = any> {
         count: ids.length
       }
     } catch (error) {
-      console.error(`Error bulk deleting ${this.entity}:`, error)
+      log.error({ error }, 'Error bulk deleting ${this.entity}')
       return {
         success: false,
         errors: [error instanceof Error ? error.message : 'Unknown error'],
@@ -508,7 +511,7 @@ export class GenericRepository<T = any> {
         }
       }
     } catch (error) {
-      console.error(`Error paginating ${this.entity}:`, error)
+      log.error({ error }, 'Error paginating ${this.entity}')
       throw error
     }
   }
@@ -621,7 +624,7 @@ export class GenericRepository<T = any> {
       // TODO: Implement actual audit logging to database
       // await this.supabase.from('audit_logs').insert(auditLog)
     } catch (error) {
-      console.error('Failed to log audit trail:', error)
+      log.error({ error }, 'Failed to log audit trail')
       // Don't throw - audit logging failure shouldn't break the main operation
     }
   }

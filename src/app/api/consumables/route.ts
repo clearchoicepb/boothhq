@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:consumables')
 
 /**
  * GET - List consumable inventory with enhanced status info
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching consumables:', error)
+      log.error({ error }, 'Error fetching consumables')
       return NextResponse.json(
         { error: 'Failed to fetch consumables', details: error.message },
         { status: 500 }
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(finalData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating consumable inventory:', error)
+      log.error({ error }, 'Error creating consumable inventory')
       return NextResponse.json(
         { error: 'Failed to create consumable inventory', details: error.message },
         { status: 500 }
@@ -157,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

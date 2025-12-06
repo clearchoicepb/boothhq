@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 /**
  * POST /api/events/[id]/clone
  * 
@@ -28,7 +31,7 @@ export async function POST(
       .single()
 
     if (fetchError || !original) {
-      console.error('Error fetching event:', fetchError)
+      log.error({ fetchError }, 'Error fetching event')
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
@@ -48,7 +51,7 @@ export async function POST(
       .single()
 
     if (createError) {
-      console.error('Error creating clone:', createError)
+      log.error({ createError }, 'Error creating clone')
       return NextResponse.json({ 
         error: 'Failed to clone event',
         details: createError.message 
@@ -147,7 +150,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Unexpected error cloning event:', error)
+    log.error({ error }, 'Unexpected error cloning event')
     return NextResponse.json({ 
       error: 'Failed to clone event',
       details: error instanceof Error ? error.message : 'Unknown error'

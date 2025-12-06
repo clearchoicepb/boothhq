@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Package, Plus, Trash2, CheckCircle, Calendar, User, X } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Booth {
   id: string
@@ -60,7 +63,7 @@ export function EventBoothAssignments({ eventId, tenantSubdomain }: EventBoothAs
         setAvailableBooths(boothsData.filter((b: Booth) => b.is_complete))
       }
     } catch (error) {
-      console.error('Error fetching booth assignments:', error)
+      log.error({ error }, 'Error fetching booth assignments')
     } finally {
       setLoading(false)
     }
@@ -87,7 +90,7 @@ export function EventBoothAssignments({ eventId, tenantSubdomain }: EventBoothAs
         await fetchData()
       }
     } catch (error) {
-      console.error('Error assigning booth:', error)
+      log.error({ error }, 'Error assigning booth')
     }
   }
 
@@ -106,7 +109,7 @@ export function EventBoothAssignments({ eventId, tenantSubdomain }: EventBoothAs
         await fetchData()
       }
     } catch (error) {
-      console.error('Error checking out booth:', error)
+      log.error({ error }, 'Error checking out booth')
     }
   }
 
@@ -125,7 +128,7 @@ export function EventBoothAssignments({ eventId, tenantSubdomain }: EventBoothAs
         await fetchData()
       }
     } catch (error) {
-      console.error('Error checking in booth:', error)
+      log.error({ error }, 'Error checking in booth')
     }
   }
 
@@ -141,7 +144,7 @@ export function EventBoothAssignments({ eventId, tenantSubdomain }: EventBoothAs
         await fetchData()
       }
     } catch (error) {
-      console.error('Error removing booth assignment:', error)
+      log.error({ error }, 'Error removing booth assignment')
     }
   }
 

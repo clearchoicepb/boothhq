@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 export async function PUT(
   request: NextRequest,
@@ -13,19 +16,19 @@ export async function PUT(
     const params = await routeContext.params
     const body = await request.json()
 
-    console.log('[Update Line Item] Request params:', { invoiceId: params.id, lineItemId: params.lineItemId, tenantId: dataSourceTenantId })
-    console.log('[Update Line Item] Request body:', body)
-    console.log('[Update Line Item] Body keys:', Object.keys(body))
+    log.debug('Request params:', { invoiceId: params.id, lineItemId: params.lineItemId, tenantId: dataSourceTenantId })
+    log.debug('Request body:', body)
+    log.debug('Body keys:', Object.keys(body))
 
     // Support partial updates - only update fields that are provided
     const updateData: any = {}
 
     // If this is a sort_order-only update (drag/drop reorder)
     if (body.sort_order !== undefined && Object.keys(body).length === 1) {
-      console.log('[Update Line Item] Detected sort_order-only update (drag/drop)')
+      log.debug('Detected sort_order-only update (drag/drop)')
       updateData.sort_order = body.sort_order
     } else {
-      console.log('[Update Line Item] Full update detected')
+      log.debug('Full update detected')
       // Full update - all fields required
       updateData.item_type = body.item_type
       updateData.package_id = body.package_id || null
@@ -43,7 +46,7 @@ export async function PUT(
       }
     }
 
-    console.log('[Update Line Item] Update data:', updateData)
+    log.debug('Update data:', updateData)
 
     const { data, error } = await supabase
       .from('invoice_line_items')
@@ -55,11 +58,11 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('[Update Line Item] Database error:', error)
+      log.error({ error }, '[Update Line Item] Database error')
       return NextResponse.json({ error: 'Failed to update line item', details: error.message }, { status: 500 })
     }
 
-    console.log('[Update Line Item] Successfully updated:', data)
+    log.debug('Successfully updated:', data)
 
     // Only update invoice totals if this wasn't a sort_order-only update
     if (!(body.sort_order !== undefined && Object.keys(body).length === 1)) {
@@ -77,7 +80,7 @@ export async function PUT(
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -101,7 +104,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting line item:', error)
+      log.error({ error }, 'Error deleting line item')
       return NextResponse.json({ error: 'Failed to delete line item' }, { status: 500 })
     }
 
@@ -113,7 +116,7 @@ export async function DELETE(
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -126,7 +129,7 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
     .eq('invoice_id', invoiceId)
     .eq('tenant_id', tenantId)
 
-  console.log('[Invoice Totals] Line items:', lineItems?.map(item => ({
+  log.debug('Line items:', lineItems?.map(item => ({
     total_price: item.total_price,
     taxable: item.taxable,
     taxableType: typeof item.taxable
@@ -138,14 +141,14 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
   const taxableSubtotal = lineItems?.reduce((sum: number, item: any) => {
     // Only exclude from tax if explicitly set to false
     if (item.taxable === false) {
-      console.log('[Invoice Totals] Excluding non-taxable item:', item.total_price)
+      log.debug('Excluding non-taxable item:', item.total_price)
       return sum
     }
-    console.log('[Invoice Totals] Including taxable item:', item.total_price)
+    log.debug('Including taxable item:', item.total_price)
     return sum + parseFloat(item.total_price)
   }, 0) || 0
 
-  console.log('[Invoice Totals] Subtotal:', subtotal, 'Taxable Subtotal:', taxableSubtotal)
+  log.debug('Subtotal:', subtotal, 'Taxable Subtotal:', taxableSubtotal)
 
   // Get current tax rate and paid amount
   const { data: invoice } = await supabase
@@ -161,7 +164,7 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
   const paidAmount = parseFloat(invoice?.paid_amount || 0)
   const balanceAmount = totalAmount - paidAmount  // Calculate balance considering payments
 
-  console.log('[Invoice Totals] Total:', totalAmount, 'Paid:', paidAmount, 'Balance:', balanceAmount)
+  log.debug('Total:', totalAmount, 'Paid:', paidAmount, 'Balance:', balanceAmount)
 
   // Update invoice totals
   await supabase

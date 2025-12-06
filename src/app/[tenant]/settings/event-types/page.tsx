@@ -13,6 +13,9 @@ import {
   Filter
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('event-types')
 
 interface EventCategory {
   id: string
@@ -51,7 +54,7 @@ export default function EventTypesPage() {
       const data = await res.json()
       setCategories(data.categories || [])
     } catch (error) {
-      console.error('Error fetching categories:', error)
+      log.error({ error }, 'Error fetching categories')
     }
   }
 
@@ -65,7 +68,7 @@ export default function EventTypesPage() {
       const data = await res.json()
       setEventTypes(data.eventTypes || [])
     } catch (error) {
-      console.error('Error fetching event types:', error)
+      log.error({ error }, 'Error fetching event types')
       toast.error('Failed to load event types')
     } finally {
       setLoading(false)

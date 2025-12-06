@@ -24,6 +24,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('shared')
 
 interface PackageItem {
   id: string
@@ -228,7 +231,7 @@ export function LineItemsManager({
       if (packagesRes.ok) setPackages(await packagesRes.json())
       if (addOnsRes.ok) setAddOns(await addOnsRes.json())
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
     } finally {
       setLoading(false)
     }
@@ -338,11 +341,11 @@ export function LineItemsManager({
         setIsModalOpen(false)
       } else {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+        log.error({ errorData }, 'Error response')
         alert(`Failed to save item: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error saving line item:', error)
+      log.error({ error }, 'Error saving line item')
       alert('Failed to save line item. Please try again.')
     }
   }
@@ -367,7 +370,7 @@ export function LineItemsManager({
         if (onUpdate) onUpdate()
       }
     } catch (error) {
-      console.error('Error deleting line item:', error)
+      log.error({ error }, 'Error deleting line item')
     }
   }
 
@@ -414,7 +417,7 @@ export function LineItemsManager({
 
       if (onUpdate) await onUpdate()
     } catch (error) {
-      console.error('Error updating item order:', error)
+      log.error({ error }, 'Error updating item order')
       alert(error instanceof Error ? error.message : 'Failed to save new order. Please try again.')
       // Revert the optimistic update on error
       await fetchData()

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:maintenance')
 
 /**
  * GET - List maintenance history with filters
@@ -67,7 +70,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching maintenance history:', error)
+      log.error({ error }, 'Error fetching maintenance history')
       return NextResponse.json(
         { error: 'Failed to fetch maintenance history', details: error.message },
         { status: 500 }
@@ -76,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -145,7 +148,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating maintenance history:', error)
+      log.error({ error }, 'Error creating maintenance history')
       return NextResponse.json(
         { error: 'Failed to create maintenance history', details: error.message },
         { status: 500 }
@@ -156,7 +159,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

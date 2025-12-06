@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('db')
 
 export interface SearchResult {
   id: string
@@ -118,7 +121,7 @@ export const searchApi = {
         invoices: invoicesResult.data || []
       }
     } catch (error) {
-      console.error('Global search error:', error)
+      log.error({ error }, 'Global search error')
       throw error
     }
   },

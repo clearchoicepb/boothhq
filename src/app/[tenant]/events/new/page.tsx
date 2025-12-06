@@ -9,6 +9,9 @@ import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { eventsService } from '@/lib/api/services/eventsService'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 export default function NewEventPage() {
   const { data: session, status } = useSession()
@@ -26,7 +29,7 @@ export default function NewEventPage() {
       toast.success('Event created successfully!')
       router.push(`/${tenantSubdomain}/events/${eventId}`)
     } catch (error) {
-      console.error('Error creating event:', error)
+      log.error({ error }, 'Error creating event')
       toast.error(error instanceof Error ? error.message : 'Failed to create event')
       throw error
     }

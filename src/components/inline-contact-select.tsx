@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { InlineSearchableSelect, InlineSearchableOption } from '@/components/ui/inline-searchable-select'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Contact {
   id: string
@@ -53,7 +56,7 @@ export function InlineContactSelect({
         setContacts(data)
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
     } finally {
       setLoading(false)
     }

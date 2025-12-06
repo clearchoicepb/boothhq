@@ -12,6 +12,9 @@ import {
   type DepartmentId,
 } from '@/lib/departments'
 import type { TaskTemplate } from '@/lib/api/services/taskTemplateService'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('task-templates')
 
 interface TaskTemplateFormProps {
   template?: TaskTemplate | null
@@ -107,7 +110,7 @@ export function TaskTemplateForm({
 
       onClose()
     } catch (error) {
-      console.error('Failed to save template:', error)
+      log.error({ error }, 'Failed to save template')
     } finally {
       setIsSaving(false)
     }

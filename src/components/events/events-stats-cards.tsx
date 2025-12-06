@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Calendar, CalendarCheck, CalendarRange } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface EventsStatsCardsProps {
   filters?: {
@@ -42,7 +45,7 @@ export function EventsStatsCards({ filters }: EventsStatsCardsProps) {
         thisWeekEvents: data.thisWeekEvents || 0,
       })
     } catch (error) {
-      console.error('Failed to fetch event stats:', error)
+      log.error({ error }, 'Failed to fetch event stats')
     } finally {
       setLoading(false)
     }

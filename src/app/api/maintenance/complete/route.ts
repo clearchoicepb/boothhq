@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { MaintenanceAutomation } from '@/lib/automation/maintenanceAutomation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:maintenance')
 
 /**
  * POST - Complete maintenance workflow
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (maintenanceError) {
-      console.error('Error creating maintenance record:', maintenanceError)
+      log.error({ maintenanceError }, 'Error creating maintenance record')
       return NextResponse.json(
         { error: 'Failed to create maintenance record', details: maintenanceError.message },
         { status: 500 }
@@ -128,7 +131,7 @@ export async function POST(request: NextRequest) {
       task_id: body.task_id || null
     }, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

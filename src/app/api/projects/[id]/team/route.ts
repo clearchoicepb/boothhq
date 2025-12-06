@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:projects')
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +42,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('Error adding team member:', error)
+      log.error({ error }, 'Error adding team member')
       return NextResponse.json({ error: 'Failed to add team member', details: error.message }, { status: 500 })
     }
 
@@ -48,7 +51,7 @@ export async function POST(
 
     return NextResponse.json(teamMember, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -80,7 +83,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error removing team member:', error)
+      log.error({ error }, 'Error removing team member')
       return NextResponse.json({ error: 'Failed to remove team member' }, { status: 500 })
     }
 
@@ -89,7 +92,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

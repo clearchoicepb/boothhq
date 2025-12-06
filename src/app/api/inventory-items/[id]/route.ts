@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // GET /api/inventory-items/[id] - Fetch single inventory item
 export async function GET(
@@ -217,7 +220,7 @@ export async function PUT(
             .eq('tenant_id', dataSourceTenantId)
 
           if (deleteError) {
-            console.error('Failed to delete old product group junction:', deleteError)
+            log.error({ deleteError }, 'Failed to delete old product group junction')
             return NextResponse.json({
               error: 'Failed to remove item from old product group',
               details: deleteError.message
@@ -236,7 +239,7 @@ export async function PUT(
             .maybeSingle()
 
           if (groupCheckError) {
-            console.error('Failed to verify product group:', groupCheckError)
+            log.error({ groupCheckError }, 'Failed to verify product group')
             return NextResponse.json({
               error: 'Failed to verify product group exists',
               details: groupCheckError.message
@@ -259,7 +262,7 @@ export async function PUT(
             })
 
           if (insertError) {
-            console.error('Failed to insert product group junction:', insertError)
+            log.error({ insertError }, 'Failed to insert product group junction')
             return NextResponse.json({
               error: 'Failed to add item to product group',
               details: insertError.message,
@@ -272,7 +275,7 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('PUT /api/inventory-items/[id] error:', error)
+    log.error({ error }, 'PUT /api/inventory-items/[id] error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',

@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('forms')
 
 interface EventCategory {
   id: string
@@ -46,7 +49,7 @@ export function EventCategoryTypeSelector({
         const data = await res.json()
         setCategories(data.categories?.filter((c: EventCategory) => c.is_active) || [])
       } catch (error) {
-        console.error('Error fetching categories:', error)
+        log.error({ error }, 'Error fetching categories')
       } finally {
         setLoading(false)
       }
@@ -63,7 +66,7 @@ export function EventCategoryTypeSelector({
         const data = await res.json()
         setEventTypes(data.eventTypes?.filter((t: EventType) => t.is_active) || [])
       } catch (error) {
-        console.error('Error fetching event types:', error)
+        log.error({ error }, 'Error fetching event types')
       } finally {
         setLoadingTypes(false)
       }

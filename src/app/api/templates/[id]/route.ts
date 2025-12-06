@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:templates')
 // GET - Get single template
 export async function GET(
   request: NextRequest,
@@ -29,7 +32,7 @@ export async function GET(
 
     return NextResponse.json(template)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -75,7 +78,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to update template' },
         { status: 500 }
@@ -84,7 +87,7 @@ export async function PUT(
 
     return NextResponse.json(template)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -116,7 +119,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to delete template' },
         { status: 500 }
@@ -125,7 +128,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

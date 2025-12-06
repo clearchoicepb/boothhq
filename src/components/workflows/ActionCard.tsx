@@ -13,6 +13,9 @@ import { useState, useEffect } from 'react'
 import { Trash2, ClipboardCheck, Palette, User, Loader2, Info, Briefcase, UserPlus, Mail, Bell, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { WorkflowBuilderAction, WorkflowActionType } from '@/types/workflows'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('workflows')
 
 interface TaskTemplate {
   id: string
@@ -92,9 +95,9 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       }
 
       // Fetch design item types
-      console.log('[ActionCard] Fetching design item types...')
+      log.debug('Fetching design item types...')
       const designTypesRes = await fetch('/api/design/types')
-      console.log('[ActionCard] Design types response status:', designTypesRes.status)
+      log.debug('Design types response status:', designTypesRes.status)
 
       if (designTypesRes.ok) {
         const designTypesData = await designTypesRes.json()
@@ -105,7 +108,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       }
 
       // Fetch operations item types
-      console.log('[ActionCard] Fetching operations item types...')
+      log.debug('Fetching operations item types...')
       const opsTypesRes = await fetch('/api/operations/types')
       if (opsTypesRes.ok) {
         const opsTypesData = await opsTypesRes.json()
@@ -116,7 +119,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       }
 
       // Fetch staff roles (for assign_event_role actions)
-      console.log('[ActionCard] Fetching staff roles...')
+      log.debug('Fetching staff roles...')
       const staffRolesRes = await fetch('/api/staff-roles')
       if (staffRolesRes.ok) {
         const staffRolesData = await staffRolesRes.json()
@@ -159,7 +162,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
         }))
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
       setTaskTemplates([])
       setDesignItemTypes([])
       setOpsItemTypes([])

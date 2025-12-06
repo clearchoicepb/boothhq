@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-notifications')
 
 /**
  * POST - Dismiss multiple notifications
@@ -33,7 +36,7 @@ export async function POST(request: NextRequest) {
       .select('id')
 
     if (error) {
-      console.error('Error dismissing notifications:', error)
+      log.error({ error }, 'Error dismissing notifications')
       return NextResponse.json(
         { error: 'Failed to dismiss notifications', details: error.message },
         { status: 500 }
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
       dismissed_count: data?.length || 0
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

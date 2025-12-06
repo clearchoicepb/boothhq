@@ -23,6 +23,9 @@ import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import AttachmentUpload from '@/components/attachment-upload'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboards')
 
 interface Designer {
   id: string
@@ -154,7 +157,7 @@ export function DesignDashboard() {
           }
         }
       } catch (error) {
-        console.error('[DesignDashboard] Error fetching current user:', error)
+        log.error({ error }, '[DesignDashboard] Error fetching current user')
       }
     }
     
@@ -162,10 +165,10 @@ export function DesignDashboard() {
   }, []) // Empty dependency array - run once on mount
 
   useEffect(() => {
-    console.log('[DesignDashboard] useEffect triggered')
+    log.debug('useEffect triggered')
 
     const fetchDashboardData = async () => {
-      console.log('[DesignDashboard] Starting fetchDashboardData')
+      log.debug('Starting fetchDashboardData')
       try {
         let url = '/api/design/dashboard'
         const urlParams = new URLSearchParams()
@@ -173,19 +176,19 @@ export function DesignDashboard() {
         if (selectedStatus) urlParams.append('status', selectedStatus)
         if (urlParams.toString()) url += `?${urlParams.toString()}`
 
-        console.log('[DesignDashboard] Fetching:', url)
+        log.debug('Fetching:', url)
         const res = await fetch(url)
-        console.log('[DesignDashboard] Response status:', res.status)
+        log.debug('Response status:', res.status)
 
         if (!res.ok) {
           throw new Error(`API returned ${res.status}`)
         }
 
         const dashboardData = await res.json()
-        console.log('[DesignDashboard] Data received:', dashboardData)
+        log.debug('Data received:', dashboardData)
         setData(dashboardData)
       } catch (error) {
-        console.error('[DesignDashboard] Error fetching dashboard:', error)
+        log.error({ error }, '[DesignDashboard] Error fetching dashboard')
         toast.error('Failed to load dashboard')
       } finally {
         setLoading(false)
@@ -193,24 +196,24 @@ export function DesignDashboard() {
     }
 
     const fetchDesigners = async () => {
-      console.log('[DesignDashboard] Starting fetchDesigners')
+      log.debug('Starting fetchDesigners')
       try {
         const res = await fetch('/api/users')
         const responseData = await res.json()
         setDesigners(responseData.users || responseData || [])
       } catch (error) {
-        console.error('[DesignDashboard] Error fetching designers:', error)
+        log.error({ error }, '[DesignDashboard] Error fetching designers')
       }
     }
 
     const fetchDesignStatuses = async () => {
-      console.log('[DesignDashboard] Starting fetchDesignStatuses')
+      log.debug('Starting fetchDesignStatuses')
       try {
         const res = await fetch('/api/design/statuses')
         const responseData = await res.json()
         setDesignStatuses(responseData.statuses || [])
       } catch (error) {
-        console.error('[DesignDashboard] Error fetching design statuses:', error)
+        log.error({ error }, '[DesignDashboard] Error fetching design statuses')
       }
     }
 
@@ -279,7 +282,7 @@ export function DesignDashboard() {
         setData(dashboardData)
       }
     } catch (error) {
-      console.error('Error updating task:', error)
+      log.error({ error }, 'Error updating task')
       toast.error('Failed to update task')
     } finally {
       setSaving(false)
@@ -342,7 +345,7 @@ export function DesignDashboard() {
         setData(dashboardData)
       }
     } catch (error) {
-      console.error('Error deleting items:', error)
+      log.error({ error }, 'Error deleting items')
       toast.error('Failed to delete some items')
     } finally {
       setIsDeleting(false)

@@ -10,6 +10,9 @@ import { TaskIndicator } from './task-indicator'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { formatTime } from '@/lib/utils/date-utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('opportunities')
 
 interface OpportunityPreviewModalProps {
   isOpen: boolean
@@ -86,7 +89,7 @@ export function OpportunityPreviewModal({
         setTasks(incompleteTasks)
       }
     } catch (error) {
-      console.error('Failed to fetch opportunity details:', error)
+      log.error({ error }, 'Failed to fetch opportunity details')
     } finally {
       setLoading(false)
     }

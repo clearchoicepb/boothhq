@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:design')
 export async function GET(request: Request) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
@@ -152,7 +155,7 @@ export async function GET(request: Request) {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching design dashboard:', error)
+    log.error({ error }, 'Error fetching design dashboard')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

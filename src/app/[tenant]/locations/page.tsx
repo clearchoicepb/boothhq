@@ -10,6 +10,9 @@ import { AccessGuard } from '@/components/access-guard'
 import { Location, LocationInsert, LocationUpdate } from '@/lib/supabase-client'
 import { useTenant } from '@/lib/tenant-context'
 import { usePermissions } from '@/lib/permissions'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('locations')
 
 export default function LocationsPage() {
   const router = useRouter()
@@ -35,10 +38,10 @@ export default function LocationsPage() {
         const data = await response.json()
         setLocations(data)
       } else {
-        console.error('Failed to load locations')
+        log.error('Failed to load locations')
       }
     } catch (error) {
-      console.error('Error loading locations:', error)
+      log.error({ error }, 'Error loading locations')
     } finally {
       setIsLoading(false)
     }
@@ -94,7 +97,7 @@ export default function LocationsPage() {
         }
       }
     } catch (error) {
-      console.error('Error saving location:', error)
+      log.error({ error }, 'Error saving location')
       throw error
     } finally {
       setIsSaving(false)
@@ -117,7 +120,7 @@ export default function LocationsPage() {
         throw new Error('Failed to delete location')
       }
     } catch (error) {
-      console.error('Error deleting location:', error)
+      log.error({ error }, 'Error deleting location')
       alert('Failed to delete location. Please try again.')
     }
   }

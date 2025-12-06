@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contacts')
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
       return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 })
     }
 
@@ -105,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating contact:', error)
+      log.error({ error }, 'Error creating contact')
       return NextResponse.json({ error: 'Failed to create contact', details: error }, { status: 500 })
     }
 
@@ -179,7 +182,7 @@ export async function POST(request: NextRequest) {
         })
       
       if (junctionError) {
-        console.error('Failed to create contact_accounts entry:', junctionError)
+        log.error({ junctionError }, 'Failed to create contact_accounts entry')
         // Don't fail the request, but log the error
         // The contact was created successfully, junction entry is supplementary
       }
@@ -196,7 +199,7 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

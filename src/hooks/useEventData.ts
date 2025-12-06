@@ -2,6 +2,9 @@ import { Event as EventType } from '@/lib/supabase-client'
 import { useEventDetail, useUpdateEvent, useDeleteEvent } from './useEventDetail'
 import { useEventDates } from './useEventDates'
 import type { EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 export type { EventDate }
 
@@ -79,7 +82,7 @@ export function useEventData(
       await updateMutation.mutateAsync(data)
       return true
     } catch (err) {
-      console.error('Error updating event:', err)
+      log.error({ err }, 'Error updating event')
       return false
     }
   }
@@ -92,7 +95,7 @@ export function useEventData(
       await deleteMutation.mutateAsync()
       return true
     } catch (err) {
-      console.error('Error deleting event:', err)
+      log.error({ err }, 'Error deleting event')
       return false
     }
   }

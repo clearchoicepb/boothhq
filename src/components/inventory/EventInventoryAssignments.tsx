@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Package, Plus, Trash2, Search, User, Warehouse, ChevronDown, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface InventoryItem {
   id: string
@@ -61,7 +64,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         setAvailableProductGroups(data.available_product_groups || [])
       }
     } catch (error) {
-      console.error('Error fetching inventory:', error)
+      log.error({ error }, 'Error fetching inventory')
     } finally {
       setLoading(false)
     }
@@ -91,7 +94,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         await fetchData()
       }
     } catch (error) {
-      console.error('Error assigning items:', error)
+      log.error({ error }, 'Error assigning items')
     }
   }
 
@@ -112,7 +115,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
         await fetchData()
       }
     } catch (error) {
-      console.error('Error removing item:', error)
+      log.error({ error }, 'Error removing item')
     }
   }
 
@@ -184,7 +187,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
             }
           }
         } catch (error) {
-          console.error('Failed to fetch group details:', error)
+          log.error({ error }, 'Failed to fetch group details')
         }
       } else {
         // Group details already loaded, use cached data
@@ -233,7 +236,7 @@ export function EventInventoryAssignments({ eventId, tenantSubdomain }: EventInv
             setGroupDetails(prev => ({ ...prev, [groupId]: data }))
           }
         } catch (error) {
-          console.error('Failed to fetch group details:', error)
+          log.error({ error }, 'Failed to fetch group details')
         }
       }
     }

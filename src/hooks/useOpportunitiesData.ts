@@ -2,6 +2,9 @@ import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Opportunity } from '@/lib/supabase-client'
 import { useOpportunitiesList, useDeleteOpportunity } from './useOpportunitiesList'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 export interface OpportunityWithRelations extends Opportunity {
   account_name: string | null
@@ -91,7 +94,7 @@ export function useOpportunitiesData({
         await deleteMutation.mutateAsync(opportunityId)
         alert('Opportunity deleted successfully')
       } catch (error: any) {
-        console.error('Error deleting opportunity:', error)
+        log.error({ error }, 'Error deleting opportunity')
         alert(`Failed to delete opportunity: ${error.message || 'Unknown error'}`)
       }
     }

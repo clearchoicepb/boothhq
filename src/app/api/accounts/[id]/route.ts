@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:accounts')
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,7 +35,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching account:', error)
+      log.error({ error }, 'Error fetching account')
       return NextResponse.json({ error: 'Failed to fetch account' }, { status: 500 })
     }
 
@@ -82,7 +85,7 @@ export async function GET(
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -108,13 +111,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating account:', error)
+      log.error({ error }, 'Error updating account')
       return NextResponse.json({ error: 'Failed to update account' }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -137,7 +140,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting account:', error)
+      log.error({ error }, 'Error deleting account')
       return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
     }
 
@@ -148,7 +151,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

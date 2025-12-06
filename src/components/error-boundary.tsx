@@ -3,6 +3,9 @@
 import React from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface ErrorBoundaryState {
   hasError: boolean

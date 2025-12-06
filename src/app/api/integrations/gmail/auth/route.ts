@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:integrations')
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ authUrl })
   } catch (error) {
-    console.error('Error generating OAuth URL:', error)
+    log.error({ error }, 'Error generating OAuth URL')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

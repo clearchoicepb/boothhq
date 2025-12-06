@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { getTenantClient } from '@/lib/data-sources'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:integrations')
 
 /**
  * Twilio Inbound SMS Webhook Handler
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
       const isValid = twilio.validateRequest(authToken, twilioSignature, url, params)
 
       if (!isValid) {
-        console.error('❌ Invalid Twilio signature')
+        log.error('❌ Invalid Twilio signature')
         return new NextResponse('Forbidden', { status: 403 })
       }
     }
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
       })
     }
     if (settingsError) {
-      console.error('❌ Error fetching settings:', settingsError)
+      log.error({ settingsError }, '❌ Error fetching settings')
     }
     
     let tenantId: string | null = null
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
       tenantId = matchingTenant.tenant_id
       console.log('✅ Found tenant by receiving phone number:', tenantId)
     } else {
-      console.warn('⚠️ Could not determine tenant for incoming SMS to:', to)
+      log.warn({ to }, '⚠️ Could not determine tenant for incoming SMS to')
       console.warn('⚠️ Normalized receiving number:', normalizePhone(to))
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`,
@@ -108,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 2: Get Tenant Database client
-    console.log('🔍 Step 2: Connecting to tenant database')
+    log.debug('🔍 Step 2: Connecting to tenant database')
     const tenantSupabase = await getTenantClient(tenantId)
 
     // STEP 3: Try to find matching contact, lead, or account in TENANT DB
@@ -228,7 +231,7 @@ export async function POST(request: NextRequest) {
     })
 
     // STEP 4: Log the communication to TENANT DATABASE
-    console.log('🔍 Step 4: Logging communication to tenant database')
+    log.debug('🔍 Step 4: Logging communication to tenant database')
     
     const communicationData = {
       tenant_id: tenantId,
@@ -257,7 +260,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (commError) {
-      console.error('❌ Error logging inbound SMS to tenant database:', commError)
+      log.error({ commError }, '❌ Error logging inbound SMS to tenant database')
     } else {
       console.log('✅ Inbound SMS logged to tenant database:', communication.id, contactId ? 'with contact' : 'without contact match')
     }
@@ -274,7 +277,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('❌ Error processing inbound SMS:', error)
+    log.error({ error }, '❌ Error processing inbound SMS')
 
     // Still return 200 to Twilio to avoid retries
     return new NextResponse(

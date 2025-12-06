@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { startOfWeek, endOfWeek, addDays, format } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // GET /api/inventory-items/weekend-prep - Get weekend prep dashboard data
 export async function GET(request: NextRequest) {
@@ -39,7 +42,7 @@ export async function GET(request: NextRequest) {
       .order('start_date', { ascending: true })
 
     if (eventsError) {
-      console.error('Error fetching events:', eventsError)
+      log.error({ eventsError }, 'Error fetching events')
       return NextResponse.json({
         error: 'Failed to fetch events',
         details: eventsError.message
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
         .in('event_id', eventIds)
 
       if (inventoryError) {
-        console.error('Error fetching event inventory:', inventoryError)
+        log.error({ inventoryError }, 'Error fetching event inventory')
       } else {
         eventInventory = inventory || []
       }
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
       .order('expected_return_date', { ascending: true })
 
     if (duebackError) {
-      console.error('Error fetching due back items:', duebackError)
+      log.error({ duebackError }, 'Error fetching due back items')
     }
 
     // Enrich inventory with user/location/group names
@@ -221,7 +224,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Weekend prep error:', error)
+    log.error({ error }, 'Weekend prep error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

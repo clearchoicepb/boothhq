@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:settings')
 export async function GET(request: NextRequest) {
   try {
     const context = await getTenantContext()
@@ -13,7 +16,7 @@ export async function GET(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error fetching settings:', error)
+      log.error({ error }, 'Error fetching settings')
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
 
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error in GET /api/settings:', error)
+    log.error({ error }, 'Error in GET /api/settings')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (error) {
-      console.error('Error saving settings:', error)
+      log.error({ error }, 'Error saving settings')
       
       // If it's a duplicate key error, try individual upserts
       if (error.code === '23505') {
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
               onConflict: 'tenant_id,setting_key'
             })
           if (individualError) {
-            console.error('Individual setting error:', individualError)
+            log.error({ individualError }, 'Individual setting error')
             return NextResponse.json({ 
               error: 'Failed to save settings', 
               details: individualError.message 
@@ -137,16 +140,16 @@ export async function POST(request: NextRequest) {
         })
       
       if (appDbError) {
-        console.error('⚠️ Warning: Could not save phone number to Application DB:', appDbError)
+        log.error({ appDbError }, '⚠️ Warning: Could not save phone number to Application DB')
         // Don't fail the request - Tenant DB save succeeded
       } else {
-        console.log('✅ Twilio phone number saved to Application DB')
+        log.debug('✅ Twilio phone number saved to Application DB')
       }
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error in POST /api/settings:', error)
+    log.error({ error }, 'Error in POST /api/settings')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

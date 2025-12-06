@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 export interface CloseOpportunityModalProps {
   isOpen: boolean
@@ -60,7 +63,7 @@ export function CloseOpportunityModal({
       setCloseNotes('')
       onClose()
     } catch (error) {
-      console.error('Error saving close reason:', error)
+      log.error({ error }, 'Error saving close reason')
       alert('Failed to save. Please try again.')
     } finally {
       setSaving(false)

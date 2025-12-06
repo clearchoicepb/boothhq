@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // GET /api/inventory-items/availability - Check equipment availability for date range
 export async function GET(request: NextRequest) {
@@ -217,7 +220,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error checking availability:', error)
+    log.error({ error }, 'Error checking availability')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

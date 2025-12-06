@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 export async function GET() {
   try {
   const context = await getTenantContext()
@@ -75,7 +78,7 @@ export async function GET() {
       }
     }, { status: 200 })
   } catch (error) {
-    console.error('Debug endpoint error:', error)
+    log.error({ error }, 'Debug endpoint error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

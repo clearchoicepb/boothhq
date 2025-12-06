@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // GET /api/inventory-items - Fetch all inventory items for tenant
 export async function GET(request: NextRequest) {
@@ -240,7 +243,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching inventory items:', error)
+    log.error({ error }, 'Error fetching inventory items')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -320,7 +323,7 @@ export async function POST(request: NextRequest) {
         })
 
       if (junctionError) {
-        console.error('Failed to create product group junction:', junctionError)
+        log.error({ junctionError }, 'Failed to create product group junction')
         return NextResponse.json({
           error: 'Failed to add item to product group',
           details: junctionError.message,
@@ -331,7 +334,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error creating inventory item:', error)
+    log.error({ error }, 'Error creating inventory item')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

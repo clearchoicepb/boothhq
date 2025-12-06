@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { useTenant } from './tenant-context'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 interface SMSMessage {
   id: string
@@ -169,7 +172,7 @@ export function SMSNotificationsProvider({ children }: SMSNotificationsProviderP
         setUnreadThreads(unread)
       }
     } catch (error) {
-      console.error('Error fetching SMS unread count:', error)
+      log.error({ error }, 'Error fetching SMS unread count')
     }
   }, [statusLoaded])
 

@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:settings')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
       .like('setting_key', 'opportunities.stages%')
 
     if (error) {
-      console.error('[opportunity-stages] Error fetching settings:', error)
+      log.error({ error }, '[opportunity-stages] Error fetching settings')
       return NextResponse.json(
         { error: 'Failed to fetch opportunity stages' },
         { status: 500 }
@@ -75,7 +78,7 @@ export async function GET(request: Request) {
 
     // If no stages configured in settings, return default stages
     if (stages.length === 0) {
-      console.log('[opportunity-stages] No stages in settings, using defaults')
+      log.debug('No stages in settings, using defaults')
       stages = [
         { id: 'prospecting', name: 'Prospecting', probability: 10, color: 'blue', enabled: true },
         { id: 'qualification', name: 'Qualification', probability: 25, color: 'yellow', enabled: true },
@@ -86,12 +89,12 @@ export async function GET(request: Request) {
       ]
     }
 
-    console.log(`[opportunity-stages] Returning ${stages.length} stages for tenant ${dataSourceTenantId}`)
+    log.debug(`Returning ${stages.length} stages for tenant ${dataSourceTenantId}`)
 
     // Return array directly (consistent with /api/event-types pattern)
     return NextResponse.json(stages)
   } catch (error) {
-    console.error('[opportunity-stages] Unexpected error:', error)
+    log.error({ error }, '[opportunity-stages] Unexpected error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

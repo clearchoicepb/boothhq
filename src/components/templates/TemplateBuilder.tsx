@@ -22,6 +22,9 @@ import {
 import toast from 'react-hot-toast'
 import SectionLibrary from './SectionLibrary'
 import SectionEditorModal from './SectionEditorModal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('templates')
 
 interface TemplateSection {
   id: string
@@ -83,7 +86,7 @@ export default function TemplateBuilder({
         const data = await response.json()
         setAllLibrarySections(data.sections || [])
       } catch (error) {
-        console.error('Error fetching library sections:', error)
+        log.error({ error }, 'Error fetching library sections')
       }
     }
     fetchLibrarySections()

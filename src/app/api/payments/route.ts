@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:payments')
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +12,7 @@ export async function POST(request: NextRequest) {
     const { supabase, dataSourceTenantId } = context
     const body = await request.json()
 
-    console.log('[Payment API] Creating payment for tenant:', dataSourceTenantId)
+    log.debug('Creating payment for tenant:', dataSourceTenantId)
 
     // Validate required fields
     if (!body.invoice_id || !body.amount || !body.payment_method) {
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create payment record
-    console.log('[Payment API] About to insert payment:', JSON.stringify(paymentData, null, 2))
+    log.debug('About to insert payment:', JSON.stringify(paymentData, null, 2))
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert(paymentData)
@@ -57,8 +60,8 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (paymentError) {
-      console.error('[Payment API] Error creating payment:', paymentError)
-      console.error('[Payment API] Payment data that failed:', paymentData)
+      log.error({ paymentError }, '[Payment API] Error creating payment')
+      log.error({ paymentData }, '[Payment API] Payment data that failed')
       return NextResponse.json(
         { error: 'Failed to create payment' },
         { status: 500 }
@@ -89,14 +92,14 @@ export async function POST(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
 
     if (updateError) {
-      console.error('Error updating invoice:', updateError)
+      log.error({ updateError }, 'Error updating invoice')
       // Payment was created but invoice update failed - log but don't fail the request
-      console.warn('Payment created successfully but invoice update failed')
+      log.warn('Payment created successfully but invoice update failed')
     }
 
     return NextResponse.json(payment, { status: 201 })
   } catch (error) {
-    console.error('Error creating payment:', error)
+    log.error({ error }, 'Error creating payment')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -130,13 +133,13 @@ export async function GET(request: NextRequest) {
       .order('payment_date', { ascending: false })
 
     if (error) {
-      console.error('Error fetching payments:', error)
+      log.error({ error }, 'Error fetching payments')
       return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 })
     }
 
     return NextResponse.json(payments || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

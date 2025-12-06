@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDatabaseClient } from '@/lib/supabase-client';
 import { getTenantStripe, getTenantStripeConfig, formatAmountForStripe } from '@/lib/stripe';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:public')
 
 // GET /api/public/invoices/[tenantId]/[token]/pay - Create payment intent (no auth required)
 export async function GET(
@@ -114,7 +117,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error creating payment intent:', error);
+    log.error({ error }, 'Error creating payment intent');
     return NextResponse.json(
       { error: 'Failed to create payment intent' },
       { status: 500 }
@@ -210,7 +213,7 @@ export async function POST(
       .eq('id', invoice.id);
 
     if (updateError) {
-      console.error('Error updating invoice:', updateError);
+      log.error({ updateError }, 'Error updating invoice');
       return NextResponse.json(
         { error: 'Failed to update invoice' },
         { status: 500 }
@@ -234,7 +237,7 @@ export async function POST(
       });
 
     if (paymentError) {
-      console.error('Error creating payment record:', paymentError);
+      log.error({ paymentError }, 'Error creating payment record');
     }
 
     return NextResponse.json({
@@ -254,7 +257,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Error processing payment:', error);
+    log.error({ error }, 'Error processing payment');
     return NextResponse.json(
       { error: 'Failed to process payment' },
       { status: 500 }

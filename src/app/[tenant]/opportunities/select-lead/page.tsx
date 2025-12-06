@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Search, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('select-lead')
 
 interface Lead {
   id: string
@@ -42,7 +45,7 @@ export default function SelectLeadPage() {
           setFilteredLeads(activeLeads)
         }
       } catch (error) {
-        console.error('Error fetching leads:', error)
+        log.error({ error }, 'Error fetching leads')
       } finally {
         setLoading(false)
       }

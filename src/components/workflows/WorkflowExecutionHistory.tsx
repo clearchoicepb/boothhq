@@ -28,6 +28,9 @@ import {
   Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('workflows')
 
 interface WorkflowExecution {
   id: string
@@ -143,7 +146,7 @@ export default function WorkflowExecutionHistory({
       const data = await response.json()
       setExecutions(data.executions || [])
     } catch (err) {
-      console.error('[WorkflowExecutionHistory] Error:', err)
+      log.error({ err }, '[WorkflowExecutionHistory] Error')
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)

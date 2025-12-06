@@ -1,6 +1,9 @@
 import { getTenantClient, getTenantIdInDataSource } from '@/lib/data-sources'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('repositories')
 
 export interface TransactionOperation {
   type: 'create' | 'update' | 'delete'
@@ -208,7 +211,7 @@ export class TransactionManager {
       try {
         await this.rollbackOperation(operation, originalData)
       } catch (error) {
-        console.error(`Failed to rollback operation:`, error)
+        log.error({ error }, 'Failed to rollback operation')
         // Continue with other rollbacks even if one fails
       }
     }

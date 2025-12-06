@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -39,7 +42,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching invoices:', error)
+      log.error({ error }, 'Error fetching invoices')
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
       body = JSON.parse(text)
     } catch (error) {
-      console.error('Error parsing request body:', error)
+      log.error({ error }, 'Error parsing request body')
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
@@ -165,7 +168,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
+      log.error({ invoiceError }, 'Error creating invoice')
       return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 })
     }
 
@@ -185,7 +188,7 @@ export async function POST(request: NextRequest) {
         .insert(lineItemsData)
 
       if (lineItemsError) {
-        console.error('Error creating line items:', lineItemsError)
+        log.error({ lineItemsError }, 'Error creating line items')
         // Don't fail the entire request, just log the error
       }
     }
@@ -195,7 +198,7 @@ export async function POST(request: NextRequest) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

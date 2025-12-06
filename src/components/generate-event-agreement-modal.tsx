@@ -5,6 +5,9 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FileText, Loader2, Send, Copy, CheckCircle, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Template {
   id: string
@@ -54,7 +57,7 @@ export function GenerateEventAgreementModal({
         setTemplates(data)
       }
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
       setError('Failed to load contract templates')
     } finally {
       setLoading(false)
@@ -82,9 +85,9 @@ export function GenerateEventAgreementModal({
         expires_days: 30
       }
 
-      console.log('[GenerateAgreementModal] Making POST request to /api/contracts')
-      console.log('[GenerateAgreementModal] Request body:', requestBody)
-      console.log('[GenerateAgreementModal] Full URL:', `${window.location.origin}/api/contracts`)
+      log.debug('Making POST request to /api/contracts')
+      log.debug('Request body:', requestBody)
+      log.debug('Full URL:', `${window.location.origin}/api/contracts`)
 
       // Create contract with e-signature capability
       const response = await fetch('/api/contracts', {
@@ -93,12 +96,12 @@ export function GenerateEventAgreementModal({
         body: JSON.stringify(requestBody)
       })
 
-      console.log('[GenerateAgreementModal] Response status:', response.status)
-      console.log('[GenerateAgreementModal] Response ok:', response.ok)
+      log.debug('Response status:', response.status)
+      log.debug('Response ok:', response.ok)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[GenerateAgreementModal] Error response:', errorText)
+        log.error({ errorText }, '[GenerateAgreementModal] Error response')
         throw new Error(`Failed to create agreement: ${response.status} ${errorText}`)
       }
 
@@ -110,7 +113,7 @@ export function GenerateEventAgreementModal({
         onSuccess()
       }
     } catch (err: any) {
-      console.error('Error generating agreement:', err)
+      log.error({ err }, 'Error generating agreement')
       setError(err.message || 'Failed to generate agreement')
     } finally {
       setLoading(false)
@@ -164,7 +167,7 @@ export function GenerateEventAgreementModal({
         onSuccess()
       }
     } catch (err) {
-      console.error('Error saving agreement:', err)
+      log.error({ err }, 'Error saving agreement')
       toast.error('Failed to save agreement to Files tab')
     } finally {
       setSaving(false)
@@ -206,7 +209,7 @@ export function GenerateEventAgreementModal({
         onSuccess()
       }
     } catch (err) {
-      console.error('Error saving draft agreement:', err)
+      log.error({ err }, 'Error saving draft agreement')
     }
   }
 

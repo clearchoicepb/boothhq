@@ -2,6 +2,9 @@ import { useState, useCallback } from 'react'
 import { useEventStaffData, useAddEventStaff, useUpdateEventStaff, useRemoveEventStaff } from './useEventStaffData'
 import { useUsers } from './useUsers'
 import { useStaffRoles } from './useStaffRoles'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 /**
  * Custom hook for managing event staff assignments
@@ -48,7 +51,7 @@ export function useEventStaff(
       await addStaffMutation.mutateAsync(staffData)
       return true
     } catch (error) {
-      console.error('Error adding staff:', error)
+      log.error({ error }, 'Error adding staff')
       return false
     }
   }, [addStaffMutation])
@@ -61,7 +64,7 @@ export function useEventStaff(
       await removeStaffMutation.mutateAsync(staffId)
       return true
     } catch (error) {
-      console.error('Error removing staff:', error)
+      log.error({ error }, 'Error removing staff')
       return false
     }
   }, [removeStaffMutation])
@@ -74,7 +77,7 @@ export function useEventStaff(
       await updateStaffMutation.mutateAsync({ staffId, staffData })
       return true
     } catch (error) {
-      console.error('Error updating staff:', error)
+      log.error({ error }, 'Error updating staff')
       return false
     }
   }, [updateStaffMutation])

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { isAdmin, type UserRole } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:users')
 
 /**
  * Change user password
@@ -91,7 +94,7 @@ export async function POST(
     )
 
     if (authError) {
-      console.error('Error updating password in Supabase Auth:', authError)
+      log.error({ authError }, 'Error updating password in Supabase Auth')
       return NextResponse.json({ 
         error: `Failed to update password: ${authError.message}` 
       }, { status: 500 })
@@ -109,18 +112,18 @@ export async function POST(
       .eq('tenant_id', dataSourceTenantId)
 
     if (updateError) {
-      console.warn('Warning: Could not update password_hash in users table:', updateError)
+      log.warn({ updateError }, 'Warning: Could not update password_hash in users table')
       // Don't fail the request since Supabase Auth is the source of truth
     }
 
-    console.log(`Password updated successfully for user ${id} (${user.email})`)
+    log.debug('Password updated successfully for user ${id} (${user.email})')
 
     return NextResponse.json({ 
       success: true,
       message: 'Password updated successfully' 
     })
   } catch (error) {
-    console.error('Error in POST /api/users/[id]/password:', error)
+    log.error({ error }, 'Error in POST /api/users/[id]/password')
     return NextResponse.json({ 
       error: 'Internal server error' 
     }, { status: 500 })

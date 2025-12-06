@@ -3,6 +3,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { PlusCircle, ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface ProductGroupItemSelectorProps {
   availableItems: any[]
@@ -50,7 +53,7 @@ export function ProductGroupItemSelector({
           setItemAllocations(allocations)
         }
       } catch (error) {
-        console.error('Failed to fetch allocations:', error)
+        log.error({ error }, 'Failed to fetch allocations')
       }
     }
     

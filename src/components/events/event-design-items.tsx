@@ -13,6 +13,9 @@ import {
 import toast from 'react-hot-toast'
 import { AddDesignItemModal } from './add-design-item-modal'
 import { EditDesignItemModal } from './edit-design-item-modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface DesignItem {
   id: string
@@ -63,7 +66,7 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
       const data = await res.json()
       setDesignStatuses(data.statuses || [])
     } catch (error) {
-      console.error('Error fetching design statuses:', error)
+      log.error({ error }, 'Error fetching design statuses')
     }
   }
 
@@ -73,7 +76,7 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
       const data = await res.json()
       setDesignItems(data.designItems || [])
     } catch (error) {
-      console.error('Error fetching design items:', error)
+      log.error({ error }, 'Error fetching design items')
       toast.error('Failed to load design items')
     } finally {
       setLoading(false)

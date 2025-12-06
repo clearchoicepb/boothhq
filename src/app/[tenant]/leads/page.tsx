@@ -14,6 +14,9 @@ import { useParams } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import type { Lead } from '@/lib/supabase-client' // cspell:ignore supabase
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('leads')
 
 export default function LeadsPage() {
   const { data: session } = useSession()
@@ -40,14 +43,14 @@ export default function LeadsPage() {
       const response = await fetch('/api/leads')
       
       if (!response.ok) {
-        console.error('Error fetching leads')
+        log.error('Error fetching leads')
         return
       }
 
       const data = await response.json()
       setLeads(data)
     } catch (error) {
-      console.error('Error fetching leads:', error)
+      log.error({ error }, 'Error fetching leads')
     } finally {
       setLoading(false)
     }
@@ -111,7 +114,7 @@ export default function LeadsPage() {
           fetchLeads()
         }
       } catch (error) {
-        console.error('Error deleting lead:', error)
+        log.error({ error }, 'Error deleting lead')
       }
     }
   }
@@ -146,7 +149,7 @@ export default function LeadsPage() {
       }
       await updateSettings(newSettings)
     } catch (error) {
-      console.error('Error saving view preference:', error)
+      log.error({ error }, 'Error saving view preference')
     }
   }
 

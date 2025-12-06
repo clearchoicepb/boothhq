@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:leads')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching leads:', error)
+      log.error({ error }, 'Error fetching leads')
       return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })
     }
 
@@ -34,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -57,13 +60,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating lead:', error)
+      log.error({ error }, 'Error creating lead')
       return NextResponse.json({ error: 'Failed to create lead', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

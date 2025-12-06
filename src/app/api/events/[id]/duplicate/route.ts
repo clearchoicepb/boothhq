@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -41,7 +44,7 @@ export async function POST(
       .single()
 
     if (createError) {
-      console.error('Error creating duplicate event:', createError)
+      log.error({ createError }, 'Error creating duplicate event')
       return NextResponse.json({ error: 'Failed to duplicate event' }, { status: 500 })
     }
 
@@ -85,7 +88,7 @@ export async function POST(
 
     return NextResponse.json(newEvent, { status: 201 })
   } catch (error) {
-    console.error('Error duplicating event:', error)
+    log.error({ error }, 'Error duplicating event')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

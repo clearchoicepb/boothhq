@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { PhotoUpload } from '@/components/ui/photo-upload'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface LeadFormSequentialProps {
   onSave: (lead: any) => Promise<void>
@@ -99,7 +102,7 @@ export function LeadFormSequential({ onSave, onCancel }: LeadFormSequentialProps
       await onSave(dataToSave)
       // Don't call onClose() here - let the parent component handle the flow
     } catch (error) {
-      console.error('Error saving lead:', error)
+      log.error({ error }, 'Error saving lead')
       alert('Error saving lead. Please try again.')
     } finally {
       setIsSubmitting(false)

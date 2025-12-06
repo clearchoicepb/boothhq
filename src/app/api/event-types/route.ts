@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-types')
 // GET - Fetch all event types for tenant (optionally filtered by category)
 export async function GET(request: Request) {
   const context = await getTenantContext()
@@ -30,7 +33,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ eventTypes: eventTypes || [] })
   } catch (error: any) {
-    console.error('Error fetching event types:', error)
+    log.error({ error }, 'Error fetching event types')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -108,7 +111,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ eventType }, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating event type:', error)
+    log.error({ error }, 'Error creating event type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -145,7 +148,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error updating event types:', error)
+    log.error({ error }, 'Error updating event types')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface LogCommunicationModalProps {
   isOpen: boolean
@@ -99,7 +102,7 @@ export function LogCommunicationModal({
 
       onClose()
     } catch (error) {
-      console.error('Error logging communication:', error)
+      log.error({ error }, 'Error logging communication')
       alert('Failed to log communication. Please try again.')
     } finally {
       setIsSubmitting(false)

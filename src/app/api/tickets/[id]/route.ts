@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tickets')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -26,7 +29,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching ticket:', error)
+      log.error({ error }, 'Error fetching ticket')
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
@@ -60,7 +63,7 @@ export async function GET(
 
     return NextResponse.json(ticket)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -111,7 +114,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Error updating ticket:', updateError)
+      log.error({ updateError }, 'Error updating ticket')
       return NextResponse.json({
         error: 'Failed to update ticket',
         details: updateError.message
@@ -123,7 +126,7 @@ export async function PUT(
 
     return NextResponse.json(ticket)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -151,7 +154,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting ticket:', error)
+      log.error({ error }, 'Error deleting ticket')
       return NextResponse.json({ error: 'Failed to delete ticket' }, { status: 500 })
     }
 
@@ -159,7 +162,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

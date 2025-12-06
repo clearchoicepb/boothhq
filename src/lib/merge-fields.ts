@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
+
 /**
  * Replaces merge fields in templates with actual data
  * Merge fields format: {{field_name}}
@@ -92,8 +96,8 @@ interface MergeFieldData {
 }
 
 export function replaceMergeFields(template: string, data: MergeFieldData): string {
-  console.log('[replaceMergeFields] Template:', template)
-  console.log('[replaceMergeFields] Data:', data)
+  log.debug('Template:', template)
+  log.debug('Data:', data)
 
   let result = template
 
@@ -146,11 +150,11 @@ export function replaceMergeFields(template: string, data: MergeFieldData): stri
 
     // Replace all occurrences of {{field_name}}
     const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g')
-    console.log('[replaceMergeFields] Replacing', regex, 'with', formattedValue)
+    log.debug('Replacing', regex, 'with', formattedValue)
     result = result.replace(regex, formattedValue)
   })
 
-  console.log('[replaceMergeFields] Result:', result)
+  log.debug('Result:', result)
   return result
 }
 
@@ -167,16 +171,16 @@ export async function getMergeFieldData(params: {
 }): Promise<MergeFieldData> {
   const data: MergeFieldData = {}
 
-  console.log('[getMergeFieldData] Params:', params)
+  log.debug('Params:', params)
 
   try {
     // Fetch event data (agreements are linked to events)
     if (params.eventId) {
       const response = await fetch(`/api/events/${params.eventId}`)
-      console.log('[getMergeFieldData] Event response:', response.ok)
+      log.debug('Event response:', response.ok)
       if (response.ok) {
         const event = await response.json()
-        console.log('[getMergeFieldData] Event data:', event)
+        log.debug('Event data:', event)
 
         // Event basic info
         data.event_title = event.title
@@ -280,7 +284,7 @@ export async function getMergeFieldData(params: {
             }
           }
         } catch (err) {
-          console.error('Error fetching event invoices:', err)
+          log.error({ err }, 'Error fetching event invoices')
           data.event_total_amount = null
         }
       }
@@ -289,10 +293,10 @@ export async function getMergeFieldData(params: {
     // Fetch opportunity data
     if (params.opportunityId) {
       const response = await fetch(`/api/opportunities/${params.opportunityId}`)
-      console.log('[getMergeFieldData] Opportunity response:', response.ok)
+      log.debug('Opportunity response:', response.ok)
       if (response.ok) {
         const opportunity = await response.json()
-        console.log('[getMergeFieldData] Opportunity data:', opportunity)
+        log.debug('Opportunity data:', opportunity)
         data.opportunity_name = opportunity.name
         data.opportunity_amount = opportunity.amount
         
@@ -305,10 +309,10 @@ export async function getMergeFieldData(params: {
     // Fetch account data
     if (params.accountId) {
       const response = await fetch(`/api/accounts/${params.accountId}`)
-      console.log('[getMergeFieldData] Account response:', response.ok)
+      log.debug('Account response:', response.ok)
       if (response.ok) {
         const account = await response.json()
-        console.log('[getMergeFieldData] Account data:', account)
+        log.debug('Account data:', account)
         data.account_name = account.name
         data.account_phone = account.phone
         data.account_email = account.email
@@ -331,10 +335,10 @@ export async function getMergeFieldData(params: {
     // Fetch contact data
     if (params.contactId) {
       const response = await fetch(`/api/contacts/${params.contactId}`)
-      console.log('[getMergeFieldData] Contact response:', response.ok)
+      log.debug('Contact response:', response.ok)
       if (response.ok) {
         const contact = await response.json()
-        console.log('[getMergeFieldData] Contact data:', contact)
+        log.debug('Contact data:', contact)
         data.contact_first_name = contact.first_name
         data.contact_last_name = contact.last_name
         data.contact_full_name = `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
@@ -352,10 +356,10 @@ export async function getMergeFieldData(params: {
     // Fetch lead data
     if (params.leadId) {
       const response = await fetch(`/api/leads/${params.leadId}`)
-      console.log('[getMergeFieldData] Lead response:', response.ok)
+      log.debug('Lead response:', response.ok)
       if (response.ok) {
         const lead = await response.json()
-        console.log('[getMergeFieldData] Lead data:', lead)
+        log.debug('Lead data:', lead)
         data.lead_first_name = lead.first_name
         data.lead_last_name = lead.last_name
         data.lead_full_name = `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
@@ -375,10 +379,10 @@ export async function getMergeFieldData(params: {
     // Fetch invoice data
     if (params.invoiceId) {
       const response = await fetch(`/api/invoices/${params.invoiceId}`)
-      console.log('[getMergeFieldData] Invoice response:', response.ok)
+      log.debug('Invoice response:', response.ok)
       if (response.ok) {
         const invoice = await response.json()
-        console.log('[getMergeFieldData] Invoice data:', invoice)
+        log.debug('Invoice data:', invoice)
         
         data.invoice_number = invoice.invoice_number || invoice.id
         data.invoice_total = invoice.total_amount
@@ -403,9 +407,9 @@ export async function getMergeFieldData(params: {
       }
     }
   } catch (error) {
-    console.error('Error fetching merge field data:', error)
+    log.error({ error }, 'Error fetching merge field data')
   }
 
-  console.log('[getMergeFieldData] Final data:', data)
+  log.debug('Final data:', data)
   return data
 }

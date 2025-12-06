@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { opportunitiesService, eventsService, contactsService, accountsService } from '@/lib/api'
 import { useQuery } from '@tanstack/react-query'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('test-services')
 
 export default function TestServicesPage() {
   const [output, setOutput] = useState<any>(null)
@@ -28,7 +31,7 @@ export default function TestServicesPage() {
     } catch (err: any) {
       setError(err.message)
       setOutput({ testName, success: false, error: err.message })
-      console.error(`❌ ${testName} Error:`, err)
+      log.error({ err }, '❌ ${testName} Error')
     } finally {
       setLoading(false)
     }

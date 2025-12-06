@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Plus as PlusIcon, Edit2, Trash2, ChevronLeft } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('add-ons')
 
 interface AddOn {
   id: string
@@ -50,7 +53,7 @@ export default function AddOnsPage() {
         setAddOns(data)
       }
     } catch (error) {
-      console.error('Error fetching add-ons:', error)
+      log.error({ error }, 'Error fetching add-ons')
     } finally {
       setLoading(false)
     }
@@ -82,7 +85,7 @@ export default function AddOnsPage() {
         resetForm()
       }
     } catch (error) {
-      console.error('Error saving add-on:', error)
+      log.error({ error }, 'Error saving add-on')
     }
   }
 
@@ -113,7 +116,7 @@ export default function AddOnsPage() {
         fetchAddOns()
       }
     } catch (error) {
-      console.error('Error deleting add-on:', error)
+      log.error({ error }, 'Error deleting add-on')
     }
   }
 

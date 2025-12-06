@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { MaintenanceAutomation } from '@/lib/automation/maintenanceAutomation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:automation')
 
 /**
  * POST - Run maintenance automation
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
   } catch (error: any) {
-    console.error('Error in maintenance automation:', error)
+    log.error({ error }, 'Error in maintenance automation')
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
       last_check: new Date().toISOString()
     })
   } catch (error: any) {
-    console.error('Error getting automation status:', error)
+    log.error({ error }, 'Error getting automation status')
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 // This endpoint checks for invoices that are past due and updates their status
 export async function POST(request: NextRequest) {
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest) {
       .in('status', ['no_payments_received', 'partially_paid'])
 
     if (fetchError) {
-      console.error('Error fetching overdue invoices:', fetchError)
+      log.error({ fetchError }, 'Error fetching overdue invoices')
       return NextResponse.json(
         { error: 'Failed to fetch overdue invoices' },
         { status: 500 }
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
 
     if (updateError) {
-      console.error('Error updating overdue invoices:', updateError)
+      log.error({ updateError }, 'Error updating overdue invoices')
       return NextResponse.json(
         { error: 'Failed to update overdue invoices' },
         { status: 500 }
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error in check-overdue:', error)
+    log.error({ error }, 'Error in check-overdue')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -96,7 +99,7 @@ export async function GET(request: NextRequest) {
       .in('status', ['no_payments_received', 'partially_paid'])
 
     if (fetchError) {
-      console.error('Error fetching overdue invoices:', fetchError)
+      log.error({ fetchError }, 'Error fetching overdue invoices')
       return NextResponse.json(
         { error: 'Failed to fetch overdue invoices' },
         { status: 500 }
@@ -109,7 +112,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error in check-overdue GET:', error)
+    log.error({ error }, 'Error in check-overdue GET')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

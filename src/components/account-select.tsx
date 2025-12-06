@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-select'
 import { AccountForm } from '@/components/account-form'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Account {
   id: string
@@ -50,7 +53,7 @@ export function AccountSelect({
           setAccounts(data)
         }
       } catch (error) {
-        console.error('Error fetching accounts:', error)
+        log.error({ error }, 'Error fetching accounts')
       } finally {
         setLoading(false)
       }

@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Paperclip, Download, Trash2, FileText, CheckCircle, Clock, Eye } from 'lucide-react'
 import { ContractManagerModal } from '@/components/contracts/ContractManagerModal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface FileAttachment {
   id: string
@@ -39,7 +42,7 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null)
 
   const fetchFiles = async () => {
-    console.log('[EventFilesList] Fetching files for event:', eventId)
+    log.debug('Fetching files for event:', eventId)
     
     try {
       setLoading(true)
@@ -51,30 +54,30 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
       })
 
       const url = `/api/attachments?${params}`
-      console.log('[EventFilesList] Fetching from:', url)
+      log.debug('Fetching from:', url)
 
       const response = await fetch(url)
 
-      console.log('[EventFilesList] Response status:', response.status)
-      console.log('[EventFilesList] Response ok:', response.ok)
+      log.debug('Response status:', response.status)
+      log.debug('Response ok:', response.ok)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[EventFilesList] Error response:', errorText)
+        log.error({ errorText }, '[EventFilesList] Error response')
         throw new Error('Failed to fetch files')
       }
 
       const data = await response.json()
-      console.log('[EventFilesList] Files received:', data)
-      console.log('[EventFilesList] Number of files:', data?.length || 0)
+      log.debug('Files received:', data)
+      log.debug('Number of files:', data?.length || 0)
       
       // Log contract files specifically
       const contractFiles = data?.filter((f: any) => f.metadata?.is_contract)
-      console.log('[EventFilesList] Contract files:', contractFiles)
+      log.debug('Contract files:', contractFiles)
       
       setFiles(data)
     } catch (err) {
-      console.error('[EventFilesList] Error fetching files:', err)
+      log.error({ err }, '[EventFilesList] Error fetching files')
       setError(err instanceof Error ? err.message : 'Failed to load files')
     } finally {
       setLoading(false)
@@ -96,23 +99,23 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
   }
 
   const handleDownload = async (fileId: string, fileName: string) => {
-    console.log('[EventFilesList] Downloading file:', fileId, fileName)
+    log.debug('Downloading file:', fileId, fileName)
     
     try {
       const response = await fetch(`/api/attachments/${fileId}`)
 
-      console.log('[EventFilesList] Download response:', response.status)
+      log.debug('Download response:', response.status)
 
       if (!response.ok) {
         throw new Error('Failed to get download URL')
       }
 
       const data = await response.json()
-      console.log('[EventFilesList] Download URL:', data.download_url)
+      log.debug('Download URL:', data.download_url)
       
       window.open(data.download_url, '_blank')
     } catch (err) {
-      console.error('[EventFilesList] Download error:', err)
+      log.error({ err }, '[EventFilesList] Download error')
       alert(err instanceof Error ? err.message : 'Failed to download file')
     }
   }

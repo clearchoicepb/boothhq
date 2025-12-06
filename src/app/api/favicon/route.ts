@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { fetchFavicon, getFallbackFavicon } from '@/lib/favicon-fetcher'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:favicon')
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
     }, { status: 404 })
 
   } catch (error) {
-    console.error('Error in favicon API:', error)
+    log.error({ error }, 'Error in favicon API')
     return NextResponse.json({ 
       error: 'Internal server error' 
     }, { status: 500 })

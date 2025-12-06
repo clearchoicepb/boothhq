@@ -14,6 +14,9 @@ import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-r
 import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
 import { toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Account {
   id: string
@@ -172,7 +175,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           setOpportunities(opportunitiesData)
         }
       } catch (error) {
-        console.error('Error fetching data:', error)
+        log.error({ error }, 'Error fetching data')
       }
     }
     
@@ -196,7 +199,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           setContacts(contactsData)
         }
       } catch (error) {
-        console.error('Error fetching contacts for account:', error)
+        log.error({ error }, 'Error fetching contacts for account')
       }
     }
 
@@ -348,7 +351,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
             const diffMs = currDate.getTime() - prevDate.getTime()
             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
             
-            console.log(`Gap check: ${sortedDates[i-1].original} to ${sortedDates[i].original} = ${diffDays} days`)
+            log.debug('Gap check: ${sortedDates[i-1].original} to ${sortedDates[i].original} = ${diffDays} days')
             
             if (diffDays !== 1) {
               const prevDateStr = prevDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -432,7 +435,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
 
       onSave(eventData)
     } catch (error) {
-      console.error('Error creating event:', error)
+      log.error({ error }, 'Error creating event')
       toast.error('Failed to save event. Please try again.')
     } finally {
       setIsSubmitting(false)

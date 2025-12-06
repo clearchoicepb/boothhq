@@ -1,8 +1,11 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:locations')
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== LOCATION GET API START ===')
+    log.debug('=== LOCATION GET API START ===')
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
@@ -14,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Get tenant connection info for debugging
     const { dataSourceManager } = await import('@/lib/data-sources')
     const connectionInfo = await dataSourceManager.getTenantConnectionInfo(dataSourceTenantId)
-    console.log('[Locations API GET] Database connection info:', {
+    log.debug('Database connection info:', {
       url: connectionInfo.url,
       region: connectionInfo.region,
       isCached: connectionInfo.isCached
@@ -47,8 +50,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch locations' }, { status: 500 })
     }
 
-    console.log('[Locations API GET] Successfully fetched', data?.length || 0, 'locations')
-    console.log('=== LOCATION GET API END (SUCCESS) ===')
+    log.debug('Successfully fetched', data?.length || 0, 'locations')
+    log.debug('=== LOCATION GET API END (SUCCESS) ===')
 
     const response = NextResponse.json(data)
 
@@ -61,52 +64,52 @@ export async function GET(request: NextRequest) {
       message: error.message,
       stack: error.stack
     })
-    console.log('=== LOCATION GET API END (ERROR) ===')
+    log.debug('=== LOCATION GET API END (ERROR) ===')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== LOCATION CREATE API START ===')
+    log.debug('=== LOCATION CREATE API START ===')
 
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
-    console.log('[Locations API] Session user:', session?.user ? {
+    log.debug('Session user:', session?.user ? {
       id: session.user.id,
       email: session.user.email,
       tenantId: dataSourceTenantId
     } : 'No session')
 
     if (!session?.user) {
-      console.error('[Locations API] Unauthorized - no session')
+      log.error('[Locations API] Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    console.log('[Locations API] Request body:', JSON.stringify(body, null, 2))
+    log.debug('Request body:', JSON.stringify(body, null, 2))
 
-    console.log('[Locations API] Getting tenant database client for tenant:', dataSourceTenantId)
+    log.debug('Getting tenant database client for tenant:', dataSourceTenantId)
 
     // Get tenant connection info for debugging
     const { dataSourceManager } = await import('@/lib/data-sources')
     const connectionInfo = await dataSourceManager.getTenantConnectionInfo(dataSourceTenantId)
-    console.log('[Locations API] Database connection info:', {
+    log.debug('Database connection info:', {
       url: connectionInfo.url,
       region: connectionInfo.region,
       isCached: connectionInfo.isCached
     })
 
-    console.log('[Locations API] Tenant database client created successfully')
+    log.debug('Tenant database client created successfully')
 
     const locationData = {
       ...body,
       tenant_id: dataSourceTenantId
     }
-    console.log('[Locations API] Inserting location data:', JSON.stringify(locationData, null, 2))
-    console.log('[Locations API] About to execute INSERT query on locations table...')
+    log.debug('Inserting location data:', JSON.stringify(locationData, null, 2))
+    log.debug('About to execute INSERT query on locations table...')
 
     const insertResult = await supabase
       .from('locations')
@@ -114,8 +117,8 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    console.log('[Locations API] INSERT query completed')
-    console.log('[Locations API] Insert result:', {
+    log.debug('INSERT query completed')
+    log.debug('Insert result:', {
       hasData: !!insertResult.data,
       hasError: !!insertResult.error,
       dataId: insertResult.data?.id,
@@ -137,14 +140,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!insertResult.data) {
-      console.error('[Locations API] INSERT succeeded but returned no data!')
+      log.error('[Locations API] INSERT succeeded but returned no data!')
       return NextResponse.json({
         error: 'Location created but no data returned',
         details: 'The database insert succeeded but did not return the created record'
       }, { status: 500 })
     }
 
-    console.log('[Locations API] Location created successfully:', {
+    log.debug('Location created successfully:', {
       id: insertResult.data.id,
       name: insertResult.data.name,
       tenant_id: insertResult.data.tenant_id,
@@ -152,8 +155,8 @@ export async function POST(request: NextRequest) {
       city: insertResult.data.city,
       state: insertResult.data.state
     })
-    console.log('[Locations API] Returning success response with data')
-    console.log('=== LOCATION CREATE API END (SUCCESS) ===')
+    log.debug('Returning success response with data')
+    log.debug('=== LOCATION CREATE API END (SUCCESS) ===')
 
     return NextResponse.json(insertResult.data)
   } catch (error: any) {
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
       message: error.message,
       stack: error.stack
     })
-    console.log('=== LOCATION CREATE API END (ERROR) ===')
+    log.debug('=== LOCATION CREATE API END (ERROR) ===')
     return NextResponse.json({
       error: 'Internal server error',
       details: error.message

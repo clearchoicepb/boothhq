@@ -11,6 +11,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { Modal } from '@/components/ui/modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('agreements')
 
 interface Agreement {
   id: string
@@ -69,7 +72,7 @@ export default function AgreementsPage() {
       const data = await response.json()
       setAgreements(data)
     } catch (error) {
-      console.error('Error fetching agreements:', error)
+      log.error({ error }, 'Error fetching agreements')
     } finally {
       setLoading(false)
     }
@@ -125,7 +128,7 @@ export default function AgreementsPage() {
       // Show success message
       alert('Agreement deleted successfully')
     } catch (error) {
-      console.error('Error deleting agreement:', error)
+      log.error({ error }, 'Error deleting agreement')
       alert(error instanceof Error ? error.message : 'Failed to delete agreement')
     } finally {
       setDeleting(false)

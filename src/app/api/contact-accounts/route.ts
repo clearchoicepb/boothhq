@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contact-accounts')
 /**
  * POST - Add contact to account (create relationship)
  */
@@ -48,13 +51,13 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (error) {
-      console.error('Error creating contact-account relationship:', error)
+      log.error({ error }, 'Error creating contact-account relationship')
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -83,13 +86,13 @@ export async function DELETE(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
     
     if (error) {
-      console.error('Error deleting contact-account relationship:', error)
+      log.error({ error }, 'Error deleting contact-account relationship')
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -152,13 +155,13 @@ export async function PATCH(request: NextRequest) {
       .single()
     
     if (error) {
-      console.error('Error updating contact-account relationship:', error)
+      log.error({ error }, 'Error updating contact-account relationship')
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

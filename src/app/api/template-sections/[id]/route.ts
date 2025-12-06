@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:template-sections')
 
 // PUT - Update section
 export async function PUT(
@@ -60,7 +63,7 @@ export async function PUT(
           { status: 404 }
         )
       }
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to update section' },
         { status: 500 }
@@ -69,7 +72,7 @@ export async function PUT(
 
     return NextResponse.json({ section: data })
   } catch (error) {
-    console.error('Error updating section:', error)
+    log.error({ error }, 'Error updating section')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -103,7 +106,7 @@ export async function DELETE(
       .eq('is_system', false) // Can only delete custom sections
 
     if (error) {
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to delete section' },
         { status: 500 }
@@ -112,7 +115,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting section:', error)
+    log.error({ error }, 'Error deleting section')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 interface CreateDesignItemParams {
   eventId: string
@@ -29,7 +32,7 @@ export async function createDesignItemForEvent({
     .single()
 
   if (typeError || !designType) {
-    console.error('Design type not found:', typeError)
+    log.error({ typeError }, 'Design type not found')
     return null
   }
 
@@ -62,7 +65,7 @@ export async function createDesignItemForEvent({
     .single()
 
   if (existingItem) {
-    console.log('Design item already exists for this event and type')
+    log.debug('Design item already exists for this event and type')
     return existingItem
   }
 
@@ -86,7 +89,7 @@ export async function createDesignItemForEvent({
     .single()
 
   if (itemError) {
-    console.error('Error creating design item:', itemError)
+    log.error({ itemError }, 'Error creating design item')
     return null
   }
 
@@ -98,7 +101,7 @@ export async function createDesignItemForEvent({
 
   if (tasksTableError && tasksTableError.code === '42P01') {
     // Tasks table doesn't exist yet, skip task creation
-    console.log('Tasks table does not exist, skipping task creation')
+    log.debug('Tasks table does not exist, skipping task creation')
     return designItem
   }
 
@@ -123,7 +126,7 @@ export async function createDesignItemForEvent({
     .single()
 
   if (taskError) {
-    console.error('Error creating task:', taskError)
+    log.error({ taskError }, 'Error creating task')
   } else {
     // Link task to design item
     await supabase
@@ -152,11 +155,11 @@ export async function createAutoDesignItems(
     .eq('is_active', true)
 
   if (error || !autoTypes || autoTypes.length === 0) {
-    console.log('No auto-added design types found')
+    log.debug('No auto-added design types found')
     return []
   }
 
-  console.log(`Creating ${autoTypes.length} auto-added design items for event ${eventId}`)
+  log.debug('Creating ${autoTypes.length} auto-added design items for event ${eventId}')
 
   // Create design item for each auto type
   const results = []
@@ -196,13 +199,13 @@ export async function createDesignItemsForProduct({
     .single()
 
   if (productError || !product) {
-    console.error('Product not found:', productError)
+    log.error({ productError }, 'Product not found')
     return null
   }
 
   // Check if product requires design
   if (!product.requires_design || !product.design_item_type_id) {
-    console.log('Product does not require design')
+    log.debug('Product does not require design')
     return null
   }
 

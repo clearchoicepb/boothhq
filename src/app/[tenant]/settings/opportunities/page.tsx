@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ColorPicker } from '@/components/ui/color-picker';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('opportunities')
 
 export default function OpportunitiesSettingsPage() {
   const { tenant: tenantSubdomain } = useParams();
@@ -169,7 +172,7 @@ export default function OpportunitiesSettingsPage() {
       const stageName = settings.stages.find((s: any) => s.id === stageId)?.name || stageId;
       toast.success(`"${stageName}" stage deleted`);
     } catch (error) {
-      console.error('Error checking stage usage:', error);
+      log.error({ error }, 'Error checking stage usage');
       toast.error('Failed to check if stage is in use');
     }
   };
@@ -243,7 +246,7 @@ export default function OpportunitiesSettingsPage() {
         toast.success('Settings saved successfully!', { id: toastId });
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error({ error }, 'Error saving settings');
       toast.error('Error saving settings. Please try again.', { id: toastId });
     } finally {
       setSaving(false);

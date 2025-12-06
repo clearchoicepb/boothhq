@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 export async function GET(
   request: NextRequest,
@@ -21,7 +24,7 @@ export async function GET(
       .order('sort_order', { ascending: true })
 
     if (error) {
-      console.error('Error fetching invoice line items:', error)
+      log.error({ error }, 'Error fetching invoice line items')
       return NextResponse.json({ error: 'Failed to fetch line items' }, { status: 500 })
     }
 
@@ -37,7 +40,7 @@ export async function GET(
     response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -78,7 +81,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('Error creating line item:', error)
+      log.error({ error }, 'Error creating line item')
       return NextResponse.json({ error: 'Failed to create line item' }, { status: 500 })
     }
 
@@ -96,7 +99,7 @@ export async function POST(
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
