@@ -16,13 +16,7 @@
 import { Building2, Calendar, User } from 'lucide-react'
 import { EventStatusBadge } from '../../event-status-badge'
 import { formatDate } from '@/lib/utils/date-utils'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-}
+import type { EventDate } from '@/types/events'
 
 interface Event {
   id: string

@@ -16,15 +16,7 @@ import { ClientAccountSection } from '../overview/ClientAccountSection'
 import { KeyMetricsCards } from '../overview/KeyMetricsCards'
 import { EventDetailsPanel } from '../overview/EventDetailsPanel'
 import { OpportunitySidebar } from '../overview/OpportunitySidebar'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  notes: string | null
-}
+import type { EventDate } from '@/types/events'
 
 interface Lead {
   id: string

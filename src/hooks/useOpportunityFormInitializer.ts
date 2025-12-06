@@ -4,15 +4,7 @@
  */
 
 import { useEffect } from 'react'
-
-interface EventDate {
-  id?: string
-  event_date: string
-  start_time: string
-  end_time: string
-  location_id?: string
-  notes?: string
-}
+import type { EventDate } from '@/types/events'
 
 interface UseOpportunityFormInitializerProps {
   opportunity?: any

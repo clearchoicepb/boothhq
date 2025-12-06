@@ -10,6 +10,7 @@ import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-r
 import { useOpportunityForm } from '@/hooks/useOpportunityForm'
 import { useAccountContactSelector } from '@/hooks/useAccountContactSelector'
 import { useOpportunityFormInitializer } from '@/hooks/useOpportunityFormInitializer'
+import type { EventDate } from '@/types/events'
 
 interface Customer {
   id: string
@@ -27,16 +28,6 @@ interface Contact {
   email?: string
   phone?: string
   account_id: string
-}
-
-
-interface EventDate {
-  id?: string
-  event_date: string
-  start_time: string
-  end_time: string
-  location_id?: string
-  notes?: string
 }
 
 interface OpportunityFormEnhancedProps {

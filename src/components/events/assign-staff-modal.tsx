@@ -3,6 +3,7 @@
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
+import type { EventDate } from '@/types/events'
 
 interface StaffRole {
   id: string
@@ -15,14 +16,6 @@ interface User {
   first_name: string
   last_name: string
   email?: string
-}
-
-interface EventDate {
-  id: string
-  event_date: string
-  setup_time?: string
-  start_time?: string
-  end_time?: string
 }
 
 interface DateTimeSelection {

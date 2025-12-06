@@ -4,15 +4,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { EventDate } from '@/types/events'
 
-export interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  notes: string | null
-}
+export type { EventDate }
 
 export interface Opportunity {
   id: string

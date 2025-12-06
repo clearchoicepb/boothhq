@@ -8,15 +8,7 @@
 import { useState } from 'react'
 import { Calendar } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date-utils'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  notes: string | null
-}
+import type { EventDate } from '@/types/events'
 
 interface EventDetailsPanelProps {
   eventDates: EventDate[]

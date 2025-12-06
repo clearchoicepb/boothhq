@@ -4,17 +4,13 @@ import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
+import type { EventDate } from '@/types/events'
 
 interface User {
   id: string
   first_name: string
   last_name: string
   email: string
-}
-
-interface EventDate {
-  id: string
-  event_date: string
 }
 
 interface CreateTaskModalProps {

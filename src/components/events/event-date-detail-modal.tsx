@@ -3,14 +3,7 @@ import { Calendar, Clock, MapPin, User, Edit, X, CheckCircle } from "lucide-reac
 import { EventStatusBadge } from "./event-status-badge"
 import { formatDate, formatTime, toDateInputValue } from "@/lib/utils/date-utils"
 import { Modal } from "@/components/ui/modal"
-
-type EventLocation = {
-  id: string
-  name: string
-  address_line1?: string | null
-  city?: string | null
-  state?: string | null
-}
+import type { EventDate, EventDateLocation, EditableEventDate } from '@/types/events'
 
 type EventStaffAssignment = {
   id: string
@@ -23,35 +16,12 @@ type EventStaffAssignment = {
   }
 }
 
-type EventDate = {
-  id: string
-  event_date: string
-  status: string
-  setup_time?: string | null
-  start_time?: string | null
-  end_time?: string | null
-  notes?: string | null
-  locations?: EventLocation | null
-  created_at?: string | null
-  updated_at?: string | null
-}
-
-type EditableEventDate = {
-  event_date?: string
-  status?: string
-  setup_time?: string
-  start_time?: string
-  end_time?: string
-  notes?: string
-  location_id?: string
-}
-
 interface EventDateDetailModalProps {
   eventDate: EventDate | null
   isOpen: boolean
   isEditing: boolean
   editEventDateData: EditableEventDate
-  locations: EventLocation[]
+  locations: EventDateLocation[]
   staffAssignments: EventStaffAssignment[]
   onClose: () => void
   onStartEdit: () => void

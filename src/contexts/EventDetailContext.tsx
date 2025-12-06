@@ -6,6 +6,7 @@
  */
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
+import type { EventDate } from '@/types/events'
 
 // ============================================================================
 // Types
@@ -23,16 +24,6 @@ interface Event {
   event_planner_id?: string
   payment_status?: string
   location?: string
-  [key: string]: any
-}
-
-interface EventDate {
-  id: string
-  event_id: string
-  event_date: string
-  start_time?: string
-  end_time?: string
-  location_id?: string
   [key: string]: any
 }
 

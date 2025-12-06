@@ -17,16 +17,7 @@ import { EventDatesCard } from '../../event-dates-card'
 import { EventDescriptionCard } from '../../event-description-card'
 import { EventTypeBadge } from '../../event-type-badge'
 import { NotesSection } from '@/components/notes-section'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  notes: string | null
-  status: string
-}
+import type { EventDate } from '@/types/events'
 
 interface EventCategory {
   id: string
