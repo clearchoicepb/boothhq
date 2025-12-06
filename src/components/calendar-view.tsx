@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, Building2 } from 'lucide-react'
 import Link from 'next/link'
+import { formatTime } from '@/lib/utils/date-utils'
 
 interface CalendarEvent {
   id: string
@@ -249,8 +250,8 @@ export function EventDetailModal({ event, isOpen, onClose, tenantSubdomain }: Ev
         {event.start_time && (
           <div className="flex items-center text-sm text-gray-600">
             <Clock className="h-4 w-4 mr-2" />
-            {event.start_time}
-            {event.end_time && ` - ${event.end_time}`}
+            {formatTime(event.start_time)}
+            {event.end_time && ` - ${formatTime(event.end_time)}`}
           </div>
         )}
 

@@ -17,58 +17,7 @@ import { EventDatesCard } from '../../event-dates-card'
 import { EventDescriptionCard } from '../../event-description-card'
 import { EventTypeBadge } from '../../event-type-badge'
 import { NotesSection } from '@/components/notes-section'
-import type { EventDate } from '@/types/events'
-
-interface EventCategory {
-  id: string
-  name: string
-  slug: string
-  color: string
-  icon?: string
-}
-
-interface EventType {
-  id: string
-  name: string
-  slug: string
-  color?: string
-  icon?: string
-}
-
-interface Event {
-  id: string
-  title: string
-  description: string | null
-  status: string
-  payment_status: string | null
-  event_value: string | null
-  start_date: string
-  end_date: string | null
-  event_category: EventCategory | null
-  event_type: EventType | null
-  location: string | null
-  date_type: string | null
-  guest_count: number | null
-  account_id: string | null
-  account_name: string | null
-  contact_id: string | null
-  contact_name: string | null
-  primary_contact_id: string | null
-  primary_contact?: any
-  event_planner_id?: string | null
-  event_planner?: any
-  opportunity_id?: string | null
-  opportunity_name?: string | null
-  mailing_address_line1?: string | null
-  mailing_address_line2?: string | null
-  mailing_city?: string | null
-  mailing_state?: string | null
-  mailing_postal_code?: string | null
-  mailing_country?: string | null
-  event_dates?: EventDate[]
-  created_at: string
-  updated_at: string
-}
+import type { Event, EventDate } from '@/types/events'
 
 interface PaymentStatusOption {
   id: string

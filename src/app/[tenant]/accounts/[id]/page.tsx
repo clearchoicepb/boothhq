@@ -61,21 +61,14 @@ interface ContactWithRole extends Contact {
   junction_id?: string
 }
 
+import type { AccountEvent } from '@/types/events'
+
 interface Opportunity {
   id: string
   name: string
   stage: string
   amount: number | null
   expected_close_date: string | null
-}
-
-interface Event {
-  id: string
-  name: string
-  event_type: string
-  event_date: string
-  status: string
-  total_cost: number | null
 }
 
 interface Invoice {

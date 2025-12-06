@@ -1,42 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { EventDate } from '@/types/events'
-
-interface TaskCompletion {
-  event_id: string
-  core_task_template_id: string
-  is_completed: boolean
-  completed_at: string | null
-  completed_by: string | null
-}
-
-interface Event {
-  id: string
-  title: string
-  event_type: string
-  start_date: string
-  end_date: string | null
-  date_type: string | null
-  status: string
-  location: string | null
-  account_name: string | null
-  contact_name: string | null
-  event_dates?: EventDate[]
-  created_at: string
-  core_tasks_ready?: boolean
-  task_completions?: TaskCompletion[]
-  event_categories?: {
-    id: string
-    name: string
-    slug: string
-    color: string
-    icon: string | null
-  }
-  event_types?: {
-    id: string
-    name: string
-    slug: string
-  }
-}
+import type { Event } from '@/types/events'
 
 async function fetchEvents(): Promise<Event[]> {
   const response = await fetch('/api/events?status=all&type=all')

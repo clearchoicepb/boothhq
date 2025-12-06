@@ -2,25 +2,7 @@
 
 import { Calendar, MapPin, Building2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
-
-interface Event {
-  id: string
-  title: string
-  start_date: string
-  location: string | null
-  account_name: string | null
-  status: string
-  event_dates?: any[]
-  event_categories?: {
-    id: string
-    name: string
-    color: string
-  }
-  event_types?: {
-    id: string
-    name: string
-  }
-}
+import type { Event } from '@/types/events'
 
 interface EventTimelineCardProps {
   event: Event

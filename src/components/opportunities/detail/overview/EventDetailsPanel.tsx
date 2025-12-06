@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { Calendar } from 'lucide-react'
-import { formatDate } from '@/lib/utils/date-utils'
+import { formatDate, formatTime } from '@/lib/utils/date-utils'
 import type { EventDate } from '@/types/events'
 
 interface EventDetailsPanelProps {
@@ -83,8 +83,8 @@ export function EventDetailsPanel({ eventDates, locations }: EventDetailsPanelPr
               <label className="block text-xs font-medium text-gray-500 mb-1">Time</label>
               <p className="text-sm text-gray-900">
                 {eventDate.start_time && eventDate.end_time
-                  ? `${eventDate.start_time} - ${eventDate.end_time}`
-                  : eventDate.start_time || '-'}
+                  ? `${formatTime(eventDate.start_time)} - ${formatTime(eventDate.end_time)}`
+                  : formatTime(eventDate.start_time) || '-'}
               </p>
             </div>
             <div className="col-span-2">

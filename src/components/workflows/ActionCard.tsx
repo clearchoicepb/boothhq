@@ -135,13 +135,28 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
 
         // Filter users by department
         const allUsers = Array.isArray(usersData) ? usersData : []
+
+        // Helper to get user's departments (checks array first, falls back to legacy singular)
+        const getUserDepartments = (user: any): string[] => {
+          if (user.departments && Array.isArray(user.departments) && user.departments.length > 0) {
+            return user.departments
+          }
+          return user.department ? [user.department] : []
+        }
+
         // Filter designers (users with 'design' department)
-        setDesigners(allUsers.filter(u => u.department?.toLowerCase().includes('design')))
+        setDesigners(allUsers.filter(u => {
+          const depts = getUserDepartments(u)
+          return depts.some(d => d.toLowerCase().includes('design'))
+        }))
         // Filter operations team (users with 'operations' or 'ops' department)
-        setOpsTeam(allUsers.filter(u =>
-          u.department?.toLowerCase().includes('operations') ||
-          u.department?.toLowerCase().includes('ops')
-        ))
+        setOpsTeam(allUsers.filter(u => {
+          const depts = getUserDepartments(u)
+          return depts.some(d =>
+            d.toLowerCase().includes('operations') ||
+            d.toLowerCase().includes('ops')
+          )
+        }))
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -428,7 +443,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       </option>
                     ))
                   ) : (
-                    <option disabled>No designers found (assign anyone below)</option>
+                    <option disabled>No designers found</option>
                   )}
                   {/* Fallback: Show all users if no designers */}
                   {designers.length === 0 && users.length > 0 && (
@@ -526,10 +541,10 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       </option>
                     ))
                   ) : (
-                    <option disabled>No operations team members found (assign anyone below)</option>
+                    <option disabled>No operations team found</option>
                   )}
-                  {/* Always show all users as fallback option */}
-                  {users.length > 0 && (
+                  {/* Fallback: Show all users if no ops team */}
+                  {opsTeam.length === 0 && users.length > 0 && (
                     <optgroup label="All Users">
                       {users.map((user) => (
                         <option key={user.id} value={user.id}>

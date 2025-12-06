@@ -8,29 +8,10 @@
 import { useMemo, useState } from 'react'
 import { parseLocalDate, isDateToday } from '@/lib/utils/date-utils'
 import type { FilterState } from '@/components/events/event-filters'
-import type { EventDate } from '@/types/events'
+import type { Event } from '@/types/events'
 
-// Event type (minimal interface needed for filtering)
-interface FilterableEvent {
-  id: string
-  title: string
-  location: string | null
-  account_name: string | null
-  start_date: string | null
-  status: string
-  created_at: string
-  task_completions?: Array<{
-    core_task_template_id: string
-    is_completed: boolean
-  }>
-  event_staff_assignments?: Array<{
-    user_id: string
-  }>
-  // For exploded multi-date events
-  _originalEventId?: string
-  _currentEventDate?: EventDate
-  _displayId?: string
-}
+// Re-export Event as FilterableEvent for clarity (they are the same)
+export type FilterableEvent = Event
 
 // Core task template interface
 interface CoreTask {

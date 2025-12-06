@@ -74,6 +74,11 @@ export interface Database {
           last_login_at: string | null
           created_at: string
           updated_at: string
+          // Department fields
+          department: string | null // Legacy single department (deprecated)
+          department_role: string | null // member, supervisor, manager
+          departments: string[] | null // Array of department IDs
+          manager_of_departments: string[] | null // Departments where user is manager
         }
         Insert: {
           id?: string
@@ -90,6 +95,11 @@ export interface Database {
           last_login_at?: string | null
           created_at?: string
           updated_at?: string
+          // Department fields
+          department?: string | null
+          department_role?: string | null
+          departments?: string[] | null
+          manager_of_departments?: string[] | null
         }
         Update: {
           id?: string
@@ -106,6 +116,11 @@ export interface Database {
           last_login_at?: string | null
           created_at?: string
           updated_at?: string
+          // Department fields
+          department?: string | null
+          department_role?: string | null
+          departments?: string[] | null
+          manager_of_departments?: string[] | null
         }
       }
 

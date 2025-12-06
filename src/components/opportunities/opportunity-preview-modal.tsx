@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { TaskIndicator } from './task-indicator'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
+import { formatTime } from '@/lib/utils/date-utils'
 
 interface OpportunityPreviewModalProps {
   isOpen: boolean
@@ -241,7 +242,7 @@ export function OpportunityPreviewModal({
                               })()
                             : 'No date'}
                         </span>
-                        {eventDate.start_time && <span className="text-gray-500">{eventDate.start_time}</span>}
+                        {eventDate.start_time && <span className="text-gray-500">{formatTime(eventDate.start_time)}</span>}
                       </div>
                     ))}
                   </div>

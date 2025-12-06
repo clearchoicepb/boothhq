@@ -159,8 +159,14 @@ export async function POST(request: NextRequest) {
     if (!taskDepartment && entityType) {
       taskDepartment = inferDepartmentFromEntity(entityType)
     }
-    if (!taskDepartment && session.user.department) {
-      taskDepartment = session.user.department
+    // Check departments array first, then fall back to legacy singular department
+    if (!taskDepartment) {
+      const userDepartments = session.user.departments as string[] | undefined
+      if (userDepartments && Array.isArray(userDepartments) && userDepartments.length > 0) {
+        taskDepartment = userDepartments[0] // Use first department as default
+      } else if (session.user.department) {
+        taskDepartment = session.user.department as string
+      }
     }
 
     const { data: task, error: createError } = await supabase
