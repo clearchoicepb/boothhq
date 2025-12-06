@@ -4,14 +4,8 @@ import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
+import { useUsers } from '@/hooks/useUsers'
 import type { EventDate } from '@/types/events'
-
-interface User {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-}
 
 interface CreateTaskModalProps {
   isOpen: boolean
@@ -34,8 +28,7 @@ export function CreateTaskModal({
   contactId,
   onSuccess
 }: CreateTaskModalProps) {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data: users = [], isLoading: loadingUsers } = useUsers()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
@@ -48,11 +41,9 @@ export function CreateTaskModal({
     dueDate: '',
   })
 
-  // Fetch users for assignment
+  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      fetchUsers()
-      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -65,21 +56,6 @@ export function CreateTaskModal({
       setError('')
     }
   }, [isOpen])
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -193,7 +169,7 @@ export function CreateTaskModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Assign To
             </label>
-            {loading ? (
+            {loadingUsers ? (
               <div className="flex items-center justify-center py-2">
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               </div>
@@ -204,7 +180,7 @@ export function CreateTaskModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Unassigned</option>
-                {users.map((user) => (
+                {users.map((user: { id: string; first_name: string; last_name: string }) => (
                   <option key={user.id} value={user.id}>
                     {user.first_name} {user.last_name}
                   </option>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
+import { useUsers } from '@/hooks/useUsers'
 
 interface BookingModalProps {
   isOpen: boolean
@@ -17,16 +18,15 @@ export function BookingModal({ isOpen, onClose, items, dateRange }: BookingModal
   const [selectedEventId, setSelectedEventId] = useState('')
   const [eventName, setEventName] = useState('')
   const [assignToUser, setAssignToUser] = useState('')
-  const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const updateItem = useUpdateInventoryItem()
+  const { data: users = [] } = useUsers()
 
   useEffect(() => {
     if (isOpen) {
       fetchEvents()
-      fetchUsers()
     }
   }, [isOpen])
 
@@ -39,18 +39,6 @@ export function BookingModal({ isOpen, onClose, items, dateRange }: BookingModal
       }
     } catch (err) {
       console.error('Error fetching events:', err)
-    }
-  }
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data || [])
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err)
     }
   }
 
@@ -163,7 +151,7 @@ export function BookingModal({ isOpen, onClose, items, dateRange }: BookingModal
               required
             >
               <option value="">Select staff member...</option>
-              {users.map(user => (
+              {users.map((user: { id: string; first_name?: string; last_name?: string }) => (
                 <option key={user.id} value={user.id}>
                   {user.first_name} {user.last_name}
                 </option>
