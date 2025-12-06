@@ -135,13 +135,28 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
 
         // Filter users by department
         const allUsers = Array.isArray(usersData) ? usersData : []
+
+        // Helper to get user's departments (checks array first, falls back to legacy singular)
+        const getUserDepartments = (user: any): string[] => {
+          if (user.departments && Array.isArray(user.departments) && user.departments.length > 0) {
+            return user.departments
+          }
+          return user.department ? [user.department] : []
+        }
+
         // Filter designers (users with 'design' department)
-        setDesigners(allUsers.filter(u => u.department?.toLowerCase().includes('design')))
+        setDesigners(allUsers.filter(u => {
+          const depts = getUserDepartments(u)
+          return depts.some(d => d.toLowerCase().includes('design'))
+        }))
         // Filter operations team (users with 'operations' or 'ops' department)
-        setOpsTeam(allUsers.filter(u =>
-          u.department?.toLowerCase().includes('operations') ||
-          u.department?.toLowerCase().includes('ops')
-        ))
+        setOpsTeam(allUsers.filter(u => {
+          const depts = getUserDepartments(u)
+          return depts.some(d =>
+            d.toLowerCase().includes('operations') ||
+            d.toLowerCase().includes('ops')
+          )
+        }))
       }
     } catch (error) {
       console.error('Error fetching data:', error)
