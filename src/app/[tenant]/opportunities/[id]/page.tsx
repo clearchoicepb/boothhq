@@ -35,6 +35,7 @@ import { useSettings } from '@/lib/settings-context'
 import { getStageName } from '@/lib/utils/stage-utils'
 import type { EventDate } from '@/types/events'
 import { createLogger } from '@/lib/logger'
+import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const log = createLogger('id')
 
@@ -81,6 +82,9 @@ export default function OpportunityDetailPage() {
   const { data: activities = [], isLoading: activitiesLoading } = useOpportunityActivities(opportunityId)
   const { data: accounts = [] } = useAccounts()
   const { data: contacts = [] } = useContacts()
+  
+  // Confirm dialog hook for delete/convert confirmations
+  const { confirm } = useConfirmDialog()
 
   // Aggregate loading state
   const localLoading = opportunityLoading
@@ -297,13 +301,23 @@ export default function OpportunityDetailPage() {
 
         // If stage changed to closed_won, prompt to convert to event
         if (newStage === 'closed_won') {
-          const shouldConvert = confirm(
-            '🎉 Congratulations! This opportunity is now Won!\n\n' +
-            'Would you like to convert it to an event now? This will:\n' +
-            '• Create an event record\n' +
-            '• Convert any accepted quote to an invoice\n' +
-            '• Copy all event dates and details'
-          )
+          const shouldConvert = await confirm({
+            title: '🎉 Congratulations!',
+            message: (
+              <div className="space-y-2">
+                <p>This opportunity is now <strong>Won</strong>!</p>
+                <p>Would you like to convert it to an event now? This will:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Create an event record</li>
+                  <li>Convert any accepted quote to an invoice</li>
+                  <li>Copy all event dates and details</li>
+                </ul>
+              </div>
+            ),
+            confirmText: 'Convert to Event',
+            cancelText: 'Maybe Later',
+            variant: 'success'
+          })
 
           if (shouldConvert) {
             try {
@@ -493,9 +507,14 @@ export default function OpportunityDetailPage() {
   const handleConvertToEvent = async () => {
     if (!opportunity) return
 
-    if (!confirm('Convert this opportunity to an event? This will create an event record and mark the opportunity as converted.')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Convert to Event',
+      message: 'Convert this opportunity to an event? This will create an event record and mark the opportunity as converted.',
+      confirmText: 'Convert',
+      variant: 'info'
+    })
+    
+    if (!confirmed) return
 
     try {
       const response = await fetch(`/api/opportunities/${opportunityId}/convert-to-event`, {
@@ -671,7 +690,14 @@ export default function OpportunityDetailPage() {
                       </button>
                       <button
                         onClick={async () => {
-                          if (!confirm('Convert this opportunity to an event? This will create an event and convert any accepted quote to an invoice.')) return
+                          const confirmed = await confirm({
+                            title: 'Convert to Event',
+                            message: 'Convert this opportunity to an event? This will create an event and convert any accepted quote to an invoice.',
+                            confirmText: 'Convert',
+                            variant: 'success'
+                          })
+                          
+                          if (!confirmed) return
 
                           setIsActionsOpen(false)
 
@@ -726,9 +752,17 @@ export default function OpportunityDetailPage() {
                       </button>
                       <div className="border-t border-gray-100 my-1"></div>
                       <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this opportunity?')) {
-                            // Add delete logic here
+                        onClick={async () => {
+                          const confirmed = await confirm({
+                            title: 'Delete Opportunity',
+                            message: 'Are you sure you want to delete this opportunity? This action cannot be undone.',
+                            confirmText: 'Delete',
+                            variant: 'danger'
+                          })
+                          
+                          if (confirmed) {
+                            // TODO: Add delete logic here
+                            toast.error('Delete functionality not yet implemented')
                           }
                           setIsActionsOpen(false)
                         }}

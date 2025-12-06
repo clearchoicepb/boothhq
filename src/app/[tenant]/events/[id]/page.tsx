@@ -43,6 +43,7 @@ import { eventsService } from '@/lib/api/services/eventsService'
 import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 import { GenerateEventAgreementModal } from '@/components/generate-event-agreement-modal'
 import { createLogger } from '@/lib/logger'
+import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const log = createLogger('id')
 
@@ -104,6 +105,9 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
 
   // Context - Replaces useEventModals and useEventEditing hooks
   const context = useEventDetail()
+  
+  // Confirm dialog hook for delete confirmations
+  const { confirm, confirmDelete } = useConfirmDialog()
 
   // Destructure for easier access - Core Data
   const { event, eventDates = [], loading: localLoading } = eventData || {}
@@ -468,9 +472,14 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   }
 
   const handleRemoveStaff = async (staffAssignmentId: string) => {
-    if (!confirm('Are you sure you want to remove this staff assignment?')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Remove Staff Assignment',
+      message: 'Are you sure you want to remove this staff assignment?',
+      confirmText: 'Remove',
+      variant: 'danger'
+    })
+    
+    if (!confirmed) return
 
     const success = await removeStaff(staffAssignmentId)
     if (!success) {
@@ -486,9 +495,14 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
   // - useEventStaff fetches staff data on mount
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Delete Event',
+      message: 'Are you sure you want to delete this event? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger'
+    })
+    
+    if (!confirmed) return
 
     const success = await eventData.deleteEvent()
     if (success) {
