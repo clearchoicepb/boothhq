@@ -20,7 +20,7 @@ interface TabsProps {
   defaultValue?: string
   value?: string
   onValueChange?: (value: string) => void
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
 }
 
@@ -46,7 +46,7 @@ export function Tabs({
 }
 
 interface TabsListProps {
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
 }
 
@@ -65,7 +65,7 @@ export function TabsList({ children, className }: TabsListProps) {
 
 interface TabsTriggerProps {
   value: string
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
 }
 
@@ -94,7 +94,7 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
 
 interface TabsContentProps {
   value: string
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
 }
 

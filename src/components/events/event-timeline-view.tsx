@@ -4,20 +4,7 @@ import { useState } from 'react'
 import { EventTimelineCard } from './event-timeline-card'
 import { EventPreviewModal } from './event-preview-modal'
 import { getDaysUntil } from '@/lib/utils/date-utils'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time?: string
-  end_time?: string
-  location_id?: string
-  locations?: {
-    id: string
-    name: string
-  }
-  notes?: string
-  status: string
-}
+import type { EventDate } from '@/types/events'
 
 interface Event {
   id: string

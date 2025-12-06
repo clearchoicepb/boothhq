@@ -7,7 +7,7 @@ import { usePermissions } from '@/lib/permissions'
 import { Shield, Lock } from 'lucide-react'
 
 interface AccessGuardProps {
-  children: React.ReactNode
+  children?: React.ReactNode
   module: 'leads' | 'contacts' | 'accounts' | 'opportunities' | 'events' | 'invoices' | 'contracts' | 'users' | 'settings'
   action?: 'view' | 'create' | 'edit' | 'delete'
   fallback?: React.ReactNode

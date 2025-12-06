@@ -40,15 +40,7 @@ import { getOpportunityProbability, getWeightedValue } from '@/lib/opportunity-u
 import { useSettings } from '@/lib/settings-context'
 import { getStageColor, getStageName } from '@/lib/utils/stage-utils'
 import { formatDate, getDaysUntil } from '@/lib/utils/date-utils'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  notes: string | null
-}
+import type { EventDate } from '@/types/events'
 
 interface Opportunity {
   id: string

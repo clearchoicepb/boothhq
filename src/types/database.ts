@@ -588,6 +588,7 @@ export interface Database {
           event_id: string | null
           location_id: string | null
           event_date: string
+          setup_time: string | null
           start_time: string | null
           end_time: string | null
           notes: string | null
@@ -602,6 +603,7 @@ export interface Database {
           event_id?: string | null
           location_id?: string | null
           event_date: string
+          setup_time?: string | null
           start_time?: string | null
           end_time?: string | null
           notes?: string | null
@@ -616,6 +618,7 @@ export interface Database {
           event_id?: string | null
           location_id?: string | null
           event_date?: string
+          setup_time?: string | null
           start_time?: string | null
           end_time?: string | null
           notes?: string | null

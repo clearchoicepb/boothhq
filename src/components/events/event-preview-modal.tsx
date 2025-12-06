@@ -5,18 +5,7 @@ import { Calendar, MapPin, Building2, User, CheckCircle2, Clock, ExternalLink } 
 import { formatDate } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time?: string
-  end_time?: string
-  location_id?: string
-  locations?: {
-    id: string
-    name: string
-  }
-}
+import type { EventDate } from '@/types/events'
 
 interface EventPreviewModalProps {
   isOpen: boolean

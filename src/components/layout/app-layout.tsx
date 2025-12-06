@@ -8,7 +8,7 @@ import { Toaster } from 'react-hot-toast'
 import { useRouter, useParams } from 'next/navigation'
 
 interface AppLayoutProps {
-  children: React.ReactNode
+  children?: React.ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {

@@ -62,20 +62,6 @@ import { eventsService } from '@/lib/api/services/eventsService'
 import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 import { GenerateEventAgreementModal } from '@/components/generate-event-agreement-modal'
 
-interface EventDate {
-  id: string
-  event_date: string
-  start_time?: string
-  end_time?: string
-  location_id?: string
-  notes?: string
-  status?: string
-  locations?: {
-    id: string
-    name: string
-  }
-}
-
 interface EventDetailContentProps {
   eventData: ReturnType<typeof useEventData>
 }

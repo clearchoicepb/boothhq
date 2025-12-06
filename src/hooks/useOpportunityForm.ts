@@ -6,15 +6,7 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { parseLocalDate } from '@/lib/utils/date-utils'
-
-interface EventDate {
-  id?: string
-  event_date: string
-  start_time: string
-  end_time: string
-  location_id?: string
-  notes?: string
-}
+import type { EventDate } from '@/types/events'
 
 interface FormData {
   name: string

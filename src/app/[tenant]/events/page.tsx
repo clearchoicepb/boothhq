@@ -26,23 +26,7 @@ import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters } from '@/hooks/useEventsFilters'
 import { eventsService } from '@/lib/api/services/eventsService'
-
-interface EventDate {
-  id: string
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  notes: string | null
-  status: string
-  locations?: {
-    id: string
-    name: string
-    address_line1: string | null
-    city: string | null
-    state: string | null
-  }
-}
+import type { EventDate } from '@/types/events'
 
 interface TaskCompletion {
   event_id: string

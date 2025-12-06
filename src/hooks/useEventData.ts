@@ -1,6 +1,9 @@
 import { Event as EventType } from '@/lib/supabase-client'
 import { useEventDetail, useUpdateEvent, useDeleteEvent } from './useEventDetail'
 import { useEventDates } from './useEventDates'
+import type { EventDate } from '@/types/events'
+
+export type { EventDate }
 
 /**
  * Event with related data (account, contact, opportunity names, category, type, payment status)
@@ -46,23 +49,6 @@ export interface EventWithRelations extends EventType {
     start_time: string | null
     end_time: string | null
   }>
-}
-
-/**
- * Event date with location and staff information
- */
-export interface EventDate {
-  id: string
-  event_date: string
-  setup_time: string | null
-  start_time: string | null
-  end_time: string | null
-  location_id: string | null
-  location_name: string | null
-  notes: string | null
-  status: string
-  created_at?: string
-  updated_at?: string
 }
 
 /**
