@@ -36,23 +36,23 @@ export function InlineAccountSelect({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/accounts')
+        if (response.ok) {
+          const data = await response.json()
+          setAccounts(data)
+        }
+      } catch (error) {
+        console.error('Error fetching accounts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchAccounts()
   }, [])
-
-  const fetchAccounts = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/accounts')
-      if (response.ok) {
-        const data = await response.json()
-        setAccounts(data)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const options: InlineSearchableOption[] = accounts.map(account => ({
     id: account.id,

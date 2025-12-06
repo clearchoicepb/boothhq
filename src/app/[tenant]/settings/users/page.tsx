@@ -67,24 +67,24 @@ export default function UsersSettingsPage() {
 
   const tenantSubdomain = useParams().tenant as string
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      } else {
-        console.error('Failed to fetch users')
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/users')
+        if (response.ok) {
+          const data = await response.json()
+          setUsers(data)
+        } else {
+          console.error('Failed to fetch users')
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchUsers()
   }, [])
 

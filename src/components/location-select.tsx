@@ -46,24 +46,24 @@ export function LocationSelect({
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
 
   useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        setLoading(true)
+        // Bypass cache to ensure we get fresh data (especially for newly created locations)
+        const response = await fetch('/api/locations', { cache: 'no-store' })
+        if (response.ok) {
+          const data = await response.json()
+          setLocations(data)
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchLocations()
   }, [])
-
-  const fetchLocations = async () => {
-    try {
-      setLoading(true)
-      // Bypass cache to ensure we get fresh data (especially for newly created locations)
-      const response = await fetch('/api/locations', { cache: 'no-store' })
-      if (response.ok) {
-        const data = await response.json()
-        setLocations(data)
-      }
-    } catch (error) {
-      console.error('Error fetching locations:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleLocationCreated = (location: Location) => {
     console.log('[LocationSelect] Location created successfully:', location)

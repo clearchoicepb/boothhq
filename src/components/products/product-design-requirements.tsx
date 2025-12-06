@@ -31,20 +31,20 @@ export function ProductDesignRequirements({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const fetchDesignTypes = async () => {
+      try {
+        const res = await fetch('/api/design/types')
+        const data = await res.json()
+        setDesignTypes(data.types || [])
+      } catch (error) {
+        console.error('Error fetching design types:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchDesignTypes()
   }, [])
-
-  const fetchDesignTypes = async () => {
-    try {
-      const res = await fetch('/api/design/types')
-      const data = await res.json()
-      setDesignTypes(data.types || [])
-    } catch (error) {
-      console.error('Error fetching design types:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">

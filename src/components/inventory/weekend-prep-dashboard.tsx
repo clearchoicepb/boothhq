@@ -127,10 +127,6 @@ export function WeekendPrepDashboard() {
     await fetchWeekendData()
   }
 
-  useEffect(() => {
-    fetchWeekendData()
-  }, [])
-
   const fetchWeekendData = async () => {
     try {
       setLoading(true)
@@ -146,6 +142,10 @@ export function WeekendPrepDashboard() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchWeekendData()
+  }, [])
 
   const toggleEventExpanded = (eventId: string) => {
     const newExpanded = new Set(expandedEvents)

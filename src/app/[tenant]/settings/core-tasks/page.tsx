@@ -36,10 +36,6 @@ export default function CoreTasksSettingsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
   const fetchTasks = async () => {
     try {
       const response = await fetch('/api/core-task-templates');
@@ -53,6 +49,10 @@ export default function CoreTasksSettingsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
   const handleToggleActive = async (task: CoreTaskTemplate) => {
     try {

@@ -31,125 +31,125 @@ export function DashboardStats({ className = '' }: DashboardStatsProps) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setIsLoading(true)
+
+        // Fetch all data in parallel
+        const [leadsResponse, opportunitiesResponse, eventsResponse, accountsResponse, contactsResponse] = await Promise.all([
+          fetch('/api/leads'),
+          fetch('/api/opportunities?stage=all&include_converted=true'),
+          fetch('/api/events?status=all&type=all'),
+          fetch('/api/accounts?filterType=all'),
+          fetch('/api/contacts')
+        ])
+
+        const [leads, opportunities, events, accounts, contacts] = await Promise.all([
+          leadsResponse.ok ? leadsResponse.json() : [],
+          opportunitiesResponse.ok ? opportunitiesResponse.json() : [],
+          eventsResponse.ok ? eventsResponse.json() : [],
+          accountsResponse.ok ? accountsResponse.json() : [],
+          contactsResponse.ok ? contactsResponse.json() : []
+        ])
+
+        // Calculate stats
+        const totalRevenue = opportunities
+          .filter((opp: any) => opp.stage === 'closed_won')
+          .reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+
+        const closedWonOpportunities = opportunities.filter((opp: any) => opp.stage === 'closed_won')
+        const conversionRate = opportunities.length > 0 ? (closedWonOpportunities.length / opportunities.length) * 100 : 0
+        const averageDealSize = closedWonOpportunities.length > 0 ? totalRevenue / closedWonOpportunities.length : 0
+
+        // Calculate this month's data
+        const currentDate = new Date()
+        const currentMonth = currentDate.getMonth()
+        const currentYear = currentDate.getFullYear()
+
+        const leadsThisMonth = leads.filter((lead: any) => {
+          const leadDate = new Date(lead.created_at)
+          return leadDate.getMonth() === currentMonth && leadDate.getFullYear() === currentYear
+        }).length
+
+        const opportunitiesThisMonth = opportunities.filter((opp: any) => {
+          const oppDate = new Date(opp.created_at)
+          return oppDate.getMonth() === currentMonth && oppDate.getFullYear() === currentYear
+        }).length
+
+        const eventsThisMonth = events.filter((event: any) => {
+          const eventDate = new Date(event.created_at)
+          return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear
+        }).length
+
+        const revenueThisMonth = opportunities
+          .filter((opp: any) => {
+            const oppDate = new Date(opp.created_at)
+            return opp.stage === 'closed_won' &&
+                   oppDate.getMonth() === currentMonth &&
+                   oppDate.getFullYear() === currentYear
+          })
+          .reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+
+        // Calculate growth (simplified - comparing to previous month)
+        const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
+
+        const leadsPreviousMonth = leads.filter((lead: any) => {
+          const leadDate = new Date(lead.created_at)
+          return leadDate.getMonth() === previousMonth && leadDate.getFullYear() === previousYear
+        }).length
+
+        const opportunitiesPreviousMonth = opportunities.filter((opp: any) => {
+          const oppDate = new Date(opp.created_at)
+          return oppDate.getMonth() === previousMonth && oppDate.getFullYear() === previousYear
+        }).length
+
+        const eventsPreviousMonth = events.filter((event: any) => {
+          const eventDate = new Date(event.created_at)
+          return eventDate.getMonth() === previousMonth && eventDate.getFullYear() === previousYear
+        }).length
+
+        const revenuePreviousMonth = opportunities
+          .filter((opp: any) => {
+            const oppDate = new Date(opp.created_at)
+            return opp.stage === 'closed_won' &&
+                   oppDate.getMonth() === previousMonth &&
+                   oppDate.getFullYear() === previousYear
+          })
+          .reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+
+        const leadsGrowth = leadsPreviousMonth > 0 ? ((leadsThisMonth - leadsPreviousMonth) / leadsPreviousMonth) * 100 : 0
+        const opportunitiesGrowth = opportunitiesPreviousMonth > 0 ? ((opportunitiesThisMonth - opportunitiesPreviousMonth) / opportunitiesPreviousMonth) * 100 : 0
+        const eventsGrowth = eventsPreviousMonth > 0 ? ((eventsThisMonth - eventsPreviousMonth) / eventsPreviousMonth) * 100 : 0
+        const revenueGrowth = revenuePreviousMonth > 0 ? ((revenueThisMonth - revenuePreviousMonth) / revenuePreviousMonth) * 100 : 0
+
+        setStats({
+          totalLeads: leads.length,
+          totalOpportunities: opportunities.length,
+          totalEvents: events.length,
+          totalAccounts: accounts.length,
+          totalContacts: contacts.length,
+          totalRevenue,
+          conversionRate,
+          averageDealSize,
+          leadsThisMonth,
+          opportunitiesThisMonth,
+          eventsThisMonth,
+          revenueThisMonth,
+          leadsGrowth,
+          opportunitiesGrowth,
+          eventsGrowth,
+          revenueGrowth
+        })
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     fetchDashboardStats()
   }, [])
-
-  const fetchDashboardStats = async () => {
-    try {
-      setIsLoading(true)
-      
-      // Fetch all data in parallel
-      const [leadsResponse, opportunitiesResponse, eventsResponse, accountsResponse, contactsResponse] = await Promise.all([
-        fetch('/api/leads'),
-        fetch('/api/opportunities?stage=all&include_converted=true'),
-        fetch('/api/events?status=all&type=all'),
-        fetch('/api/accounts?filterType=all'),
-        fetch('/api/contacts')
-      ])
-
-      const [leads, opportunities, events, accounts, contacts] = await Promise.all([
-        leadsResponse.ok ? leadsResponse.json() : [],
-        opportunitiesResponse.ok ? opportunitiesResponse.json() : [],
-        eventsResponse.ok ? eventsResponse.json() : [],
-        accountsResponse.ok ? accountsResponse.json() : [],
-        contactsResponse.ok ? contactsResponse.json() : []
-      ])
-
-      // Calculate stats
-      const totalRevenue = opportunities
-        .filter((opp: any) => opp.stage === 'closed_won')
-        .reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
-
-      const closedWonOpportunities = opportunities.filter((opp: any) => opp.stage === 'closed_won')
-      const conversionRate = opportunities.length > 0 ? (closedWonOpportunities.length / opportunities.length) * 100 : 0
-      const averageDealSize = closedWonOpportunities.length > 0 ? totalRevenue / closedWonOpportunities.length : 0
-
-      // Calculate this month's data
-      const currentDate = new Date()
-      const currentMonth = currentDate.getMonth()
-      const currentYear = currentDate.getFullYear()
-
-      const leadsThisMonth = leads.filter((lead: any) => {
-        const leadDate = new Date(lead.created_at)
-        return leadDate.getMonth() === currentMonth && leadDate.getFullYear() === currentYear
-      }).length
-
-      const opportunitiesThisMonth = opportunities.filter((opp: any) => {
-        const oppDate = new Date(opp.created_at)
-        return oppDate.getMonth() === currentMonth && oppDate.getFullYear() === currentYear
-      }).length
-
-      const eventsThisMonth = events.filter((event: any) => {
-        const eventDate = new Date(event.created_at)
-        return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear
-      }).length
-
-      const revenueThisMonth = opportunities
-        .filter((opp: any) => {
-          const oppDate = new Date(opp.created_at)
-          return opp.stage === 'closed_won' && 
-                 oppDate.getMonth() === currentMonth && 
-                 oppDate.getFullYear() === currentYear
-        })
-        .reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
-
-      // Calculate growth (simplified - comparing to previous month)
-      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
-      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
-
-      const leadsPreviousMonth = leads.filter((lead: any) => {
-        const leadDate = new Date(lead.created_at)
-        return leadDate.getMonth() === previousMonth && leadDate.getFullYear() === previousYear
-      }).length
-
-      const opportunitiesPreviousMonth = opportunities.filter((opp: any) => {
-        const oppDate = new Date(opp.created_at)
-        return oppDate.getMonth() === previousMonth && oppDate.getFullYear() === previousYear
-      }).length
-
-      const eventsPreviousMonth = events.filter((event: any) => {
-        const eventDate = new Date(event.created_at)
-        return eventDate.getMonth() === previousMonth && eventDate.getFullYear() === previousYear
-      }).length
-
-      const revenuePreviousMonth = opportunities
-        .filter((opp: any) => {
-          const oppDate = new Date(opp.created_at)
-          return opp.stage === 'closed_won' && 
-                 oppDate.getMonth() === previousMonth && 
-                 oppDate.getFullYear() === previousYear
-        })
-        .reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
-
-      const leadsGrowth = leadsPreviousMonth > 0 ? ((leadsThisMonth - leadsPreviousMonth) / leadsPreviousMonth) * 100 : 0
-      const opportunitiesGrowth = opportunitiesPreviousMonth > 0 ? ((opportunitiesThisMonth - opportunitiesPreviousMonth) / opportunitiesPreviousMonth) * 100 : 0
-      const eventsGrowth = eventsPreviousMonth > 0 ? ((eventsThisMonth - eventsPreviousMonth) / eventsPreviousMonth) * 100 : 0
-      const revenueGrowth = revenuePreviousMonth > 0 ? ((revenueThisMonth - revenuePreviousMonth) / revenuePreviousMonth) * 100 : 0
-
-      setStats({
-        totalLeads: leads.length,
-        totalOpportunities: opportunities.length,
-        totalEvents: events.length,
-        totalAccounts: accounts.length,
-        totalContacts: contacts.length,
-        totalRevenue,
-        conversionRate,
-        averageDealSize,
-        leadsThisMonth,
-        opportunitiesThisMonth,
-        eventsThisMonth,
-        revenueThisMonth,
-        leadsGrowth,
-        opportunitiesGrowth,
-        eventsGrowth,
-        revenueGrowth
-      })
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (isLoading) {
     return (

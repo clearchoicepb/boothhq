@@ -40,23 +40,23 @@ export function LeadSelect({
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/leads')
+        if (response.ok) {
+          const data = await response.json()
+          setLeads(data)
+        }
+      } catch (error) {
+        console.error('Error fetching leads:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchLeads()
   }, [])
-
-  const fetchLeads = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/leads')
-      if (response.ok) {
-        const data = await response.json()
-        setLeads(data)
-      }
-    } catch (error) {
-      console.error('Error fetching leads:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleLeadCreated = (lead: Lead) => {
     setLeads(prev => [lead, ...prev])

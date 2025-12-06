@@ -35,10 +35,6 @@ export default function PackagesPage() {
     is_active: true,
   })
 
-  useEffect(() => {
-    fetchPackages()
-  }, [])
-
   const fetchPackages = async () => {
     try {
       setLoading(true)
@@ -53,6 +49,10 @@ export default function PackagesPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchPackages()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

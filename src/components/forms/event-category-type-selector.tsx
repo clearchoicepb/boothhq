@@ -40,10 +40,35 @@ export function EventCategoryTypeSelector({
   const [loadingTypes, setLoadingTypes] = useState(false)
 
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('/api/event-categories')
+        const data = await res.json()
+        setCategories(data.categories?.filter((c: EventCategory) => c.is_active) || [])
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchCategories()
   }, [])
 
   useEffect(() => {
+    const fetchEventTypes = async (categoryId: string) => {
+      setLoadingTypes(true)
+      try {
+        const res = await fetch(`/api/event-types?category_id=${categoryId}`)
+        const data = await res.json()
+        setEventTypes(data.eventTypes?.filter((t: EventType) => t.is_active) || [])
+      } catch (error) {
+        console.error('Error fetching event types:', error)
+      } finally {
+        setLoadingTypes(false)
+      }
+    }
+
     if (selectedCategoryId) {
       fetchEventTypes(selectedCategoryId)
     } else {
@@ -52,32 +77,7 @@ export function EventCategoryTypeSelector({
         onTypeChange('')
       }
     }
-  }, [selectedCategoryId])
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch('/api/event-categories')
-      const data = await res.json()
-      setCategories(data.categories?.filter((c: EventCategory) => c.is_active) || [])
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchEventTypes = async (categoryId: string) => {
-    setLoadingTypes(true)
-    try {
-      const res = await fetch(`/api/event-types?category_id=${categoryId}`)
-      const data = await res.json()
-      setEventTypes(data.eventTypes?.filter((t: EventType) => t.is_active) || [])
-    } catch (error) {
-      console.error('Error fetching event types:', error)
-    } finally {
-      setLoadingTypes(false)
-    }
-  }
+  }, [selectedCategoryId, selectedTypeId, onTypeChange])
 
   if (loading) {
     return (
