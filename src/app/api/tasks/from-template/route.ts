@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tasks')
 
 /**
  * POST /api/tasks/from-template
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (createError) {
-      console.error('Error creating task from template:', createError)
+      log.error({ createError }, 'Error creating task from template')
       return NextResponse.json(
         { error: 'Failed to create task', details: createError.message },
         { status: 500 }
@@ -121,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, task })
   } catch (error) {
-    console.error('Error in POST /api/tasks/from-template:', error)
+    log.error({ error }, 'Error in POST /api/tasks/from-template')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:staff-roles')
 export async function PUT(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -35,13 +38,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating staff role:', error)
+      log.error({ error }, 'Error updating staff role')
       return NextResponse.json({ error: 'Failed to update staff role', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -71,7 +74,7 @@ export async function DELETE(
       .limit(1)
 
     if (checkError) {
-      console.error('Error checking role usage:', checkError)
+      log.error({ checkError }, 'Error checking role usage')
       return NextResponse.json({ error: 'Failed to check role usage' }, { status: 500 })
     }
 
@@ -88,13 +91,13 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting staff role:', error)
+      log.error({ error }, 'Error deleting staff role')
       return NextResponse.json({ error: 'Failed to delete staff role', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

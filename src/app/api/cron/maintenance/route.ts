@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:cron')
 
 /**
  * Vercel Cron Job - Maintenance Automation
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
 
     if (tenantsError) {
-      console.error('Error fetching tenants:', tenantsError)
+      log.error({ tenantsError }, 'Error fetching tenants')
       return NextResponse.json(
         { error: 'Failed to fetch tenants', details: tenantsError.message },
         { status: 500 }
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest) {
             results: data.results
           }
         } catch (error: any) {
-          console.error(`Error processing tenant ${tenant.subdomain}:`, error)
+          log.error({ error }, 'Error processing tenant ${tenant.subdomain}')
           return {
             tenant: tenant.subdomain,
             success: false,
@@ -100,7 +103,7 @@ export async function GET(request: NextRequest) {
       summary
     })
   } catch (error: any) {
-    console.error('Cron error:', error)
+    log.error({ error }, 'Cron error')
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

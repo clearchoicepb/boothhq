@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isValidDepartmentId } from '@/lib/departments'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tasks')
 
 // GET - Fetch tasks with comprehensive filtering
 export async function GET(request: NextRequest) {
@@ -107,7 +110,7 @@ export async function GET(request: NextRequest) {
     const { data: tasks, error } = await query
 
     if (error) {
-      console.error('Error fetching tasks:', error)
+      log.error({ error }, 'Error fetching tasks')
       return NextResponse.json({
         error: 'Failed to fetch tasks',
         details: error.message
@@ -116,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(tasks || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -195,7 +198,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (createError) {
-      console.error('Error creating task:', createError)
+      log.error({ createError }, 'Error creating task')
       return NextResponse.json({
         error: 'Failed to create task',
         details: createError.message
@@ -213,15 +216,15 @@ export async function POST(request: NextRequest) {
         supabase,
         userId: session.user.id,
       }).catch((error: Error) => {
-        console.error('[Tasks API] Error triggering task_created workflows:', error)
+        log.error({ error }, '[Tasks API] Error triggering task_created workflows')
       })
     } catch (error) {
-      console.error('[Tasks API] Error importing workflow trigger service:', error)
+      log.error({ error }, '[Tasks API] Error importing workflow trigger service')
     }
 
     return NextResponse.json({ success: true, task })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,4 +1,7 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('automation')
 
 /**
  * Automation service for consumable inventory management
@@ -96,7 +99,7 @@ export class ConsumableAutomation {
         errors
       }
     } catch (error: any) {
-      console.error('Error in createLowStockAlerts:', error)
+      log.error({ error }, 'Error in createLowStockAlerts')
       return {
         created: created.length,
         errors: [...errors, error.message]
@@ -177,7 +180,7 @@ export class ConsumableAutomation {
         errors
       }
     } catch (error: any) {
-      console.error('Error in createOutOfStockAlerts:', error)
+      log.error({ error }, 'Error in createOutOfStockAlerts')
       return {
         created: created.length,
         errors: [...errors, error.message]
@@ -234,7 +237,7 @@ export class ConsumableAutomation {
         errors
       }
     } catch (error: any) {
-      console.error('Error in trackEventUsage:', error)
+      log.error({ error }, 'Error in trackEventUsage')
       return {
         success: false,
         errors: [...errors, error.message]
@@ -265,7 +268,7 @@ export class ConsumableAutomation {
 
       return { success: true }
     } catch (error: any) {
-      console.error('Error in dismissStockAlertsAfterRestock:', error)
+      log.error({ error }, 'Error in dismissStockAlertsAfterRestock')
       return { success: false, error: error.message }
     }
   }

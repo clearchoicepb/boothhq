@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('services')
+
 /**
  * Condition Evaluator Service
  *
@@ -177,7 +181,7 @@ function evaluateOperator(
     }
 
     default: {
-      console.warn(`[ConditionEvaluator] Unknown operator: ${operator}`)
+      log.warn('[ConditionEvaluator] Unknown operator: ${operator}')
       return false
     }
   }
@@ -213,7 +217,7 @@ export function evaluateCondition(
       expectedValue: condition.value,
     }
   } catch (error) {
-    console.error('[ConditionEvaluator] Error evaluating condition:', error)
+    log.error({ error }, '[ConditionEvaluator] Error evaluating condition')
     return {
       condition,
       passed: false,
@@ -252,7 +256,7 @@ export function evaluateConditions(
   // All conditions must pass (AND logic)
   const passed = results.every((result) => result.passed)
 
-  console.log(`[ConditionEvaluator] Evaluated ${conditions.length} conditions:`, {
+  log.debug(`Evaluated ${conditions.length} conditions:`, {
     passed,
     results: results.map((r) => ({
       field: r.condition.field,

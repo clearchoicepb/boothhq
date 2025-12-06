@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:booth-assignments')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching booth assignments:', error)
+      log.error({ error }, 'Error fetching booth assignments')
       return NextResponse.json({ error: 'Failed to fetch booth assignments' }, { status: 500 })
     }
 
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -82,13 +85,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating booth assignment:', error)
+      log.error({ error }, 'Error creating booth assignment')
       return NextResponse.json({ error: 'Failed to create booth assignment' }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

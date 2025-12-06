@@ -23,6 +23,9 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('workflows')
 import type {
   WorkflowCondition,
   ConditionOperator,
@@ -83,7 +86,7 @@ export default function ConditionBuilder({
         setEventTypes(data.eventTypes || data || [])
       }
     } catch (error) {
-      console.error('[ConditionBuilder] Error fetching event types:', error)
+      log.error({ error }, '[ConditionBuilder] Error fetching event types')
     } finally {
       setLoadingEventTypes(false)
     }

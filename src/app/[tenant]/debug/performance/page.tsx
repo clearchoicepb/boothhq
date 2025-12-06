@@ -15,6 +15,9 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Activity, Database, TrendingUp, AlertCircle, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('performance')
 
 interface PerformanceData {
   timestamp: string
@@ -85,7 +88,7 @@ export default function PerformanceDashboard() {
       const result = await response.json()
       setData(result)
     } catch (err: any) {
-      console.error('Failed to fetch performance data:', err)
+      log.error({ err }, 'Failed to fetch performance data')
       setError(err.message)
     } finally {
       setLoading(false)

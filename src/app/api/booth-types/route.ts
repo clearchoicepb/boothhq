@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:booth-types')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -22,13 +25,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching booth types:', error)
+      log.error({ error }, 'Error fetching booth types')
       return NextResponse.json({ error: 'Failed to fetch booth types' }, { status: 500 })
     }
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -51,13 +54,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating booth type:', error)
+      log.error({ error }, 'Error creating booth type')
       return NextResponse.json({ error: 'Failed to create booth type' }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

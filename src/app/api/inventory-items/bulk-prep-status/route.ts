@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // POST /api/inventory-items/bulk-prep-status - Bulk update prep status for multiple items
 export async function POST(request: NextRequest) {
@@ -125,7 +128,7 @@ export async function POST(request: NextRequest) {
       items: data
     })
   } catch (error) {
-    console.error('Error bulk updating prep status:', error)
+    log.error({ error }, 'Error bulk updating prep status')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

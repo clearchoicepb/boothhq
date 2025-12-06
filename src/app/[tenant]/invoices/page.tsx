@@ -8,6 +8,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Plus, FileText, Download, Send, DollarSign, Search, Filter } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('invoices')
 
 interface Invoice {
   id: string
@@ -63,7 +66,7 @@ export default function InvoicesPage() {
       const data = await response.json()
       setInvoices(data)
     } catch (error) {
-      console.error('Error fetching invoices:', error)
+      log.error({ error }, 'Error fetching invoices')
     } finally {
       setLocalLoading(false)
     }

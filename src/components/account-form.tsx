@@ -9,6 +9,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Trash2, CheckCircle, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Account, AccountInsert, AccountUpdate } from '@/lib/supabase-client' // cspell:ignore supabase
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Contact {
   id: string
@@ -88,7 +91,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
           setContacts(data || [])
         }
       } catch (error) {
-        console.error('Error fetching contacts:', error)
+        log.error({ error }, 'Error fetching contacts')
       }
     }
     
@@ -137,7 +140,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
               setContactRelationships([])
             }
           } catch (error) {
-            console.error('Error loading contact relationships:', error)
+            log.error({ error }, 'Error loading contact relationships')
             setContactRelationships([])
           }
         }
@@ -270,7 +273,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
       toast.success(editingAccount ? 'Account updated!' : 'Account created!')
       onClose()
     } catch (error) {
-      console.error('Error saving account:', error)
+      log.error({ error }, 'Error saving account')
       toast.error('Failed to save account')
       setErrors({ submit: 'Failed to save account. Please try again.' })
     } finally {

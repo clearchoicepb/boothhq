@@ -11,6 +11,9 @@ import { AccountSelect } from '@/components/account-select'
 import { ContactSelect } from '@/components/contact-select'
 import { LocationSelect } from '@/components/location-select'
 import type { Event, EventInsert, EventUpdate, Account, Contact, Opportunity } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface EventFormProps {
   event?: Event | null
@@ -98,7 +101,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
       setContacts(contactsData)
       setOpportunities(opportunitiesData)
     } catch (error) {
-      console.error('Error fetching related data:', error)
+      log.error({ error }, 'Error fetching related data')
     }
   }
 
@@ -143,7 +146,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
-        console.log('[EventForm] Updating event via API with data:', updateData)
+        log.debug('Updating event via API with data:', updateData)
 
         const response = await fetch(`/api/events/${event.id}`, {
           method: 'PUT',
@@ -164,7 +167,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
-        console.log('[EventForm] Creating event via API with data:', insertData)
+        log.debug('Creating event via API with data:', insertData)
 
         const response = await fetch('/api/events', {
           method: 'POST',
@@ -181,10 +184,10 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         result = responseData.event || responseData
       }
 
-      console.log('[EventForm] Event saved successfully via API:', result)
+      log.debug('Event saved successfully via API:', result)
       onSubmit(result)
     } catch (error: any) {
-      console.error('[EventForm] Error saving event:', error)
+      log.error({ error }, '[EventForm] Error saving event')
       setErrors({ submit: error.message || 'Failed to save event. Please try again.' })
     } finally {
       setLoading(false)
@@ -327,7 +330,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
             <LocationSelect
               value={locationId}
               onChange={(locId, location) => {
-                console.log('[EventForm] Location changed:', { locId, location })
+                log.debug('Location changed:', { locId, location })
                 setLocationId(locId)
                 handleInputChange('location_id', locId)
                 // Also set location name in the old field for backward compatibility

@@ -2,6 +2,9 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import type { CreateProjectInput } from '@/types/project.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:projects')
 
 export const dynamic = 'force-dynamic'
 
@@ -59,7 +62,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching projects:', error)
+      log.error({ error }, 'Error fetching projects')
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
     }
 
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -83,12 +86,12 @@ export async function POST(request: NextRequest) {
 
     const { supabase, dataSourceTenantId, session } = context
 
-    console.log('[Projects API] POST - Creating project')
-    console.log('[Projects API] Tenant ID:', dataSourceTenantId)
-    console.log('[Projects API] User ID:', session.user.id)
+    log.debug('POST - Creating project')
+    log.debug('Tenant ID:', dataSourceTenantId)
+    log.debug('User ID:', session.user.id)
 
     const body: CreateProjectInput = await request.json()
-    console.log('[Projects API] Request body:', body)
+    log.debug('Request body:', body)
 
     // Clean up empty date fields
     const cleanedData = { ...body }
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest) {
       updated_by: session.user.id,
     }
 
-    console.log('[Projects API] Insert data:', projectData)
+    log.debug('Insert data:', projectData)
 
     // Insert project
     const { data: project, error } = await supabase
@@ -118,7 +121,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Projects API] Error creating project:', error)
+      log.error({ error }, '[Projects API] Error creating project')
       console.error('[Projects API] Error code:', error.code)
       console.error('[Projects API] Error details:', error.details)
       console.error('[Projects API] Error hint:', error.hint)
@@ -126,14 +129,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create project', details: error.message }, { status: 500 })
     }
 
-    console.log('[Projects API] Project created successfully:', project.id)
+    log.debug('Project created successfully:', project.id)
 
     // Revalidate the projects page
     revalidatePath('/[tenant]/projects', 'page')
 
     return NextResponse.json(project, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

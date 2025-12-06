@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('utils')
+
 /**
  * Event Priority Calculation Utilities
  *

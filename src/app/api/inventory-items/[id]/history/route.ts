@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // GET /api/inventory-items/[id]/history - Fetch assignment history for an inventory item
 export async function GET(
@@ -49,7 +52,7 @@ export async function GET(
       .order('changed_at', { ascending: false })
 
     if (historyError) {
-      console.error('Error fetching assignment history:', historyError)
+      log.error({ historyError }, 'Error fetching assignment history')
       return NextResponse.json(
         { error: 'Failed to fetch assignment history' },
         { status: 500 }
@@ -126,7 +129,7 @@ export async function GET(
       history: formattedHistory,
     })
   } catch (error) {
-    console.error('Error in assignment history API:', error)
+    log.error({ error }, 'Error in assignment history API')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

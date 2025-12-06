@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:maintenance')
 
 /**
  * GET - Get items with overdue maintenance
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
       .order('next_maintenance_date', { ascending: true })
 
     if (error) {
-      console.error('Error fetching overdue maintenance items:', error)
+      log.error({ error }, 'Error fetching overdue maintenance items')
       return NextResponse.json(
         { error: 'Failed to fetch overdue maintenance items', details: error.message },
         { status: 500 }
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(enrichedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

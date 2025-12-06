@@ -8,6 +8,9 @@ import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { AddressInput } from '@/components/ui/address-input'
 import { Lead, AccountInsert, ContactInsert } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface LeadConversionModalProps {
   lead: Lead
@@ -153,7 +156,7 @@ export function LeadConversionModal({
       })
       onClose()
     } catch (error) {
-      console.error('Error converting lead:', error)
+      log.error({ error }, 'Error converting lead')
       alert('Failed to convert lead. Please try again.')
     } finally {
       setIsLoading(false)

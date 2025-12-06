@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:design')
 // PUT - Update design status
 export async function PUT(
   request: Request,
@@ -24,7 +27,7 @@ export async function PUT(
 
     return NextResponse.json({ status: data })
   } catch (error: any) {
-    console.error('Error updating design status:', error)
+    log.error({ error }, 'Error updating design status')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -51,7 +54,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting design status:', error)
+    log.error({ error }, 'Error deleting design status')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

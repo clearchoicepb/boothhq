@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-notifications')
 
 /**
  * POST - Dismiss notification
@@ -42,7 +45,7 @@ export async function POST(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Notification not found' }, { status: 404 })
       }
-      console.error('Error dismissing notification:', error)
+      log.error({ error }, 'Error dismissing notification')
       return NextResponse.json(
         { error: 'Failed to dismiss notification', details: error.message },
         { status: 500 }
@@ -51,7 +54,7 @@ export async function POST(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

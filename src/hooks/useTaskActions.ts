@@ -13,6 +13,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksService } from '@/lib/api/services/tasksService'
 import type { TaskInsert, TaskUpdate, TaskWithRelations } from '@/types/tasks'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 /**
  * Hook for creating a new task
@@ -46,7 +49,7 @@ export function useCreateTask() {
       toast.success('Task created successfully')
     },
     onError: (error: any) => {
-      console.error('Failed to create task:', error)
+      log.error({ error }, 'Failed to create task')
       toast.error(error.message || 'Failed to create task')
     },
   })
@@ -100,7 +103,7 @@ export function useCreateTaskFromTemplate() {
       toast.success('Task created from template')
     },
     onError: (error: any) => {
-      console.error('Failed to create task from template:', error)
+      log.error({ error }, 'Failed to create task from template')
       toast.error(error.message || 'Failed to create task from template')
     },
   })
@@ -140,7 +143,7 @@ export function useUpdateTask() {
       toast.success('Task updated successfully')
     },
     onError: (error: any) => {
-      console.error('Failed to update task:', error)
+      log.error({ error }, 'Failed to update task')
       toast.error(error.message || 'Failed to update task')
     },
   })
@@ -209,7 +212,7 @@ export function useUpdateTaskStatus() {
       if (context?.previousTask) {
         queryClient.setQueryData(['tasks', variables.taskId], context.previousTask)
       }
-      console.error('Failed to update task status:', error)
+      log.error({ error }, 'Failed to update task status')
       toast.error(error.message || 'Failed to update task status')
     },
   })
@@ -250,7 +253,7 @@ export function useReassignTask() {
       )
     },
     onError: (error: any) => {
-      console.error('Failed to reassign task:', error)
+      log.error({ error }, 'Failed to reassign task')
       toast.error(error.message || 'Failed to reassign task')
     },
   })
@@ -287,7 +290,7 @@ export function useUpdateTaskPriority() {
       toast.success(`Priority updated to ${variables.priority}`)
     },
     onError: (error: any) => {
-      console.error('Failed to update priority:', error)
+      log.error({ error }, 'Failed to update priority')
       toast.error(error.message || 'Failed to update priority')
     },
   })
@@ -323,7 +326,7 @@ export function useDeleteTask() {
       toast.success('Task deleted successfully')
     },
     onError: (error: any) => {
-      console.error('Failed to delete task:', error)
+      log.error({ error }, 'Failed to delete task')
       toast.error(error.message || 'Failed to delete task')
     },
   })
@@ -360,7 +363,7 @@ export function useBulkUpdateTasks() {
       toast.success(`${variables.taskIds.length} tasks updated successfully`)
     },
     onError: (error: any) => {
-      console.error('Failed to bulk update tasks:', error)
+      log.error({ error }, 'Failed to bulk update tasks')
       toast.error(error.message || 'Failed to update tasks')
     },
   })
@@ -398,7 +401,7 @@ export function useBulkDeleteTasks() {
       toast.success(`${taskIds.length} tasks deleted successfully`)
     },
     onError: (error: any) => {
-      console.error('Failed to bulk delete tasks:', error)
+      log.error({ error }, 'Failed to bulk delete tasks')
       toast.error(error.message || 'Failed to delete tasks')
     },
   })

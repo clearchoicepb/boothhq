@@ -22,6 +22,9 @@ import { Button } from '@/components/ui/button'
 import { useEventLogistics } from '@/hooks/useEventLogistics'
 import { useFieldEditor } from '@/hooks/useFieldEditor'
 import { useQueryClient } from '@tanstack/react-query'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface EventLogisticsProps {
   eventId: string
@@ -215,7 +218,7 @@ export function EventLogistics({ eventId, tenant }: EventLogisticsProps) {
         setIsEditingLocation(false)
       }
     } catch (error) {
-      console.error('Error saving location:', error)
+      log.error({ error }, 'Error saving location')
     } finally {
       setSavingLocation(false)
     }

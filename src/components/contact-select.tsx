@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-select'
 import { ContactForm } from '@/components/contact-form'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Contact {
   id: string
@@ -58,7 +61,7 @@ export function ContactSelect({
         setContacts(data)
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
     } finally {
       setLoading(false)
     }

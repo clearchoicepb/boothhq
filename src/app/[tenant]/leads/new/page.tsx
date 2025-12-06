@@ -8,6 +8,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { LeadForm } from '@/components/lead-form'
 import { ArrowLeft, User } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 export default function NewLeadPage() {
   const { data: session, status } = useSession()
@@ -33,7 +36,7 @@ export default function NewLeadPage() {
       const newLead = await response.json()
       router.push(`/${tenantSubdomain}/leads/${newLead.id}`)
     } catch (error) {
-      console.error('Error saving lead:', error)
+      log.error({ error }, 'Error saving lead')
       throw error
     }
   }

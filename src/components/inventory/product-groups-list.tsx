@@ -16,6 +16,9 @@ import {
 import { useInventoryItemsData, useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
 import { useQueryClient } from '@tanstack/react-query'
 import { ProductGroupItemSelector } from './ProductGroupItemSelector'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 export function ProductGroupsList() {
   const queryClient = useQueryClient()
@@ -40,13 +43,13 @@ export function ProductGroupsList() {
     fetch('/api/users')
       .then(res => res.json())
       .then(data => setUsers(data))
-      .catch(err => console.error('Failed to fetch users:', err))
+      .catch(err => log.error({ err }, 'Failed to fetch users'))
 
     // Fetch physical addresses
     fetch('/api/physical-addresses')
       .then(res => res.json())
       .then(data => setPhysicalAddresses(data))
-      .catch(err => console.error('Failed to fetch physical addresses:', err))
+      .catch(err => log.error({ err }, 'Failed to fetch physical addresses'))
   }, [])
 
   // Fetch details for expanded group using React Query
@@ -62,21 +65,21 @@ export function ProductGroupsList() {
   const updateInventoryItem = useUpdateInventoryItem()
 
   const handleSubmit = useCallback(async (data: any) => {
-    console.log('[Product Group Submit] Form data:', data)
-    console.log('[Product Group Submit] Editing group:', editingGroup?.id)
+    log.debug('Form data:', data)
+    log.debug('Editing group:', editingGroup?.id)
 
     try {
       if (editingGroup) {
         const result = await updateGroup.mutateAsync({ groupId: editingGroup.id, groupData: data })
-        console.log('[Product Group Submit] Update successful:', result)
+        log.debug('Update successful:', result)
       } else {
         const result = await addGroup.mutateAsync(data)
-        console.log('[Product Group Submit] Create successful:', result)
+        log.debug('Create successful:', result)
       }
       setIsModalOpen(false)
       setEditingGroup(null)
     } catch (error: any) {
-      console.error('[Product Group Submit] Error occurred:', error)
+      log.error({ error }, '[Product Group Submit] Error occurred')
       console.error('[Product Group Submit] Error message:', error.message)
       // Re-throw the error so the BaseForm can handle it
       throw error
@@ -89,7 +92,7 @@ export function ProductGroupsList() {
     try {
       await deleteGroup.mutateAsync(groupId)
     } catch (error: any) {
-      console.error('Failed to delete product group:', error)
+      log.error({ error }, 'Failed to delete product group')
       // Error will be shown by the mutation's error state
     }
   }, [deleteGroup])
@@ -123,7 +126,7 @@ export function ProductGroupsList() {
       await addItemToGroup.mutateAsync({ groupId, inventoryItemId, quantity })
       // React Query mutations already invalidate the cache
     } catch (error: any) {
-      console.error('Failed to add item to group:', error)
+      log.error({ error }, 'Failed to add item to group')
       // Error will be shown by the mutation's error state
     }
   }, [addItemToGroup])
@@ -135,7 +138,7 @@ export function ProductGroupsList() {
       await removeItemFromGroup.mutateAsync({ groupId, inventoryItemId })
       // React Query mutations already invalidate the cache
     } catch (error: any) {
-      console.error('Failed to remove item from group:', error)
+      log.error({ error }, 'Failed to remove item from group')
       // Error will be shown by the mutation's error state
     }
   }, [removeItemFromGroup])
@@ -147,7 +150,7 @@ export function ProductGroupsList() {
       await updateInventoryItem.mutateAsync({ itemId: selectedInventoryItem.id, itemData: data })
       setSelectedInventoryItem(null)
     } catch (error: any) {
-      console.error('Failed to update inventory item:', error)
+      log.error({ error }, 'Failed to update inventory item')
       throw error
     }
   }, [selectedInventoryItem, updateInventoryItem])
@@ -157,7 +160,7 @@ export function ProductGroupsList() {
     assignedToType: string,
     assignedToId: string
   ) => {
-    console.log('[Inline Assignment] Updating group:', groupId, 'to:', assignedToType, assignedToId)
+    log.debug('Updating group:', groupId, 'to:', assignedToType, assignedToId)
 
     try {
       await updateGroup.mutateAsync({
@@ -168,7 +171,7 @@ export function ProductGroupsList() {
         }
       })
     } catch (error: any) {
-      console.error('Failed to update assignment:', error)
+      log.error({ error }, 'Failed to update assignment')
       alert(`Failed to update assignment: ${error.message}`)
     }
   }, [updateGroup])

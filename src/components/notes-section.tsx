@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { Plus, Edit, Trash2, MessageSquare } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Note {
   id: string
@@ -44,7 +47,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
         setNotes(data)
       }
     } catch (error) {
-      console.error('Error fetching notes:', error)
+      log.error({ error }, 'Error fetching notes')
     } finally {
       setLoading(false)
     }
@@ -74,7 +77,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
         setIsAddModalOpen(false)
       }
     } catch (error) {
-      console.error('Error adding note:', error)
+      log.error({ error }, 'Error adding note')
       alert('Failed to add note. Please try again.')
     } finally {
       setSaving(false)
@@ -106,7 +109,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
         setIsEditModalOpen(false)
       }
     } catch (error) {
-      console.error('Error updating note:', error)
+      log.error({ error }, 'Error updating note')
       alert('Failed to update note. Please try again.')
     } finally {
       setSaving(false)
@@ -125,7 +128,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
         setNotes(prev => prev.filter(note => note.id !== noteId))
       }
     } catch (error) {
-      console.error('Error deleting note:', error)
+      log.error({ error }, 'Error deleting note')
       alert('Failed to delete note. Please try again.')
     }
   }

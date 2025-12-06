@@ -21,6 +21,9 @@ import { RelationshipManager } from '@/components/relationship-manager'
 import { DataValidation } from '@/components/data-validation'
 import { Button } from '@/components/ui/button'
 import { LeadConversionModal } from '@/components/lead-conversion-modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface Lead {
   id: string
@@ -78,7 +81,7 @@ export default function LeadDetailPage() {
       const data = await response.json()
       setLead(data)
     } catch (err) {
-      console.error('Error fetching lead:', err)
+      log.error({ err }, 'Error fetching lead')
       setError(err instanceof Error ? err.message : 'Failed to load lead')
     } finally {
       setLoading(false)
@@ -123,7 +126,7 @@ export default function LeadDetailPage() {
         router.push(`/${tenantSubdomain}/accounts/${result.account.id}`)
       }
     } catch (error) {
-      console.error('Error converting lead:', error)
+      log.error({ error }, 'Error converting lead')
       throw error
     }
   }

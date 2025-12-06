@@ -8,6 +8,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Package, CheckCircle, XCircle, Plus, Trash2, Save } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('configure')
 
 interface Booth {
   id: string
@@ -75,7 +78,7 @@ export default function BoothConfigurePage() {
         setAvailableEquipment(availableData)
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
     } finally {
       setLoading(false)
     }
@@ -97,7 +100,7 @@ export default function BoothConfigurePage() {
         await fetchData()
       }
     } catch (error) {
-      console.error('Error assigning equipment:', error)
+      log.error({ error }, 'Error assigning equipment')
     } finally {
       setSaving(false)
     }
@@ -119,7 +122,7 @@ export default function BoothConfigurePage() {
         await fetchData()
       }
     } catch (error) {
-      console.error('Error unassigning equipment:', error)
+      log.error({ error }, 'Error unassigning equipment')
     } finally {
       setSaving(false)
     }

@@ -17,6 +17,9 @@ import {
   RelatedDataConfig
 } from './types'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('forms')
 
 export function BaseForm<T extends Record<string, any>>({
   config,
@@ -76,7 +79,7 @@ export function BaseForm<T extends Record<string, any>>({
 
       setState(prev => ({ ...prev, relatedData }))
     } catch (error) {
-      console.error('Error fetching related data:', error)
+      log.error({ error }, 'Error fetching related data')
     }
   }
 
@@ -147,7 +150,7 @@ export function BaseForm<T extends Record<string, any>>({
   }, [config.fields, state.data, validateField, shouldShowField])
 
   const handleFieldChange = useCallback((fieldName: string, value: any) => {
-    console.log('[BaseForm] Field changed:', fieldName, 'to:', value)
+    log.debug('Field changed:', fieldName, 'to:', value)
 
     setState(prev => {
       const newData = { ...prev.data, [fieldName]: value }
@@ -158,12 +161,12 @@ export function BaseForm<T extends Record<string, any>>({
         // Check if there's a corresponding ID field in the config
         const hasIdField = config.fields.some(f => f.name === idFieldName)
         if (hasIdField) {
-          console.log('[BaseForm] Clearing', idFieldName, 'because', fieldName, 'changed')
+          log.debug('Clearing', idFieldName, 'because', fieldName, 'changed')
           newData[idFieldName] = null // Clear the ID when type changes
         }
       }
 
-      console.log('[BaseForm] New form data:', newData)
+      log.debug('New form data:', newData)
       return {
         ...prev,
         data: newData,
@@ -199,13 +202,13 @@ export function BaseForm<T extends Record<string, any>>({
         return acc
       }, {} as Record<string, any>)
 
-      console.log('[BaseForm] Submitting filtered data:', filteredData)
-      console.log('[BaseForm] Original data:', state.data)
+      log.debug('Submitting filtered data:', filteredData)
+      log.debug('Original data:', state.data)
 
       await onSubmit(filteredData as T)
       onClose()
     } catch (error: any) {
-      console.error('Error submitting form:', error)
+      log.error({ error }, 'Error submitting form')
       const errorMessage = error?.message || error?.error || 'An error occurred while saving. Please try again.'
       setSubmitError(errorMessage)
     } finally {

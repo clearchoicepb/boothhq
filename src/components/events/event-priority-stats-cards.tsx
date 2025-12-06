@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { AlertCircle, ClipboardList, Calendar } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface EventPriorityStatsCardsProps {
   onCardClick?: (filter: 'next_10_days' | 'tasks_45_days' | 'all_upcoming') => void
@@ -70,7 +73,7 @@ export function EventPriorityStatsCards({ onCardClick }: EventPriorityStatsCards
         }
       })
     } catch (error) {
-      console.error('Failed to fetch priority stats:', error)
+      log.error({ error }, 'Failed to fetch priority stats')
     } finally {
       setLoading(false)
     }

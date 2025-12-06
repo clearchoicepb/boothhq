@@ -8,6 +8,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { AccountForm } from '@/components/account-form'
 import { ArrowLeft, Building2 } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 export default function NewAccountPage() {
   const { data: session, status } = useSession()
@@ -71,7 +74,7 @@ export default function NewAccountPage() {
             body: JSON.stringify({ status: 'converted' }),
           })
         } catch (error) {
-          console.error('Error updating lead status:', error)
+          log.error({ error }, 'Error updating lead status')
         }
       }
       
@@ -79,7 +82,7 @@ export default function NewAccountPage() {
       router.push(`/${tenantSubdomain}/accounts/${newAccount.id}`)
       router.refresh()
     } catch (error) {
-      console.error('Error saving account:', error)
+      log.error({ error }, 'Error saving account')
       throw error
     }
   }

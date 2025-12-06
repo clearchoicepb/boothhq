@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-items')
 
 // PUT /api/inventory-items/[id]/prep-status - Update prep status for an inventory item
 export async function PUT(
@@ -117,7 +120,7 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error updating prep status:', error)
+    log.error({ error }, 'Error updating prep status')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

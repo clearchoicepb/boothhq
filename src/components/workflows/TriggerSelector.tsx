@@ -26,6 +26,9 @@ import type {
   TriggerConfig,
 } from '@/types/workflows'
 import { WORKFLOW_TRIGGER_TYPES } from '@/types/workflows'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('workflows')
 
 interface EventType {
   id: string
@@ -84,7 +87,7 @@ export default function TriggerSelector({
         setEventTypes(Array.isArray(types) ? types : [])
       }
     } catch (error) {
-      console.error('[TriggerSelector] Error fetching event types:', error)
+      log.error({ error }, '[TriggerSelector] Error fetching event types')
       setEventTypes([])
     } finally {
       setLoading(false)

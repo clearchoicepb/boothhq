@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:equipment-categories')
 
 /**
  * GET - Get single equipment category by ID
@@ -26,7 +29,7 @@ export async function GET(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Category not found' }, { status: 404 })
       }
-      console.error('Error fetching equipment category:', error)
+      log.error({ error }, 'Error fetching equipment category')
       return NextResponse.json(
         { error: 'Failed to fetch equipment category', details: error.message },
         { status: 500 }
@@ -35,7 +38,7 @@ export async function GET(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -98,7 +101,7 @@ export async function PATCH(
         )
       }
 
-      console.error('Error updating equipment category:', error)
+      log.error({ error }, 'Error updating equipment category')
       return NextResponse.json(
         { error: 'Failed to update equipment category', details: error.message },
         { status: 500 }
@@ -107,7 +110,7 @@ export async function PATCH(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -162,7 +165,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting equipment category:', error)
+      log.error({ error }, 'Error deleting equipment category')
       return NextResponse.json(
         { error: 'Failed to delete equipment category', details: error.message },
         { status: 500 }
@@ -171,7 +174,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

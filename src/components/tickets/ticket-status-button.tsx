@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { TicketStatus } from '@/types/ticket.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('tickets')
 
 interface TicketStatusButtonProps {
   ticketId: string
@@ -89,7 +92,7 @@ export function TicketStatusButton({
       toast.success(successMessage)
       onStatusChange?.(targetStatus)
     } catch (error) {
-      console.error('Error updating ticket status:', error)
+      log.error({ error }, 'Error updating ticket status')
       toast.error('Failed to update ticket status')
     } finally {
       setIsUpdating(false)

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 
 // Debug endpoint to check if templates table exists
 export async function GET(request: NextRequest) {
@@ -19,7 +22,7 @@ export async function GET(request: NextRequest) {
       .limit(1)
 
     if (error) {
-      console.error('Templates table error:', error)
+      log.error({ error }, 'Templates table error')
       return NextResponse.json({
         status: 'error',
         message: 'Templates table query failed',
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
       dataSourceTenantId
     })
   } catch (error: any) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({
       status: 'error',
       message: 'Unexpected error',

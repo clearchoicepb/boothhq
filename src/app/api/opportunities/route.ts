@@ -1,13 +1,16 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 
 export async function GET(request: NextRequest) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
-    const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
     const stageFilter = searchParams.get('stage') || 'all'
 
@@ -28,7 +31,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching opportunities:', error)
+      log.error({ error, tenantId: dataSourceTenantId }, 'Failed to fetch opportunities')
       return NextResponse.json({ error: 'Failed to fetch opportunities' }, { status: 500 })
     }
 
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in GET /api/opportunities')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
 
             if (!isNaN(probability)) {
               cleanedOpportunityData.probability = probability
-              console.log(`Auto-calculating initial probability for stage ${cleanedOpportunityData.stage}: ${probability}%`)
+              log.debug({ stage: cleanedOpportunityData.stage, probability }, 'Auto-calculated initial probability')
             }
           }
         }
@@ -184,7 +187,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (oppError) {
-      console.error('Error creating opportunity:', oppError)
+      log.error({ error: oppError }, 'Failed to create opportunity')
       return NextResponse.json({ error: 'Failed to create opportunity', details: oppError.message }, { status: 500 })
     }
 
@@ -209,8 +212,7 @@ export async function POST(request: NextRequest) {
           .insert(eventDatesData)
 
         if (datesError) {
-          console.error('Error creating event dates:', datesError)
-          // Don't fail the entire request, just log the error
+          log.error({ error: datesError }, 'Failed to create event dates')
         }
       }
     }
@@ -219,6 +221,8 @@ export async function POST(request: NextRequest) {
     const tenantSubdomain = session.user.tenantSubdomain || 'default'
     revalidatePath(`/${tenantSubdomain}/opportunities`)
 
+    log.info({ opportunityId: opportunity.id, name: opportunity.name }, 'Opportunity created successfully')
+
     const response = NextResponse.json(opportunity)
     
     // Add caching headers for better performance
@@ -226,11 +230,7 @@ export async function POST(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in POST /api/opportunities')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-
-

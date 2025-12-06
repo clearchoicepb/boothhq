@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Send, Loader2, Phone } from 'lucide-react'
 import { format, isToday, isYesterday, isSameDay, parseISO } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface SMSMessage {
   id: string
@@ -80,7 +83,7 @@ export function SMSThread({
         ))
       }
     } catch (error) {
-      console.error('Error fetching SMS messages:', error)
+      log.error({ error }, 'Error fetching SMS messages')
     } finally {
       setLoading(false)
     }
@@ -119,7 +122,7 @@ export function SMSThread({
       // Refresh messages
       await fetchMessages()
     } catch (error) {
-      console.error('Error sending SMS:', error)
+      log.error({ error }, 'Error sending SMS')
       alert('Failed to send SMS. Please try again.')
     } finally {
       setSending(false)

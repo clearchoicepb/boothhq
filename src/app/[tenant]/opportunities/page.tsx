@@ -37,6 +37,9 @@ import { ClosedOpportunitiesPopup } from '@/components/opportunities/closed-oppo
 import { OpportunityTable } from '@/components/opportunities/opportunity-table'
 import { OpportunityPipelineView } from '@/components/opportunities/opportunity-pipeline-view'
 import { OpportunitySourceSelector } from '@/components/opportunity-source-selector'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('opportunities')
 
 function OpportunitiesPageContent() {
   const { data: session, status } = useSession()
@@ -253,7 +256,7 @@ function OpportunitiesPageContent() {
         }
       })
     } catch (error) {
-      console.error('Error saving view preference:', error)
+      log.error({ error }, 'Error saving view preference')
     }
   }
 

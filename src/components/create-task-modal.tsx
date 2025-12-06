@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import type { EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface CreateTaskModalProps {
   isOpen: boolean
@@ -96,7 +99,7 @@ export function CreateTaskModal({
       }
       onClose()
     } catch (err) {
-      console.error('Error creating task:', err)
+      log.error({ err }, 'Error creating task')
       setError(err instanceof Error ? err.message : 'Failed to create task')
     } finally {
       setSaving(false)

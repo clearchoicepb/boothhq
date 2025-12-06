@@ -5,6 +5,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface UseOwnerManagerProps {
   opportunityId: string
@@ -62,7 +65,7 @@ export function useOwnerManager({
       if (context?.previousOpportunity) {
         queryClient.setQueryData(['opportunity', opportunityId], context.previousOpportunity)
       }
-      console.error('Error updating owner:', error)
+      log.error({ error }, 'Error updating owner')
       toast.error('Failed to update owner', { id: context?.toastId as string })
     },
     onSettled: () => {

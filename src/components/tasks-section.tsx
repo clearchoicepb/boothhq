@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User } from 'lucide-react'
 import { TaskDetailModal } from './task-detail-modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 // Simple time ago function
 function timeAgo(date: Date): string {
@@ -86,7 +89,7 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
         setTasks(data)
       }
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      log.error({ error }, 'Error fetching tasks')
     } finally {
       setLoading(false)
     }
@@ -109,7 +112,7 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
         }
       }
     } catch (error) {
-      console.error('Error updating task:', error)
+      log.error({ error }, 'Error updating task')
     } finally {
       setUpdatingTasks(prev => {
         const next = new Set(prev)

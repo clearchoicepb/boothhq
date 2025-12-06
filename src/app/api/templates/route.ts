@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:templates')
 // GET - List templates
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
     const { data: templates, error } = await query
 
     if (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
       return NextResponse.json(
         { error: 'Failed to fetch templates' },
         { status: 500 }
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(templates)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to create template' },
         { status: 500 }
@@ -95,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(template)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

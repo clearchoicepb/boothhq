@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:attachments')
 // GET - Download/view a specific attachment
 export async function GET(
   request: NextRequest,
@@ -34,7 +37,7 @@ export async function GET(
       .createSignedUrl(attachment.storage_path, 3600)
 
     if (urlError || !signedUrlData) {
-      console.error('Error creating signed URL:', urlError)
+      log.error({ urlError }, 'Error creating signed URL')
       return NextResponse.json(
         { error: 'Failed to generate download URL' },
         { status: 500 }
@@ -46,7 +49,7 @@ export async function GET(
       download_url: signedUrlData.signedUrl,
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -92,7 +95,7 @@ export async function DELETE(
       .remove([attachment.storage_path])
 
     if (storageError) {
-      console.error('Error deleting from storage:', storageError)
+      log.error({ storageError }, 'Error deleting from storage')
       // Continue with database deletion even if storage fails
     }
 
@@ -104,7 +107,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (dbError) {
-      console.error('Error deleting from database:', dbError)
+      log.error({ dbError }, 'Error deleting from database')
       return NextResponse.json(
         { error: 'Failed to delete attachment' },
         { status: 500 }
@@ -113,7 +116,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

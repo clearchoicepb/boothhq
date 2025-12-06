@@ -3,6 +3,9 @@
 import React from 'react'
 import { EntityForm } from './EntityForm'
 import type { Event } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('forms')
 
 interface EventFormProps {
   event?: Event | null
@@ -38,7 +41,7 @@ export function EventForm({
       const savedEvent = await response.json()
       await onSubmit(savedEvent)
     } catch (error) {
-      console.error('Error saving event:', error)
+      log.error({ error }, 'Error saving event')
       throw error
     }
   }

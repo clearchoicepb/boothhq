@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:leads')
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +23,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching lead:', error)
+      log.error({ error }, 'Error fetching lead')
       return NextResponse.json({ error: 'Failed to fetch lead' }, { status: 500 })
     }
 
@@ -30,7 +33,7 @@ export async function GET(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -56,13 +59,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating lead:', error)
+      log.error({ error }, 'Error updating lead')
       return NextResponse.json({ error: 'Failed to update lead' }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -85,7 +88,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting lead:', error)
+      log.error({ error }, 'Error deleting lead')
       return NextResponse.json({ error: 'Failed to delete lead' }, { status: 500 })
     }
 
@@ -95,7 +98,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

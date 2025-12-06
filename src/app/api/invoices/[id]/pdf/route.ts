@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateInvoicePDF } from '@/lib/pdf-generator'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 export async function GET(
   request: NextRequest,
@@ -26,7 +29,7 @@ export async function GET(
       .single()
 
     if (invoiceError || !invoice) {
-      console.error('Error fetching invoice for PDF:', invoiceError)
+      log.error({ invoiceError }, 'Error fetching invoice for PDF')
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
@@ -89,7 +92,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Clock, User, Edit, Plus, Trash2, ArrowRight, Mail, Phone, Calendar, DollarSign } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface ActivityItem {
   id: string
@@ -62,7 +65,7 @@ export function ActivityTimeline({ recordId, recordType, className = '' }: Activ
       const mockActivities = generateMockActivities(recordId, recordType)
       setActivities(mockActivities)
     } catch (err) {
-      console.error('Error fetching activities:', err)
+      log.error({ err }, 'Error fetching activities')
       setError('Failed to load activities')
     } finally {
       setLoading(false)

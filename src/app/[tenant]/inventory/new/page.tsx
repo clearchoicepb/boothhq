@@ -7,6 +7,9 @@ import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 interface EquipmentCategory {
   id: string
@@ -54,7 +57,7 @@ export default function NewEquipmentPage() {
         setCategories(data || [])
       }
     } catch (error) {
-      console.error('Error fetching categories:', error)
+      log.error({ error }, 'Error fetching categories')
     }
   }
 
@@ -104,7 +107,7 @@ export default function NewEquipmentPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error creating equipment:', errorData)
+        log.error({ errorData }, 'Error creating equipment')
         alert('Error creating equipment. Please try again.')
         return
       }
@@ -114,7 +117,7 @@ export default function NewEquipmentPage() {
       // Redirect to the inventory list
       router.push(`/${tenantSubdomain}/inventory`)
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
       alert('Error creating equipment. Please try again.')
     } finally {
       setLocalLoading(false)

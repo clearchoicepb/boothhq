@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
 import { useSession } from 'next-auth/react';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('email')
 import {
   ArrowLeft,
   Mail,
@@ -227,7 +230,7 @@ export default function EmailServicesSettingsPage() {
           setGmailEmail(data.email);
         }
       } catch (err) {
-        console.error('Error checking Gmail connection:', err);
+        log.error({ err }, 'Error checking Gmail connection');
       } finally {
         setCheckingConnection(false);
       }
@@ -245,7 +248,7 @@ export default function EmailServicesSettingsPage() {
       });
       alert('Settings saved successfully!');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error({ error }, 'Error saving settings');
       alert('Error saving settings. Please try again.');
     } finally {
       setSaving(false);
@@ -512,7 +515,7 @@ export default function EmailServicesSettingsPage() {
                               alert('Error: ' + (data.error || 'Failed to initialize OAuth'));
                             }
                           } catch (error) {
-                            console.error('OAuth error:', error);
+                            log.error({ error }, 'OAuth error');
                             alert('Failed to connect to Gmail. Please try again.');
                           }
                         }}

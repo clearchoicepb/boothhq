@@ -16,6 +16,9 @@ import {
   PenTool
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('templates')
 
 interface TemplateSection {
   id: string

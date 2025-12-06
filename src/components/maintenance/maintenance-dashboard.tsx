@@ -6,6 +6,9 @@ import { maintenanceService } from '@/lib/api/services/maintenanceService'
 import { MaintenanceItemCard } from './maintenance-item-card'
 import { CompleteMaintenanceModal } from './complete-maintenance-modal'
 import { Wrench, AlertTriangle, CheckCircle, Clock, TrendingUp } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('maintenance')
 
 interface MaintenanceStats {
   total_due: number
@@ -38,7 +41,7 @@ export function MaintenanceDashboard() {
       setDueItems(dueData)
       setOverdueItems(overdueData)
     } catch (error) {
-      console.error('Failed to load maintenance data:', error)
+      log.error({ error }, 'Failed to load maintenance data')
     } finally {
       setLoading(false)
     }

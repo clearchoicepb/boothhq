@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { MessageSquare, Loader2, FileText } from 'lucide-react'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
 import { useSettings } from '@/lib/settings-context'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Template {
   id: string
@@ -66,7 +69,7 @@ export function SendSMSModal({
         setTemplates(data)
       }
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
     }
   }
 
@@ -159,7 +162,7 @@ export function SendSMSModal({
 
       onClose()
     } catch (err) {
-      console.error('Error sending SMS:', err)
+      log.error({ err }, 'Error sending SMS')
       setError(err instanceof Error ? err.message : 'Failed to send SMS. Please try again.')
     } finally {
       setLoading(false)

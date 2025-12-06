@@ -8,6 +8,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { workflowEngine } from '@/lib/services/workflowEngine'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:workflows')
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(validation)
   } catch (error) {
-    console.error('[workflows/validate] Error:', error)
+    log.error({ error }, '[workflows/validate] Error')
     return NextResponse.json(
       {
         isValid: false,

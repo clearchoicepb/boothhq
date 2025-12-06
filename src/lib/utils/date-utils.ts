@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('utils')
+
 /**
  * Date Utilities for handling date strings without timezone issues
  * 
@@ -77,7 +81,7 @@ export function formatDate(
     const date = parseLocalDate(dateString)
     return date.toLocaleDateString('en-US', options)
   } catch (error) {
-    console.error('Error formatting date:', error)
+    log.error({ error }, 'Error formatting date')
     return fallback
   }
 }
@@ -140,7 +144,7 @@ export function getDaysUntil(dateString: string | null | undefined): number | nu
     
     return diffDays
   } catch (error) {
-    console.error('Error calculating days until:', error)
+    log.error({ error }, 'Error calculating days until')
     return null
   }
 }
@@ -206,7 +210,7 @@ export function toDateInputValue(date: Date | string | null | undefined): string
     
     return `${year}-${month}-${day}`
   } catch (error) {
-    console.error('Error converting date to input value:', error)
+    log.error({ error }, 'Error converting date to input value')
     return ''
   }
 }
@@ -238,7 +242,7 @@ export function formatTime(timeString: string | null | undefined): string {
     
     return `${hours12}:${minutes} ${ampm}`
   } catch (error) {
-    console.error('Error formatting time:', error)
+    log.error({ error }, 'Error formatting time')
     return timeString
   }
 }
@@ -308,7 +312,7 @@ export function toDateTimeLocalValue(datetimeString: string | null | undefined):
 
     return ''
   } catch (error) {
-    console.error('Error converting datetime to local value:', error)
+    log.error({ error }, 'Error converting datetime to local value')
     return ''
   }
 }
@@ -345,7 +349,7 @@ export function formatDateTimeLocal(datetimeString: string | null | undefined): 
 
     return 'Invalid format'
   } catch (error) {
-    console.error('Error formatting datetime local:', error)
+    log.error({ error }, 'Error formatting datetime local')
     return 'Not set'
   }
 }

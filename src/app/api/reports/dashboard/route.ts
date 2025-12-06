@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:reports')
 // Helper function to count event days in a period
 function countEventDays(events: any[], periodStart: Date, periodEnd: Date): number {
   if (!events) return 0
@@ -208,7 +211,7 @@ export async function GET(request: NextRequest) {
       .lte('updated_at', endDate.toISOString())
 
     if (wonOppsError) {
-      console.error('Error fetching won opportunities:', wonOppsError)
+      log.error({ wonOppsError }, 'Error fetching won opportunities')
     }
     console.log('Current won opps:', currentWonOpps?.length, 'from', startDate.toISOString(), 'to', endDate.toISOString())
 
@@ -242,7 +245,7 @@ export async function GET(request: NextRequest) {
       .gte('end_date', startDate.toISOString())
 
     if (eventsError) {
-      console.error('Error fetching events:', eventsError)
+      log.error({ eventsError }, 'Error fetching events')
     }
     console.log('Period:', startDate.toISOString(), 'to', endDate.toISOString())
     console.log('Current events found:', currentEvents?.length)
@@ -380,7 +383,7 @@ export async function GET(request: NextRequest) {
       invoicesByStatus
     })
   } catch (error) {
-    console.error('Error fetching dashboard data:', error)
+    log.error({ error }, 'Error fetching dashboard data')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

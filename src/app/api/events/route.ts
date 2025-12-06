@@ -3,13 +3,16 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { createAutoDesignItems } from '@/lib/design-helpers'
 import { workflowEngine } from '@/lib/services/workflowEngine'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 
 export async function GET(request: NextRequest) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
-    const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status') || 'all'
     const typeFilter = searchParams.get('type') || 'all'
@@ -55,7 +58,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching events:', error)
+      log.error({ error, tenantId: dataSourceTenantId }, 'Failed to fetch events')
       return NextResponse.json({ 
         error: 'Failed to fetch events', 
         details: error.message,
@@ -75,14 +78,11 @@ export async function GET(request: NextRequest) {
         .select('event_id, core_task_template_id, is_completed, completed_at, completed_by')
         .in('event_id', eventIds)
 
-      console.log('=== EVENTS API DEBUG ===')
-      console.log('Event IDs queried:', eventIds.length)
-      console.log('Task completions found:', coreTasksData?.length || 0)
-      console.log('Tasks error:', tasksError)
-      if (coreTasksData && coreTasksData.length > 0) {
-        console.log('Sample task completion:', JSON.stringify(coreTasksData[0], null, 2))
-      }
-      console.log('=======================')
+      log.debug({ 
+        eventCount: eventIds.length, 
+        taskCompletionsFound: coreTasksData?.length || 0,
+        error: tasksError 
+      }, 'Core tasks query result')
 
       // Group completion data by event_id
       if (coreTasksData) {
@@ -116,36 +116,22 @@ export async function GET(request: NextRequest) {
     let staffAssignmentsByEvent: Record<string, any[]> = {}
     if (eventIds.length > 0) {
       try {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('🔍 [EVENTS API] STAFF ASSIGNMENTS FETCH')
-        console.log('Event IDs:', eventIds.length, 'events')
-        console.log('Tenant ID:', dataSourceTenantId)
-        
         const { data: staffData, error: staffError } = await supabase
           .from('event_staff_assignments')
           .select('id, user_id, event_id, event_date_id, staff_role_id, notes, start_time, end_time')
-          .eq('tenant_id', dataSourceTenantId)  // CRITICAL: Filter by tenant!
+          .eq('tenant_id', dataSourceTenantId)
           .in('event_id', eventIds)
 
-        console.log('Total assignments fetched:', staffData?.length || 0)
         if (staffError) {
-          console.error('❌ Staff assignments error:', staffError)
+          log.error({ error: staffError }, 'Failed to fetch staff assignments')
         }
 
         if (!staffError && staffData) {
-          // Log all unique user IDs found
           const uniqueUserIds = [...new Set(staffData.map(a => a.user_id))]
-          console.log('Unique user IDs in assignments:', uniqueUserIds)
-          
-          // Log sample assignments
-          if (staffData.length > 0) {
-            console.log('Sample assignment:', {
-              id: staffData[0].id,
-              user_id: staffData[0].user_id,
-              event_id: staffData[0].event_id,
-              role: staffData[0].role
-            })
-          }
+          log.debug({ 
+            totalAssignments: staffData.length, 
+            uniqueUserCount: uniqueUserIds.length 
+          }, 'Staff assignments fetched')
           
           staffData.forEach(assignment => {
             if (!staffAssignmentsByEvent[assignment.event_id]) {
@@ -153,19 +139,11 @@ export async function GET(request: NextRequest) {
             }
             staffAssignmentsByEvent[assignment.event_id].push(assignment)
           })
-          console.log('Events with staff:', Object.keys(staffAssignmentsByEvent).length)
-          console.log('Events with assignments:', Object.entries(staffAssignmentsByEvent).map(([eventId, assignments]) => ({
-            eventId,
-            assignmentCount: assignments.length,
-            userIds: assignments.map(a => a.user_id)
-          })))
         } else if (staffData?.length === 0) {
-          console.warn('⚠️ No staff assignments found in database!')
-          console.log('Make sure staff are assigned to events in the UI.')
+          log.debug('No staff assignments found in database')
         }
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       } catch (staffErr) {
-        console.warn('[EVENTS API] Could not fetch staff assignments:', staffErr)
+        log.warn({ error: staffErr }, 'Could not fetch staff assignments')
         // Continue without staff assignments rather than failing
       }
     }
@@ -188,7 +166,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error in events API:', error)
+    log.error({ error }, 'Unexpected error in GET /api/events')
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -204,7 +182,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    console.log('Creating event with body:', body)
+    log.debug({ body }, 'Creating event')
 
     // Destructure and validate
     const {
@@ -250,14 +228,14 @@ export async function POST(request: NextRequest) {
       start_date: start_date || event_dates[0]?.event_date,
       end_date: end_date || null,
       location: location || null,
-      location_id: location_id || null, // Requires migration 20251015000000_add_location_id_to_events.sql
+      location_id: location_id || null,
       account_id: account_id || null,
       contact_id: contact_id || null,
       opportunity_id: opportunity_id || null,
       status: status || 'scheduled'
     }
 
-    console.log('Inserting event with data:', insertData)
+    log.debug({ insertData }, 'Inserting event')
 
     // Create the event
     const { data: event, error: eventError } = await supabase
@@ -271,7 +249,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (eventError) {
-      console.error('Error creating event:', eventError)
+      log.error({ error: eventError }, 'Failed to create event')
       return NextResponse.json({
         error: 'Failed to create event',
         details: eventError.message
@@ -296,9 +274,7 @@ export async function POST(request: NextRequest) {
         .insert(eventDatesInsert)
 
       if (eventDatesError) {
-        console.error('Error creating event dates:', eventDatesError)
-        // Don't fail the entire request, but log the error
-        // The event was created successfully, so we can still return it
+        log.error({ error: eventDatesError }, 'Failed to create event dates')
       }
     }
 
@@ -306,17 +282,16 @@ export async function POST(request: NextRequest) {
     if (event.start_date && dataSourceTenantId) {
       try {
         const designItems = await createAutoDesignItems(event.id, event.start_date, dataSourceTenantId, supabase)
-        console.log(`Created ${designItems.length} auto-added design items for event ${event.id}`)
+        log.info({ eventId: event.id, designItemCount: designItems.length }, 'Auto-created design items')
       } catch (error) {
-        console.error('Error auto-creating design items:', error)
-        // Don't fail the entire request, just log the error
+        log.error({ error, eventId: event.id }, 'Failed to auto-create design items')
       }
     }
 
     // Execute workflows for this event type (automated task creation)
     if (event.event_type_id && dataSourceTenantId) {
       try {
-        console.log(`[Events API] Executing workflows for event type: ${event.event_type_id}`)
+        log.debug({ eventTypeId: event.event_type_id }, 'Executing workflows for event type')
         const workflowResults = await workflowEngine.executeWorkflowsForEvent({
           eventId: event.id,
           eventTypeId: event.event_type_id,
@@ -328,14 +303,15 @@ export async function POST(request: NextRequest) {
         
         if (workflowResults.length > 0) {
           const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
-          console.log(`[Events API] Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s)`)
+          log.info({ 
+            workflowCount: workflowResults.length, 
+            taskCount: totalTasks 
+          }, 'Workflows executed successfully')
         } else {
-          console.log(`[Events API] No active workflows found for event type ${event.event_type_id}`)
+          log.debug({ eventTypeId: event.event_type_id }, 'No active workflows found')
         }
       } catch (error) {
-        console.error('[Events API] Error executing workflows:', error)
-        // Don't fail the event creation, just log the error
-        // Workflows are a nice-to-have, not critical to event creation
+        log.error({ error }, 'Failed to execute workflows')
       }
     }
 
@@ -343,15 +319,12 @@ export async function POST(request: NextRequest) {
     const tenantSubdomain = session.user.tenantSubdomain || 'default'
     revalidatePath(`/${tenantSubdomain}/events`)
 
+    log.info({ eventId: event.id, title: event.title }, 'Event created successfully')
     return NextResponse.json({ event }, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating event:', error)
+    log.error({ error }, 'Unexpected error creating event')
     return NextResponse.json({
       error: error.message || 'Internal server error'
     }, { status: 500 })
   }
 }
-
-
-
-

@@ -26,6 +26,9 @@ import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters } from '@/hooks/useEventsFilters'
 import { eventsService } from '@/lib/api/services/eventsService'
 import type { Event, EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface CoreTask {
   id: string
@@ -114,15 +117,15 @@ export default function EventsPage() {
   // Debug: Log session and user info when "My Events" filter is active
   useEffect(() => {
     if (filters.assignedToFilter === 'my_events') {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('🔍 [EVENTS PAGE] My Events Filter Active')
+      log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      log.debug('🔍 [EVENTS PAGE] My Events Filter Active')
       console.log('Session:', session)
       console.log('Session User:', session?.user)
       console.log('Session User ID:', session?.user?.id)
       console.log('Total Events:', explodedEvents.length)
       console.log('Filtered Events:', sortedEvents.length)
       console.log('Sample Event Staff Assignments:', explodedEvents[0]?.event_staff_assignments)
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     }
   }, [filters.assignedToFilter, session, explodedEvents, sortedEvents])
 
@@ -216,7 +219,7 @@ export default function EventsPage() {
         [displayId]: tasks
       }))
     } catch (error) {
-      console.error('Error fetching event tasks:', error)
+      log.error({ error }, 'Error fetching event tasks')
       toast.error('Failed to load tasks')
     } finally {
       setLoadingTasks(prev => {
@@ -243,7 +246,7 @@ export default function EventsPage() {
         queryClient.invalidateQueries({ queryKey: ['events'] })
         toast.success('Event deleted successfully')
       } catch (error) {
-        console.error('Error deleting event:', error)
+        log.error({ error }, 'Error deleting event')
         toast.error('Failed to delete event')
       }
     }
@@ -304,7 +307,7 @@ export default function EventsPage() {
       toast.success(`Deleted ${count} event${count > 1 ? 's' : ''} successfully`)
       setSelectedEventIds(new Set())
     } catch (error) {
-      console.error('Error deleting events:', error)
+      log.error({ error }, 'Error deleting events')
       toast.error('Failed to delete some events')
     }
   }
@@ -323,7 +326,7 @@ export default function EventsPage() {
       toast.success(`Updated ${count} event${count > 1 ? 's' : ''} to ${newStatus}`)
       setSelectedEventIds(new Set())
     } catch (error) {
-      console.error('Error updating event statuses:', error)
+      log.error({ error }, 'Error updating event statuses')
       toast.error('Failed to update some events')
     }
   }

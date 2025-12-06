@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 /**
  * GET /api/events/tasks-status
  * 
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error fetching task status:', error)
+      log.error({ error }, 'Error fetching task status')
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error in events tasks-status API:', error)
+    log.error({ error }, 'Error in events tasks-status API')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

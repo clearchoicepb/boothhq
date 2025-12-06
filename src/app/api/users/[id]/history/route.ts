@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:users')
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +25,7 @@ export async function GET(
       .order('effective_date', { ascending: false })
 
     if (payRateError) {
-      console.error('Error fetching pay rate history:', payRateError)
+      log.error({ payRateError }, 'Error fetching pay rate history')
     }
 
     // Fetch role history
@@ -34,7 +37,7 @@ export async function GET(
       .order('effective_date', { ascending: false })
 
     if (roleError) {
-      console.error('Error fetching role history:', roleError)
+      log.error({ roleError }, 'Error fetching role history')
     }
 
     // Fetch event assignments with event details
@@ -62,7 +65,7 @@ export async function GET(
       .order('created_at', { ascending: false })
 
     if (eventError) {
-      console.error('Error fetching event assignments:', eventError)
+      log.error({ eventError }, 'Error fetching event assignments')
     }
 
     return NextResponse.json({
@@ -71,7 +74,7 @@ export async function GET(
       eventAssignments: eventAssignments || []
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

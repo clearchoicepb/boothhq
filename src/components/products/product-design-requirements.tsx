@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Palette } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('products')
 
 interface DesignType {
   id: string
@@ -37,7 +40,7 @@ export function ProductDesignRequirements({
         const data = await res.json()
         setDesignTypes(data.types || [])
       } catch (error) {
-        console.error('Error fetching design types:', error)
+        log.error({ error }, 'Error fetching design types')
       } finally {
         setLoading(false)
       }

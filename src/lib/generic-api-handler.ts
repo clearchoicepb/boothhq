@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { getEntityConfig, validateEntityData, FilterOptions } from './api-entities'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 export class GenericApiHandler {
   private entity: string
@@ -39,7 +42,7 @@ export class GenericApiHandler {
       const { data, error } = await query
 
       if (error) {
-        console.error(`Error fetching ${this.entity}:`, error)
+        log.error({ error }, 'Error fetching ${this.entity}')
         return NextResponse.json({ 
           error: `Failed to fetch ${this.entity}`,
           details: error.message 
@@ -57,7 +60,7 @@ export class GenericApiHandler {
       
       return response
     } catch (error) {
-      console.error(`Error in ${this.entity} GET:`, error)
+      log.error({ error }, 'Error in ${this.entity} GET')
       return NextResponse.json({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -76,7 +79,7 @@ export class GenericApiHandler {
       try {
         body = await request.json()
       } catch (error) {
-        console.error('Error parsing request body:', error)
+        log.error({ error }, 'Error parsing request body')
         return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
       }
 
@@ -103,7 +106,7 @@ export class GenericApiHandler {
         .single()
 
       if (error) {
-        console.error(`Error creating ${this.entity}:`, error)
+        log.error({ error }, 'Error creating ${this.entity}')
         return NextResponse.json({
           error: `Failed to create ${this.entity}`,
           details: error.message
@@ -117,7 +120,7 @@ export class GenericApiHandler {
 
       return response
     } catch (error) {
-      console.error(`Error in ${this.entity} POST:`, error)
+      log.error({ error }, 'Error in ${this.entity} POST')
       return NextResponse.json({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -136,7 +139,7 @@ export class GenericApiHandler {
       try {
         body = await request.json()
       } catch (error) {
-        console.error('Error parsing request body:', error)
+        log.error({ error }, 'Error parsing request body')
         return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
       }
 
@@ -163,7 +166,7 @@ export class GenericApiHandler {
         .single()
 
       if (error) {
-        console.error(`Error updating ${this.entity}:`, error)
+        log.error({ error }, 'Error updating ${this.entity}')
         return NextResponse.json({
           error: `Failed to update ${this.entity}`,
           details: error.message
@@ -172,7 +175,7 @@ export class GenericApiHandler {
 
       return NextResponse.json(data)
     } catch (error) {
-      console.error(`Error in ${this.entity} PUT:`, error)
+      log.error({ error }, 'Error in ${this.entity} PUT')
       return NextResponse.json({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -194,7 +197,7 @@ export class GenericApiHandler {
         .eq('tenant_id', dataSourceTenantId)
 
       if (error) {
-        console.error(`Error deleting ${this.entity}:`, error)
+        log.error({ error }, 'Error deleting ${this.entity}')
         return NextResponse.json({
           error: `Failed to delete ${this.entity}`,
           details: error.message
@@ -203,7 +206,7 @@ export class GenericApiHandler {
 
       return NextResponse.json({ success: true })
     } catch (error) {
-      console.error(`Error in ${this.entity} DELETE:`, error)
+      log.error({ error }, 'Error in ${this.entity} DELETE')
       return NextResponse.json({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'

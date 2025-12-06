@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:quotes')
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -24,7 +27,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching quote:', error)
+      log.error({ error }, 'Error fetching quote')
       return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
     }
 
@@ -37,7 +40,7 @@ export async function GET(
       .order('sort_order', { ascending: true })
 
     if (lineItemsError) {
-      console.error('Error fetching line items:', lineItemsError)
+      log.error({ lineItemsError }, 'Error fetching line items')
     }
 
     // Transform the data
@@ -51,7 +54,7 @@ export async function GET(
 
     return NextResponse.json(transformedQuote)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -141,13 +144,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating quote:', error)
+      log.error({ error }, 'Error updating quote')
       return NextResponse.json({ error: 'Failed to update quote' }, { status: 500 })
     }
 
     return NextResponse.json(quote)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -172,13 +175,13 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting quote:', error)
+      log.error({ error }, 'Error deleting quote')
       return NextResponse.json({ error: 'Failed to delete quote' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

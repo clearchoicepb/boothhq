@@ -9,6 +9,9 @@ import { Building2, Users, Calendar, DollarSign, Camera, TrendingUp, Plus, Calen
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { AppLayout } from '@/components/layout/app-layout'
 import { DashboardStats } from '@/components/dashboard-stats'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboard')
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -59,7 +62,7 @@ export default function DashboardPage() {
         totalRevenue: Array.isArray(invoices) ? invoices.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0) : 0
       })
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
+      log.error({ error }, 'Error fetching dashboard stats')
     } finally {
       setStatsLoading(false)
     }
@@ -73,7 +76,7 @@ export default function DashboardPage() {
         setEvents(data)
       }
     } catch (error) {
-      console.error('Error fetching events:', error)
+      log.error({ error }, 'Error fetching events')
     }
   }
 

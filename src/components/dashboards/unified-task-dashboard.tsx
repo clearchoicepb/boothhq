@@ -47,6 +47,9 @@ import { useUpdateTask } from '@/hooks/useTaskActions'
 import { useUsers } from '@/hooks/useUsers'
 import { DEPARTMENTS, getTaskDepartments, type DepartmentId } from '@/lib/departments'
 import type { TaskWithUrgency } from '@/types/tasks'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboards')
 
 // User interface for staff filtering
 interface TenantUser {
@@ -262,7 +265,7 @@ export function UnifiedTaskDashboard({
       toast.success('Task updated successfully')
       closeTaskModal()
     } catch (error) {
-      console.error('Error updating task:', error)
+      log.error({ error }, 'Error updating task')
       toast.error('Failed to update task')
     }
   }

@@ -5,6 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { SignatureCapture } from '@/components/contracts/SignatureCapture'
 import { CheckCircle, FileText, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('sign')
 
 interface Contract {
   id: string
@@ -44,7 +47,7 @@ export default function ContractSignPage() {
         await fetch(`/api/contracts/${params.id}/viewed`, { method: 'POST' })
       }
     } catch (error) {
-      console.error('Error fetching contract:', error)
+      log.error({ error }, 'Error fetching contract')
       setError('Contract not found or has expired')
     } finally {
       setLoading(false)
@@ -72,7 +75,7 @@ export default function ContractSignPage() {
       await fetchContract()
       setShowSignature(false)
     } catch (error: any) {
-      console.error('Error signing contract:', error)
+      log.error({ error }, 'Error signing contract')
       toast.error(error.message || 'Failed to sign agreement')
     } finally {
       setSigning(false)

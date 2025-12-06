@@ -8,6 +8,9 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { LeadForm } from '@/components/lead-form'
 import { ArrowLeft, User, Building2 } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('edit')
 
 interface Lead {
   id: string
@@ -64,7 +67,7 @@ export default function EditLeadPage() {
       const data = await response.json()
       setLead(data)
     } catch (error) {
-      console.error('Error fetching lead:', error)
+      log.error({ error }, 'Error fetching lead')
       setError('Failed to load lead')
     } finally {
       setLoading(false)
@@ -90,7 +93,7 @@ export default function EditLeadPage() {
       // Navigate back to the lead detail page
       router.push(`/${tenantSubdomain}/leads/${leadId}`)
     } catch (error) {
-      console.error('Error saving lead:', error)
+      log.error({ error }, 'Error saving lead')
       alert('Failed to save lead. Please try again.')
     }
   }

@@ -5,6 +5,9 @@ import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { useUsers } from '@/hooks/useUsers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface DesignTypeOption {
   id: string
@@ -48,7 +51,7 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
       const data = (await res.json()) as { types?: DesignTypeOption[] }
       setDesignTypes(data.types?.filter(Boolean) ?? [])
     } catch (_error) {
-      console.error('Error fetching design types:', _error)
+      log.error({ _error }, 'Error fetching design types')
     }
   }
 

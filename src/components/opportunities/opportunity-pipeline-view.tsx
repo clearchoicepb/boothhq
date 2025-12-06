@@ -3,6 +3,9 @@ import { OpportunityPipelineCard } from './opportunity-pipeline-card'
 import { OpportunityPreviewModal } from './opportunity-preview-modal'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 import type { TenantUser } from '@/lib/users'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('opportunities')
 
 interface OpportunityPipelineViewProps {
   opportunities: OpportunityWithRelations[]
@@ -50,7 +53,7 @@ export function OpportunityPipelineView({
       fetch(`/api/opportunities/tasks-status?ids=${ids}`)
         .then(res => res.json())
         .then(data => setTaskStatus(data.taskStatus || {}))
-        .catch(err => console.error('Failed to fetch task status:', err))
+        .catch(err => log.error({ err }, 'Failed to fetch task status'))
     }
   }, [opportunities])
   

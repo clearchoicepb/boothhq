@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react'
 import { EntityForm } from '@/components/forms/EntityForm'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 import {
   usePhysicalAddressesData,
   useAddPhysicalAddress,
@@ -31,7 +34,7 @@ export function PhysicalAddressesList() {
       setIsModalOpen(false)
       setEditingAddress(null)
     } catch (error: any) {
-      console.error('Failed to save physical address:', error)
+      log.error({ error }, 'Failed to save physical address')
       alert(error.message || 'Failed to save physical address')
     }
   }

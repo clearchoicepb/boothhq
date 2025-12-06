@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Building2, Search, User } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('select-account')
 
 interface Account {
   id: string
@@ -49,7 +52,7 @@ export default function SelectAccountPage() {
           setFilteredAccounts(data)
         }
       } catch (error) {
-        console.error('Error fetching accounts:', error)
+        log.error({ error }, 'Error fetching accounts')
       } finally {
         setLoading(false)
       }
@@ -84,7 +87,7 @@ export default function SelectAccountPage() {
         setContacts(data)
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
     } finally {
       setLoadingContacts(false)
     }

@@ -8,6 +8,9 @@ import { LeadFormSequential } from '@/components/lead-form-sequential'
 import { OpportunityFormEnhanced } from '@/components/opportunity-form-enhanced'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, CheckCircle, Plus } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new-sequential')
 
 interface Customer {
   id: string
@@ -95,7 +98,7 @@ export default function NewOpportunitySequentialPage() {
         setStep('contact-selection')
       }
     } catch (error) {
-      console.error('Error fetching account:', error)
+      log.error({ error }, 'Error fetching account')
     }
   }
 
@@ -133,7 +136,7 @@ export default function NewOpportunitySequentialPage() {
         setStep('opportunity-creation')
       }
     } catch (error) {
-      console.error('Error fetching account and contact:', error)
+      log.error({ error }, 'Error fetching account and contact')
     }
   }
 
@@ -159,7 +162,7 @@ export default function NewOpportunitySequentialPage() {
         }
       }
     } catch (error) {
-      console.error('Error fetching contact:', error)
+      log.error({ error }, 'Error fetching contact')
     }
   }
 
@@ -183,7 +186,7 @@ export default function NewOpportunitySequentialPage() {
         setStep('opportunity-creation')
       }
     } catch (error) {
-      console.error('Error fetching lead:', error)
+      log.error({ error }, 'Error fetching lead')
     }
   }
 
@@ -214,11 +217,11 @@ export default function NewOpportunitySequentialPage() {
         setStep('opportunity-creation')
       } else {
         const errorData = await response.json()
-        console.error('Failed to create lead:', errorData)
+        log.error({ errorData }, 'Failed to create lead')
         alert(`Failed to create lead: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error creating lead:', error)
+      log.error({ error }, 'Error creating lead')
       alert('Error creating lead. Please try again.')
     }
   }
@@ -256,7 +259,7 @@ export default function NewOpportunitySequentialPage() {
 
       router.push(`/${tenantSubdomain}/opportunities/${newOpportunity.id}`)
     } catch (error) {
-      console.error('Error creating opportunity:', error)
+      log.error({ error }, 'Error creating opportunity')
       alert(`Error creating opportunity: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }

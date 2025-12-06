@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('core-tasks')
 import {
   ArrowLeft,
   CheckCircle2,
@@ -44,7 +47,7 @@ export default function CoreTasksSettingsPage() {
         setTasks(data);
       }
     } catch (error) {
-      console.error('Error fetching core tasks:', error);
+      log.error({ error }, 'Error fetching core tasks');
     } finally {
       setLoading(false);
     }
@@ -72,7 +75,7 @@ export default function CoreTasksSettingsPage() {
         await fetchTasks();
       }
     } catch (error) {
-      console.error('Error toggling task:', error);
+      log.error({ error }, 'Error toggling task');
       alert('Failed to update task status');
     }
   };
@@ -107,7 +110,7 @@ export default function CoreTasksSettingsPage() {
         setEditingName('');
       }
     } catch (error) {
-      console.error('Error updating task:', error);
+      log.error({ error }, 'Error updating task');
       alert('Failed to update task name');
     }
   };
@@ -137,7 +140,7 @@ export default function CoreTasksSettingsPage() {
         await fetchTasks();
       }
     } catch (error) {
-      console.error('Error reordering tasks:', error);
+      log.error({ error }, 'Error reordering tasks');
       alert('Failed to reorder tasks');
     }
   };
@@ -167,7 +170,7 @@ export default function CoreTasksSettingsPage() {
         await fetchTasks();
       }
     } catch (error) {
-      console.error('Error reordering tasks:', error);
+      log.error({ error }, 'Error reordering tasks');
       alert('Failed to reorder tasks');
     }
   };
@@ -198,7 +201,7 @@ export default function CoreTasksSettingsPage() {
         alert(error.error || 'Failed to create task');
       }
     } catch (error) {
-      console.error('Error creating task:', error);
+      log.error({ error }, 'Error creating task');
       alert('Failed to create task');
     }
   };

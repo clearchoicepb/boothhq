@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { ConsumableAutomation } from '@/lib/automation/consumableAutomation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:automation')
 
 /**
  * POST - Run consumable automation
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
   } catch (error: any) {
-    console.error('Error in consumable automation:', error)
+    log.error({ error }, 'Error in consumable automation')
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
@@ -114,7 +117,7 @@ export async function GET(request: NextRequest) {
       last_check: new Date().toISOString()
     })
   } catch (error: any) {
-    console.error('Error getting consumable automation status:', error)
+    log.error({ error }, 'Error getting consumable automation status')
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

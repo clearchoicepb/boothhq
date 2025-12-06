@@ -7,6 +7,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Edit, Trash2, Package, MapPin, DollarSign, Calendar, Wrench, FileText } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface Equipment {
   id: string
@@ -53,14 +56,14 @@ export default function EquipmentDetailPage() {
       const response = await fetch(`/api/equipment/${equipmentId}`)
       
       if (!response.ok) {
-        console.error('Error fetching equipment')
+        log.error('Error fetching equipment')
         return
       }
 
       const data = await response.json()
       setEquipment(data)
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
     } finally {
       setLocalLoading(false)
     }

@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, X, Clock, User, Building2, Target, Calendar, FileText } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface SearchResult {
   id: string
@@ -137,7 +140,7 @@ export function GlobalSearch({ tenantSubdomain, className = '' }: GlobalSearchPr
 
       setResults(sortedResults)
     } catch (error) {
-      console.error('Search error:', error)
+      log.error({ error }, 'Search error')
       setResults([])
     } finally {
       setIsLoading(false)

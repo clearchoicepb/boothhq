@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { maintenanceService } from '@/lib/api/services/maintenanceService'
 import { MaintenanceHistoryTimeline } from './maintenance-history-timeline'
 import { Search, Filter, Calendar } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('maintenance')
 
 export function MaintenanceHistory() {
   const [history, setHistory] = useState<any[]>([])
@@ -24,7 +27,7 @@ export function MaintenanceHistory() {
       })
       setHistory(data)
     } catch (error) {
-      console.error('Failed to load maintenance history:', error)
+      log.error({ error }, 'Failed to load maintenance history')
     } finally {
       setLoading(false)
     }

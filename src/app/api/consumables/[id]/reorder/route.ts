@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { ConsumableAutomation } from '@/lib/automation/consumableAutomation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:consumables')
 
 /**
  * POST - Record consumable reorder
@@ -75,7 +78,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('Error recording reorder:', error)
+      log.error({ error }, 'Error recording reorder')
       return NextResponse.json(
         { error: 'Failed to record reorder', details: error.message },
         { status: 500 }
@@ -87,7 +90,7 @@ export async function POST(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

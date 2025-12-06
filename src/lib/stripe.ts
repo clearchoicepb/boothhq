@@ -1,4 +1,7 @@
 import Stripe from 'stripe'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 // Global fallback Stripe instance (uses env var if no tenant key provided)
 // This is only used as a fallback - prefer getTenantStripe() for tenant-specific instances
@@ -56,7 +59,7 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
       ])
 
     if (error) {
-      console.error('Error fetching Stripe settings:', error)
+      log.error({ error }, 'Error fetching Stripe settings')
       // Fall back to environment variables
       return {
         secretKey: process.env.STRIPE_SECRET_KEY,
@@ -94,17 +97,17 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
 
     // Fallback to environment variables if not found in settings
     if (!config.secretKey && process.env.STRIPE_SECRET_KEY) {
-      console.log('[Stripe] Using fallback secret key from environment')
+      log.debug('Using fallback secret key from environment')
       config.secretKey = process.env.STRIPE_SECRET_KEY
     }
     if (!config.publishableKey && process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-      console.log('[Stripe] Using fallback publishable key from environment')
+      log.debug('Using fallback publishable key from environment')
       config.publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
     }
 
     return config
   } catch (error) {
-    console.error('Exception in getTenantStripeConfig:', error)
+    log.error({ error }, 'Exception in getTenantStripeConfig')
     // Return environment variables as ultimate fallback
     return {
       secretKey: process.env.STRIPE_SECRET_KEY,

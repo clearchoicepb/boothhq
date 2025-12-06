@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 export async function POST() {
   try {
   const context = await getTenantContext()
@@ -47,7 +50,7 @@ export async function POST() {
       .eq('tenant_id', dataSourceTenantId)
 
     if (oppError) {
-      console.error('Error fetching opportunities:', oppError)
+      log.error({ oppError }, 'Error fetching opportunities')
       return NextResponse.json({
         error: 'Failed to fetch opportunities'
       }, { status: 500 })
@@ -80,7 +83,7 @@ export async function POST() {
           if (!updateError) {
             updateCount++
           } else {
-            console.error(`Error updating opportunity ${opp.id}:`, updateError)
+            log.error({ updateError }, 'Error updating opportunity ${opp.id}')
           }
         }
       }
@@ -92,7 +95,7 @@ export async function POST() {
       count: updateCount
     })
   } catch (error) {
-    console.error('Error recalculating probabilities:', error)
+    log.error({ error }, 'Error recalculating probabilities')
     return NextResponse.json(
       { error: 'Failed to recalculate probabilities' },
       { status: 500 }

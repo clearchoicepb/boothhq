@@ -7,6 +7,9 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Check, X, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('return')
 
 export default function PaymentReturnPage() {
   const { data: session, status } = useSession()
@@ -69,7 +72,7 @@ export default function PaymentReturnPage() {
         setErrorMessage(data.error || 'Payment was not successful')
       }
     } catch (error) {
-      console.error('Error verifying payment:', error)
+      log.error({ error }, 'Error verifying payment')
       setPaymentStatus('error')
       setErrorMessage('An unexpected error occurred')
     }

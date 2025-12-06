@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:migrations')
 
 export async function POST() {
   try {
@@ -8,7 +11,7 @@ export async function POST() {
 
     const { supabase, dataSourceTenantId, session } = context
 
-    console.log('🚀 Starting migration: add_location_id_to_events')
+    log.debug('🚀 Starting migration: add_location_id_to_events')
 
     // Since we can't run DDL directly through Supabase client,
     // we'll use the database via the service role
@@ -45,7 +48,7 @@ export async function POST() {
     })
 
   } catch (error: any) {
-    console.error('Migration check error:', error)
+    log.error({ error }, 'Migration check error')
     return NextResponse.json({
       error: error.message || 'Failed to check migration status'
     }, { status: 500 })

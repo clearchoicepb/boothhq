@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:admin')
 
 // POST /api/admin/sync-product-groups - Sync existing inventory items with product_group_items junction table
 // This fixes items that were assigned to product groups before the junction table was properly maintained
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
       errors: errors.length > 0 ? errors : undefined
     })
   } catch (error) {
-    console.error('Sync error:', error)
+    log.error({ error }, 'Sync error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

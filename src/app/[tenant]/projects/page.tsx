@@ -10,6 +10,9 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import type { Project, ProjectStatus, ProjectType, ProjectPriority } from '@/types/project.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('projects')
 import { 
   getProjectStatusColor, 
   getProjectPriorityColor, 
@@ -55,7 +58,7 @@ function ProjectsPageContent() {
       const data = await response.json()
       setProjects(data)
     } catch (error) {
-      console.error('Error fetching projects:', error)
+      log.error({ error }, 'Error fetching projects')
       toast.error('Failed to load projects')
     } finally {
       setLocalLoading(false)
@@ -103,7 +106,7 @@ function ProjectsPageContent() {
       toast.success('Project deleted successfully')
       fetchProjects()
     } catch (error) {
-      console.error('Error deleting project:', error)
+      log.error({ error }, 'Error deleting project')
       toast.error('Failed to delete project')
     }
   }

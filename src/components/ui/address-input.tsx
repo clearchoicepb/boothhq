@@ -5,6 +5,9 @@ import { cn } from '@/lib/utils'
 import { Input } from './input'
 import { Select } from './select'
 import { loadGoogleMaps, isGoogleMapsLoaded } from '@/lib/google-maps-loader'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('ui')
 
 export interface AddressData {
   address_line1: string
@@ -76,7 +79,7 @@ const AddressInput = forwardRef<HTMLDivElement, AddressInputProps>(
             setGoogleMapsLoaded(true)
           }
         } catch (error) {
-          console.error('Failed to load Google Maps:', error)
+          log.error({ error }, 'Failed to load Google Maps')
           setGoogleMapsError(true)
           // Fallback: allow manual entry
         }
@@ -152,7 +155,7 @@ const AddressInput = forwardRef<HTMLDivElement, AddressInputProps>(
           }
         })
       } catch (error) {
-        console.error('Failed to initialize Google Places Autocomplete:', error)
+        log.error({ error }, 'Failed to initialize Google Places Autocomplete')
         setGoogleMapsError(true)
       }
     }

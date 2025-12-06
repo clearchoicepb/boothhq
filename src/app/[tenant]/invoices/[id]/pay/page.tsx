@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, CreditCard, Check } from 'lucide-react'
 import Link from 'next/link'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('pay')
 import {
   Elements,
   CardElement,
@@ -283,7 +286,7 @@ export default function InvoicePaymentPage() {
         setError('Stripe is not configured for this tenant')
       }
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
       setError('Failed to load payment data')
     } finally {
       setLocalLoading(false)

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:communications')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('❌ [Communications API] Error fetching communications:', error)
+      log.error({ error }, '❌ [Communications API] Error fetching communications')
       return NextResponse.json({ error: 'Failed to fetch communications' }, { status: 500 })
     }
 
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
     
     // Debug relationship data for first 3 messages
     if (data && data.length > 0) {
-      console.log('🔍 [Communications API] Sample relationship data:')
+      log.debug('🔍 [Communications API] Sample relationship data:')
       data.slice(0, 3).forEach((msg, i) => {
         console.log(`  Message ${i + 1}:`, {
           id: msg.id,
@@ -99,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -114,7 +117,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Log what we're receiving for debugging
-    console.log('[Communications POST] Received data:', {
+    log.debug('Received data:', {
       ...body,
       // Redact sensitive info, just show structure
       hasEventId: !!body.event_id,
@@ -151,16 +154,16 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Communications POST] Error creating communication:', error)
-      console.error('[Communications POST] Failed data:', communicationData)
+      log.error({ error }, '[Communications POST] Error creating communication')
+      log.error({ communicationData }, '[Communications POST] Failed data')
       return NextResponse.json({ error: 'Failed to create communication', details: error.message }, { status: 500 })
     }
 
-    console.log('[Communications POST] Success! Created communication:', data.id)
+    log.debug('Success! Created communication:', data.id)
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

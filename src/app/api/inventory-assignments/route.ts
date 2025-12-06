@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { addDays } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-assignments')
 
 /**
  * General Inventory Assignments API
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ assignments: data || [] })
   } catch (error) {
-    console.error('Error fetching assignments:', error)
+    log.error({ error }, 'Error fetching assignments')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -144,7 +147,7 @@ export async function POST(request: NextRequest) {
         
         // Validate quantity
         if (item.total_quantity && quantityToAssign > item.total_quantity) {
-          console.warn(`⚠️ Quantity ${quantityToAssign} exceeds total ${item.total_quantity} for item ${item.item_name}`)
+          log.warn('⚠️ Quantity ${quantityToAssign} exceeds total ${item.total_quantity} for item ${item.item_name}')
           quantityToAssign = item.total_quantity
         }
       }
@@ -193,21 +196,21 @@ export async function POST(request: NextRequest) {
       `)
 
     if (assignmentError) {
-      console.error('❌ Failed to create assignments:', assignmentError)
+      log.error({ assignmentError }, '❌ Failed to create assignments')
       return NextResponse.json({
         error: 'Failed to create assignments',
         details: assignmentError.message
       }, { status: 500 })
     }
 
-    console.log(`✅ Created ${createdAssignments?.length || 0} inventory assignments`)
+    log.debug('✅ Created ${createdAssignments?.length || 0} inventory assignments')
 
     return NextResponse.json({
       success: true,
       assignments: createdAssignments
     })
   } catch (error) {
-    console.error('Error creating assignments:', error)
+    log.error({ error }, 'Error creating assignments')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -246,7 +249,7 @@ export async function DELETE(request: NextRequest) {
       removed_count: assignmentIds.length
     })
   } catch (error) {
-    console.error('Error removing assignments:', error)
+    log.error({ error }, 'Error removing assignments')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

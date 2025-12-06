@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:inventory-notifications')
 
 /**
  * GET - List inventory notifications with filters
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching inventory notifications:', error)
+      log.error({ error }, 'Error fetching inventory notifications')
       return NextResponse.json(
         { error: 'Failed to fetch inventory notifications', details: error.message },
         { status: 500 }
@@ -87,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -143,7 +146,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating inventory notification:', error)
+      log.error({ error }, 'Error creating inventory notification')
       return NextResponse.json(
         { error: 'Failed to create inventory notification', details: error.message },
         { status: 500 }
@@ -152,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

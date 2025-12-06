@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { PhotoUpload } from '@/components/ui/photo-upload'
 import { ArrowLeft, Save, X } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 interface Account {
   id: string
@@ -67,7 +70,7 @@ export default function NewContactPage() {
         setAccounts(data || [])
       }
     } catch (error) {
-      console.error('Error fetching accounts:', error)
+      log.error({ error }, 'Error fetching accounts')
     }
   }
 
@@ -120,7 +123,7 @@ export default function NewContactPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error creating contact:', errorData)
+        log.error({ errorData }, 'Error creating contact')
         alert('Error creating contact. Please try again.')
         return
       }
@@ -138,7 +141,7 @@ export default function NewContactPage() {
       }
       router.refresh()
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
       alert('Error creating contact. Please try again.')
     } finally {
       setLocalLoading(false)

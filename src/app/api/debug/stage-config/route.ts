@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +19,7 @@ export async function GET(request: NextRequest) {
       .like('setting_key', 'opportunities.%')
 
     if (error) {
-      console.error('Error fetching settings:', error)
+      log.error({ error }, 'Error fetching settings')
       return NextResponse.json({ error: 'Failed to fetch settings', details: error.message }, { status: 500 })
     }
 
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (oppError) {
-      console.error('Error fetching opportunities:', oppError)
+      log.error({ oppError }, 'Error fetching opportunities')
       return NextResponse.json({ error: 'Failed to fetch opportunities', details: oppError.message }, { status: 500 })
     }
 
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
       } : null
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

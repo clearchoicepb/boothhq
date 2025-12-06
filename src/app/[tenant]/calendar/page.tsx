@@ -8,6 +8,9 @@ import { CalendarView, EventDetailModal } from '@/components/calendar-view'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('calendar')
 
 interface CalendarEvent {
   id: string
@@ -103,7 +106,7 @@ export default function CalendarPage() {
         setOpportunities(opportunitiesData)
       }
     } catch (error) {
-      console.error('Error fetching calendar data:', error)
+      log.error({ error }, 'Error fetching calendar data')
     } finally {
       setIsLoading(false)
     }

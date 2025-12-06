@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useTenant } from './tenant-context'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 interface SettingsContextType {
   settings: Record<string, any>
@@ -38,7 +41,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       const data = await response.json()
       setSettings(data.settings || {})
     } catch (err) {
-      console.error('Error fetching settings:', err)
+      log.error({ err }, 'Error fetching settings')
       setError(err instanceof Error ? err.message : 'Failed to fetch settings')
     } finally {
       setLoading(false)
@@ -89,7 +92,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       // Optionally re-validate from server in background to ensure consistency
       fetchSettings()
     } catch (err) {
-      console.error('Error updating settings:', err)
+      log.error({ err }, 'Error updating settings')
       setError(err instanceof Error ? err.message : 'Failed to save settings')
       throw err
     }

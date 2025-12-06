@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { maintenanceService } from '@/lib/api/services/maintenanceService'
 import { Calendar, CheckCircle, AlertCircle, FileText } from 'lucide-react'
 import { format, addDays } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('maintenance')
 
 interface CompleteMaintenanceModalProps {
   isOpen: boolean
@@ -53,7 +56,7 @@ export function CompleteMaintenanceModal({
 
       onSuccess()
     } catch (err: any) {
-      console.error('Failed to complete maintenance:', err)
+      log.error({ err }, 'Failed to complete maintenance')
       setError(err.message || 'Failed to complete maintenance. Please try again.')
     } finally {
       setSaving(false)

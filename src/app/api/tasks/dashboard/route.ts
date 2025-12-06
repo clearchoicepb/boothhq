@@ -4,6 +4,9 @@ import { enrichTaskWithUrgency } from '@/types/tasks'
 import type { TaskDashboardData, TaskWithRelations } from '@/types/tasks'
 import { canAccessDepartment, type DepartmentId } from '@/lib/departments'
 import { parseLocalDate } from '@/lib/utils/date-utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tasks')
 
 /**
  * GET /api/tasks/dashboard
@@ -98,7 +101,7 @@ export async function GET(request: NextRequest) {
     const { data: tasks, error } = await query
 
     if (error) {
-      console.error('[GET /api/tasks/dashboard] Error:', error)
+      log.error({ error }, '[GET /api/tasks/dashboard] Error')
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -115,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(dashboardData)
   } catch (error: any) {
-    console.error('[GET /api/tasks/dashboard] Unexpected error:', error)
+    log.error({ error }, '[GET /api/tasks/dashboard] Unexpected error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-categories')
 // PUT - Update event category
 export async function PUT(
   request: Request,
@@ -41,7 +44,7 @@ export async function PUT(
 
     return NextResponse.json({ category })
   } catch (error: any) {
-    console.error('Error updating event category:', error)
+    log.error({ error }, 'Error updating event category')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -100,7 +103,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting event category:', error)
+    log.error({ error }, 'Error deleting event category')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

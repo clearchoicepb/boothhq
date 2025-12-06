@@ -17,6 +17,9 @@ import { StatusBadge } from './status-badge'
 import { AssignmentHistory } from './assignment-history'
 import { BulkCheckoutModal } from './bulk-checkout-modal'
 import { format, isWithinInterval, addDays, startOfWeek, endOfWeek } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 export function InventoryItemsList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -136,7 +139,7 @@ export function InventoryItemsList() {
       setSelectedItems(new Set())
       setBulkMode(false)
     } catch (error: any) {
-      console.error('Failed to mark items as returned:', error)
+      log.error({ error }, 'Failed to mark items as returned')
       // Error will be shown by the mutation's error state
     }
   }, [selectedItems, items, updateItem])
@@ -212,7 +215,7 @@ export function InventoryItemsList() {
       setIsModalOpen(false)
       setEditingItem(null)
     } catch (error: any) {
-      console.error('Failed to save inventory item:', error)
+      log.error({ error }, 'Failed to save inventory item')
       // Show user-friendly error
       alert(`Failed to save: ${error.message}`)
     }
@@ -224,7 +227,7 @@ export function InventoryItemsList() {
     try {
       await deleteItem.mutateAsync(itemId)
     } catch (error: any) {
-      console.error('Failed to delete inventory item:', error)
+      log.error({ error }, 'Failed to delete inventory item')
       // Error will be shown by the mutation's error state
     }
   }, [deleteItem])

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,7 +22,7 @@ export async function POST(
       .single()
 
     if (fetchError || !original) {
-      console.error('Error fetching opportunity:', fetchError)
+      log.error({ fetchError }, 'Error fetching opportunity')
       return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 })
     }
 
@@ -45,7 +48,7 @@ export async function POST(
       .single()
 
     if (createError) {
-      console.error('Error creating clone:', createError)
+      log.error({ createError }, 'Error creating clone')
       return NextResponse.json({ 
         error: 'Failed to clone opportunity',
         details: createError.message 
@@ -70,7 +73,7 @@ export async function POST(
         .insert(clonedDates)
 
       if (datesError) {
-        console.error('Error cloning event dates:', datesError)
+        log.error({ datesError }, 'Error cloning event dates')
         // Don't fail - opportunity was created successfully
       }
     }
@@ -80,7 +83,7 @@ export async function POST(
       opportunity: newOpportunity 
     })
   } catch (error) {
-    console.error('Error in clone API:', error)
+    log.error({ error }, 'Error in clone API')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

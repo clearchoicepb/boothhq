@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
 import { useUsers } from '@/hooks/useUsers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 interface BookingModalProps {
   isOpen: boolean
@@ -38,7 +41,7 @@ export function BookingModal({ isOpen, onClose, items, dateRange }: BookingModal
         setEvents(data || [])
       }
     } catch (err) {
-      console.error('Error fetching events:', err)
+      log.error({ err }, 'Error fetching events')
     }
   }
 

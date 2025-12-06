@@ -1,6 +1,9 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -51,7 +54,7 @@ export const authOptions: NextAuthOptions = {
             .eq('status', 'active')
 
           if (usersError || !tenantUsers || tenantUsers.length === 0) {
-            console.error('User lookup error in Tenant DB:', usersError)
+            log.error({ usersError }, 'User lookup error in Tenant DB')
             console.error('Email:', credentials.email)
             return null
           }
@@ -101,7 +104,7 @@ export const authOptions: NextAuthOptions = {
             hasMultipleTenants: tenantUsers.length > 1
           }
         } catch (error) {
-          console.error('Auth error:', error)
+          log.error({ error }, 'Auth error')
           return null
         }
       }

@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { addDays } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 
 // GET /api/events/[id]/inventory - Get all inventory assigned to an event or available inventory
 export async function GET(
@@ -335,7 +338,7 @@ export async function GET(
       by_staff: Array.from(inventoryByStaff.values())
     })
   } catch (error) {
-    console.error('Event inventory error:', error)
+    log.error({ error }, 'Event inventory error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -434,7 +437,7 @@ export async function POST(
         
         // Validate quantity doesn't exceed total
         if (item.total_quantity && quantityToAssign > item.total_quantity) {
-          console.warn(`⚠️ Quantity ${quantityToAssign} exceeds total ${item.total_quantity} for item ${item.item_name}`)
+          log.warn('⚠️ Quantity ${quantityToAssign} exceeds total ${item.total_quantity} for item ${item.item_name}')
           quantityToAssign = item.total_quantity
         }
       }
@@ -472,14 +475,14 @@ export async function POST(
       `)
 
     if (assignmentError) {
-      console.error('❌ Failed to create assignments:', assignmentError)
+      log.error({ assignmentError }, '❌ Failed to create assignments')
       return NextResponse.json({
         error: 'Failed to assign inventory',
         details: assignmentError.message
       }, { status: 500 })
     }
 
-    console.log(`✅ Created ${createdAssignments?.length || 0} inventory assignments for event ${eventId}`)
+    log.debug('✅ Created ${createdAssignments?.length || 0} inventory assignments for event ${eventId}')
 
     // Create checkout task if requested
     if (create_checkout_task) {
@@ -493,7 +496,7 @@ export async function POST(
       assignments: createdAssignments
     })
   } catch (error) {
-    console.error('Assign inventory error:', error)
+    log.error({ error }, 'Assign inventory error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -553,7 +556,7 @@ export async function DELETE(
       removed_count: assignmentIds.length || itemIds.length
     })
   } catch (error) {
-    console.error('Remove inventory error:', error)
+    log.error({ error }, 'Remove inventory error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

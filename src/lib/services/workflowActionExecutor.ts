@@ -20,6 +20,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('services')
 import type {
   WorkflowActionType,
   ActionExecutionResult,
@@ -553,7 +556,7 @@ const executeSendEmailAction: ActionExecutor = async (
 
     // TODO: Integrate with actual email service
     // For now, just log the email details and mark as success
-    console.log('[WorkflowActionExecutor] send_email:', {
+    log.debug('send_email:', {
       to: recipientEmail,
       toName: recipientName,
       templateId,
@@ -643,7 +646,7 @@ const executeSendNotificationAction: ActionExecutor = async (
     if (insertError) {
       // If table doesn't exist, log but don't fail
       if (insertError.code === '42P01') {
-        console.log('[WorkflowActionExecutor] Notifications table not found, skipping insert')
+        log.debug('Notifications table not found, skipping insert')
         result.success = true
         result.output = {
           userId: action.assigned_to_user_id,
@@ -714,7 +717,7 @@ export async function executeWorkflowActions(
   let actionsFailed = 0
 
   for (const action of actions) {
-    console.log(`[WorkflowActionExecutor] Executing action ${action.execution_order + 1}: ${action.action_type}`)
+    log.debug(`Executing action ${action.execution_order + 1}: ${action.action_type}`)
 
     try {
       const executor = ACTION_EXECUTORS[action.action_type]
@@ -769,7 +772,7 @@ export async function executeWorkflowActions(
         console.error(`[WorkflowActionExecutor] Action failed:`, result.error)
       }
     } catch (error) {
-      console.error(`[WorkflowActionExecutor] Action execution error:`, error)
+      log.error({ error }, '[WorkflowActionExecutor] Action execution error')
       actionsFailed++
       actionResults.push({
         success: false,

@@ -5,6 +5,9 @@ import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { DollarSign, Plus, Trash2, Package, PlusCircle } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface PackageItem {
   id: string
@@ -76,7 +79,7 @@ export function OpportunityPricing({ opportunityId, onAmountUpdate }: Opportunit
       if (packagesRes.ok) setPackages(await packagesRes.json())
       if (addOnsRes.ok) setAddOns(await addOnsRes.json())
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
     } finally {
       setLoading(false)
     }
@@ -151,7 +154,7 @@ export function OpportunityPricing({ opportunityId, onAmountUpdate }: Opportunit
         setIsModalOpen(false)
       }
     } catch (error) {
-      console.error('Error saving line item:', error)
+      log.error({ error }, 'Error saving line item')
     }
   }
 
@@ -168,7 +171,7 @@ export function OpportunityPricing({ opportunityId, onAmountUpdate }: Opportunit
         onAmountUpdate()
       }
     } catch (error) {
-      console.error('Error deleting line item:', error)
+      log.error({ error }, 'Error deleting line item')
     }
   }
 
@@ -200,7 +203,7 @@ export function OpportunityPricing({ opportunityId, onAmountUpdate }: Opportunit
       // Redirect to the quote detail page with return URL
       window.location.href = `/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`
     } catch (error) {
-      console.error('Error generating quote:', error)
+      log.error({ error }, 'Error generating quote')
       alert('Failed to generate quote')
     } finally {
       setGeneratingQuote(false)

@@ -7,6 +7,9 @@ import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 interface Account {
   id: string
@@ -163,7 +166,7 @@ export default function NewInvoicePage() {
         setAccounts(data || [])
       }
     } catch (error) {
-      console.error('Error fetching accounts:', error)
+      log.error({ error }, 'Error fetching accounts')
     }
   }
 
@@ -175,7 +178,7 @@ export default function NewInvoicePage() {
         setContacts(data || [])
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      log.error({ error }, 'Error fetching contacts')
     }
   }
 
@@ -187,7 +190,7 @@ export default function NewInvoicePage() {
         setEvents(data || [])
       }
     } catch (error) {
-      console.error('Error fetching events:', error)
+      log.error({ error }, 'Error fetching events')
     }
   }
 
@@ -274,7 +277,7 @@ export default function NewInvoicePage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error creating invoice:', errorData)
+        log.error({ errorData }, 'Error creating invoice')
         alert('Error creating invoice. Please try again.')
         return
       }
@@ -287,7 +290,7 @@ export default function NewInvoicePage() {
         : `/${tenantSubdomain}/invoices/${data.id}`
       router.push(redirectUrl)
     } catch (error) {
-      console.error('Error:', error)
+      log.error({ error }, 'Error')
       alert('Error creating invoice. Please try again.')
     } finally {
       setLocalLoading(false)

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contracts')
 
 export async function GET(
   request: NextRequest,
@@ -50,7 +53,7 @@ export async function GET(
       }
     } catch (error) {
       // Logo is optional, don't fail if it doesn't exist
-      console.log('No logo configured for tenant')
+      log.debug('No logo configured for tenant')
     }
 
     // Return contract with logo URL for public display
@@ -59,7 +62,7 @@ export async function GET(
       logoUrl
     })
   } catch (error) {
-    console.error('Error fetching contract:', error)
+    log.error({ error }, 'Error fetching contract')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -93,7 +96,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Database error:', error)
+      log.error({ error }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to update contract' },
         { status: 500 }
@@ -102,7 +105,7 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error updating contract:', error)
+    log.error({ error }, 'Error updating contract')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -165,7 +168,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
-      console.error('Database error:', deleteError)
+      log.error({ deleteError }, 'Database error')
       return NextResponse.json(
         { error: 'Failed to delete contract' },
         { status: 500 }
@@ -174,7 +177,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Contract deleted successfully' })
   } catch (error) {
-    console.error('Error deleting contract:', error)
+    log.error({ error }, 'Error deleting contract')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

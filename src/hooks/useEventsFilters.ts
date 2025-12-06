@@ -9,6 +9,9 @@ import { useMemo, useState } from 'react'
 import { parseLocalDate, isDateToday } from '@/lib/utils/date-utils'
 import type { FilterState } from '@/components/events/event-filters'
 import type { Event } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 // Re-export Event as FilterableEvent for clarity (they are the same)
 export type FilterableEvent = Event
@@ -301,8 +304,8 @@ export function useEventsFilters({
       // Assigned To filter
       if (filters.assignedToFilter === 'my_events') {
         // Debug logging
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('🔍 [MY EVENTS FILTER DEBUG]')
+        log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        log.debug('🔍 [MY EVENTS FILTER DEBUG]')
         console.log('Current User ID:', currentUserId)
         console.log('Event ID:', event.id)
         console.log('Event Title:', event.title)
@@ -311,9 +314,9 @@ export function useEventsFilters({
         
         // Only filter if currentUserId is available and event has staff assignments
         if (!currentUserId) {
-          console.warn('⚠️ [MY EVENTS FILTER] No currentUserId available!')
+          log.warn('⚠️ [MY EVENTS FILTER] No currentUserId available!')
           console.log('Session must provide user.id to filter "My Events"')
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+          log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
           // If no user ID, show all events when "My Events" is selected (fallback)
           return true
         }
@@ -321,8 +324,8 @@ export function useEventsFilters({
         // Check if current user is assigned to this event
         if (!event.event_staff_assignments || event.event_staff_assignments.length === 0) {
           // No staff assignments means user is not assigned
-          console.log('❌ Event has NO staff assignments - FILTERED OUT')
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+          log.debug('❌ Event has NO staff assignments - FILTERED OUT')
+          log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
           return false
         }
         
@@ -334,7 +337,7 @@ export function useEventsFilters({
         )
         
         console.log(isAssigned ? '✅ User IS assigned - SHOW EVENT' : '❌ User NOT assigned - FILTER OUT')
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
         
         if (!isAssigned) {
           return false

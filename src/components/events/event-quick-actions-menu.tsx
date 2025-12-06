@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from 'react'
 import { MoreVertical, Eye, Edit, Copy, Trash2, CircleDot, ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('events')
 
 interface EventQuickActionsMenuProps {
   eventId: string
@@ -79,7 +82,7 @@ export function EventQuickActionsMenu({
       // Navigate to the new event
       router.push(`/${tenantSubdomain}/events/${data.id}/edit`)
     } catch (error) {
-      console.error('Error duplicating event:', error)
+      log.error({ error }, 'Error duplicating event')
       toast.error('Failed to duplicate event')
     }
   }
@@ -110,7 +113,7 @@ export function EventQuickActionsMenu({
         onStatusChange(eventId, newStatus)
       }
     } catch (error) {
-      console.error('Error updating status:', error)
+      log.error({ error }, 'Error updating status')
       toast.error('Failed to update status')
     }
   }

@@ -6,6 +6,9 @@ import { EntityForm } from './EntityForm'
 import { contactFormConfig } from './configs'
 import { DuplicateContactWarning } from '@/components/duplicate-contact-warning'
 import type { Contact } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('forms')
 
 interface ContactFormProps {
   contact?: Contact | null
@@ -48,7 +51,7 @@ export function ContactForm({
 
       await onSubmit(savedContact)
     } catch (error: any) {
-      console.error('Error saving contact:', error)
+      log.error({ error }, 'Error saving contact')
       
       // Check if this is a duplicate email error (409)
       if (error.status === 409 && error.existingContact) {

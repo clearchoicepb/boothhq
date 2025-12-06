@@ -30,6 +30,9 @@ import { Modal } from '@/components/ui/modal'
 import { workflowsService } from '@/lib/api/services/workflowsService'
 import type { WorkflowWithRelations } from '@/types/workflows'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('workflows')
 
 export default function WorkflowsSettingsPage() {
   const { tenant: tenantSubdomain } = useParams()
@@ -59,7 +62,7 @@ export default function WorkflowsSettingsPage() {
       const data = await workflowsService.list({ sortBy: 'created_at', sortOrder: 'desc' })
       setWorkflows(data)
     } catch (error) {
-      console.error('Error fetching workflows:', error)
+      log.error({ error }, 'Error fetching workflows')
       toast.error('Failed to load workflows')
     } finally {
       setLoading(false)
@@ -85,7 +88,7 @@ export default function WorkflowsSettingsPage() {
       }
       fetchWorkflows()
     } catch (error) {
-      console.error('Error toggling workflow:', error)
+      log.error({ error }, 'Error toggling workflow')
       toast.error('Failed to update workflow')
     }
   }
@@ -106,7 +109,7 @@ export default function WorkflowsSettingsPage() {
       setWorkflowToDelete(null)
       fetchWorkflows()
     } catch (error) {
-      console.error('Error deleting workflow:', error)
+      log.error({ error }, 'Error deleting workflow')
       toast.error('Failed to delete workflow')
     } finally {
       setDeleting(false)
@@ -133,7 +136,7 @@ export default function WorkflowsSettingsPage() {
       
       setApplyPreview(data)
     } catch (error) {
-      console.error('Error loading preview:', error)
+      log.error({ error }, 'Error loading preview')
       toast.error('Failed to load preview')
       setApplyModalOpen(false)
     } finally {
@@ -169,7 +172,7 @@ export default function WorkflowsSettingsPage() {
       setApplyPreview(null)
       setForceRerun(false)
     } catch (error) {
-      console.error('Error applying workflow:', error)
+      log.error({ error }, 'Error applying workflow')
       toast.error('Failed to apply workflow to existing events')
     } finally {
       setApplying(false)

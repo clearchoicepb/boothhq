@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:integrations')
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -96,7 +99,7 @@ export async function GET(request: NextRequest) {
       })
 
     if (dbError) {
-      console.error('Database error:', dbError)
+      log.error({ dbError }, 'Database error')
       return NextResponse.redirect(
         new URL(`/${tenantSubdomain}/settings/email?error=database_error`, request.url)
       )
@@ -107,7 +110,7 @@ export async function GET(request: NextRequest) {
       new URL(`/${tenantSubdomain}/settings/email?success=gmail_connected`, request.url)
     )
   } catch (error) {
-    console.error('OAuth callback error:', error)
+    log.error({ error }, 'OAuth callback error')
     return NextResponse.redirect(
       new URL('/default/settings/email?error=unexpected_error', request.url)
     )

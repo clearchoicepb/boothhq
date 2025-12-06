@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tasks')
 // GET - Fetch a single task
 export async function GET(
   request: NextRequest,
@@ -29,7 +32,7 @@ export async function GET(
 
     return NextResponse.json(task)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -118,7 +121,7 @@ export async function PATCH(
       .single()
 
     if (updateError) {
-      console.error('Error updating task:', updateError)
+      log.error({ updateError }, 'Error updating task')
       return NextResponse.json({
         error: 'Failed to update task',
         details: updateError.message
@@ -138,16 +141,16 @@ export async function PATCH(
           supabase,
           userId: session.user.id,
         }).catch((error: Error) => {
-          console.error('[Tasks API] Error triggering task_status_changed workflows:', error)
+          log.error({ error }, '[Tasks API] Error triggering task_status_changed workflows')
         })
       } catch (error) {
-        console.error('[Tasks API] Error importing workflow trigger service:', error)
+        log.error({ error }, '[Tasks API] Error importing workflow trigger service')
       }
     }
 
     return NextResponse.json({ success: true, task })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -171,7 +174,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
-      console.error('Error deleting task:', deleteError)
+      log.error({ deleteError }, 'Error deleting task')
       return NextResponse.json({
         error: 'Failed to delete task',
         details: deleteError.message
@@ -180,7 +183,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

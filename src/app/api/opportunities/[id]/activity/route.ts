@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -138,7 +141,7 @@ export async function GET(
 
     return NextResponse.json(activities)
   } catch (error) {
-    console.error('Error fetching activity:', error)
+    log.error({ error }, 'Error fetching activity')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

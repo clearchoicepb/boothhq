@@ -9,6 +9,9 @@ import { useParams } from 'next/navigation'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { GlobalSearch } from '@/components/global-search'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('layout')
 
 interface TopNavProps {
   leftContent?: React.ReactNode
@@ -78,7 +81,7 @@ export function TopNav({ leftContent }: TopNavProps = {}) {
       await signOut({ callbackUrl: '/auth/signin' })
       router.push('/auth/signin')
     } catch (error) {
-      console.error('Sign out error:', error)
+      log.error({ error }, 'Sign out error')
       setIsSigningOut(false)
     }
   }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:consumables')
 
 /**
  * GET - Get single consumable inventory by ID
@@ -37,7 +40,7 @@ export async function GET(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Consumable not found' }, { status: 404 })
       }
-      console.error('Error fetching consumable:', error)
+      log.error({ error }, 'Error fetching consumable')
       return NextResponse.json(
         { error: 'Failed to fetch consumable', details: error.message },
         { status: 500 }
@@ -59,7 +62,7 @@ export async function GET(
         : Infinity
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -110,7 +113,7 @@ export async function PATCH(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Consumable not found' }, { status: 404 })
       }
-      console.error('Error updating consumable:', error)
+      log.error({ error }, 'Error updating consumable')
       return NextResponse.json(
         { error: 'Failed to update consumable', details: error.message },
         { status: 500 }
@@ -119,7 +122,7 @@ export async function PATCH(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -145,7 +148,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting consumable:', error)
+      log.error({ error }, 'Error deleting consumable')
       return NextResponse.json(
         { error: 'Failed to delete consumable', details: error.message },
         { status: 500 }
@@ -154,7 +157,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

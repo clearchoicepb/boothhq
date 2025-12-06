@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:core-tasks')
 export async function GET() {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
@@ -20,7 +23,7 @@ export async function GET() {
       count: templates?.length || 0
     })
   } catch (error: any) {
-    console.error('Error fetching core task templates:', error)
+    log.error({ error }, 'Error fetching core task templates')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

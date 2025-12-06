@@ -1,4 +1,7 @@
 import { createServerSupabaseClient } from './supabase'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 export interface QuickBooksInvoice {
   id?: string
@@ -69,7 +72,7 @@ export class QuickBooksService {
 
       return await response.json()
     } catch (error) {
-      console.error('QuickBooks API request failed:', error)
+      log.error({ error }, 'QuickBooks API request failed')
       throw error
     }
   }
@@ -113,7 +116,7 @@ export class QuickBooksService {
       
       return null
     } catch (error) {
-      console.error('Error finding customer:', error)
+      log.error({ error }, 'Error finding customer')
       return null
     }
   }
@@ -216,12 +219,12 @@ export class QuickBooksService {
         .eq('tenant_id', tenantId)
 
       if (updateError) {
-        console.error('Error updating invoice with QuickBooks ID:', updateError)
+        log.error({ updateError }, 'Error updating invoice with QuickBooks ID')
       }
 
       return { success: true, quickbooksId: qbInvoice.id }
     } catch (error) {
-      console.error('Error syncing invoice to QuickBooks:', error)
+      log.error({ error }, 'Error syncing invoice to QuickBooks')
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error' 
@@ -252,7 +255,7 @@ export const getQuickBooksService = async (tenantId: string): Promise<QuickBooks
       settings.quickbooks_sandbox || false
     )
   } catch (error) {
-    console.error('Error getting QuickBooks service:', error)
+    log.error({ error }, 'Error getting QuickBooks service')
     return null
   }
 }

@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('appearance')
 import {
   ArrowLeft,
   Palette,
@@ -169,7 +172,7 @@ export default function AppearanceSettingsPage() {
       const data = await response.json();
       setSettings(prev => ({ ...prev, logoUrl: data.url }));
     } catch (error) {
-      console.error('Error uploading logo:', error);
+      log.error({ error }, 'Error uploading logo');
       alert('Error uploading logo. Please try again.');
     } finally {
       setUploading(false);
@@ -196,7 +199,7 @@ export default function AppearanceSettingsPage() {
       });
       alert('Settings saved successfully!');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error({ error }, 'Error saving settings');
       alert('Error saving settings. Please try again.');
     } finally {
       setSaving(false);

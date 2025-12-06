@@ -14,6 +14,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import type { Account } from '@/lib/supabase-client' // cspell:ignore supabase
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('accounts')
 
 export default function AccountsPage() {
   const { data: session } = useSession()
@@ -41,7 +44,7 @@ export default function AccountsPage() {
       const response = await fetch(`/api/accounts?filterType=${accountTypeFilter}`)
       
       if (!response.ok) {
-        console.error('Error fetching accounts')
+        log.error('Error fetching accounts')
         return
       }
 
@@ -66,7 +69,7 @@ export default function AccountsPage() {
       setAccounts(paginatedData)
       setTotalPages(Math.ceil(filteredData.length / itemsPerPage))
     } catch (error) {
-      console.error('Error fetching accounts:', error)
+      log.error({ error }, 'Error fetching accounts')
     } finally {
       setLoading(false)
     }
@@ -96,7 +99,7 @@ export default function AccountsPage() {
           fetchAccounts()
         }
       } catch (error) {
-        console.error('Error deleting account:', error)
+        log.error({ error }, 'Error deleting account')
       }
     }
   }
@@ -128,7 +131,7 @@ export default function AccountsPage() {
         }
       })
     } catch (error) {
-      console.error('Error saving view preference:', error)
+      log.error({ error }, 'Error saving view preference')
     }
   }
 

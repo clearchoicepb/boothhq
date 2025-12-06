@@ -6,6 +6,9 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface UseClientEditorProps {
   opportunityId: string
@@ -71,7 +74,7 @@ export function useClientEditor({
       if (context?.previousOpportunity) {
         queryClient.setQueryData(['opportunity', opportunityId], context.previousOpportunity)
       }
-      console.error('Error updating client:', error)
+      log.error({ error }, 'Error updating client')
       toast.error('Failed to update client information')
     },
     onSettled: () => {

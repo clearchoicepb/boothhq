@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:equipment')
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,7 +24,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching equipment:', error)
+      log.error({ error }, 'Error fetching equipment')
       return NextResponse.json({ error: 'Failed to fetch equipment' }, { status: 500 })
     }
 
@@ -37,7 +40,7 @@ export async function GET(
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -63,13 +66,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating equipment:', error)
+      log.error({ error }, 'Error updating equipment')
       return NextResponse.json({ error: 'Failed to update equipment' }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -92,13 +95,13 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting equipment:', error)
+      log.error({ error }, 'Error deleting equipment')
       return NextResponse.json({ error: 'Failed to delete equipment' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

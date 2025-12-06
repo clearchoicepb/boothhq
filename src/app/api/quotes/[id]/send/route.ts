@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:quotes')
 export async function POST(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -24,7 +27,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('Error updating quote:', error)
+      log.error({ error }, 'Error updating quote')
       return NextResponse.json({ error: 'Failed to send quote' }, { status: 500 })
     }
 
@@ -33,7 +36,7 @@ export async function POST(
 
     return NextResponse.json(quote)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

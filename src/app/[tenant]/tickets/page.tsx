@@ -11,6 +11,9 @@ import { TicketStatusButton } from '@/components/tickets/ticket-status-button'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import type { Ticket, TicketStatus, TicketType, TicketPriority } from '@/types/ticket.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('tickets')
 
 export default function TicketsPage() {
   const router = useRouter()
@@ -44,7 +47,7 @@ export default function TicketsPage() {
         setTickets(data)
       }
     } catch (error) {
-      console.error('Error fetching tickets:', error)
+      log.error({ error }, 'Error fetching tickets')
       toast.error('Failed to load tickets')
     } finally {
       setLoading(false)
@@ -68,7 +71,7 @@ export default function TicketsPage() {
       // Refresh tickets to get updated vote counts
       fetchTickets()
     } catch (error) {
-      console.error('Error voting:', error)
+      log.error({ error }, 'Error voting')
       toast.error('Failed to vote')
     } finally {
       setVotingTicket(null)
@@ -83,7 +86,7 @@ export default function TicketsPage() {
 
   const hasUserVoted = (ticket: Ticket) => {
     if (!session?.user?.id) {
-      console.log('[Votes] No session user ID')
+      log.debug('No session user ID')
       return false
     }
     const voted = ticket.ticket_votes?.some(vote => vote.user_id === session.user.id) || false

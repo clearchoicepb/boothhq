@@ -7,6 +7,9 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Plus, FileText, Search, Filter } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('quotes')
 
 interface Quote {
   id: string
@@ -62,7 +65,7 @@ export default function QuotesPage() {
       const data = await response.json()
       setQuotes(data)
     } catch (error) {
-      console.error('Error fetching quotes:', error)
+      log.error({ error }, 'Error fetching quotes')
     } finally {
       setLocalLoading(false)
     }

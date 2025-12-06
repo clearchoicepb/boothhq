@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:maintenance')
 
 /**
  * GET - Get maintenance statistics
@@ -33,7 +36,7 @@ export async function GET(request: NextRequest) {
     const { data: maintenanceRecords, error } = await query
 
     if (error) {
-      console.error('Error fetching maintenance statistics:', error)
+      log.error({ error }, 'Error fetching maintenance statistics')
       return NextResponse.json(
         { error: 'Failed to fetch maintenance statistics', details: error.message },
         { status: 500 }
@@ -91,7 +94,7 @@ export async function GET(request: NextRequest) {
       maintenance_by_type: maintenanceByType
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

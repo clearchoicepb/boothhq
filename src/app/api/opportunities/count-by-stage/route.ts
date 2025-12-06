@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 /**
  * GET /api/opportunities/count-by-stage
  * 
@@ -39,7 +42,7 @@ export async function GET(request: NextRequest) {
       .eq('stage', stage)
 
     if (countError) {
-      console.error('Error counting opportunities:', countError)
+      log.error({ countError }, 'Error counting opportunities')
       return NextResponse.json(
         { error: 'Failed to count opportunities' },
         { status: 500 }
@@ -52,7 +55,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error in count-by-stage:', error)
+    log.error({ error }, 'Error in count-by-stage')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

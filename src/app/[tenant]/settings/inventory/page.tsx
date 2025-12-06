@@ -9,6 +9,9 @@ import { equipmentCategoryService } from '@/lib/api/services/equipmentCategorySe
 import { consumableService } from '@/lib/api/services/consumableService';
 import type { EquipmentCategory } from '@/lib/api/services/equipmentCategoryService';
 import type { ConsumableWithStatus } from '@/lib/api/services/consumableService';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 import {
   ArrowLeft,
   Package,
@@ -147,7 +150,7 @@ export default function InventorySettingsPage() {
       });
       setCategories(data);
     } catch (error) {
-      console.error('Failed to load categories:', error);
+      log.error({ error }, 'Failed to load categories');
     } finally {
       setLoadingCategories(false);
     }
@@ -159,7 +162,7 @@ export default function InventorySettingsPage() {
       const data = await consumableService.list();
       setConsumables(data);
     } catch (error) {
-      console.error('Failed to load consumables:', error);
+      log.error({ error }, 'Failed to load consumables');
     } finally {
       setLoadingConsumables(false);
     }
@@ -209,7 +212,7 @@ export default function InventorySettingsPage() {
       setCategories([...categories, newCategory]);
       setEditingCategory(newCategory.id);
     } catch (error) {
-      console.error('Failed to create category:', error);
+      log.error({ error }, 'Failed to create category');
       alert('Failed to create category. Please try again.');
     }
   };
@@ -219,7 +222,7 @@ export default function InventorySettingsPage() {
       const updated = await equipmentCategoryService.update(id, updates);
       setCategories(categories.map(cat => cat.id === id ? updated : cat));
     } catch (error) {
-      console.error('Failed to update category:', error);
+      log.error({ error }, 'Failed to update category');
       alert('Failed to update category. Please try again.');
     }
   };
@@ -233,7 +236,7 @@ export default function InventorySettingsPage() {
       await equipmentCategoryService.delete(id);
       setCategories(categories.filter(cat => cat.id !== id));
     } catch (error: any) {
-      console.error('Failed to delete category:', error);
+      log.error({ error }, 'Failed to delete category');
       alert(error.message || 'Failed to delete category. It may have items assigned to it.');
     }
   };
@@ -247,7 +250,7 @@ export default function InventorySettingsPage() {
       });
       alert('Settings saved successfully!');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error({ error }, 'Error saving settings');
       alert('Error saving settings. Please try again.');
     } finally {
       setSaving(false);

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 // GET - Fetch core task completion status for an event
 export async function GET(
   request: NextRequest,
@@ -34,13 +37,13 @@ export async function GET(
       .order('core_task_template(display_order)', { ascending: true })
 
     if (error) {
-      console.error('Error fetching event core tasks:', error)
+      log.error({ error }, 'Error fetching event core tasks')
       return NextResponse.json({ error: 'Failed to fetch core tasks' }, { status: 500 })
     }
 
     return NextResponse.json(completions || [])
   } catch (error) {
-    console.error('Error in GET /api/events/[id]/core-tasks:', error)
+    log.error({ error }, 'Error in GET /api/events/[id]/core-tasks')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -88,13 +91,13 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('Error updating core task completion:', error)
+      log.error({ error }, 'Error updating core task completion')
       return NextResponse.json({ error: 'Failed to update completion status' }, { status: 500 })
     }
 
     return NextResponse.json(completion)
   } catch (error) {
-    console.error('Error in PATCH /api/events/[id]/core-tasks:', error)
+    log.error({ error }, 'Error in PATCH /api/events/[id]/core-tasks')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

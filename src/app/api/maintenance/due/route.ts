@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:maintenance')
 
 /**
  * GET - Get items due for maintenance
@@ -55,7 +58,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching items due for maintenance:', error)
+      log.error({ error }, 'Error fetching items due for maintenance')
       return NextResponse.json(
         { error: 'Failed to fetch items due for maintenance', details: error.message },
         { status: 500 }
@@ -77,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(enrichedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

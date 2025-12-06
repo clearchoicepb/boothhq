@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Package, Plus, Edit2, Trash2, ChevronLeft } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('packages')
 
 interface PackageItem {
   id: string
@@ -44,7 +47,7 @@ export default function PackagesPage() {
         setPackages(data)
       }
     } catch (error) {
-      console.error('Error fetching packages:', error)
+      log.error({ error }, 'Error fetching packages')
     } finally {
       setLoading(false)
     }
@@ -79,7 +82,7 @@ export default function PackagesPage() {
         resetForm()
       }
     } catch (error) {
-      console.error('Error saving package:', error)
+      log.error({ error }, 'Error saving package')
     }
   }
 
@@ -109,7 +112,7 @@ export default function PackagesPage() {
         fetchPackages()
       }
     } catch (error) {
-      console.error('Error deleting package:', error)
+      log.error({ error }, 'Error deleting package')
     }
   }
 

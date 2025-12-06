@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:auth')
 
 /**
  * Send password reset email
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Error sending password reset email:', error)
+      log.error({ error }, 'Error sending password reset email')
       
       // Don't reveal if email exists or not (security best practice)
       // Always return success to prevent user enumeration
@@ -46,7 +49,7 @@ export async function POST(request: NextRequest) {
       message: 'If an account exists with that email, you will receive a password reset link shortly.' 
     })
   } catch (error) {
-    console.error('Error in POST /api/auth/forgot-password:', error)
+    log.error({ error }, 'Error in POST /api/auth/forgot-password')
     return NextResponse.json({ 
       error: 'Internal server error' 
     }, { status: 500 })

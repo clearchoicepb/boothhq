@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('analytics')
 import { 
   ArrowLeft,
   BarChart3,
@@ -171,7 +174,7 @@ export default function AnalyticsReportsSettingsPage() {
       });
       alert('Settings saved successfully!');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error({ error }, 'Error saving settings');
       alert('Error saving settings. Please try again.');
     } finally {
       setSaving(false);

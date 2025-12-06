@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isValidDepartmentId } from '@/lib/departments'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:task-templates')
 
 /**
  * GET /api/task-templates
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching task templates:', error)
+      log.error({ error }, 'Error fetching task templates')
       return NextResponse.json(
         { error: 'Failed to fetch task templates', details: error.message },
         { status: 500 }
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('Error in GET /api/task-templates:', error)
+    log.error({ error }, 'Error in GET /api/task-templates')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -162,7 +165,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating task template:', error)
+      log.error({ error }, 'Error creating task template')
       return NextResponse.json(
         { error: 'Failed to create task template', details: error.message },
         { status: 500 }
@@ -171,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, template: data })
   } catch (error) {
-    console.error('Error in POST /api/task-templates:', error)
+    log.error({ error }, 'Error in POST /api/task-templates')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

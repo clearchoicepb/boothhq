@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
+
 /**
  * Utility functions for fetching favicons from websites
  */
@@ -90,7 +94,7 @@ export async function fetchFavicon(websiteUrl: string): Promise<FaviconResult> {
 
     return { success: false, error: 'No valid favicon found' }
   } catch (error) {
-    console.error('Error fetching favicon:', error)
+    log.error({ error }, 'Error fetching favicon')
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 

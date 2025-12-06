@@ -2,6 +2,9 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail, generateInvoiceEmailHTML } from '@/lib/email'
 import { generateInvoicePDF } from '@/lib/pdf-generator'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:invoices')
 
 export async function POST(
   request: NextRequest,
@@ -96,7 +99,7 @@ export async function POST(
           },
         })
       } catch (error) {
-        console.error('Error generating PDF:', error)
+        log.error({ error }, 'Error generating PDF')
         // Continue without PDF if generation fails
       }
     }
@@ -150,7 +153,7 @@ export async function POST(
       }
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

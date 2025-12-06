@@ -13,6 +13,9 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import type { Session } from 'next-auth';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 /**
  * Tenant context for API routes
@@ -107,7 +110,7 @@ export async function getTenantContext(): Promise<TenantContext | NextResponse> 
 
     // Log mapping if different (useful for debugging)
     if (tenantId !== dataSourceTenantId && process.env.NODE_ENV === 'development') {
-      console.log(`[Tenant Mapping] ${tenantId} -> ${dataSourceTenantId}`);
+      log.debug(`${tenantId} -> ${dataSourceTenantId}`);
     }
 
     return {
@@ -117,7 +120,7 @@ export async function getTenantContext(): Promise<TenantContext | NextResponse> 
       session,
     };
   } catch (error: any) {
-    console.error('[getTenantContext] Error:', error);
+    log.error({ error }, '[getTenantContext] Error');
     return NextResponse.json(
       {
         error: 'Failed to initialize tenant context',

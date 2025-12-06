@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 
 /**
  * DEBUG ENDPOINT: Check tenant database configuration
@@ -8,14 +11,14 @@ import { createServerSupabaseClient } from '@/lib/supabase-client'
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== TENANT CONFIG DEBUG START ===')
+    log.debug('=== TENANT CONFIG DEBUG START ===')
 
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
 
-    console.log('[Debug] Session user:', {
+    log.debug('Session user:', {
       id: session.user.id,
       email: session.user.email,
       tenantId: dataSourceTenantId,
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Debug] Failed to fetch tenant:', error)
+      log.error({ error }, '[Debug] Failed to fetch tenant')
       return NextResponse.json({
         error: 'Failed to fetch tenant configuration',
         details: error.message,
@@ -41,14 +44,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (!tenant) {
-      console.error('[Debug] Tenant not found:', dataSourceTenantId)
+      log.error({ dataSourceTenantId }, '[Debug] Tenant not found')
       return NextResponse.json({
         error: 'Tenant not found',
         tenantId: dataSourceTenantId
       }, { status: 404 })
     }
 
-    console.log('[Debug] Tenant found:', {
+    log.debug('Tenant found:', {
       id: tenant.id,
       name: tenant.name,
       subdomain: tenant.subdomain,
@@ -79,17 +82,17 @@ export async function GET(request: NextRequest) {
             code: testError.code,
             details: testError.details
           }
-          console.error('[Debug] Tenant DB query failed:', tenantDbError)
+          log.error({ tenantDbError }, '[Debug] Tenant DB query failed')
         } else {
           canConnectToTenantDb = true
-          console.log('[Debug] Successfully connected to tenant database')
+          log.debug('Successfully connected to tenant database')
         }
       } catch (err: any) {
         tenantDbError = {
           message: err.message,
           stack: err.stack
         }
-        console.error('[Debug] Tenant DB connection error:', tenantDbError)
+        log.error({ tenantDbError }, '[Debug] Tenant DB connection error')
       }
     }
 
@@ -116,8 +119,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('[Debug] Response:', response)
-    console.log('=== TENANT CONFIG DEBUG END ===')
+    log.debug('Response:', response)
+    log.debug('=== TENANT CONFIG DEBUG END ===')
 
     return NextResponse.json(response)
   } catch (error: any) {

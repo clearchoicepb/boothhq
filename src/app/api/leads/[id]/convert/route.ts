@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:leads')
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,7 +64,7 @@ export async function POST(
         .single()
 
       if (accountError) {
-        console.error('Error creating account:', accountError)
+        log.error({ accountError }, 'Error creating account')
         return NextResponse.json({ 
           error: 'Failed to create account', 
           details: accountError.message 
@@ -89,7 +92,7 @@ export async function POST(
           .single()
 
         if (contactError) {
-          console.error('Error creating contact:', contactError)
+          log.error({ contactError }, 'Error creating contact')
           // Don't fail the entire process, just log the error
         } else {
           contact = newContact
@@ -110,7 +113,7 @@ export async function POST(
         .eq('tenant_id', dataSourceTenantId)
 
       if (leadUpdateError) {
-        console.error('Error updating lead:', leadUpdateError)
+        log.error({ leadUpdateError }, 'Error updating lead')
         return NextResponse.json({ 
           error: 'Failed to update lead', 
           details: leadUpdateError.message 
@@ -132,7 +135,7 @@ export async function POST(
           .eq('tenant_id', dataSourceTenantId)
 
         if (oppUpdateError) {
-          console.error('Error updating opportunity:', oppUpdateError)
+          log.error({ oppUpdateError }, 'Error updating opportunity')
           // Don't fail the entire process, just log the error
         }
       }
@@ -156,7 +159,7 @@ export async function POST(
       return response
 
     } catch (error) {
-      console.error('Error in conversion process:', error)
+      log.error({ error }, 'Error in conversion process')
       return NextResponse.json({ 
         error: 'Conversion failed', 
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -164,7 +167,7 @@ export async function POST(
     }
 
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -7,6 +7,9 @@ import { FileText, Download, Mail, Loader2, Eye, Plus, Edit2, Save } from 'lucid
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
 import { useSettings } from '@/lib/settings-context'
 import jsPDF from 'jspdf'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Template {
   id: string
@@ -70,7 +73,7 @@ export function GenerateContractModal({
         setTemplates(data)
       }
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      log.error({ error }, 'Error fetching templates')
       setError('Failed to load contract templates')
     } finally {
       setLoading(false)
@@ -101,7 +104,7 @@ export function GenerateContractModal({
       setIsEditMode(true) // Go straight to edit mode
       setStep('preview')
     } catch (err) {
-      console.error('Error creating contract:', err)
+      log.error({ err }, 'Error creating contract')
       setError('Failed to create contract')
     } finally {
       setLoading(false)
@@ -143,7 +146,7 @@ export function GenerateContractModal({
       setIsEditMode(false) // Start in preview mode
       setStep('preview')
     } catch (err) {
-      console.error('Error generating contract:', err)
+      log.error({ err }, 'Error generating contract')
       setError('Failed to generate contract preview')
     } finally {
       setLoading(false)
@@ -189,7 +192,7 @@ export function GenerateContractModal({
         pdf.addImage(dataUri, 'PNG', logoX, y, logoWidth, logoHeight)
         y += logoHeight + 20 // Add space after logo
       } catch (err) {
-        console.error('Error loading logo:', err)
+        log.error({ err }, 'Error loading logo')
         // Continue without logo if it fails
       }
     }
@@ -263,11 +266,11 @@ export function GenerateContractModal({
           }),
         })
       } catch (err) {
-        console.error('Error saving contract record:', err)
+        log.error({ err }, 'Error saving contract record')
         // Don't fail the entire operation if this fails
       }
     } catch (err) {
-      console.error('Error generating PDF:', err)
+      log.error({ err }, 'Error generating PDF')
       setError('Failed to generate PDF')
     } finally {
       setLoading(false)
@@ -337,7 +340,7 @@ export function GenerateContractModal({
           }),
         })
       } catch (err) {
-        console.error('Error saving contract record:', err)
+        log.error({ err }, 'Error saving contract record')
         // Don't fail the entire operation if this fails
       }
 
@@ -349,7 +352,7 @@ export function GenerateContractModal({
       }
       onClose()
     } catch (err) {
-      console.error('Error emailing contract:', err)
+      log.error({ err }, 'Error emailing contract')
       setError(err instanceof Error ? err.message : 'Failed to send contract email')
     } finally {
       setLoading(false)

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 /**
  * Debug endpoint to check if design tables exist in tenant database
  * and show sample data
@@ -108,7 +111,7 @@ export async function GET() {
 
     return NextResponse.json(results, { status: 200 })
   } catch (error: any) {
-    console.error('Error in design tables debug:', error)
+    log.error({ error }, 'Error in design tables debug')
     return NextResponse.json({
       error: error.message,
       tenantId: session.user.tenantId

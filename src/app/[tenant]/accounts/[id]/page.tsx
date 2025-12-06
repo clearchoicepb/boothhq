@@ -62,6 +62,9 @@ interface ContactWithRole extends Contact {
 }
 
 import type { AccountEvent } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface Opportunity {
   id: string
@@ -139,7 +142,7 @@ export default function AccountDetailPage() {
         setAssignedUser(user || null)
       }
     } catch (error) {
-      console.error('Error fetching assigned user:', error)
+      log.error({ error }, 'Error fetching assigned user')
     }
   }
 
@@ -163,7 +166,7 @@ export default function AccountDetailPage() {
       // Redirect to accounts list
       router.push(`/${tenantSubdomain}/accounts`)
     } catch (error) {
-      console.error('Error deleting account:', error)
+      log.error({ error }, 'Error deleting account')
       alert('Failed to delete account. It may have related records that need to be removed first.')
     } finally {
       setIsDeleting(false)

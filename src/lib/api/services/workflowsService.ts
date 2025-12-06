@@ -29,6 +29,9 @@
  */
 
 import { apiClient } from '../apiClient'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:services')
 import type {
   Workflow,
   WorkflowWithRelations,

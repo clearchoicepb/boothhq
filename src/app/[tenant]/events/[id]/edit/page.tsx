@@ -10,6 +10,9 @@ import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { Event as EventType } from '@/lib/supabase-client'
 import { eventsService } from '@/lib/api/services/eventsService'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('edit')
 
 
 export default function EventEditPage() {
@@ -35,7 +38,7 @@ export default function EventEditPage() {
       const data = await eventsService.getById(eventId)
       setEvent(data as EventType)
     } catch (error) {
-      console.error('Error fetching event:', error)
+      log.error({ error }, 'Error fetching event')
     } finally {
       setIsLoading(false)
     }
@@ -47,7 +50,7 @@ export default function EventEditPage() {
       await eventsService.update(eventId, eventData)
       router.push(`/${tenantSubdomain}/events/${eventId}`)
     } catch (error) {
-      console.error('Error updating event:', error)
+      log.error({ error }, 'Error updating event')
       throw error
     }
   }

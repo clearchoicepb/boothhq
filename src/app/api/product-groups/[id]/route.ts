@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:product-groups')
 
 // GET /api/product-groups/[id] - Fetch single product group with items
 export async function GET(
@@ -45,7 +48,7 @@ export async function GET(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error fetching product group:', error)
+    log.error({ error }, 'Error fetching product group')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -68,7 +71,7 @@ export async function PUT(
     const groupId = params.id
     const body = await request.json()
 
-    console.log('[Product Group Update] Received data:', {
+    log.debug('Received data:', {
       groupId,
       body,
       assigned_to_type: body.assigned_to_type,
@@ -78,7 +81,7 @@ export async function PUT(
     // Validate assignment fields before converting empty strings
     // Only validate if explicitly trying to change/clear the assignment
     if ('assigned_to_id' in body && !body.assigned_to_id) {
-      console.log('[Product Group Update] Validation failed: assigned_to_id is missing or empty')
+      log.debug('Validation failed: assigned_to_id is missing or empty')
       return NextResponse.json({
         error: 'Product groups must be assigned to a user or physical address',
       }, { status: 400 })
@@ -110,7 +113,7 @@ export async function PUT(
     // The database trigger will automatically cascade the assignment change to all items
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error updating product group:', error)
+    log.error({ error }, 'Error updating product group')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -147,7 +150,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting product group:', error)
+    log.error({ error }, 'Error deleting product group')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

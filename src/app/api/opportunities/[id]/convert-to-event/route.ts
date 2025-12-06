@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 export async function POST(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -36,7 +39,7 @@ export async function POST(
       let contactId = opportunity.contact_id
 
       if (opportunity.lead_id && !opportunity.account_id) {
-        console.log('Converting lead to account/contact...')
+        log.debug('Converting lead to account/contact...')
 
         // Fetch the lead data
         const { data: lead, error: leadError } = await supabase
@@ -112,7 +115,7 @@ export async function POST(
           .single()
 
         if (accountError) {
-          console.error('Error creating account:', accountError)
+          log.error({ accountError }, 'Error creating account')
           return NextResponse.json({
             error: 'Failed to create account during lead conversion',
             details: accountError.message
@@ -141,7 +144,7 @@ export async function POST(
             .single()
 
           if (contactError) {
-            console.error('Error creating contact during conversion:', contactError)
+            log.error({ contactError }, 'Error creating contact during conversion')
           } else if (contact) {
             contactId = contact.id
           }
@@ -171,7 +174,7 @@ export async function POST(
           .eq('id', opportunityId)
           .eq('tenant_id', dataSourceTenantId)
 
-        console.log('Lead converted successfully to account/contact')
+        log.debug('Lead converted successfully to account/contact')
       }
 
       // 2. Create the event
@@ -221,9 +224,9 @@ export async function POST(
         if (eventTypeData) {
           eventTypeId = eventTypeData.id
           eventCategoryId = eventTypeData.event_category_id
-          console.log(`[Convert to Event] Found event_type_id: ${eventTypeId} for slug: ${eventTypeSlug}`)
+          log.debug(`Found event_type_id: ${eventTypeId} for slug: ${eventTypeSlug}`)
         } else {
-          console.warn(`[Convert to Event] Could not find event_type_id for slug: ${eventTypeSlug}`)
+          log.warn('[Convert to Event] Could not find event_type_id for slug: ${eventTypeSlug}')
         }
       }
 
@@ -259,7 +262,7 @@ export async function POST(
         .single()
 
       if (eventError) {
-        console.error('Error creating event:', eventError)
+        log.error({ eventError }, 'Error creating event')
         return NextResponse.json({ 
           error: 'Failed to create event', 
           details: eventError.message 
@@ -289,7 +292,7 @@ export async function POST(
           .select()
 
         if (datesError) {
-          console.error('Error creating event dates:', datesError)
+          log.error({ datesError }, 'Error creating event dates')
           // Don't fail the entire request, just log the error
         } else {
           createdEventDates = datesData || []
@@ -299,7 +302,7 @@ export async function POST(
       // 3.5. Execute workflows for this event type (if event_type_id was found)
       if (event.event_type_id) {
         try {
-          console.log(`[Convert to Event] Executing workflows for event type: ${event.event_type_id}`)
+          log.debug(`Executing workflows for event type: ${event.event_type_id}`)
           
           // Import workflowEngine dynamically
           const { workflowEngine } = await import('@/lib/services/workflowEngine')
@@ -320,16 +323,16 @@ export async function POST(
             const totalDesignItems = workflowResults.reduce((sum, result) => {
               return sum + (result?.createdDesignItemIds?.length || 0)
             }, 0)
-            console.log(`[Convert to Event] ✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
+            log.debug(`✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
           } else {
-            console.log(`[Convert to Event] ℹ️  No active workflows found for event type ${event.event_type_id}`)
+            log.debug(`ℹ️  No active workflows found for event type ${event.event_type_id}`)
           }
         } catch (error) {
-          console.error('[Convert to Event] Error executing workflows:', error)
+          log.error({ error }, '[Convert to Event] Error executing workflows')
           // Don't fail the conversion, just log
         }
       } else {
-        console.log('[Convert to Event] ⚠️  No event_type_id found, skipping workflow execution')
+        log.debug('⚠️  No event_type_id found, skipping workflow execution')
       }
 
       // 4. Update the opportunity to mark it as converted
@@ -345,7 +348,7 @@ export async function POST(
         .eq('tenant_id', dataSourceTenantId)
 
       if (oppUpdateError) {
-        console.error('Error updating opportunity:', oppUpdateError)
+        log.error({ oppUpdateError }, 'Error updating opportunity')
         return NextResponse.json({
           error: 'Failed to update opportunity',
           details: oppUpdateError.message
@@ -458,7 +461,7 @@ export async function POST(
       return response
 
     } catch (error) {
-      console.error('Error in conversion process:', error)
+      log.error({ error }, 'Error in conversion process')
       return NextResponse.json({ 
         error: 'Conversion failed', 
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -466,7 +469,7 @@ export async function POST(
     }
 
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

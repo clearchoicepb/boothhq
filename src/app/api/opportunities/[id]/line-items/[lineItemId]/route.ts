@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; lineItemId: string } }
@@ -32,7 +35,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating line item:', error)
+      log.error({ error }, 'Error updating line item')
       return NextResponse.json({ error: 'Failed to update line item' }, { status: 500 })
     }
 
@@ -41,7 +44,7 @@ export async function PUT(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -64,7 +67,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting line item:', error)
+      log.error({ error }, 'Error deleting line item')
       return NextResponse.json({ error: 'Failed to delete line item' }, { status: 500 })
     }
 
@@ -73,7 +76,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

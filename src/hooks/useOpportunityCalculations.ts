@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 type CalculationMode = 'total' | 'expected'
 
@@ -66,7 +69,7 @@ export function useOpportunityCalculations(
           setFullStats(data)
         }
       } catch (error) {
-        console.error('Error fetching opportunity stats:', error)
+        log.error({ error }, 'Error fetching opportunity stats')
       } finally {
         setLoading(false)
       }

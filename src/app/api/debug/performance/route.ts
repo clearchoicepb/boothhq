@@ -24,6 +24,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { dataSourceManager } from '@/lib/data-sources';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 
 /**
  * Calculate health status based on metrics
@@ -307,7 +310,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(response, { headers });
 
   } catch (error: any) {
-    console.error('[Performance API] Error:', error);
+    log.error({ error }, '[Performance API] Error');
 
     return NextResponse.json({
       status: 'error',

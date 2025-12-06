@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('demo-repository')
 import { 
   Database, 
   Search, 
@@ -123,7 +126,7 @@ export default function RepositoryDemoPage() {
         lastUpdated: new Date().toISOString()
       }))
     } catch (error) {
-      console.error('Search error:', error)
+      log.error({ error }, 'Search error')
     } finally {
       setLoading(false)
     }
@@ -147,7 +150,7 @@ export default function RepositoryDemoPage() {
         lastUpdated: new Date().toISOString()
       }))
     } catch (error) {
-      console.error('Fetch error:', error)
+      log.error({ error }, 'Fetch error')
     } finally {
       setLoading(false)
     }
@@ -168,7 +171,7 @@ export default function RepositoryDemoPage() {
         getAllRecords() // Refresh the list
       }
     } catch (error) {
-      console.error('Create error:', error)
+      log.error({ error }, 'Create error')
     } finally {
       setLoading(false)
     }
@@ -190,7 +193,7 @@ export default function RepositoryDemoPage() {
         getAllRecords() // Refresh the list
       }
     } catch (error) {
-      console.error('Update error:', error)
+      log.error({ error }, 'Update error')
     } finally {
       setLoading(false)
     }
@@ -209,7 +212,7 @@ export default function RepositoryDemoPage() {
         getAllRecords() // Refresh the list
       }
     } catch (error) {
-      console.error('Delete error:', error)
+      log.error({ error }, 'Delete error')
     } finally {
       setLoading(false)
     }

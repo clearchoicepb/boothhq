@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:payments')
 
 /**
  * GET /api/payments/[id]
@@ -32,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(payment)
   } catch (error) {
-    console.error('Error fetching payment:', error)
+    log.error({ error }, 'Error fetching payment')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -57,7 +60,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    console.log('[Payment API] Updating payment:', id)
+    log.debug('Updating payment:', id)
 
     // Get the existing payment to check the old amount
     const { data: existingPayment, error: fetchError } = await supabase
@@ -96,7 +99,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('[Payment API] Error updating payment:', updateError)
+      log.error({ updateError }, '[Payment API] Error updating payment')
       return NextResponse.json(
         { error: 'Failed to update payment' },
         { status: 500 }
@@ -112,7 +115,7 @@ export async function PUT(
 
     return NextResponse.json(updatedPayment)
   } catch (error) {
-    console.error('Error updating payment:', error)
+    log.error({ error }, 'Error updating payment')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -136,7 +139,7 @@ export async function DELETE(
     const { id } = await params
     const body = await request.json()
 
-    console.log('[Payment API] Deleting payment:', id)
+    log.debug('Deleting payment:', id)
 
     // Get the payment before deleting to know which invoice to update
     const { data: payment, error: fetchError } = await supabase
@@ -161,7 +164,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
-      console.error('[Payment API] Error deleting payment:', deleteError)
+      log.error({ deleteError }, '[Payment API] Error deleting payment')
       return NextResponse.json(
         { error: 'Failed to delete payment' },
         { status: 500 }
@@ -177,7 +180,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting payment:', error)
+    log.error({ error }, 'Error deleting payment')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -203,7 +206,7 @@ async function recalculateInvoiceFromPayments(
     .single()
 
   if (invoiceError || !invoice) {
-    console.error('Error fetching invoice for recalculation:', invoiceError)
+    log.error({ invoiceError }, 'Error fetching invoice for recalculation')
     return
   }
 
@@ -215,7 +218,7 @@ async function recalculateInvoiceFromPayments(
     .eq('tenant_id', tenantId)
 
   if (paymentsError) {
-    console.error('Error fetching payments for recalculation:', paymentsError)
+    log.error({ paymentsError }, 'Error fetching payments for recalculation')
     return
   }
 
@@ -247,8 +250,8 @@ async function recalculateInvoiceFromPayments(
     .eq('tenant_id', tenantId)
 
   if (updateError) {
-    console.error('Error updating invoice after payment change:', updateError)
+    log.error({ updateError }, 'Error updating invoice after payment change')
   } else {
-    console.log(`[Payment API] Invoice ${invoiceId} recalculated: paid=${totalPaid}, balance=${balanceAmount}, status=${newStatus}`)
+    log.debug(`Invoice ${invoiceId} recalculated: paid=${totalPaid}, balance=${balanceAmount}, status=${newStatus}`)
   }
 }

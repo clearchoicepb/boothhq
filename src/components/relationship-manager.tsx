@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Link, User, Building2, Target, Calendar, ArrowRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface RelatedRecord {
   id: string
@@ -150,7 +153,7 @@ export function RelationshipManager({ recordId, recordType, tenantSubdomain }: R
 
       setRelatedRecords(relationships)
     } catch (error) {
-      console.error('Error fetching related records:', error)
+      log.error({ error }, 'Error fetching related records')
     } finally {
       setLoading(false)
     }

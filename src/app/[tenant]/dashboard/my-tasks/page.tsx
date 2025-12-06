@@ -25,6 +25,9 @@ import {
 } from 'lucide-react'
 import { getDepartmentById, type DepartmentId } from '@/lib/departments'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('my-tasks')
 
 interface Task {
   id: string
@@ -127,7 +130,7 @@ export default function MyTasksPage() {
       // Fetch entity data for all tasks
       await fetchEntityData(fetchedTasks)
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      log.error({ error }, 'Error fetching tasks')
       toast.error('Failed to load tasks')
     } finally {
       setLoading(false)
@@ -158,7 +161,7 @@ export default function MyTasksPage() {
           }
         })
       } catch (error) {
-        console.error('Error fetching events:', error)
+        log.error({ error }, 'Error fetching events')
       }
     }
     
@@ -179,7 +182,7 @@ export default function MyTasksPage() {
           }
         })
       } catch (error) {
-        console.error('Error fetching opportunities:', error)
+        log.error({ error }, 'Error fetching opportunities')
       }
     }
     
@@ -206,7 +209,7 @@ export default function MyTasksPage() {
       toast.success(newStatus === 'completed' ? 'Task completed!' : 'Task reopened')
       fetchMyTasks()
     } catch (error) {
-      console.error('Error updating task:', error)
+      log.error({ error }, 'Error updating task')
       toast.error('Failed to update task')
     }
   }

@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:upload')
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ photoUrl })
   } catch (error) {
-    console.error('Error uploading photo:', error)
+    log.error({ error }, 'Error uploading photo')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

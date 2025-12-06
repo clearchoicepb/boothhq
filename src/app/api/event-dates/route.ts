@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-dates')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching event dates:', error)
+      log.error({ error }, 'Error fetching event dates')
       return NextResponse.json({ error: 'Failed to fetch event dates' }, { status: 500 })
     }
 
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -95,7 +98,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating event date:', error)
+      log.error({ error }, 'Error creating event date')
       return NextResponse.json({ error: 'Failed to create event date', details: error.message }, { status: 500 })
     }
 
@@ -104,7 +107,7 @@ export async function POST(request: NextRequest) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

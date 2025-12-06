@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
+
 declare global {
   interface Window {
     google: any
@@ -43,7 +47,7 @@ export const loadGoogleMaps = (): Promise<void> => {
     }
     
     script.onerror = () => {
-      console.error('Failed to load Google Maps API')
+      log.error('Failed to load Google Maps API')
       reject(new Error('Failed to load Google Maps API'))
     }
 

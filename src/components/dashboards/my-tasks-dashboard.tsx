@@ -25,6 +25,9 @@ import { Button } from '@/components/ui/button'
 import { tasksService } from '@/lib/api/services/tasksService'
 import type { TaskWithRelations } from '@/types/tasks'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboards')
 
 interface TaskStats {
   total: number
@@ -113,7 +116,7 @@ export function MyTasksDashboard() {
 
       setStats(newStats)
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      log.error({ error }, 'Error fetching tasks')
       toast.error('Failed to load tasks')
     } finally {
       setLoading(false)
@@ -126,7 +129,7 @@ export function MyTasksDashboard() {
       toast.success('Task status updated')
       fetchTasks()
     } catch (error) {
-      console.error('Error updating task:', error)
+      log.error({ error }, 'Error updating task')
       toast.error('Failed to update task')
     }
   }

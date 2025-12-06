@@ -38,6 +38,9 @@ import type {
   ConditionsEvaluationResult,
 } from '@/types/workflows'
 import { evaluateConditions } from '@/lib/services/conditionEvaluator'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('services')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -174,7 +177,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 
   try {
     // Debug: Log action data
-    console.log('[WorkflowEngine] create_design_item action:', {
+    log.debug('create_design_item action:', {
       action_id: action.id,
       design_item_type_id: action.design_item_type_id,
       assigned_to_user_id: action.assigned_to_user_id,
@@ -189,7 +192,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     }
     
     if (!action.assigned_to_user_id) {
-      console.warn('[WorkflowEngine] ⚠️  No assigned_to_user_id found in action!')
+      log.warn('[WorkflowEngine] ⚠️  No assigned_to_user_id found in action!')
     }
 
     // Fetch design item type
@@ -208,7 +211,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     const event = context.triggerEntity.data
     const eventDate = event.start_date || event.event_date
 
-    console.log('[WorkflowEngine] 🔍 Design Item Date Debug:', {
+    log.debug('🔍 Design Item Date Debug:', {
       event_id: event.id,
       start_date: event.start_date,
       start_date_type: typeof event.start_date,
@@ -234,7 +237,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       eventDateObj = new Date(eventDate)
     }
 
-    console.log('[WorkflowEngine] ✅ Parsed event date:', {
+    log.debug('✅ Parsed event date:', {
       input: eventDate,
       parsed: eventDateObj.toISOString(),
       isValid: !isNaN(eventDateObj.getTime()),
@@ -283,7 +286,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       workflow_id: action.workflow_id,
     }
     
-    console.log('[WorkflowEngine] Inserting design item:', insertData)
+    log.debug('Inserting design item:', insertData)
     
     const { data: designItem, error: designItemError } = await supabase
       .from('event_design_items')
@@ -323,7 +326,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       .single()
 
     if (taskError) {
-      console.warn('[WorkflowEngine] Failed to create task for design item:', taskError)
+      log.warn({ taskError }, '[WorkflowEngine] Failed to create task for design item')
       // Don't fail the whole action if task creation fails
     } else {
       console.log(`[WorkflowEngine] Created task "${taskName}" (${task.id}) for designer`)
@@ -367,7 +370,7 @@ const executeCreateOpsItemAction: ActionExecutor = async (
 
   try {
     // Debug: Log action data
-    console.log('[WorkflowEngine] create_ops_item action:', {
+    log.debug('create_ops_item action:', {
       action_id: action.id,
       operations_item_type_id: action.operations_item_type_id,
       assigned_to_user_id: action.assigned_to_user_id,
@@ -395,7 +398,7 @@ const executeCreateOpsItemAction: ActionExecutor = async (
     const event = context.triggerEntity.data
     const eventDate = event.start_date || event.event_date
 
-    console.log('[WorkflowEngine] 🔍 Ops Item Date Debug:', {
+    log.debug('🔍 Ops Item Date Debug:', {
       event_id: event.id,
       start_date: event.start_date,
       event_date: event.event_date,
@@ -439,7 +442,7 @@ const executeCreateOpsItemAction: ActionExecutor = async (
       workflow_id: action.workflow_id,
     }
 
-    console.log('[WorkflowEngine] Inserting operations item:', insertData)
+    log.debug('Inserting operations item:', insertData)
 
     const { data: opsItem, error: opsItemError } = await supabase
       .from('event_operations_items')
@@ -478,7 +481,7 @@ const executeCreateOpsItemAction: ActionExecutor = async (
       .single()
 
     if (taskError) {
-      console.warn('[WorkflowEngine] Failed to create task for operations item:', taskError)
+      log.warn({ taskError }, '[WorkflowEngine] Failed to create task for operations item')
       // Don't fail the whole action if task creation fails
     } else {
       console.log(`[WorkflowEngine] Created task "${taskName}" (${task.id}) for operations team`)
@@ -525,7 +528,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
 
   try {
     // Debug: Log action data
-    console.log('[WorkflowEngine] assign_event_role action:', {
+    log.debug('assign_event_role action:', {
       action_id: action.id,
       staff_role_id: action.staff_role_id,
       assigned_to_user_id: action.assigned_to_user_id,
@@ -555,7 +558,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
       .single()
 
     if (existingAssignment) {
-      console.log(`[WorkflowEngine] Assignment already exists for event ${eventId}, role ${action.staff_role_id}, user ${action.assigned_to_user_id}`)
+      log.debug(`Assignment already exists for event ${eventId}, role ${action.staff_role_id}, user ${action.assigned_to_user_id}`)
       // Return success but note it was already assigned
       result.success = true
       result.createdAssignmentId = existingAssignment.id
@@ -574,7 +577,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
       // Note: role field is deprecated, using staff_role_id instead
     }
 
-    console.log('[WorkflowEngine] Creating event staff assignment:', insertData)
+    log.debug('Creating event staff assignment:', insertData)
 
     const { data: assignment, error: assignmentError } = await supabase
       .from('event_staff_assignments')
@@ -586,7 +589,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
       throw new Error(`Failed to create staff assignment: ${assignmentError?.message || 'Unknown error'}`)
     }
 
-    console.log(`[WorkflowEngine] Created event staff assignment (${assignment.id}) for role ${action.staff_role_id}`)
+    log.debug(`Created event staff assignment (${assignment.id}) for role ${action.staff_role_id}`)
 
     result.success = true
     result.createdAssignmentId = assignment.id
@@ -635,7 +638,7 @@ class WorkflowEngine {
   ): Promise<WorkflowExecutionResult[]> {
     const { eventId, eventTypeId, tenantId, dataSourceTenantId, supabase, userId, force } = options
 
-    console.log('✨ Workflow Engine - executeWorkflowsForEvent called')
+    log.debug('✨ Workflow Engine - executeWorkflowsForEvent called')
     console.log('Force rerun:', force)
 
     try {
@@ -653,7 +656,7 @@ class WorkflowEngine {
           .eq('tenant_id', dataSourceTenantId)
 
         if (executionsError) {
-          console.error('[workflowEngine] Error checking existing executions:', executionsError)
+          log.error({ executionsError }, '[workflowEngine] Error checking existing executions')
         }
 
         // Build a Set of workflow IDs that have already been successfully executed
@@ -663,9 +666,9 @@ class WorkflowEngine {
             ?.map(e => e.workflow_id) || []
         )
 
-        console.log(`[workflowEngine] Found ${alreadyExecutedWorkflowIds.size} already-executed workflows for event ${eventId}`)
+        log.debug(`Found ${alreadyExecutedWorkflowIds.size} already-executed workflows for event ${eventId}`)
       } else {
-        console.log('[workflowEngine] 🔥 FORCE MODE: Skipping duplicate check, will re-execute all workflows')
+        log.debug('🔥 FORCE MODE: Skipping duplicate check, will re-execute all workflows')
       }
 
       // Find all active workflows that include this event type
@@ -688,16 +691,16 @@ class WorkflowEngine {
         .order('created_at', { ascending: true })
 
       if (workflowsError) {
-        console.error('[WorkflowEngine] Error fetching workflows:', workflowsError)
+        log.error({ workflowsError }, '[WorkflowEngine] Error fetching workflows')
         return []
       }
 
       if (!workflows || workflows.length === 0) {
-        console.log('[WorkflowEngine] No active workflows found for event type:', eventTypeId)
+        log.debug('No active workflows found for event type:', eventTypeId)
         return []
       }
 
-      console.log(`[WorkflowEngine] Found ${workflows.length} active workflow(s) for event type`)
+      log.debug(`Found ${workflows.length} active workflow(s) for event type`)
 
       // Fetch event data for context
       const { data: event } = await supabase
@@ -707,11 +710,11 @@ class WorkflowEngine {
         .single()
 
       if (!event) {
-        console.error('[WorkflowEngine] Event not found:', eventId)
+        log.error({ eventId }, '[WorkflowEngine] Event not found')
         return []
       }
 
-      console.log('[WorkflowEngine] 📅 Event data fetched:', {
+      log.debug('📅 Event data fetched:', {
         id: event.id,
         start_date: event.start_date,
         start_date_type: typeof event.start_date,
@@ -722,13 +725,13 @@ class WorkflowEngine {
       // Filter out workflows that have already been executed (duplicate prevention)
       const workflowsToExecute = workflows.filter((workflow) => {
         if (alreadyExecutedWorkflowIds.has(workflow.id)) {
-          console.log(`[workflowEngine] ⏭️  Skipping workflow ${workflow.id} (${workflow.name}) - already executed for event ${eventId}`)
+          log.debug(`⏭️  Skipping workflow ${workflow.id} (${workflow.name}) - already executed for event ${eventId}`)
           return false
         }
         return true
       })
 
-      console.log(`[workflowEngine] Executing ${workflowsToExecute.length} of ${workflows.length} workflows`)
+      log.debug(`Executing ${workflowsToExecute.length} of ${workflows.length} workflows`)
 
       // Execute each workflow
       const results = await Promise.all(
@@ -745,7 +748,7 @@ class WorkflowEngine {
 
       return results
     } catch (error) {
-      console.error('[WorkflowEngine] Error executing workflows:', error)
+      log.error({ error }, '[WorkflowEngine] Error executing workflows')
       return []
     }
   }
@@ -786,7 +789,7 @@ class WorkflowEngine {
       .single()
 
     if (executionError || !execution) {
-      console.error('[WorkflowEngine] Failed to create execution record:', executionError)
+      log.error({ executionError }, '[WorkflowEngine] Failed to create execution record')
       return {
         executionId: 'unknown',
         workflowId: workflow.id,
@@ -806,7 +809,7 @@ class WorkflowEngine {
       }
     }
 
-    console.log(`[WorkflowEngine] Executing workflow: ${workflow.name} (${workflow.id})`)
+    log.debug(`Executing workflow: ${workflow.name} (${workflow.id})`)
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 1: CONDITION EVALUATION
@@ -826,7 +829,7 @@ class WorkflowEngine {
 
       conditionResult = evaluateConditions(conditions, evaluationContext)
 
-      console.log(`[WorkflowEngine] Condition evaluation for workflow ${workflow.name}:`, {
+      log.debug(`Condition evaluation for workflow ${workflow.name}:`, {
         conditionsCount: conditions.length,
         passed: conditionResult.passed,
         results: conditionResult.results.map((r) => ({
@@ -838,7 +841,7 @@ class WorkflowEngine {
 
       // If conditions failed, skip this workflow
       if (!conditionResult.passed) {
-        console.log(`[WorkflowEngine] ⏭️  Skipping workflow ${workflow.name} - conditions not met`)
+        log.debug(`⏭️  Skipping workflow ${workflow.name} - conditions not met`)
 
         // Update execution record to 'skipped'
         await supabase
@@ -900,7 +903,7 @@ class WorkflowEngine {
     let actionsFailed = 0
 
     for (const action of sortedActions) {
-      console.log(`[WorkflowEngine] Executing action ${action.execution_order + 1}/${sortedActions.length}: ${action.action_type}`)
+      log.debug(`Executing action ${action.execution_order + 1}/${sortedActions.length}: ${action.action_type}`)
 
       try {
         // Get executor for this action type
@@ -935,7 +938,7 @@ class WorkflowEngine {
               .update({ workflow_execution_id: execution.id })
               .eq('id', result.createdDesignItemId)
 
-            console.log(`[WorkflowEngine] Created design item: ${result.createdDesignItemId}`)
+            log.debug(`Created design item: ${result.createdDesignItemId}`)
           }
           if (result.createdOpsItemId) {
             createdOpsItemIds.push(result.createdOpsItemId)
@@ -946,18 +949,18 @@ class WorkflowEngine {
               .update({ workflow_execution_id: execution.id })
               .eq('id', result.createdOpsItemId)
 
-            console.log(`[WorkflowEngine] Created operations item: ${result.createdOpsItemId}`)
+            log.debug(`Created operations item: ${result.createdOpsItemId}`)
           }
           if (result.createdAssignmentId) {
             createdAssignmentIds.push(result.createdAssignmentId)
-            console.log(`[WorkflowEngine] Created staff assignment: ${result.createdAssignmentId}`)
+            log.debug(`Created staff assignment: ${result.createdAssignmentId}`)
           }
         } else {
           actionsFailed++
           console.error(`[WorkflowEngine] Action failed:`, result.error)
         }
       } catch (error) {
-        console.error(`[WorkflowEngine] Action execution error:`, error)
+        log.error({ error }, '[WorkflowEngine] Action execution error')
         actionsFailed++
         actionResults.push({
           success: false,
@@ -996,7 +999,7 @@ class WorkflowEngine {
       })
       .eq('id', execution.id)
 
-    console.log(`[WorkflowEngine] Workflow execution completed: ${finalStatus} (${actionsSuccessful}/${actionsExecuted} successful)`)
+    log.debug(`Workflow execution completed: ${finalStatus} (${actionsSuccessful}/${actionsExecuted} successful)`)
 
     return {
       executionId: execution.id,

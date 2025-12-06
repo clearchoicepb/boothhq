@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:packages')
 // GET - Fetch all packages
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { data: packages, error } = await query
 
     if (error) {
-      console.error('Error fetching packages:', error)
+      log.error({ error }, 'Error fetching packages')
       return NextResponse.json({
         error: 'Failed to fetch packages',
         details: error.message
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(packages || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (createError) {
-      console.error('Error creating package:', createError)
+      log.error({ createError }, 'Error creating package')
       return NextResponse.json({
         error: 'Failed to create package',
         details: createError.message
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, package: package_data })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

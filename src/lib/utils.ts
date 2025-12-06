@@ -1,5 +1,8 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -33,7 +36,7 @@ export async function fetchFavicon(url: string): Promise<string | null> {
     
     return null
   } catch (error) {
-    console.error('Error fetching favicon:', error)
+    log.error({ error }, 'Error fetching favicon')
     return null
   }
 }

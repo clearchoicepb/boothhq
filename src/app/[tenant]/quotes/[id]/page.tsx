@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useQuote } from '@/hooks/useQuote'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 interface QuoteLineItem {
   id: string
@@ -75,7 +78,7 @@ export default function QuoteDetailPage() {
     try {
       window.open(`/api/quotes/${quoteId}/pdf`, '_blank')
     } catch (error) {
-      console.error('Error downloading PDF:', error)
+      log.error({ error }, 'Error downloading PDF')
       alert('Failed to download PDF')
     }
   }
@@ -94,7 +97,7 @@ export default function QuoteDetailPage() {
       alert('Quote sent successfully!')
       queryClient.invalidateQueries({ queryKey: ['quote', quoteId] })
     } catch (error) {
-      console.error('Error sending quote:', error)
+      log.error({ error }, 'Error sending quote')
       alert('Failed to send quote')
     } finally {
       setUpdating(false)
@@ -117,7 +120,7 @@ export default function QuoteDetailPage() {
       alert('Quote marked as accepted!')
       queryClient.invalidateQueries({ queryKey: ['quote', quoteId] })
     } catch (error) {
-      console.error('Error updating quote:', error)
+      log.error({ error }, 'Error updating quote')
       alert('Failed to update quote')
     } finally {
       setUpdating(false)
@@ -136,7 +139,7 @@ export default function QuoteDetailPage() {
 
       router.push(`/${tenantSubdomain}/quotes`)
     } catch (error) {
-      console.error('Error deleting quote:', error)
+      log.error({ error }, 'Error deleting quote')
       alert('Failed to delete quote')
     }
   }

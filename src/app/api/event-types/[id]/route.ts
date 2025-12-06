@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:event-types')
 // PUT - Update event type
 export async function PUT(
   request: Request,
@@ -57,7 +60,7 @@ export async function PUT(
 
     return NextResponse.json({ eventType })
   } catch (error: any) {
-    console.error('Error updating event type:', error)
+    log.error({ error }, 'Error updating event type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -116,7 +119,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting event type:', error)
+    log.error({ error }, 'Error deleting event type')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -102,7 +105,7 @@ export async function POST(
       .single()
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
+      log.error({ invoiceError }, 'Error creating invoice')
       return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 })
     }
 
@@ -119,7 +122,7 @@ export async function POST(
         .insert(lineItemsData)
 
       if (lineItemsError) {
-        console.error('Error creating line items:', lineItemsError)
+        log.error({ lineItemsError }, 'Error creating line items')
         // Don't fail the entire request, just log the error
       }
     }
@@ -137,7 +140,7 @@ export async function POST(
       paymentUrl: requirePayment ? `/clearchoice/invoices/${invoice.id}/pay` : null,
     })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

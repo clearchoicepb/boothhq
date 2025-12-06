@@ -1,5 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
+
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -8,7 +12,7 @@ export async function GET(
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  const { supabase, dataSourceTenantId } = context
     const params = await routeContext.params
     const eventId = params.id
 
@@ -60,7 +64,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching event:', error)
+      log.error({ error, eventId }, 'Failed to fetch event')
       return NextResponse.json({ error: 'Failed to fetch event' }, { status: 500 })
     }
 
@@ -102,7 +106,7 @@ export async function GET(
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in GET /api/events/[id]')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -120,7 +124,7 @@ export async function PUT(
     const params = await routeContext.params
     const eventId = params.id
     const body = await request.json()
-    console.log('Update event request body:', JSON.stringify(body, null, 2))
+    log.debug({ eventId, body }, 'Update event request')
 
     // Extract event_dates and other non-table fields for separate handling
     const {
@@ -149,7 +153,7 @@ export async function PUT(
       return acc
     }, {} as Record<string, any>)
 
-    console.log('Event data after filtering:', JSON.stringify(cleanedEventData, null, 2))
+    log.debug({ cleanedEventData }, 'Event data after filtering')
 
     // Fetch old event_type_id BEFORE update (for workflow trigger detection)
     const { data: oldEvent } = await supabase
@@ -171,7 +175,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating event:', error)
+      log.error({ error, eventId }, 'Failed to update event')
       return NextResponse.json({ error: 'Failed to update event', details: error }, { status: 500 })
     }
 
@@ -180,7 +184,7 @@ export async function PUT(
     const eventTypeChanged = newEventTypeId && newEventTypeId !== oldEventTypeId
 
     if (eventTypeChanged) {
-      console.log(`[Events PUT] event_type_id changed: ${oldEventTypeId} → ${newEventTypeId}. Triggering workflows...`)
+      log.info({ oldEventTypeId, newEventTypeId }, 'Event type changed, triggering workflows')
       
       try {
         const { default: workflowEngine } = await import('@/lib/services/workflowEngine')
@@ -197,13 +201,16 @@ export async function PUT(
         if (workflowResults.length > 0) {
           const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
           const totalDesignItems = workflowResults.reduce((sum, result) => sum + result.createdDesignItemIds.length, 0)
-          console.log(`[Events PUT] ✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
+          log.info({ 
+            workflowCount: workflowResults.length, 
+            taskCount: totalTasks, 
+            designItemCount: totalDesignItems 
+          }, 'Workflows executed successfully')
         } else {
-          console.log(`[Events PUT] ℹ️  No active workflows found for event type ${newEventTypeId}`)
+          log.debug({ eventTypeId: newEventTypeId }, 'No active workflows found')
         }
       } catch (error) {
-        console.error('[Events PUT] Error executing workflows:', error)
-        // Don't fail the update, just log
+        log.error({ error }, 'Failed to execute workflows')
       }
     }
 
@@ -237,15 +244,16 @@ export async function PUT(
             .insert(datesToInsert)
 
           if (datesError) {
-            console.error('Error updating event dates:', datesError)
+            log.error({ error: datesError }, 'Failed to update event dates')
           }
         }
       }
     }
 
+    log.info({ eventId }, 'Event updated successfully')
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in PUT /api/events/[id]')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -269,7 +277,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
-      console.error('Error deleting event:', error)
+      log.error({ error, eventId }, 'Failed to delete event')
       return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 })
     }
 
@@ -278,15 +286,10 @@ export async function DELETE(
     const { revalidatePath } = await import('next/cache')
     revalidatePath(`/${tenantSubdomain}/events`)
 
+    log.info({ eventId }, 'Event deleted successfully')
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in DELETE /api/events/[id]')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-
-
-
-

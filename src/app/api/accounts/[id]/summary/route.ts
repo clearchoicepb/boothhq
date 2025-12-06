@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:accounts')
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,13 +45,13 @@ export async function GET(
     const { count: contactCount, error: contactsError } = contactsResult
 
     if (eventsError) {
-      console.error('Error fetching events count:', eventsError)
+      log.error({ eventsError }, 'Error fetching events count')
     }
     if (invoicesError) {
-      console.error('Error fetching invoices for upcoming total:', invoicesError)
+      log.error({ invoicesError }, 'Error fetching invoices for upcoming total')
     }
     if (contactsError) {
-      console.error('Error fetching contact count:', contactsError)
+      log.error({ contactsError }, 'Error fetching contact count')
     }
 
     // Calculate totals
@@ -64,7 +67,7 @@ export async function GET(
 
     return NextResponse.json(summary)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

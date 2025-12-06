@@ -28,6 +28,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:cron')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -62,7 +65,7 @@ function verifyAuth(request: NextRequest): boolean {
 
   // Allow in development without auth
   if (process.env.NODE_ENV === 'development') {
-    console.log('[CronWorkflowTriggers] Development mode - skipping auth')
+    log.debug('Development mode - skipping auth')
     return true
   }
 
@@ -74,11 +77,11 @@ function verifyAuth(request: NextRequest): boolean {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function GET(request: NextRequest) {
-  console.log('[CronWorkflowTriggers] Cron job started')
+  log.debug('Cron job started')
 
   // Verify authentication
   if (!verifyAuth(request)) {
-    console.log('[CronWorkflowTriggers] Unauthorized request')
+    log.debug('Unauthorized request')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -102,7 +105,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
 
     if (tenantsError) {
-      console.error('[CronWorkflowTriggers] Error fetching tenants:', tenantsError)
+      log.error({ tenantsError }, '[CronWorkflowTriggers] Error fetching tenants')
       results.errors.push(`Failed to fetch tenants: ${tenantsError.message}`)
       return NextResponse.json({
         success: false,
@@ -112,7 +115,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!tenants || tenants.length === 0) {
-      console.log('[CronWorkflowTriggers] No active tenants found')
+      log.debug('No active tenants found')
       return NextResponse.json({
         success: true,
         message: 'No active tenants to process',
@@ -124,7 +127,7 @@ export async function GET(request: NextRequest) {
     // Process each tenant
     for (const tenant of tenants) {
       try {
-        console.log(`[CronWorkflowTriggers] Processing tenant: ${tenant.name} (${tenant.id})`)
+        log.debug(`Processing tenant: ${tenant.name} (${tenant.id})`)
         results.tenants.push(tenant.id)
 
         // Create tenant-specific Supabase client
@@ -144,12 +147,12 @@ export async function GET(request: NextRequest) {
         }
       } catch (tenantError) {
         const errorMsg = tenantError instanceof Error ? tenantError.message : 'Unknown error'
-        console.error(`[CronWorkflowTriggers] Error processing tenant ${tenant.id}:`, tenantError)
+        log.error({ tenantError }, '[CronWorkflowTriggers] Error processing tenant ${tenant.id}')
         results.errors.push(`[${tenant.name}] ${errorMsg}`)
       }
     }
 
-    console.log('[CronWorkflowTriggers] Cron job completed', {
+    log.debug('Cron job completed', {
       duration: Date.now() - startTime,
       ...results,
     })
@@ -160,7 +163,7 @@ export async function GET(request: NextRequest) {
       duration: Date.now() - startTime,
     })
   } catch (error) {
-    console.error('[CronWorkflowTriggers] Fatal error:', error)
+    log.error({ error }, '[CronWorkflowTriggers] Fatal error')
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -219,11 +222,11 @@ async function processEventDateApproachingTriggers(
     }
 
     if (!workflows || workflows.length === 0) {
-      console.log(`[CronWorkflowTriggers] No event_date_approaching workflows for tenant ${tenantId}`)
+      log.debug(`No event_date_approaching workflows for tenant ${tenantId}`)
       return results
     }
 
-    console.log(`[CronWorkflowTriggers] Found ${workflows.length} event_date_approaching workflow(s)`)
+    log.debug(`Found ${workflows.length} event_date_approaching workflow(s)`)
 
     // Get unique days_before values from all workflows
     const daysBeforeValues = new Set<number>()
@@ -235,7 +238,7 @@ async function processEventDateApproachingTriggers(
     }
 
     if (daysBeforeValues.size === 0) {
-      console.log(`[CronWorkflowTriggers] No valid days_before configurations found`)
+      log.debug(`No valid days_before configurations found`)
       return results
     }
 
@@ -250,7 +253,7 @@ async function processEventDateApproachingTriggers(
       targetDate.setDate(targetDate.getDate() + daysBefore)
       const targetDateStr = targetDate.toISOString().split('T')[0]
 
-      console.log(`[CronWorkflowTriggers] Looking for events on ${targetDateStr} (${daysBefore} days from now)`)
+      log.debug(`Looking for events on ${targetDateStr} (${daysBefore} days from now)`)
 
       // Find events with that date
       const { data: events, error: eventsError } = await supabase
@@ -266,11 +269,11 @@ async function processEventDateApproachingTriggers(
       }
 
       if (!events || events.length === 0) {
-        console.log(`[CronWorkflowTriggers] No events found for ${targetDateStr}`)
+        log.debug(`No events found for ${targetDateStr}`)
         continue
       }
 
-      console.log(`[CronWorkflowTriggers] Found ${events.length} event(s) on ${targetDateStr}`)
+      log.debug(`Found ${events.length} event(s) on ${targetDateStr}`)
       results.eventsProcessed += events.length
 
       // Find workflows that match this days_before value
@@ -305,7 +308,7 @@ async function processEventDateApproachingTriggers(
               .single()
 
             if (existingExecution) {
-              console.log(`[CronWorkflowTriggers] Workflow ${workflow.id} already executed for event ${event.id} today`)
+              log.debug(`Workflow ${workflow.id} already executed for event ${event.id} today`)
               continue
             }
 
@@ -319,7 +322,7 @@ async function processEventDateApproachingTriggers(
             })
 
             results.workflowsExecuted += executionResults.length
-            console.log(`[CronWorkflowTriggers] Executed ${executionResults.length} workflow(s) for event ${event.id}`)
+            log.debug(`Executed ${executionResults.length} workflow(s) for event ${event.id}`)
           } catch (executionError) {
             const errorMsg = executionError instanceof Error ? executionError.message : 'Unknown error'
             results.errors.push(`Failed to execute workflow ${workflow.id} for event ${event.id}: ${errorMsg}`)

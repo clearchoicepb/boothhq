@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDatabaseClient } from '@/lib/supabase-client';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:public')
 
 // GET /api/public/invoices/[tenantId]/[token] - View invoice details (no auth required)
 export async function GET(
@@ -107,7 +110,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error fetching public invoice:', error);
+    log.error({ error }, 'Error fetching public invoice');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { sendEmail } from '@/lib/email'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contracts')
 
 export async function POST(request: NextRequest) {
   try {
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
       recipient: to,
     })
   } catch (error) {
-    console.error('Error sending contract:', error)
+    log.error({ error }, 'Error sending contract')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

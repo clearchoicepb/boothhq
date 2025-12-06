@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:tasks')
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -58,13 +61,13 @@ export async function GET(request: Request) {
     const { data: tasks, error } = await query
 
     if (error) {
-      console.error('[MyTasks] Error fetching tasks:', error)
+      log.error({ error }, '[MyTasks] Error fetching tasks')
       throw error
     }
 
     return NextResponse.json({ tasks: tasks || [] })
   } catch (error: any) {
-    console.error('[MyTasks] Error:', error)
+    log.error({ error }, '[MyTasks] Error')
     return NextResponse.json(
       { error: error.message || 'Failed to fetch tasks' },
       { status: 500 }

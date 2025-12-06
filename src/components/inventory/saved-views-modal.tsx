@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, Edit, Check, X } from 'lucide-react'
 import { InventoryItemsFilter } from '@/hooks/useInventoryItemsData'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('inventory')
 
 export interface SavedView {
   id: string
@@ -41,7 +44,7 @@ export function SavedViewsModal({
         try {
           setSavedViews(JSON.parse(stored))
         } catch (error) {
-          console.error('Failed to parse saved views:', error)
+          log.error({ error }, 'Failed to parse saved views')
           setSavedViews([])
         }
       }
@@ -275,7 +278,7 @@ export function useDefaultView(): InventoryItemsFilter | null {
           setDefaultView(defaultViewData.filters)
         }
       } catch (error) {
-        console.error('Failed to load default view:', error)
+        log.error({ error }, 'Failed to load default view')
       }
     }
   }, [])

@@ -1,5 +1,8 @@
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 export interface InvoicePDFData {
   invoice: {
@@ -87,7 +90,7 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
 
       return `data:${contentType};base64,${base64}`
     } catch (error) {
-      console.error('Error loading logo image:', error)
+      log.error({ error }, 'Error loading logo image')
       return null
     }
   }
@@ -122,7 +125,7 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
         doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 16, undefined, 'FAST')
       }
     } catch (error) {
-      console.error('Error adding logo to PDF:', error)
+      log.error({ error }, 'Error adding logo to PDF')
     }
   }
 
@@ -525,7 +528,7 @@ export const generateQuotePDF = async (data: QuotePDFData): Promise<Buffer> => {
 
       return `data:${contentType};base64,${base64}`
     } catch (error) {
-      console.error('Error loading logo image:', error)
+      log.error({ error }, 'Error loading logo image')
       return null
     }
   }
@@ -559,7 +562,7 @@ export const generateQuotePDF = async (data: QuotePDFData): Promise<Buffer> => {
         doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 16, undefined, 'FAST')
       }
     } catch (error) {
-      console.error('Error adding logo to PDF:', error)
+      log.error({ error }, 'Error adding logo to PDF')
     }
   }
 

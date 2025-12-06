@@ -4,6 +4,9 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Camera, Building2, Users, Calendar, DollarSign } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('app')
 
 export default function HomePage() {
   const { data: session, status } = useSession()

@@ -14,6 +14,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('design')
 
 interface DesignItemType {
   id?: string
@@ -67,7 +70,7 @@ export default function DesignSettingsPage() {
       const data = await res.json()
       setDesignTypes(data.types || [])
     } catch (error) {
-      console.error('Error fetching design types:', error)
+      log.error({ error }, 'Error fetching design types')
       toast.error('Failed to load design types')
     } finally {
       setLoading(false)
@@ -124,7 +127,7 @@ export default function DesignSettingsPage() {
       const data = await res.json()
       setDesignStatuses(data.statuses || [])
     } catch (error) {
-      console.error('Error fetching design statuses:', error)
+      log.error({ error }, 'Error fetching design statuses')
       toast.error('Failed to load design statuses')
     } finally {
       setLoadingStatuses(false)

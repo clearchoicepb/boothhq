@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-select'
 import { LocationForm } from '@/components/location-form'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Location {
   id: string
@@ -56,7 +59,7 @@ export function LocationSelect({
           setLocations(data)
         }
       } catch (error) {
-        console.error('Error fetching locations:', error)
+        log.error({ error }, 'Error fetching locations')
       } finally {
         setLoading(false)
       }
@@ -66,10 +69,10 @@ export function LocationSelect({
   }, [])
 
   const handleLocationCreated = (location: Location) => {
-    console.log('[LocationSelect] Location created successfully:', location)
-    console.log('[LocationSelect] Adding location to list and calling onChange with ID:', location.id)
+    log.debug('Location created successfully:', location)
+    log.debug('Adding location to list and calling onChange with ID:', location.id)
     setLocations(prev => [location, ...prev])
-    console.log('[LocationSelect] Calling onChange with:', { id: location.id, location })
+    log.debug('Calling onChange with:', { id: location.id, location })
     onChange(location.id, location)
     setIsFormOpen(false)
     setEditingLocation(null)
@@ -143,10 +146,10 @@ export function LocationSelect({
           isOpen={isFormOpen}
           onClose={() => { setIsFormOpen(false); setEditingLocation(null); }}
           onSave={async (locationData) => {
-            console.log('[LocationSelect] onSave called with data:', locationData)
+            log.debug('onSave called with data:', locationData)
             const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations'
             const method = editingLocation ? 'PUT' : 'POST'
-            console.log('[LocationSelect] Making API request:', { url, method })
+            log.debug('Making API request:', { url, method })
 
             const response = await fetch(url, {
               method,
@@ -154,16 +157,16 @@ export function LocationSelect({
               body: JSON.stringify(locationData)
             })
 
-            console.log('[LocationSelect] API response status:', response.status)
+            log.debug('API response status:', response.status)
 
             if (!response.ok) {
               const errorData = await response.json()
-              console.error('[LocationSelect] API error:', errorData)
+              log.error({ errorData }, '[LocationSelect] API error')
               throw new Error(`Failed to save location: ${errorData.details || errorData.error}`)
             }
 
             const location = await response.json()
-            console.log('[LocationSelect] Location saved successfully:', location)
+            log.debug('Location saved successfully:', location)
 
             if (editingLocation) {
               handleLocationUpdated(location)

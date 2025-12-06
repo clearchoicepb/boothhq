@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/app-layout'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('reports')
 import {
   BarChart3,
   TrendingUp,
@@ -224,7 +227,7 @@ export default function ReportsPage() {
       setRecentWins(wins)
 
     } catch (error) {
-      console.error('Error fetching sales data:', error)
+      log.error({ error }, 'Error fetching sales data')
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers';
 import { NextResponse } from 'next/server';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:test-tenant-data')
 
 /**
  * Test endpoint to verify tenant data access
@@ -77,7 +80,7 @@ export async function GET() {
 
     return NextResponse.json(results, { status: 200 });
   } catch (error: any) {
-    console.error('Test endpoint error:', error);
+    log.error({ error }, 'Test endpoint error');
     return NextResponse.json(
       {
         error: 'Test failed',

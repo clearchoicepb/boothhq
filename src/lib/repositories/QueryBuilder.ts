@@ -1,4 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('repositories')
 
 export interface JoinConfig {
   table: string
@@ -190,7 +193,7 @@ export class QueryBuilder {
 
       return data || []
     } catch (error) {
-      console.error('QueryBuilder execution error:', error)
+      log.error({ error }, 'QueryBuilder execution error')
       throw error
     }
   }
@@ -217,7 +220,7 @@ export class QueryBuilder {
 
       return count || 0
     } catch (error) {
-      console.error('QueryBuilder count error:', error)
+      log.error({ error }, 'QueryBuilder count error')
       throw error
     }
   }

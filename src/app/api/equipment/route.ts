@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:equipment')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching equipment:', error)
+      log.error({ error }, 'Error fetching equipment')
       return NextResponse.json({ error: 'Failed to fetch equipment' }, { status: 500 })
     }
 
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -65,13 +68,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating equipment:', error)
+      log.error({ error }, 'Error creating equipment')
       return NextResponse.json({ error: 'Failed to create equipment' }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

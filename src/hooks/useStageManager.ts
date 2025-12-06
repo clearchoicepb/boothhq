@@ -5,6 +5,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 interface UseStageManagerProps {
   opportunityId: string
@@ -62,7 +65,7 @@ export function useStageManager({
       if (context?.previousOpportunity) {
         queryClient.setQueryData(['opportunity', opportunityId], context.previousOpportunity)
       }
-      console.error('Error updating stage:', error)
+      log.error({ error }, 'Error updating stage')
       toast.error('Failed to update stage')
     },
     onSettled: () => {

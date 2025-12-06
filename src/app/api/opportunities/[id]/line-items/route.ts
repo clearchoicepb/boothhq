@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:opportunities')
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
@@ -20,13 +23,13 @@ export async function GET(
       .order('sort_order', { ascending: true })
 
     if (error) {
-      console.error('Error fetching opportunity line items:', error)
+      log.error({ error }, 'Error fetching opportunity line items')
       return NextResponse.json({ error: 'Failed to fetch line items' }, { status: 500 })
     }
 
     return NextResponse.json(data || [])
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -66,7 +69,7 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('Error creating line item:', error)
+      log.error({ error }, 'Error creating line item')
       return NextResponse.json({ error: 'Failed to create line item' }, { status: 500 })
     }
 
@@ -75,7 +78,7 @@ export async function POST(
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

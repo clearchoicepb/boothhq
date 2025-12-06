@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:apiClient.ts')
+
 /**
  * Enhanced API Client with retry logic, error handling, and type safety
  * Built on top of the native fetch API
@@ -89,10 +93,7 @@ export class ApiClient {
       // If it's a server error (5xx) and we have retries left, retry
       if (retry && attempt < retryAttempts) {
         const delay = this.retryDelay * Math.pow(2, attempt - 1) // Exponential backoff
-        console.warn(
-          `Request failed (attempt ${attempt}/${retryAttempts}). Retrying in ${delay}ms...`,
-          url
-        )
+        log.warn({ url }, 'Request failed (attempt ${attempt}/${retryAttempts}). Retrying in ${delay}ms...')
         await sleep(delay)
         return this.fetchWithRetry(url, config, attempt + 1)
       }
@@ -110,10 +111,7 @@ export class ApiClient {
       // Handle network errors with retry
       if (retry && attempt < retryAttempts) {
         const delay = this.retryDelay * Math.pow(2, attempt - 1)
-        console.warn(
-          `Network error (attempt ${attempt}/${retryAttempts}). Retrying in ${delay}ms...`,
-          error
-        )
+        log.warn({ error }, 'Network error (attempt ${attempt}/${retryAttempts}). Retrying in ${delay}ms...')
         await sleep(delay)
         return this.fetchWithRetry(url, config, attempt + 1)
       }

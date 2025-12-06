@@ -39,6 +39,9 @@ import type {
   TriggerConfig,
 } from '@/types/workflows'
 import { WORKFLOW_TRIGGER_TYPES } from '@/types/workflows'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('workflows')
 
 // Types for reference data
 interface EventType {
@@ -139,7 +142,7 @@ export default function WorkflowBuilder({
         setUsers(Array.isArray(usersData) ? usersData : [])
       }
     } catch (error) {
-      console.error('Error fetching reference data:', error)
+      log.error({ error }, 'Error fetching reference data')
     } finally {
       setLoadingReferenceData(false)
     }

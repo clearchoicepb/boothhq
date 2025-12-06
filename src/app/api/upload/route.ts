@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server';
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:upload')
 export async function POST(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
-      console.error('Upload error:', error);
+      log.error({ error }, 'Upload error');
       return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
 
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
       path: data.path,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    log.error({ error }, 'Upload error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

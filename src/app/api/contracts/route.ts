@@ -1,6 +1,9 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:contracts')
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -8,33 +11,33 @@ export const runtime = 'nodejs'
 
 // API endpoint for creating and fetching contracts
 export async function POST(request: NextRequest) {
-  console.log('[contracts/route.ts] POST request received')
-  console.log('[contracts/route.ts] URL:', request.url)
-  console.log('[contracts/route.ts] Method:', request.method)
+  log.debug('POST request received')
+  log.debug('URL:', request.url)
+  log.debug('Method:', request.method)
   
   try {
-    console.log('[contracts/route.ts] Getting tenant context...')
+    log.debug('Getting tenant context...')
     const context = await getTenantContext()
     if (context instanceof NextResponse) {
-      console.log('[contracts/route.ts] Context returned NextResponse (error)')
+      log.debug('Context returned NextResponse (error)')
       return context
     }
 
     const { supabase, dataSourceTenantId, session } = context
-    console.log('[contracts/route.ts] Context obtained:', {
+    log.debug('Context obtained:', {
       hasSupabase: !!supabase,
       dataSourceTenantId,
       hasSession: !!session
     })
 
     if (!session?.user) {
-      console.log('[contracts/route.ts] No session user - Unauthorized')
+      log.debug('No session user - Unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('[contracts/route.ts] Reading request body...')
+    log.debug('Reading request body...')
     const body = await request.json()
-    console.log('[contracts/route.ts] Request body:', body)
+    log.debug('Request body:', body)
     
     const {
       event_id,
@@ -47,18 +50,18 @@ export async function POST(request: NextRequest) {
     } = body
 
     if (!event_id || !template_content || !title) {
-      console.log('[contracts/route.ts] Missing required fields:', { event_id, has_template_content: !!template_content, title })
+      log.debug('Missing required fields:', { event_id, has_template_content: !!template_content, title })
       return NextResponse.json(
         { error: 'event_id, template_content, and title are required' },
         { status: 400 }
       )
     }
     
-    console.log('[contracts/route.ts] All required fields present, proceeding...')
+    log.debug('All required fields present, proceeding...')
 
     // Get event data
-    console.log('[contracts/route.ts] Fetching event with ID:', event_id)
-    console.log('[contracts/route.ts] Using tenant_id:', dataSourceTenantId)
+    log.debug('Fetching event with ID:', event_id)
+    log.debug('Using tenant_id:', dataSourceTenantId)
     
     // Note: RLS handles tenant filtering automatically via app.current_tenant_id
     // Specify the exact foreign key relationship since events has multiple contacts relationships
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
       .eq('id', event_id)
       .single()
 
-    console.log('[contracts/route.ts] Event query result:', {
+    log.debug('Event query result:', {
       hasEvent: !!event,
       eventError: eventError?.message,
       eventErrorCode: eventError?.code,
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (eventError || !event) {
-      console.error('[contracts/route.ts] Event not found. Error:', eventError)
+      log.error({ eventError }, '[contracts/route.ts] Event not found. Error')
       return NextResponse.json({ 
         error: 'Event not found',
         debug: {
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
     
-    console.log('[contracts/route.ts] Event found:', event.id, event.title)
+    log.debug('Event found:', event.id, event.title)
 
     // Build merge field data directly from event (server-side, can't use HTTP fetch)
     const mergeData: any = {}
@@ -127,7 +130,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log('[contracts/route.ts] Merge data built:', Object.keys(mergeData))
+    log.debug('Merge data built:', Object.keys(mergeData))
 
     // Replace merge fields in template
     const processedContent = replaceMergeFields(template_content, mergeData)
@@ -137,9 +140,9 @@ export async function POST(request: NextRequest) {
       .from('contracts')
       .select('*', { count: 'exact', head: true })
 
-    console.log('[contracts/route.ts] Contract count:', contractCount)
+    log.debug('Contract count:', contractCount)
     const contractNumber = `CON-${String((contractCount || 0) + 1).padStart(5, '0')}`
-    console.log('[contracts/route.ts] Generated contract number:', contractNumber)
+    log.debug('Generated contract number:', contractNumber)
 
     // Calculate expiration date
     const expiresAt = new Date()
@@ -165,8 +168,8 @@ export async function POST(request: NextRequest) {
     if (expiresAt) insertData.expires_at = expiresAt.toISOString()
     if (session.user.id) insertData.created_by = session.user.id
     
-    console.log('[contracts/route.ts] Inserting with data:', Object.keys(insertData))
-    console.log('[contracts/route.ts] Insert values:', { 
+    log.debug('Inserting with data:', Object.keys(insertData))
+    log.debug('Insert values:', { 
       template_name: insertData.template_name,
       recipient_email: insertData.recipient_email,
       recipient_name: insertData.recipient_name,
@@ -179,22 +182,22 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
     
-    console.log('[contracts/route.ts] Insert result:', { hasContract: !!contract, error: contractError })
+    log.debug('Insert result:', { hasContract: !!contract, error: contractError })
 
     if (contractError) {
-      console.error('Error creating contract:', contractError)
+      log.error({ contractError }, 'Error creating contract')
       return NextResponse.json(
         { error: 'Failed to create contract' },
         { status: 500 }
       )
     }
 
-    console.log('[contracts/route.ts] Contract created successfully:', contract.id)
-    console.log('[contracts/route.ts] NOTE: File entry NOT auto-created - waiting for user to save')
+    log.debug('Contract created successfully:', contract.id)
+    log.debug('NOTE: File entry NOT auto-created - waiting for user to save')
     
     return NextResponse.json(contract)
   } catch (error) {
-    console.error('[contracts/route.ts] ERROR in POST handler:', error)
+    log.error({ error }, '[contracts/route.ts] ERROR in POST handler')
     console.error('[contracts/route.ts] Error stack:', error instanceof Error ? error.stack : 'No stack')
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
@@ -204,22 +207,22 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  console.log('[contracts/route.ts] GET request received')
-  console.log('[contracts/route.ts] URL:', request.url)
+  log.debug('GET request received')
+  log.debug('URL:', request.url)
   
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
-    console.log('[contracts/route.ts] GET Context obtained:', {
+    log.debug('GET Context obtained:', {
       hasSupabase: !!supabase,
       dataSourceTenantId,
       hasSession: !!session
     })
 
     if (!session?.user) {
-      console.log('[contracts/route.ts] GET No session - Unauthorized')
+      log.debug('GET No session - Unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -240,7 +243,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('[contracts/route.ts] GET Error fetching contracts:', error)
+      log.error({ error }, '[contracts/route.ts] GET Error fetching contracts')
       console.error('[contracts/route.ts] GET Error details:', {
         code: error.code,
         message: error.message,
@@ -253,7 +256,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('[contracts/route.ts] GET Query successful, contracts count:', data?.length || 0)
+    log.debug('GET Query successful, contracts count:', data?.length || 0)
 
     // Fetch event names separately to avoid schema conflicts
     const contractsWithEventNames = await Promise.all(
@@ -276,7 +279,7 @@ export async function GET(request: NextRequest) {
               }
             }
           } catch (error) {
-            console.log('[contracts/route.ts] Could not fetch event name for contract:', contract.id)
+            log.debug('Could not fetch event name for contract:', contract.id)
           }
         }
         return contract
@@ -285,7 +288,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(contractsWithEventNames)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

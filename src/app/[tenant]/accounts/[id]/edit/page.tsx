@@ -9,6 +9,9 @@ import { AccountForm } from '@/components/account-form'
 import { ArrowLeft, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('edit')
 
 type Account = Tables<'accounts'>
 type AccountUpdate = Partial<Omit<Account, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>
@@ -50,7 +53,7 @@ export default function EditAccountPage() {
       const data = await response.json()
       setAccount(data)
     } catch (error) {
-      console.error('Error fetching account:', error)
+      log.error({ error }, 'Error fetching account')
       setError('Failed to load account')
     } finally {
       setLoading(false)
@@ -78,7 +81,7 @@ export default function EditAccountPage() {
       // Navigate back to the account detail page
       router.push(`/${tenantSubdomain}/accounts/${accountId}`)
     } catch (error) {
-      console.error('Error saving account:', error)
+      log.error({ error }, 'Error saving account')
       alert('Failed to save account. Please try again.')
     } finally {
       setLoading(false)

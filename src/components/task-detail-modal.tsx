@@ -5,6 +5,9 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2 } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Task {
   id: string
@@ -88,7 +91,7 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
       onUpdate()
       onClose()
     } catch (err) {
-      console.error('Error updating task:', err)
+      log.error({ err }, 'Error updating task')
       setError(err instanceof Error ? err.message : 'Failed to update task')
     } finally {
       setSaving(false)
@@ -109,7 +112,7 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
         onDelete()
       }
     } catch (error) {
-      console.error('Error deleting task:', error)
+      log.error({ error }, 'Error deleting task')
       setError('Failed to delete task')
     }
   }

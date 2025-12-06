@@ -16,6 +16,9 @@ import { useState } from 'react'
 import { Copy, DollarSign, FileText, Zap, X, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('shared')
 
 interface FloatingQuickActionsProps {
   eventId: string
@@ -63,7 +66,7 @@ export function FloatingQuickActions({
             alert('Failed to duplicate event')
           }
         } catch (error) {
-          console.error('Error duplicating event:', error)
+          log.error({ error }, 'Error duplicating event')
           alert('Error duplicating event')
         }
       }
@@ -92,7 +95,7 @@ export function FloatingQuickActions({
           alert(`❌ Failed: ${result.error}${result.hint ? `\n${result.hint}` : ''}`)
         }
       } catch (error) {
-        console.error('Error triggering workflows:', error)
+        log.error({ error }, 'Error triggering workflows')
         alert('❌ Failed to trigger workflows')
       }
     }

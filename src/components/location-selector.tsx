@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LocationForm } from '@/components/location-form'
 import { Location, LocationInsert, LocationUpdate } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface LocationSelectorProps {
   selectedLocationId: string | null
@@ -42,10 +45,10 @@ export function LocationSelector({
         const data = await response.json()
         setLocations(data)
       } else {
-        console.error('Failed to load locations')
+        log.error('Failed to load locations')
       }
     } catch (error) {
-      console.error('Error loading locations:', error)
+      log.error({ error }, 'Error loading locations')
     } finally {
       setIsLoading(false)
     }
@@ -71,7 +74,7 @@ export function LocationSelector({
         throw new Error('Failed to create location')
       }
     } catch (error) {
-      console.error('Error saving location:', error)
+      log.error({ error }, 'Error saving location')
       throw error
     }
   }

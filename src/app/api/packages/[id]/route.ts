@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:packages')
 // GET - Fetch a single package
 export async function GET(
   request: NextRequest,
@@ -24,7 +27,7 @@ export async function GET(
 
     return NextResponse.json(package_data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -71,7 +74,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Error updating package:', updateError)
+      log.error({ updateError }, 'Error updating package')
       return NextResponse.json({
         error: 'Failed to update package',
         details: updateError.message
@@ -80,7 +83,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, package: package_data })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -104,7 +107,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
-      console.error('Error deleting package:', deleteError)
+      log.error({ deleteError }, 'Error deleting package')
       return NextResponse.json({
         error: 'Failed to delete package',
         details: deleteError.message
@@ -113,7 +116,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

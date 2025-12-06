@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, Save, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface BoothType {
   id: string
@@ -53,7 +56,7 @@ export function BoothSettings() {
         setEquipmentTypes(data)
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      log.error({ error }, 'Error fetching data')
     } finally {
       setLoading(false)
     }
@@ -80,7 +83,7 @@ export function BoothSettings() {
         setIsAddingBoothType(false)
       }
     } catch (error) {
-      console.error('Error saving booth type:', error)
+      log.error({ error }, 'Error saving booth type')
     }
   }
 
@@ -101,7 +104,7 @@ export function BoothSettings() {
         setIsAddingEquipmentType(false)
       }
     } catch (error) {
-      console.error('Error saving equipment type:', error)
+      log.error({ error }, 'Error saving equipment type')
     }
   }
 
@@ -114,7 +117,7 @@ export function BoothSettings() {
         await fetchData()
       }
     } catch (error) {
-      console.error('Error deleting booth type:', error)
+      log.error({ error }, 'Error deleting booth type')
     }
   }
 
@@ -127,7 +130,7 @@ export function BoothSettings() {
         await fetchData()
       }
     } catch (error) {
-      console.error('Error deleting equipment type:', error)
+      log.error({ error }, 'Error deleting equipment type')
     }
   }
 

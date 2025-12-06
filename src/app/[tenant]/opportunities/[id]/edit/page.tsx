@@ -10,6 +10,9 @@ import Link from 'next/link'
 import { OpportunityFormEnhanced } from '@/components/opportunity-form-enhanced'
 import { AccessGuard } from '@/components/access-guard'
 import type { Opportunity as OpportunityType } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('edit')
 
 export default function EditOpportunityPage() {
   const { data: session, status } = useSession()
@@ -41,7 +44,7 @@ export default function EditOpportunityPage() {
       const data = await response.json()
       setOpportunity(data)
     } catch (error) {
-      console.error('Error fetching opportunity:', error)
+      log.error({ error }, 'Error fetching opportunity')
       setError('Failed to load opportunity')
     } finally {
       setIsLoading(false)
@@ -66,7 +69,7 @@ export default function EditOpportunityPage() {
       // Redirect back to opportunity detail page
       router.push(`/${tenantSubdomain}/opportunities/${opportunityId}`)
     } catch (error) {
-      console.error('Error saving opportunity:', error)
+      log.error({ error }, 'Error saving opportunity')
       setError(error instanceof Error ? error.message : 'Failed to save opportunity')
       throw error
     }

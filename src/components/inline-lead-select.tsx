@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { InlineSearchableSelect, InlineSearchableOption } from '@/components/ui/inline-searchable-select'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Lead {
   id: string
@@ -45,7 +48,7 @@ export function InlineLeadSelect({
           setLeads(data)
         }
       } catch (error) {
-        console.error('Error fetching leads:', error)
+        log.error({ error }, 'Error fetching leads')
       } finally {
         setLoading(false)
       }

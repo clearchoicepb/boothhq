@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -122,7 +125,7 @@ export async function GET(
       .order('assigned_date', { ascending: true })
 
     // Fetch staff assignments
-    console.log('[LOGISTICS-API] Fetching staff for eventId:', eventId, 'tenantId:', session.user.tenantId)
+    log.debug('Fetching staff for eventId:', eventId, 'tenantId:', session.user.tenantId)
     const { data: staffAssignments, error: staffError } = await supabase
       .from('event_staff_assignments')
       .select(`
@@ -144,10 +147,10 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (staffError) {
-      console.error('[LOGISTICS-API] Staff query error:', staffError)
+      log.error({ staffError }, '[LOGISTICS-API] Staff query error')
     } else {
-      console.log('[LOGISTICS-API] Staff query success, found records:', staffAssignments?.length || 0)
-      console.log('[LOGISTICS-API] Raw staff data:', JSON.stringify(staffAssignments, null, 2))
+      log.debug('Staff query success, found records:', staffAssignments?.length || 0)
+      log.debug('Raw staff data:', JSON.stringify(staffAssignments, null, 2))
     }
 
     // Build location object - prefer event_dates location, fall back to old TEXT field
@@ -181,7 +184,7 @@ export async function GET(
       is_event_day: !!sa.event_date_id
     })) || []
 
-    console.log('[LOGISTICS-API] Transformed staff array:', JSON.stringify(staffArray, null, 2))
+    log.debug('Transformed staff array:', JSON.stringify(staffArray, null, 2))
 
     const logistics = {
       client_name: event.account?.name,
@@ -226,7 +229,7 @@ export async function GET(
 
     return NextResponse.json({ logistics })
   } catch (error: any) {
-    console.error('Error fetching event logistics:', error)
+    log.error({ error }, 'Error fetching event logistics')
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

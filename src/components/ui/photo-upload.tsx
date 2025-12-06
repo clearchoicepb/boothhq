@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Upload, X, Camera, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { useFavicon } from '@/lib/use-favicon'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('ui')
 
 interface PhotoUploadProps {
   currentPhotoUrl?: string | null
@@ -84,7 +87,7 @@ export function PhotoUpload({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Upload failed' }))
-        console.error('Upload error:', errorData)
+        log.error({ errorData }, 'Upload error')
         throw new Error(errorData.error || 'Upload failed')
       }
 
@@ -98,7 +101,7 @@ export function PhotoUpload({
       setPreviewUrl(photoUrl)
       onPhotoChange(photoUrl)
     } catch (error) {
-      console.error('Error uploading photo:', error)
+      log.error({ error }, 'Error uploading photo')
       alert(`Failed to upload photo: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsUploading(false)
@@ -130,7 +133,7 @@ export function PhotoUpload({
               height={120}
               className="rounded-full object-cover border-4 border-gray-200"
               onError={(e) => {
-                console.error('Image load error:', e)
+                log.error({ e }, 'Image load error')
                 setPreviewUrl(null)
                 onPhotoChange(null)
               }}
@@ -153,7 +156,7 @@ export function PhotoUpload({
               height={120}
               className="rounded-full object-cover border-4 border-blue-200"
               onError={(e) => {
-                console.error('Favicon load error:', e)
+                log.error({ e }, 'Favicon load error')
                 // Don't show error to user, just log it
               }}
               onLoad={() => {

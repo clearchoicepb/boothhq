@@ -5,6 +5,9 @@ import { ChevronDown, Zap } from 'lucide-react'
 import { useTaskTemplatesByDepartment } from '@/hooks/useTaskTemplates'
 import { useCreateTaskFromTemplate } from '@/hooks/useTaskActions'
 import { inferDepartmentFromEntity, type DepartmentId } from '@/lib/departments'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('task-templates')
 
 interface TemplateQuickAddProps {
   entityType?: string
@@ -63,7 +66,7 @@ export function TemplateQuickAdd({
       setIsOpen(false)
       onTaskCreated?.()
     } catch (error) {
-      console.error('Failed to create task from template:', error)
+      log.error({ error }, 'Failed to create task from template')
     } finally {
       setCreating(null)
     }

@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Clock, ArrowRight, User, Building2, Target, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface SearchResult {
   id: string
@@ -166,7 +169,7 @@ export function EnhancedSearch({ tenantSubdomain, onResultClick }: EnhancedSearc
 
       setResults(searchResults)
     } catch (error) {
-      console.error('Search error:', error)
+      log.error({ error }, 'Search error')
       setResults([])
     } finally {
       setLoading(false)

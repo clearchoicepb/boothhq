@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
+
 /**
  * User lookup utilities for owner assignment and user selection
  */
@@ -20,7 +24,7 @@ export async function fetchTenantUsers(): Promise<TenantUser[]> {
     const response = await fetch('/api/users')
 
     if (!response.ok) {
-      console.error('Failed to fetch tenant users')
+      log.error('Failed to fetch tenant users')
       return []
     }
 
@@ -36,7 +40,7 @@ export async function fetchTenantUsers(): Promise<TenantUser[]> {
       role: user.role
     }))
   } catch (error) {
-    console.error('Error fetching tenant users:', error)
+    log.error({ error }, 'Error fetching tenant users')
     return []
   }
 }

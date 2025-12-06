@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:add-ons')
 // GET - Fetch a single add-on
 export async function GET(
   request: NextRequest,
@@ -24,7 +27,7 @@ export async function GET(
 
     return NextResponse.json(addOn)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -73,7 +76,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Error updating add-on:', updateError)
+      log.error({ updateError }, 'Error updating add-on')
       return NextResponse.json({
         error: 'Failed to update add-on',
         details: updateError.message
@@ -82,7 +85,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, addOn })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -106,7 +109,7 @@ export async function DELETE(
       .eq('tenant_id', dataSourceTenantId)
 
     if (deleteError) {
-      console.error('Error deleting add-on:', deleteError)
+      log.error({ deleteError }, 'Error deleting add-on')
       return NextResponse.json({
         error: 'Failed to delete add-on',
         details: deleteError.message
@@ -115,7 +118,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

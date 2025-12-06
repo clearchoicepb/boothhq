@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { CreateTicketInput, TicketType, TicketPriority } from '@/types/ticket.types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('new')
 
 interface SelectedFile {
   file: File
@@ -72,7 +75,7 @@ export default function NewTicketPage() {
       toast.success('Ticket created successfully!')
       router.push(`/${tenantSubdomain}/tickets/${ticket.id}`)
     } catch (error) {
-      console.error('Error creating ticket:', error)
+      log.error({ error }, 'Error creating ticket')
       toast.error('Failed to create ticket')
     } finally {
       setLoading(false)

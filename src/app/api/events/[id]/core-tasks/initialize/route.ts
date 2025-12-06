@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:events')
 // POST - Initialize core task completions for an event
 export async function POST(
   request: NextRequest,
@@ -23,7 +26,7 @@ export async function POST(
       .eq('is_active', true)
 
     if (templatesError) {
-      console.error('Error fetching core task templates:', templatesError)
+      log.error({ templatesError }, 'Error fetching core task templates')
       return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
     }
 
@@ -44,13 +47,13 @@ export async function POST(
       .insert(completions)
 
     if (insertError) {
-      console.error('Error initializing core tasks:', insertError)
+      log.error({ insertError }, 'Error initializing core tasks')
       return NextResponse.json({ error: 'Failed to initialize core tasks' }, { status: 500 })
     }
 
     return NextResponse.json({ message: 'Core tasks initialized successfully' })
   } catch (error) {
-    console.error('Error in POST /api/events/[id]/core-tasks/initialize:', error)
+    log.error({ error }, 'Error in POST /api/events/[id]/core-tasks/initialize')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:quotes')
 export async function GET(request: NextRequest) {
   try {
   const context = await getTenantContext()
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching quotes:', error)
+      log.error({ error }, 'Error fetching quotes')
       return NextResponse.json({ error: 'Failed to fetch quotes' }, { status: 500 })
     }
 
@@ -46,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedData)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -128,7 +131,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (quoteError) {
-      console.error('Error creating quote:', quoteError)
+      log.error({ quoteError }, 'Error creating quote')
       return NextResponse.json({ error: 'Failed to create quote' }, { status: 500 })
     }
 
@@ -153,14 +156,14 @@ export async function POST(request: NextRequest) {
         .insert(lineItemsData)
 
       if (lineItemsError) {
-        console.error('Error creating quote line items:', lineItemsError)
+        log.error({ lineItemsError }, 'Error creating quote line items')
         // Don't fail the entire request, just log the error
       }
     }
 
     return NextResponse.json(quote)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('lib')
 
 interface FaviconState {
   faviconUrl: string | null
@@ -64,7 +67,7 @@ export function useFavicon(websiteUrl: string | null): FaviconState {
           })
         }
       } catch (error) {
-        console.error('Error fetching favicon:', error)
+        log.error({ error }, 'Error fetching favicon')
         setState({
           faviconUrl: null,
           loading: false,

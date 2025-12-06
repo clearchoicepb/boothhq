@@ -7,6 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft, CreditCard, Check, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('pay')
 import {
   Elements,
   PaymentElement,
@@ -88,7 +91,7 @@ function PaymentForm({ invoice, tenantId, token, clientSecret, onSuccess }: Paym
         setProcessing(false)
       }
     } catch (err) {
-      console.error('Payment error:', err)
+      log.error({ err }, 'Payment error')
       setError('An unexpected error occurred')
       setProcessing(false)
     }
@@ -219,7 +222,7 @@ export default function PublicInvoicePaymentPage() {
       // Create payment intent with default amount
       await createPaymentIntent(balance)
     } catch (err) {
-      console.error('Error fetching invoice:', err)
+      log.error({ err }, 'Error fetching invoice')
       setError('An error occurred while loading the invoice.')
     } finally {
       setLoading(false)
@@ -253,7 +256,7 @@ export default function PublicInvoicePaymentPage() {
         setStripePromise(loadStripe(data.publishableKey))
       }
     } catch (err) {
-      console.error('Error creating payment intent:', err)
+      log.error({ err }, 'Error creating payment intent')
       setError('Failed to initialize payment')
     }
   }

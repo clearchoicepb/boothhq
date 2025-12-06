@@ -15,6 +15,9 @@ import {
 } from 'lucide-react'
 import { useTenant } from '@/lib/tenant-context'
 import { searchApi, SearchResult } from '@/lib/db/search'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface SearchPaletteProps {
   onOpenChange?: (open: boolean) => void
@@ -64,7 +67,7 @@ export function SearchPalette({ onOpenChange }: SearchPaletteProps) {
         const formatted = searchApi.formatResults(searchResults)
         setResults(formatted)
       } catch (error) {
-        console.error('Search error:', error)
+        log.error({ error }, 'Search error')
         setResults([])
       } finally {
         setLoading(false)

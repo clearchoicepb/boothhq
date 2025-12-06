@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-select'
 import { LeadForm } from '@/components/lead-form'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('components')
 
 interface Lead {
   id: string
@@ -49,7 +52,7 @@ export function LeadSelect({
           setLeads(data)
         }
       } catch (error) {
-        console.error('Error fetching leads:', error)
+        log.error({ error }, 'Error fetching leads')
       } finally {
         setLoading(false)
       }

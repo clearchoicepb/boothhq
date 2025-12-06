@@ -7,6 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { CreditCard, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('token')
 
 interface InvoiceLineItem {
   id: string
@@ -95,7 +98,7 @@ export default function PublicInvoicePage() {
       setInvoice(data.invoice)
       setTenant(data.tenant)
     } catch (err) {
-      console.error('Error fetching invoice:', err)
+      log.error({ err }, 'Error fetching invoice')
       setError('An error occurred while loading the invoice.')
     } finally {
       setLoading(false)

@@ -21,6 +21,9 @@ import { workflowsService } from '@/lib/api/services/workflowsService'
 import WorkflowBuilderComponent from '@/components/workflows/WorkflowBuilder'
 import type { WorkflowWithRelations, WorkflowSavePayload } from '@/types/workflows'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('id')
 
 export default function WorkflowBuilderPage() {
   const { tenant: tenantSubdomain, id } = useParams()
@@ -44,7 +47,7 @@ export default function WorkflowBuilderPage() {
       const data = await workflowsService.getById(workflowId)
       setWorkflow(data)
     } catch (error) {
-      console.error('Error fetching workflow:', error)
+      log.error({ error }, 'Error fetching workflow')
       toast.error('Failed to load workflow')
       router.push(`/${tenantSubdomain}/settings/workflows`)
     } finally {
@@ -68,7 +71,7 @@ export default function WorkflowBuilderPage() {
         router.push(`/${tenantSubdomain}/settings/workflows`)
       }
     } catch (error) {
-      console.error('Error saving workflow:', error)
+      log.error({ error }, 'Error saving workflow')
       toast.error('Failed to save workflow')
     } finally {
       setSaving(false)
