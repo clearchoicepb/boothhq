@@ -17,7 +17,7 @@
  * - Works for all departments
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
 import { useRouter } from 'next/navigation'
@@ -44,6 +44,7 @@ import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 // Week 1 Architecture - Use hooks and services
 import { useTaskDashboard } from '@/hooks/useTaskDashboard'
 import { useUpdateTask } from '@/hooks/useTaskActions'
+import { useUsers } from '@/hooks/useUsers'
 import { DEPARTMENTS, getTaskDepartments, type DepartmentId } from '@/lib/departments'
 import type { TaskWithUrgency } from '@/types/tasks'
 
@@ -128,28 +129,14 @@ export function UnifiedTaskDashboard({
   const [taskPriority, setTaskPriority] = useState('')
   const [taskNotes, setTaskNotes] = useState('')
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
-  const [users, setUsers] = useState<TenantUser[]>([])
 
   // Get tenant colors from settings
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
   const SECONDARY_COLOR = getSetting('appearance.secondaryColor', '#8b5cf6')
 
-  // Fetch users for staff filtering
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch('/api/users')
-        if (response.ok) {
-          const data = await response.json()
-          setUsers(data.users || data || [])
-        }
-      } catch (error) {
-        console.error('Error fetching users:', error)
-      }
-    }
-
-    fetchUsers()
-  }, [])
+  // Fetch users for staff filtering using the useUsers hook
+  const { data: usersData = [] } = useUsers()
+  const users: TenantUser[] = usersData as TenantUser[]
 
   // Week 1 Architecture - Use hooks instead of direct fetch
   const { data: dashboardData, isLoading } = useTaskDashboard(

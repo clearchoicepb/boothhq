@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { useUpdateInventoryItem } from '@/hooks/useInventoryItemsData'
+import { useUsers } from '@/hooks/useUsers'
 
 interface BulkCheckoutModalProps {
   isOpen: boolean
@@ -17,23 +18,22 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
   const [assignToUser, setAssignToUser] = useState('')
   const [assignmentType, setAssignmentType] = useState<string>('event_checkout')
   const [returnDate, setReturnDate] = useState('')
-  const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({})
 
   const updateItem = useUpdateInventoryItem()
+  const { data: users = [] } = useUsers()
 
   useEffect(() => {
     if (isOpen) {
       fetchEvents()
-      fetchUsers()
       // Set default return date to next Monday
       const today = new Date()
       const nextMonday = new Date(today)
       nextMonday.setDate(today.getDate() + ((1 + 7 - today.getDay()) % 7 || 7))
       setReturnDate(nextMonday.toISOString().split('T')[0])
-      
+
       // Initialize quantities for quantity-tracked items
       const initialQuantities: Record<string, number> = {}
       items.forEach(item => {
@@ -54,18 +54,6 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
       }
     } catch (err) {
       console.error('Error fetching events:', err)
-    }
-  }
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data || [])
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err)
     }
   }
 
@@ -215,7 +203,7 @@ export function BulkCheckoutModal({ isOpen, onClose, items }: BulkCheckoutModalP
               required
             >
               <option value="">Select staff member...</option>
-              {users.map(user => (
+              {users.map((user: { id: string; first_name?: string; last_name?: string }) => (
                 <option key={user.id} value={user.id}>
                   {user.first_name} {user.last_name}
                 </option>

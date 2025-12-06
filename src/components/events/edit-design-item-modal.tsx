@@ -1,5 +1,11 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { Modal } from '@/components/ui/modal'
+import { useUsers } from '@/hooks/useUsers'
+
 interface DesignItemDetails {
   id: string
   status: string
@@ -10,23 +16,12 @@ interface DesignItemDetails {
   item_name?: string | null
 }
 
-interface DesignerUser {
-  id: string
-  name?: string | null
-  email?: string | null
-}
-
 interface DesignStatusOption {
   id: string
   slug: string
   name: string
   is_active: boolean
 }
-
-import { useState, useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { Modal } from '@/components/ui/modal'
 
 interface EditDesignItemModalProps {
   eventId: string
@@ -37,7 +32,7 @@ interface EditDesignItemModalProps {
 }
 
 export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess, isOpen = true }: EditDesignItemModalProps) {
-  const [users, setUsers] = useState<DesignerUser[]>([])
+  const { data: users = [] } = useUsers()
   const [designStatuses, setDesignStatuses] = useState<DesignStatusOption[]>([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -48,19 +43,8 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess, i
   })
 
   useEffect(() => {
-    fetchUsers()
     fetchDesignStatuses()
   }, [])
-
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch('/api/users')
-      const data = await res.json()
-      setUsers(data.users || [])
-    } catch (_error) {
-      console.error('Error fetching users:', _error)
-    }
-  }
 
   const fetchDesignStatuses = async () => {
     try {
@@ -143,9 +127,9 @@ export function EditDesignItemModal({ eventId, designItem, onClose, onSuccess, i
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
             >
               <option value="">Unassigned</option>
-              {users.map((user) => (
+              {users.map((user: { id: string; first_name?: string; last_name?: string; email: string }) => (
                 <option key={user.id} value={user.id}>
-                  {user.name || user.email}
+                  {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.email}
                 </option>
               ))}
             </select>
