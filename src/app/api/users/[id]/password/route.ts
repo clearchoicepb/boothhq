@@ -26,12 +26,13 @@ export async function POST(
   if (context instanceof NextResponse) return context
 
   const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
     const body = await request.json()
     const { password, currentPassword } = body
 
     if (!password || password.length < 8) {
-      return NextResponse.json({ 
-        error: 'Password must be at least 8 characters long' 
+      return NextResponse.json({
+        error: 'Password must be at least 8 characters long'
       }, { status: 400 })
     }
 
@@ -70,10 +71,7 @@ export async function POST(
     }
 
     // Get user info from users table
-    const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    const tenantSupabase = await getTenantDatabaseClient(session.user.tenantId)
-    
-    const { data: user, error: userError } = await tenantSupabase
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('email, tenant_id')
       .eq('id', id)
@@ -102,9 +100,9 @@ export async function POST(
 
     // Step 2: Update password_hash in users table (for consistency)
     const passwordHash = await bcrypt.hash(password, 10)
-    const { error: updateError } = await tenantSupabase
+    const { error: updateError } = await supabase
       .from('users')
-      .update({ 
+      .update({
         password_hash: passwordHash,
         updated_at: new Date().toISOString()
       })
