@@ -1,13 +1,17 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
+import { createLogger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 
+// Create a module-specific logger
+const log = createLogger('api:accounts')
+
 export async function GET(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
     const filterType = searchParams.get('filterType') || 'all'
 
@@ -24,17 +28,17 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching accounts:', error)
+      log.error({ error, tenantId: dataSourceTenantId }, 'Failed to fetch accounts')
       return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 })
     }
 
+    log.debug({ count: data?.length, filterType }, 'Accounts fetched successfully')
+
     const response = NextResponse.json(data || [])
-    // Use no-cache to ensure deleted accounts disappear immediately
-    // This prevents stale data from being served after DELETE operations
     response.headers.set('Cache-Control', 'private, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in GET /api/accounts')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -50,12 +54,11 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json()
     } catch (error) {
-      console.error('Error parsing request body:', error)
+      log.warn({ error }, 'Invalid JSON in request body')
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
-    console.log('[ACCOUNTS POST] Getting tenant database client for tenant:', dataSourceTenantId)
-    console.log('[ACCOUNTS POST] Got tenant database client, inserting account...')
+    log.debug({ tenantId: dataSourceTenantId }, 'Creating account')
 
     const { data, error } = await supabase
       .from('accounts')
@@ -66,12 +69,14 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    console.log('[ACCOUNTS POST] Insert result - error:', error, 'data:', data ? 'success' : 'null')
-
     if (error) {
-      console.error('Error creating account:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      console.error('Request body:', JSON.stringify(body, null, 2))
+      log.error({ 
+        error, 
+        tenantId: dataSourceTenantId,
+        errorCode: error.code,
+        hint: error.hint 
+      }, 'Failed to create account')
+      
       return NextResponse.json({ 
         error: 'Failed to create account',
         details: error.message,
@@ -80,13 +85,15 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Revalidate the accounts list page to show new account immediately
+    log.info({ accountId: data.id, tenantId: dataSourceTenantId }, 'Account created successfully')
+
+    // Revalidate the accounts list page
     const tenantSubdomain = session.user.tenantSubdomain || 'default'
     revalidatePath(`/${tenantSubdomain}/accounts`)
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error('Error:', error)
+    log.error({ error }, 'Unexpected error in POST /api/accounts')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
