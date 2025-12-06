@@ -27,15 +27,14 @@ export async function POST(request: NextRequest) {
     if (settingsResponse.ok) {
       const data = await settingsResponse.json()
       twilioSettings = data.settings?.integrations?.thirdPartyIntegrations?.twilio
-      console.log('🔍 Loading Twilio settings for tenant:', dataSourceTenantId)
-      console.log('📋 Settings loaded:', { 
-        enabled: twilioSettings?.enabled, 
+      log.debug({
+        enabled: twilioSettings?.enabled,
         hasAccountSid: !!twilioSettings?.accountSid,
         hasAuthToken: !!twilioSettings?.authToken,
-        phoneNumber: twilioSettings?.phoneNumber 
-      })
+        hasPhoneNumber: !!twilioSettings?.phoneNumber
+      }, 'Twilio settings loaded')
     } else {
-      log.warn('⚠️ Failed to load settings from API, will use env vars')
+      log.warn('Failed to load settings from API, will use env vars')
     }
 
     let accountSid: string | undefined
@@ -53,17 +52,17 @@ export async function POST(request: NextRequest) {
       accountSid = twilioSettings.accountSid
       authToken = twilioSettings.authToken
       fromNumber = twilioSettings.phoneNumber
-      console.log('✅ Using DATABASE Twilio settings:', { fromNumber, accountSid: accountSid?.substring(0, 10) + '...' })
+      log.debug({ source: 'database' }, 'Using database Twilio settings')
     } else {
       // Fallback to environment variables
       accountSid = process.env.TWILIO_ACCOUNT_SID
       authToken = process.env.TWILIO_AUTH_TOKEN
       fromNumber = process.env.TWILIO_PHONE_NUMBER
-      console.log('⚠️ Using ENVIRONMENT VARIABLE Twilio settings:', { fromNumber, accountSid: accountSid?.substring(0, 10) + '...' })
+      log.debug({ source: 'env' }, 'Using environment variable Twilio settings')
     }
 
     if (!accountSid || !authToken || !fromNumber) {
-      log.error('❌ Twilio credentials not configured')
+      log.error('Twilio credentials not configured')
       return NextResponse.json({ error: 'Twilio credentials not configured' }, { status: 500 })
     }
 
@@ -107,7 +106,7 @@ export async function POST(request: NextRequest) {
     let resolvedOpportunityId = opportunity_id
 
     if (!contact_id && !lead_id && !account_id) {
-      console.log('🔍 No relationship IDs provided, looking up phone number:', to)
+      log.debug('No relationship IDs provided, attempting phone number lookup')
 
       // Search contacts by phone number
       const { data: contactsArray } = await supabase
@@ -123,7 +122,7 @@ export async function POST(request: NextRequest) {
       if (matchedContact) {
         resolvedContactId = matchedContact.id
         resolvedAccountId = matchedContact.account_id
-        console.log('✅ Found matching contact:', resolvedContactId)
+        log.debug({ found: 'contact' }, 'Phone number matched to contact')
       }
 
       // If no contact found, try leads
@@ -140,7 +139,7 @@ export async function POST(request: NextRequest) {
 
         if (matchedLead) {
           resolvedLeadId = matchedLead.id
-          console.log('✅ Found matching lead:', resolvedLeadId)
+          log.debug({ found: 'lead' }, 'Phone number matched to lead')
         }
       }
 
@@ -158,7 +157,7 @@ export async function POST(request: NextRequest) {
 
         if (matchedAccount) {
           resolvedAccountId = matchedAccount.id
-          console.log('✅ Found matching account:', resolvedAccountId)
+          log.debug({ found: 'account' }, 'Phone number matched to account')
         }
       }
     }

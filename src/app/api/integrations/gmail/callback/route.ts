@@ -60,7 +60,8 @@ export async function GET(request: NextRequest) {
     })
 
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', await tokenResponse.text())
+      // SECURITY: Never log OAuth response bodies - they may contain tokens or sensitive error details
+      log.error({ status: tokenResponse.status }, 'Gmail OAuth token exchange failed')
       return NextResponse.redirect(
         new URL(`/${tenantSubdomain}/settings/email?error=token_exchange_failed`, request.url)
       )

@@ -1,4 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
+
+const log = createLogger('hooks')
 
 /**
  * Fetches staff assignments for an event
@@ -43,6 +47,11 @@ export function useAddEventStaff(eventId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-staff', eventId] })
+      toast.success('Staff added successfully')
+    },
+    onError: (error: Error) => {
+      log.error({ error, eventId }, 'Failed to add staff')
+      toast.error(error.message || 'Failed to add staff')
     }
   })
 }
@@ -67,6 +76,11 @@ export function useUpdateEventStaff(eventId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-staff', eventId] })
+      toast.success('Staff updated successfully')
+    },
+    onError: (error: Error) => {
+      log.error({ error, eventId }, 'Failed to update staff')
+      toast.error(error.message || 'Failed to update staff')
     }
   })
 }
@@ -89,6 +103,11 @@ export function useRemoveEventStaff(eventId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-staff', eventId] })
+      toast.success('Staff removed successfully')
+    },
+    onError: (error: Error) => {
+      log.error({ error, eventId }, 'Failed to remove staff')
+      toast.error(error.message || 'Failed to remove staff')
     }
   })
 }

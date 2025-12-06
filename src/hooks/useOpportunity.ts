@@ -5,6 +5,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { EventDate } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
+
+const log = createLogger('hooks')
 
 export type { EventDate }
 
@@ -81,10 +85,15 @@ export function useUpdateOpportunity(opportunityId: string) {
       return { previous }
     },
     // Rollback on error
-    onError: (err, updates, context) => {
+    onError: (error: Error, updates, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['opportunity', opportunityId], context.previous)
       }
+      log.error({ error, opportunityId }, 'Failed to update opportunity')
+      toast.error(error.message || 'Failed to update opportunity')
+    },
+    onSuccess: () => {
+      toast.success('Opportunity updated successfully')
     },
     // Always refetch after error or success
     onSettled: () => {

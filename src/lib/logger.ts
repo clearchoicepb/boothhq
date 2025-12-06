@@ -1,14 +1,69 @@
 /**
  * Centralized logging utility using Pino
- * 
+ *
+ * ============================================================================
+ * SENSITIVE DATA - NEVER LOG THE FOLLOWING:
+ * ============================================================================
+ *
+ * AUTHENTICATION & SECRETS:
+ * - Passwords (plain or hashed)
+ * - API keys, tokens, secrets
+ * - OAuth tokens (access, refresh, authorization codes)
+ * - JWT tokens or session IDs
+ * - Encryption keys
+ * - Twilio auth tokens, account SIDs in full
+ *
+ * PERSONAL IDENTIFIABLE INFORMATION (PII):
+ * - Email addresses
+ * - Phone numbers
+ * - Physical addresses
+ * - Social Security numbers, tax IDs
+ * - Full names combined with other identifying info
+ * - Date of birth
+ * - IP addresses (unless required for security logging)
+ *
+ * BUSINESS SENSITIVE DATA:
+ * - Full credit card numbers
+ * - Bank account numbers
+ * - Payment details
+ * - Contract amounts (log existence, not values)
+ * - Full database query results (use counts instead)
+ *
+ * SESSION & USER CONTEXT:
+ * - Session objects (use session.user.id only if needed)
+ * - Full request/response bodies
+ * - Cookie values
+ * - Authorization headers
+ *
+ * SAFE TO LOG (with care):
+ * - User IDs (UUIDs are OK for debugging)
+ * - Tenant IDs (UUIDs are OK)
+ * - Error codes and messages (sanitize user input first)
+ * - Operation names and outcomes
+ * - Counts and boolean flags
+ * - Timestamps
+ * - Request paths (without query params containing secrets)
+ *
+ * PATTERN FOR SAFE LOGGING:
+ *   // BAD: log.info({ session }, 'User logged in')
+ *   // GOOD: log.info({ userId: session.user.id }, 'User logged in')
+ *
+ *   // BAD: log.error({ email: user.email }, 'Auth failed')
+ *   // GOOD: log.warn('Authentication failed')
+ *
+ *   // BAD: console.log('All events:', JSON.stringify(events))
+ *   // GOOD: log.debug({ eventCount: events.length }, 'Events fetched')
+ *
+ * ============================================================================
+ *
  * Usage:
  *   import { logger } from '@/lib/logger'
- *   
+ *
  *   logger.info('User logged in', { userId: '123' })
  *   logger.error('Failed to save', { error: err.message })
  *   logger.debug('Query result', { data })
  *   logger.warn('Rate limit approaching', { remaining: 10 })
- * 
+ *
  * For module-specific loggers:
  *   const log = logger.child({ module: 'accounts' })
  *   log.info('Account created')  // Logs: { module: 'accounts', msg: 'Account created' }
@@ -29,8 +84,11 @@ const baseConfig: pino.LoggerOptions = {
   level: getLogLevel(),
   
   // Redact sensitive fields automatically
+  // NOTE: This provides a safety net, but developers should still avoid
+  // logging sensitive data in the first place. See checklist at top of file.
   redact: {
     paths: [
+      // Auth & secrets
       'password',
       'token',
       'accessToken',
@@ -39,9 +97,27 @@ const baseConfig: pino.LoggerOptions = {
       'cookie',
       'apiKey',
       'secret',
+      'authToken',
+      'sessionId',
+      'jwt',
+      // PII
+      'email',
+      'phone',
+      'phoneNumber',
+      'ssn',
+      'taxId',
+      'creditCard',
+      'cardNumber',
+      // Nested paths
       '*.password',
       '*.token',
       '*.apiKey',
+      '*.email',
+      '*.phone',
+      '*.secret',
+      '*.authToken',
+      'credentials.*',
+      'session.user.email',
     ],
     remove: true,
   },

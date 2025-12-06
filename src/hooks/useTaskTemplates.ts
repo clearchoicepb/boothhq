@@ -14,6 +14,9 @@ import {
   type CreateTaskTemplateInput,
 } from '@/lib/api/services/taskTemplateService'
 import toast from 'react-hot-toast'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('hooks')
 
 /**
  * Hook to fetch all task templates
@@ -98,6 +101,7 @@ export function useTaskTemplateMutations() {
       toast.success('Template created successfully')
     },
     onError: (error: Error) => {
+      log.error({ error }, 'Failed to create template')
       toast.error(error.message || 'Failed to create template')
     },
   })
@@ -115,6 +119,7 @@ export function useTaskTemplateMutations() {
       toast.success('Template updated successfully')
     },
     onError: (error: Error) => {
+      log.error({ error }, 'Failed to update template')
       toast.error(error.message || 'Failed to update template')
     },
   })
@@ -126,6 +131,7 @@ export function useTaskTemplateMutations() {
       toast.success('Template deleted successfully')
     },
     onError: (error: Error) => {
+      log.error({ error }, 'Failed to delete template')
       toast.error(error.message || 'Failed to delete template')
     },
   })
@@ -140,6 +146,7 @@ export function useTaskTemplateMutations() {
       )
     },
     onError: (error: Error) => {
+      log.error({ error }, 'Failed to toggle template')
       toast.error(error.message || 'Failed to toggle template')
     },
   })

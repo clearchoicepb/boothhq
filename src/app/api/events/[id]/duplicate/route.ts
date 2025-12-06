@@ -48,13 +48,19 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to duplicate event' }, { status: 500 })
     }
 
+    // Track any partial failures during duplication
+    const duplicateWarnings: string[] = []
+
     // Optionally, duplicate event_dates if they exist
-    const { data: originalEventDates } = await supabase
+    const { data: originalEventDates, error: eventDatesError } = await supabase
       .from('event_dates')
       .select('*')
       .eq('event_id', eventId)
 
-    if (originalEventDates && originalEventDates.length > 0) {
+    if (eventDatesError) {
+      log.error({ error: eventDatesError, eventId }, 'Failed to fetch event dates for duplication')
+      duplicateWarnings.push('Could not duplicate event dates')
+    } else if (originalEventDates && originalEventDates.length > 0) {
       const duplicateEventDates = originalEventDates.map(date => ({
         ...date,
         id: undefined,
@@ -63,16 +69,23 @@ export async function POST(
         updated_at: undefined
       }))
 
-      await supabase.from('event_dates').insert(duplicateEventDates)
+      const { error: insertDatesError } = await supabase.from('event_dates').insert(duplicateEventDates)
+      if (insertDatesError) {
+        log.error({ error: insertDatesError, eventId, newEventId: newEvent.id }, 'Failed to insert duplicated event dates')
+        duplicateWarnings.push('Could not duplicate event dates')
+      }
     }
 
     // Copy core task completions (but mark as incomplete)
-    const { data: originalTaskCompletions } = await supabase
+    const { data: originalTaskCompletions, error: taskCompletionsError } = await supabase
       .from('event_core_task_completion')
       .select('*')
       .eq('event_id', eventId)
 
-    if (originalTaskCompletions && originalTaskCompletions.length > 0) {
+    if (taskCompletionsError) {
+      log.error({ error: taskCompletionsError, eventId }, 'Failed to fetch task completions for duplication')
+      duplicateWarnings.push('Could not duplicate task checklist')
+    } else if (originalTaskCompletions && originalTaskCompletions.length > 0) {
       const duplicateTaskCompletions = originalTaskCompletions.map(task => ({
         event_id: newEvent.id,
         core_task_template_id: task.core_task_template_id,
@@ -83,10 +96,18 @@ export async function POST(
         updated_at: undefined
       }))
 
-      await supabase.from('event_core_task_completion').insert(duplicateTaskCompletions)
+      const { error: insertTasksError } = await supabase.from('event_core_task_completion').insert(duplicateTaskCompletions)
+      if (insertTasksError) {
+        log.error({ error: insertTasksError, newEventId: newEvent.id }, 'Failed to insert duplicated task completions')
+        duplicateWarnings.push('Could not duplicate task checklist')
+      }
     }
 
-    return NextResponse.json(newEvent, { status: 201 })
+    // Return success with any warnings about partial failures
+    return NextResponse.json({
+      ...newEvent,
+      warnings: duplicateWarnings.length > 0 ? duplicateWarnings : undefined
+    }, { status: 201 })
   } catch (error) {
     log.error({ error }, 'Error duplicating event')
     return NextResponse.json(

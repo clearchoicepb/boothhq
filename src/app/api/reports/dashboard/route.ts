@@ -211,7 +211,6 @@ export async function GET(request: NextRequest) {
     if (wonOppsError) {
       log.error({ wonOppsError }, 'Error fetching won opportunities')
     }
-    console.log('Current won opps:', currentWonOpps?.length, 'from', startDate.toISOString(), 'to', endDate.toISOString())
 
     const { data: previousWonOpps } = await supabase
       .from('opportunities')
@@ -226,13 +225,6 @@ export async function GET(request: NextRequest) {
     const eventsBookedChange = prevEventsBooked > 0 ? ((totalEventsBooked - prevEventsBooked) / prevEventsBooked) * 100 : 0
 
     // 4. Total Scheduled Events (event days in period)
-    // First, let's see ALL events for this tenant
-    const { data: allEvents } = await supabase
-      .from('events')
-      .select('id, start_date, end_date, event_type')
-      .eq('tenant_id', dataSourceTenantId)
-
-    console.log('ALL events in database for tenant:', JSON.stringify(allEvents, null, 2))
 
     // Get all events that overlap with the period (start_date <= period_end AND end_date >= period_start)
     const { data: currentEvents, error: eventsError } = await supabase
@@ -245,9 +237,6 @@ export async function GET(request: NextRequest) {
     if (eventsError) {
       log.error({ eventsError }, 'Error fetching events')
     }
-    console.log('Period:', startDate.toISOString(), 'to', endDate.toISOString())
-    console.log('Current events found:', currentEvents?.length)
-    console.log('Matching events:', JSON.stringify(currentEvents, null, 2))
 
     const { data: previousEvents } = await supabase
       .from('events')
@@ -260,8 +249,6 @@ export async function GET(request: NextRequest) {
     const totalScheduledEvents = countEventDays(currentEvents, startDate, endDate)
     const prevScheduledEvents = countEventDays(previousEvents, previousStartDate, previousEndDate)
     const scheduledEventsChange = prevScheduledEvents > 0 ? ((totalScheduledEvents - prevScheduledEvents) / prevScheduledEvents) * 100 : 0
-
-    console.log('Total scheduled events:', totalScheduledEvents)
 
     // Get revenue and payments by month (last 6 months for chart)
     const revenueByMonth = []
