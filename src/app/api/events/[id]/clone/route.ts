@@ -58,13 +58,19 @@ export async function POST(
       }, { status: 500 })
     }
 
+    // Track any partial failures during cloning
+    const cloneWarnings: string[] = []
+
     // Clone event_dates
-    const { data: eventDates } = await supabase
+    const { data: eventDates, error: eventDatesError } = await supabase
       .from('event_dates')
       .select('*')
       .eq('event_id', eventId)
 
-    if (eventDates && eventDates.length > 0) {
+    if (eventDatesError) {
+      log.error({ error: eventDatesError, eventId }, 'Failed to fetch event dates for cloning')
+      cloneWarnings.push('Could not clone event dates')
+    } else if (eventDates && eventDates.length > 0) {
       const clonedDates = eventDates.map(ed => ({
         tenant_id: dataSourceTenantId,
         event_id: newEvent.id,
@@ -77,16 +83,23 @@ export async function POST(
         status: ed.status
       }))
 
-      await supabase.from('event_dates').insert(clonedDates)
+      const { error: insertDatesError } = await supabase.from('event_dates').insert(clonedDates)
+      if (insertDatesError) {
+        log.error({ error: insertDatesError, eventId, newEventId: newEvent.id }, 'Failed to insert cloned event dates')
+        cloneWarnings.push('Could not clone event dates')
+      }
     }
 
     // Clone event_staff
-    const { data: staff } = await supabase
+    const { data: staff, error: staffError } = await supabase
       .from('event_staff')
       .select('*')
       .eq('event_id', eventId)
 
-    if (staff && staff.length > 0) {
+    if (staffError) {
+      log.error({ error: staffError, eventId }, 'Failed to fetch event staff for cloning')
+      cloneWarnings.push('Could not clone staff assignments')
+    } else if (staff && staff.length > 0) {
       const clonedStaff = staff.map(s => ({
         tenant_id: dataSourceTenantId,
         event_id: newEvent.id,
@@ -96,42 +109,48 @@ export async function POST(
         notes: s.notes
       }))
 
-      await supabase.from('event_staff').insert(clonedStaff)
+      const { error: insertStaffError } = await supabase.from('event_staff').insert(clonedStaff)
+      if (insertStaffError) {
+        log.error({ error: insertStaffError, eventId, newEventId: newEvent.id }, 'Failed to insert cloned staff')
+        cloneWarnings.push('Could not clone staff assignments')
+      }
     }
 
     // Clone design_items (if table exists)
-    const { data: designItems } = await supabase
+    const { data: designItems, error: designItemsError } = await supabase
       .from('design_items')
       .select('*')
       .eq('event_id', eventId)
-      .limit(1) // Test if table exists
 
-    if (designItems) {
-      const { data: allDesignItems } = await supabase
-        .from('design_items')
-        .select('*')
-        .eq('event_id', eventId)
+    if (designItemsError) {
+      // Table might not exist for this tenant - don't treat as error
+      log.debug({ error: designItemsError, eventId }, 'Could not fetch design items (table may not exist)')
+    } else if (designItems && designItems.length > 0) {
+      const clonedItems = designItems.map(item => ({
+        ...item,
+        id: undefined,
+        event_id: newEvent.id,
+        created_at: undefined
+      }))
 
-      if (allDesignItems && allDesignItems.length > 0) {
-        const clonedItems = allDesignItems.map(item => ({
-          ...item,
-          id: undefined,
-          event_id: newEvent.id,
-          created_at: undefined
-        }))
-
-        await supabase.from('design_items').insert(clonedItems)
+      const { error: insertDesignError } = await supabase.from('design_items').insert(clonedItems)
+      if (insertDesignError) {
+        log.error({ error: insertDesignError, eventId, newEventId: newEvent.id }, 'Failed to insert cloned design items')
+        cloneWarnings.push('Could not clone design items')
       }
     }
 
     // Initialize core task completions for new event (don't copy old completion status)
-    const { data: coreTaskTemplates } = await supabase
+    const { data: coreTaskTemplates, error: coreTasksError } = await supabase
       .from('core_task_templates')
       .select('id')
       .eq('tenant_id', dataSourceTenantId)
       .eq('is_active', true)
 
-    if (coreTaskTemplates && coreTaskTemplates.length > 0) {
+    if (coreTasksError) {
+      log.error({ error: coreTasksError, tenantId: dataSourceTenantId }, 'Failed to fetch core task templates')
+      cloneWarnings.push('Could not initialize task checklist')
+    } else if (coreTaskTemplates && coreTaskTemplates.length > 0) {
       const taskCompletions = coreTaskTemplates.map(template => ({
         tenant_id: dataSourceTenantId,
         event_id: newEvent.id,
@@ -141,12 +160,18 @@ export async function POST(
         completed_by: null
       }))
 
-      await supabase.from('event_core_task_completion').insert(taskCompletions)
+      const { error: insertTasksError } = await supabase.from('event_core_task_completion').insert(taskCompletions)
+      if (insertTasksError) {
+        log.error({ error: insertTasksError, newEventId: newEvent.id }, 'Failed to insert core task completions')
+        cloneWarnings.push('Could not initialize task checklist')
+      }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      event: newEvent 
+    // Return success with any warnings about partial failures
+    return NextResponse.json({
+      success: true,
+      event: newEvent,
+      warnings: cloneWarnings.length > 0 ? cloneWarnings : undefined
     })
 
   } catch (error) {

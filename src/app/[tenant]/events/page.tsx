@@ -114,18 +114,16 @@ export default function EventsPage() {
     currentUserId: session?.user?.id // Pass current user ID for "My Events" filter
   })
 
-  // Debug: Log session and user info when "My Events" filter is active
+  // Debug: Log filter info when "My Events" filter is active
+  // NOTE: Never log session objects - they contain sensitive user data
   useEffect(() => {
     if (filters.assignedToFilter === 'my_events') {
-      log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      log.debug('🔍 [EVENTS PAGE] My Events Filter Active')
-      console.log('Session:', session)
-      console.log('Session User:', session?.user)
-      console.log('Session User ID:', session?.user?.id)
-      console.log('Total Events:', explodedEvents.length)
-      console.log('Filtered Events:', sortedEvents.length)
-      console.log('Sample Event Staff Assignments:', explodedEvents[0]?.event_staff_assignments)
-      log.debug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      log.debug({
+        hasUserId: !!session?.user?.id,
+        totalEvents: explodedEvents.length,
+        filteredEvents: sortedEvents.length,
+        sampleHasAssignments: !!explodedEvents[0]?.event_staff_assignments?.length
+      }, 'My Events filter active')
     }
   }, [filters.assignedToFilter, session, explodedEvents, sortedEvents])
 

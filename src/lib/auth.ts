@@ -34,7 +34,7 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (authError || !authData.user) {
-            console.error('Supabase auth error:', authError?.message)
+            log.warn({ errorCode: authError?.status }, 'Authentication failed')
             return null
           }
 
@@ -54,8 +54,8 @@ export const authOptions: NextAuthOptions = {
             .eq('status', 'active')
 
           if (usersError || !tenantUsers || tenantUsers.length === 0) {
-            log.error({ usersError }, 'User lookup error in Tenant DB')
-            console.error('Email:', credentials.email)
+            // Note: Never log user emails - only log that lookup failed
+            log.warn({ hasError: !!usersError, userCount: tenantUsers?.length || 0 }, 'User not found in Tenant DB')
             return null
           }
 
@@ -66,7 +66,7 @@ export const authOptions: NextAuthOptions = {
             if (specificUser) {
               authenticatedUser = specificUser
             } else {
-              console.error('Tenant not found for user:', credentials.tenantId)
+              log.warn('User does not have access to requested tenant')
               return null
             }
           }
@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
             .single()
 
           if (!tenant) {
-            console.error('Tenant not found or inactive:', authenticatedUser.tenant_id)
+            log.warn('Tenant not found or inactive for authenticated user')
             return null
           }
 

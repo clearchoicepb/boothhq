@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
     const body = formData.get('Body') as string
     const numMedia = parseInt(formData.get('NumMedia') as string || '0')
 
-    console.log('📨 Incoming SMS:', { messageSid, from, to, body })
+    // NOTE: Never log SMS body or phone numbers - contains PII
+    log.info({ messageSid }, 'Incoming SMS received')
 
     // Validate Twilio signature for security
     const twilioSignature = request.headers.get('X-Twilio-Signature') || ''
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       const isValid = twilio.validateRequest(authToken, twilioSignature, url, params)
 
       if (!isValid) {
-        log.error('❌ Invalid Twilio signature')
+        log.error('Invalid Twilio signature')
         return new NextResponse('Forbidden', { status: 403 })
       }
     }
@@ -60,39 +61,29 @@ export async function POST(request: NextRequest) {
     const normalizedFrom = normalizePhone(from)
 
     // STEP 1: Find which tenant owns the receiving phone number
-    console.log('🔍 Step 1: Finding tenant for receiving number:', to)
-    
+    log.debug('Finding tenant for receiving phone number')
+
     const appSupabase = createServerSupabaseClient()
     const { data: settingsRows, error: settingsError } = await appSupabase
       .from('tenant_settings')
       .select('tenant_id, setting_key, setting_value')
       .like('setting_key', 'integrations.thirdPartyIntegrations.twilio%')
-    
-    console.log('📋 Found', settingsRows?.length || 0, 'Twilio settings rows')
-    if (settingsRows) {
-      settingsRows.forEach(row => {
-        console.log('  -', row.setting_key, '=', typeof row.setting_value === 'string' ? row.setting_value : JSON.stringify(row.setting_value))
-      })
-    }
+
+    log.debug({ settingsCount: settingsRows?.length || 0 }, 'Twilio settings found')
     if (settingsError) {
-      log.error({ settingsError }, '❌ Error fetching settings')
+      log.error({ settingsError }, 'Error fetching settings')
     }
     
     let tenantId: string | null = null
-    const phoneNumberRows = settingsRows?.filter(row => 
+    const phoneNumberRows = settingsRows?.filter(row =>
       row.setting_key === 'integrations.thirdPartyIntegrations.twilio.phoneNumber'
     )
-    
-    console.log('📞 Found', phoneNumberRows?.length || 0, 'phone number settings')
-    
+
     const matchingTenant = phoneNumberRows?.find(row => {
       const configuredNumber = row.setting_value
-      console.log('🔍 Checking tenant', row.tenant_id, '- configured:', configuredNumber, 'type:', typeof configuredNumber)
-      
       if (typeof configuredNumber === 'string') {
         const normalizedConfigured = normalizePhone(configuredNumber)
         const normalizedTo = normalizePhone(to)
-        console.log('  Normalized configured:', normalizedConfigured, 'vs receiving:', normalizedTo)
         return normalizedConfigured === normalizedTo
       }
       return false
@@ -100,10 +91,9 @@ export async function POST(request: NextRequest) {
 
     if (matchingTenant) {
       tenantId = matchingTenant.tenant_id
-      console.log('✅ Found tenant by receiving phone number:', tenantId)
+      log.debug({ tenantFound: true }, 'Tenant matched to receiving phone number')
     } else {
-      log.warn({ to }, '⚠️ Could not determine tenant for incoming SMS to')
-      console.warn('⚠️ Normalized receiving number:', normalizePhone(to))
+      log.warn('Could not determine tenant for incoming SMS')
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`,
         { status: 200, headers: { 'Content-Type': 'text/xml' } }
@@ -111,11 +101,11 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 2: Get Tenant Database client
-    log.debug('🔍 Step 2: Connecting to tenant database')
+    log.debug('Connecting to tenant database')
     const tenantSupabase = await getTenantClient(tenantId)
 
     // STEP 3: Try to find matching contact, lead, or account in TENANT DB
-    console.log('🔍 Step 3: Looking for contact/lead/account with phone:', normalizedFrom)
+    log.debug('Looking for contact/lead/account by phone number')
     
     let contactId: string | null = null
     let accountId: string | null = null
@@ -220,18 +210,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log matching results
-    console.log('🔍 Matching results:', {
-      normalizedFrom,
-      tenantId,
-      contactId,
-      leadId,
-      accountId,
-      opportunityId
-    })
+    // Log matching results (without exposing IDs)
+    log.debug({
+      hasContact: !!contactId,
+      hasLead: !!leadId,
+      hasAccount: !!accountId,
+      hasOpportunity: !!opportunityId
+    }, 'Phone number matching completed')
 
     // STEP 4: Log the communication to TENANT DATABASE
-    log.debug('🔍 Step 4: Logging communication to tenant database')
+    log.debug('Logging communication to tenant database')
     
     const communicationData = {
       tenant_id: tenantId,
@@ -260,9 +248,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (commError) {
-      log.error({ commError }, '❌ Error logging inbound SMS to tenant database')
+      log.error({ commError }, 'Error logging inbound SMS to tenant database')
     } else {
-      console.log('✅ Inbound SMS logged to tenant database:', communication.id, contactId ? 'with contact' : 'without contact match')
+      log.info({ hasContactMatch: !!contactId }, 'Inbound SMS logged to tenant database')
     }
 
     // Return TwiML response (empty response = no auto-reply)
