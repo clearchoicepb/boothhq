@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Calendar, MapPin, Building2, User, CheckCircle2, Clock, ExternalLink } from 'lucide-react'
-import { formatDate } from '@/lib/utils/date-utils'
+import { formatDate, formatTime } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import type { EventDate } from '@/types/events'
@@ -141,8 +141,8 @@ export function EventPreviewModal({
                     {selectedEventDate && (selectedEventDate.start_time || selectedEventDate.end_time) && (
                       <p className="mt-1 text-xs text-gray-500">
                         {selectedEventDate.start_time && selectedEventDate.end_time
-                          ? `${selectedEventDate.start_time} - ${selectedEventDate.end_time}`
-                          : selectedEventDate.start_time || selectedEventDate.end_time}
+                          ? `${formatTime(selectedEventDate.start_time)} - ${formatTime(selectedEventDate.end_time)}`
+                          : formatTime(selectedEventDate.start_time) || formatTime(selectedEventDate.end_time)}
                       </p>
                     )}
                   </div>

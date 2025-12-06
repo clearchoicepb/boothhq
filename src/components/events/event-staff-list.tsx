@@ -1,26 +1,6 @@
 import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User, Calendar, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { formatDate } from '@/lib/utils/date-utils'
-
-/**
- * Convert 24-hour time to 12-hour format
- * @param time24 - Time in 24-hour format (e.g., "18:00:00" or "18:00")
- * @returns Time in 12-hour format (e.g., "6:00 PM")
- */
-function formatTime12Hour(time24: string | null | undefined): string {
-  if (!time24) return '--:--'
-
-  // Parse the time (handles both "HH:MM:SS" and "HH:MM" formats)
-  const [hours, minutes] = time24.split(':')
-  const hour = parseInt(hours, 10)
-  const minute = minutes || '00'
-
-  // Convert to 12-hour format
-  const period = hour >= 12 ? 'PM' : 'AM'
-  const hour12 = hour % 12 || 12 // Convert 0 to 12 for midnight, 13+ to 1-12
-
-  return `${hour12}:${minute} ${period}`
-}
+import { formatDate, formatTime } from '@/lib/utils/date-utils'
 
 interface EventStaffListProps {
   staffAssignments: any[]
@@ -277,7 +257,7 @@ export function EventStaffList({
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 <span>
-                                  {formatTime12Hour(staff.start_time)} - {formatTime12Hour(staff.end_time)}
+                                  {formatTime(staff.start_time) || '--:--'} - {formatTime(staff.end_time) || '--:--'}
                                 </span>
                               </div>
                             )}
