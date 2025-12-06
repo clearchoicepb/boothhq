@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Send, Loader2, Phone } from 'lucide-react'
 import { format, isToday, isYesterday, isSameDay, parseISO } from 'date-fns'
 import { createLogger } from '@/lib/logger'
+import { linkifyText } from '@/lib/linkify'
 import toast from 'react-hot-toast'
 
 const log = createLogger('components')
@@ -225,7 +226,12 @@ export function SMSThread({
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap break-words">
-                    {message.notes}
+                    {linkifyText(
+                      message.notes,
+                      message.direction === 'outbound'
+                        ? 'underline hover:opacity-80'
+                        : 'text-blue-600 underline hover:text-blue-800'
+                    )}
                   </p>
                   <p
                     className={`text-xs mt-1 ${
