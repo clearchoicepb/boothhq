@@ -8,6 +8,7 @@
 import { useMemo, useState } from 'react'
 import { parseLocalDate, isDateToday } from '@/lib/utils/date-utils'
 import type { FilterState } from '@/components/events/event-filters'
+import type { EventDate } from '@/types/events'
 
 // Event type (minimal interface needed for filtering)
 interface FilterableEvent {
@@ -25,6 +26,10 @@ interface FilterableEvent {
   event_staff_assignments?: Array<{
     user_id: string
   }>
+  // For exploded multi-date events
+  _originalEventId?: string
+  _currentEventDate?: EventDate
+  _displayId?: string
 }
 
 // Core task template interface
