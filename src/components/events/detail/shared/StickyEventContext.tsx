@@ -16,21 +16,7 @@
 import { Building2, Calendar, User } from 'lucide-react'
 import { EventStatusBadge } from '../../event-status-badge'
 import { formatDate } from '@/lib/utils/date-utils'
-import type { EventDate } from '@/types/events'
-
-interface Event {
-  id: string
-  title: string
-  status: string
-  start_date: string
-  event_dates?: EventDate[]
-  account_name?: string | null
-  contact_name?: string | null
-  primary_contact?: {
-    first_name: string
-    last_name: string
-  } | null
-}
+import type { Event, EventDate } from '@/types/events'
 
 interface StickyEventContextProps {
   event: Event

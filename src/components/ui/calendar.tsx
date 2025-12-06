@@ -3,20 +3,11 @@
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from './button'
-
-interface Event {
-  id: string
-  name: string
-  event_date: string
-  start_time?: string
-  end_time?: string
-  status: string
-  event_type?: string
-}
+import type { CalendarEvent } from '@/types/events'
 
 interface CalendarProps {
-  events: Event[]
-  onEventClick?: (event: Event) => void
+  events: CalendarEvent[]
+  onEventClick?: (event: CalendarEvent) => void
   className?: string
 }
 

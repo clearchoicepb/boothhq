@@ -26,55 +26,7 @@ import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters } from '@/hooks/useEventsFilters'
 import { eventsService } from '@/lib/api/services/eventsService'
-import type { EventDate } from '@/types/events'
-
-interface TaskCompletion {
-  event_id: string
-  core_task_template_id: string
-  is_completed: boolean
-  completed_at: string | null
-  completed_by: string | null
-}
-
-interface Event {
-  id: string
-  title: string
-  event_type: string
-  start_date: string
-  end_date: string | null
-  date_type: string | null
-  status: string
-  location: string | null
-  account_name: string | null
-  contact_name: string | null
-  event_dates?: EventDate[]
-  created_at: string
-  core_tasks_ready?: boolean
-  task_completions?: TaskCompletion[]
-  event_staff_assignments?: Array<{
-    id: string
-    user_id: string
-    event_date_id: string | null
-    role: string | null
-    staff_role_id: string | null
-  }>
-  event_categories?: {
-    id: string
-    name: string
-    slug: string
-    color: string
-    icon: string | null
-  }
-  event_types?: {
-    id: string
-    name: string
-    slug: string
-  }
-  // For exploded multi-date events
-  _originalEventId?: string
-  _currentEventDate?: EventDate
-  _displayId?: string
-}
+import type { Event, EventDate } from '@/types/events'
 
 interface CoreTask {
   id: string

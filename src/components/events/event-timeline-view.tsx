@@ -4,29 +4,7 @@ import { useState } from 'react'
 import { EventTimelineCard } from './event-timeline-card'
 import { EventPreviewModal } from './event-preview-modal'
 import { getDaysUntil } from '@/lib/utils/date-utils'
-import type { EventDate } from '@/types/events'
-
-interface Event {
-  id: string
-  title: string
-  start_date: string
-  location: string | null
-  account_name: string | null
-  status: string
-  event_dates?: EventDate[]
-  _currentEventDate?: EventDate
-  _originalEventId?: string
-  event_categories?: {
-    id: string
-    name: string
-    color: string
-  }
-  event_types?: {
-    id: string
-    name: string
-  }
-  task_completions?: any[]
-}
+import type { Event, EventDate } from '@/types/events'
 
 interface EventTimelineViewProps {
   events: Event[]

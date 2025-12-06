@@ -11,16 +11,7 @@ import { Calendar, DollarSign } from 'lucide-react'
 import { formatDate, getDaysUntil } from '@/lib/utils/date-utils'
 import { PaymentStatusBadge } from '../../payment-status-badge'
 import { EventStatusBadge } from '../../event-status-badge'
-import type { EventDate } from '@/types/events'
-
-interface Event {
-  id: string
-  status: string
-  payment_status: string | null
-  event_value: string | null
-  start_date: string
-  event_dates?: EventDate[]
-}
+import type { Event, EventDate } from '@/types/events'
 
 interface PaymentStatusOption {
   id: string

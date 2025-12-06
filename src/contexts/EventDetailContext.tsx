@@ -6,26 +6,7 @@
  */
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
-import type { EventDate } from '@/types/events'
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface Event {
-  id: string
-  title: string
-  description?: string
-  start_date?: string
-  end_date?: string
-  status: string
-  account_id?: string
-  primary_contact_id?: string
-  event_planner_id?: string
-  payment_status?: string
-  location?: string
-  [key: string]: any
-}
+import type { Event, EventDate } from '@/types/events'
 
 // ============================================================================
 // Modal State Interface
@@ -363,4 +344,5 @@ export function useEventDetail() {
 // Exports
 // ============================================================================
 
-export type { EventDetailContextValue, ModalState, EditingState, Event, EventDate }
+export type { EventDetailContextValue, ModalState, EditingState }
+export type { Event, EventDate } from '@/types/events'

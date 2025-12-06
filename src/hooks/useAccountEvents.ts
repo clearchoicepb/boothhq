@@ -1,15 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import type { AccountEvent } from '@/types/events'
 
-interface Event {
-  id: string
-  name: string
-  event_type: string
-  event_date: string
-  status: string
-  total_cost: number | null
-}
-
-async function fetchAccountEvents(accountId: string, type: 'upcoming' | 'previous'): Promise<Event[]> {
+async function fetchAccountEvents(accountId: string, type: 'upcoming' | 'previous'): Promise<AccountEvent[]> {
   const response = await fetch(`/api/accounts/${accountId}/events?type=${type}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch ${type} events`)
