@@ -48,6 +48,7 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
   const { data: users = [], isLoading: loadingUsers } = useUsers()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     title: task.title,
     description: task.description || '',
@@ -57,11 +58,29 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
     dueDate: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
   })
 
+  // Clear field error when user types
+  const handleTitleChange = (value: string) => {
+    setFormData(prev => ({ ...prev, title: value }))
+    if (errors.title) {
+      setErrors(prev => ({ ...prev, title: '' }))
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Task title is required'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.title.trim()) {
-      setError('Task title is required')
+    if (!validateForm()) {
       return
     }
 
@@ -175,11 +194,15 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
           <input
             type="text"
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            onChange={(e) => handleTitleChange(e.target.value)}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+              errors.title ? 'border-red-500' : 'border-gray-300'
+            }`}
             placeholder="e.g., Follow up with client"
-            required
           />
+          {errors.title && (
+            <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+          )}
         </div>
 
         <div>

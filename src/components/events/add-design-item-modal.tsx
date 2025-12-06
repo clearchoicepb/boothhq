@@ -29,6 +29,7 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
   const [designTypes, setDesignTypes] = useState<DesignTypeOption[]>([])
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'template' | 'custom'>('template')
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState({
     design_item_type_id: '',
@@ -55,16 +56,39 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
     }
   }
 
+  // Clear errors when mode changes
+  const handleModeChange = (newMode: 'template' | 'custom') => {
+    setMode(newMode)
+    setErrors({})
+  }
+
+  // Clear specific field error when user types
+  const handleFieldChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (mode === 'template' && !formData.design_item_type_id) {
+      newErrors.design_item_type_id = 'Please select a design type'
+    }
+
+    if (mode === 'custom' && !formData.custom_name.trim()) {
+      newErrors.custom_name = 'Please enter a name for the design item'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (mode === 'template' && !formData.design_item_type_id) {
-      toast.error('Please select a design type')
-      return
-    }
-
-    if (mode === 'custom' && !formData.custom_name) {
-      toast.error('Please enter a name')
+    if (!validateForm()) {
       return
     }
 
@@ -110,7 +134,7 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
             <div className="flex gap-4">
               <button
                 type="button"
-                onClick={() => setMode('template')}
+                onClick={() => handleModeChange('template')}
                 className={`flex-1 px-4 py-3 rounded-lg border-2 transition-colors ${
                   mode === 'template'
                     ? 'border-blue-500 bg-blue-50 text-blue-900'
@@ -125,7 +149,7 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
 
               <button
                 type="button"
-                onClick={() => setMode('custom')}
+                onClick={() => handleModeChange('custom')}
                 className={`flex-1 px-4 py-3 rounded-lg border-2 transition-colors ${
                   mode === 'custom'
                     ? 'border-blue-500 bg-blue-50 text-blue-900'
@@ -143,29 +167,35 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
           {/* Template Mode */}
         {mode === 'template' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              <span className="mb-2 block">Design Type *</span>
-              <select
-                name="design_item_type_id"
-                title="Design Type"
-                value={formData.design_item_type_id}
-                onChange={(e) => setFormData({ ...formData, design_item_type_id: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
-                required
-              >
-                <option value="">Select a design type...</option>
-                {designTypes
-                  .filter((type) => type.is_active)
-                  .map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name} ({type.type === 'physical' ? 'Physical' : 'Digital'})
-                    </option>
-                  ))}
-              </select>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Design Type <span className="text-red-500">*</span>
             </label>
-            <p className="mt-1 text-xs text-gray-500">
-              Deadline will be calculated automatically based on the type&apos;s settings
-            </p>
+            <select
+              name="design_item_type_id"
+              title="Design Type"
+              value={formData.design_item_type_id}
+              onChange={(e) => handleFieldChange('design_item_type_id', e.target.value)}
+              className={`w-full rounded-md border px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4] ${
+                errors.design_item_type_id ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select a design type...</option>
+              {designTypes
+                .filter((type) => type.is_active)
+                .map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name} ({type.type === 'physical' ? 'Physical' : 'Digital'})
+                  </option>
+                ))}
+            </select>
+            {errors.design_item_type_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.design_item_type_id}</p>
+            )}
+            {!errors.design_item_type_id && (
+              <p className="mt-1 text-xs text-gray-500">
+                Deadline will be calculated automatically based on the type&apos;s settings
+              </p>
+            )}
           </div>
         )}
 
@@ -173,19 +203,23 @@ export function AddDesignItemModal({ eventId, eventDate, onClose, onSuccess, isO
           {mode === 'custom' && (
             <>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                <span className="mb-2 block">Item Name *</span>
-                <input
-                  name="custom_name"
-                  title="Item Name"
-                  type="text"
-                  value={formData.custom_name}
-                  onChange={(e) => setFormData({ ...formData, custom_name: e.target.value })}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4]"
-                  placeholder="e.g., Special Event Signage"
-                  required
-                />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Item Name <span className="text-red-500">*</span>
               </label>
+              <input
+                name="custom_name"
+                title="Item Name"
+                type="text"
+                value={formData.custom_name}
+                onChange={(e) => handleFieldChange('custom_name', e.target.value)}
+                className={`w-full rounded-md border px-3 py-2 focus:border-[#347dc4] focus:ring-2 focus:ring-[#347dc4] ${
+                  errors.custom_name ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="e.g., Special Event Signage"
+              />
+              {errors.custom_name && (
+                <p className="mt-1 text-sm text-red-600">{errors.custom_name}</p>
+              )}
             </div>
 
             <div>

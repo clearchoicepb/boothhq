@@ -21,15 +21,16 @@ interface LocationFormProps {
   title?: string
 }
 
-export function LocationForm({ 
-  location, 
-  isOpen, 
-  onClose, 
-  onSave, 
-  title = location ? 'Edit Location' : 'Add New Location' 
+export function LocationForm({
+  location,
+  isOpen,
+  onClose,
+  onSave,
+  title = location ? 'Edit Location' : 'Add New Location'
 }: LocationFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     name: '',
     address_line1: '',
@@ -47,6 +48,9 @@ export function LocationForm({
 
   // Initialize form data when location changes
   useEffect(() => {
+    // Clear errors when form opens
+    setErrors({})
+
     if (location) {
       setFormData({
         name: location.name || '',
@@ -86,6 +90,10 @@ export function LocationForm({
       ...prev,
       [field]: value
     }))
+    // Clear error for this field when user types
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
   }
 
   const handleAddressChange = (addressData: any) => {
@@ -100,9 +108,24 @@ export function LocationForm({
     }))
   }
 
-  const handleSubmit = async () => {
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
     if (!formData.name.trim()) {
-      toast('Location name is required')
+      newErrors.name = 'Location name is required'
+    }
+
+    // Optional: validate email format if provided
+    if (formData.contact_email && !/\S+@\S+\.\S+/.test(formData.contact_email)) {
+      newErrors.contact_email = 'Please enter a valid email address'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       return
     }
 
@@ -115,7 +138,7 @@ export function LocationForm({
     } catch (error: any) {
       log.error({ error }, '[LocationForm] Error saving location')
       const errorMessage = error.message || 'Failed to save location. Please try again.'
-      toast.error('${errorMessage}\n\nCheck console for details.')
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -141,7 +164,7 @@ export function LocationForm({
           
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Location Name *
+              Location Name <span className="text-red-500">*</span>
             </label>
             <Input
               id="name"
@@ -150,7 +173,11 @@ export function LocationForm({
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="e.g., Community Center, Hotel Ballroom"
               required
+              className={errors.name ? 'border-red-500' : ''}
             />
+            {errors.name && (
+              <p className="text-sm text-red-600 mt-1">{errors.name}</p>
+            )}
           </div>
 
           <div className="flex items-center">
@@ -225,7 +252,11 @@ export function LocationForm({
                 value={formData.contact_email}
                 onChange={(e) => handleInputChange('contact_email', e.target.value)}
                 placeholder="contact@example.com"
+                className={errors.contact_email ? 'border-red-500' : ''}
               />
+              {errors.contact_email && (
+                <p className="text-sm text-red-600 mt-1">{errors.contact_email}</p>
+              )}
             </div>
           </div>
         </div>

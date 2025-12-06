@@ -402,14 +402,8 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
 
     setErrors(newErrors)
-    
-    // Show toast notification for the first error (most important one)
-    if (Object.keys(newErrors).length > 0) {
-      const firstErrorKey = Object.keys(newErrors)[0]
-      const firstErrorMessage = newErrors[firstErrorKey]
-      toast.error(firstErrorMessage)
-    }
-    
+
+    // Inline errors are displayed next to each field, no toast needed
     return Object.keys(newErrors).length === 0
   }
 
