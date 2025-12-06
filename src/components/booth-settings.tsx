@@ -34,10 +34,6 @@ export function BoothSettings() {
   const [isAddingBoothType, setIsAddingBoothType] = useState(false)
   const [isAddingEquipmentType, setIsAddingEquipmentType] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
   const fetchData = async () => {
     try {
       setLoading(true)
@@ -62,6 +58,10 @@ export function BoothSettings() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   const saveBoothType = async (boothType: Partial<BoothType>) => {
     try {

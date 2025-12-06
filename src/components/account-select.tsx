@@ -40,24 +40,24 @@ export function AccountSelect({
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        setLoading(true)
+        // Bypass cache to ensure we get fresh data (especially for newly created accounts)
+        const response = await fetch('/api/accounts', { cache: 'no-store' })
+        if (response.ok) {
+          const data = await response.json()
+          setAccounts(data)
+        }
+      } catch (error) {
+        console.error('Error fetching accounts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchAccounts()
   }, [])
-
-  const fetchAccounts = async () => {
-    try {
-      setLoading(true)
-      // Bypass cache to ensure we get fresh data (especially for newly created accounts)
-      const response = await fetch('/api/accounts', { cache: 'no-store' })
-      if (response.ok) {
-        const data = await response.json()
-        setAccounts(data)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAccountCreated = (account: Account) => {
     setAccounts(prev => [account, ...prev])
