@@ -160,20 +160,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const tenantId = session.user.tenantId
-
     // 1. Total Revenue Generated (invoices created in period)
     const { data: currentInvoices } = await supabase
       .from('invoices')
       .select('total_amount')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
 
     const { data: previousInvoices } = await supabase
       .from('invoices')
       .select('total_amount')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .gte('created_at', previousStartDate.toISOString())
       .lte('created_at', previousEndDate.toISOString())
 
@@ -186,14 +184,14 @@ export async function GET(request: NextRequest) {
     const { data: currentPayments } = await supabase
       .from('payments')
       .select('amount')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .gte('payment_date', startDate.toISOString())
       .lte('payment_date', endDate.toISOString())
 
     const { data: previousPayments } = await supabase
       .from('payments')
       .select('amount')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .gte('payment_date', previousStartDate.toISOString())
       .lte('payment_date', previousEndDate.toISOString())
 
@@ -205,7 +203,7 @@ export async function GET(request: NextRequest) {
     const { data: currentWonOpps, error: wonOppsError } = await supabase
       .from('opportunities')
       .select('id')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('stage', 'closed_won')
       .gte('updated_at', startDate.toISOString())
       .lte('updated_at', endDate.toISOString())
@@ -218,7 +216,7 @@ export async function GET(request: NextRequest) {
     const { data: previousWonOpps } = await supabase
       .from('opportunities')
       .select('id')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .eq('stage', 'closed_won')
       .gte('updated_at', previousStartDate.toISOString())
       .lte('updated_at', previousEndDate.toISOString())
@@ -232,7 +230,7 @@ export async function GET(request: NextRequest) {
     const { data: allEvents } = await supabase
       .from('events')
       .select('id, start_date, end_date, event_type')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
 
     console.log('ALL events in database for tenant:', JSON.stringify(allEvents, null, 2))
 
@@ -240,7 +238,7 @@ export async function GET(request: NextRequest) {
     const { data: currentEvents, error: eventsError } = await supabase
       .from('events')
       .select('start_date, end_date')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .lte('start_date', endDate.toISOString())
       .gte('end_date', startDate.toISOString())
 
@@ -254,7 +252,7 @@ export async function GET(request: NextRequest) {
     const { data: previousEvents } = await supabase
       .from('events')
       .select('start_date, end_date')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .lte('start_date', previousEndDate.toISOString())
       .gte('end_date', previousStartDate.toISOString())
 
@@ -281,14 +279,14 @@ export async function GET(request: NextRequest) {
       const { data: monthRevenue } = await supabase
         .from('invoices')
         .select('total_amount')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString())
 
       const { data: monthPayments } = await supabase
         .from('payments')
         .select('amount')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .gte('payment_date', monthStart.toISOString())
         .lte('payment_date', monthEnd.toISOString())
 
@@ -319,7 +317,7 @@ export async function GET(request: NextRequest) {
       const { data: monthWonOpps } = await supabase
         .from('opportunities')
         .select('id')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .eq('stage', 'closed_won')
         .gte('updated_at', monthStart.toISOString())
         .lte('updated_at', monthEnd.toISOString())
@@ -328,7 +326,7 @@ export async function GET(request: NextRequest) {
       const { data: monthEvents } = await supabase
         .from('events')
         .select('start_date, end_date')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', dataSourceTenantId)
         .lte('start_date', monthEnd.toISOString())
         .gte('end_date', monthStart.toISOString())
 
@@ -346,7 +344,7 @@ export async function GET(request: NextRequest) {
     const { data: invoicesData } = await supabase
       .from('invoices')
       .select('status, total_amount')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', dataSourceTenantId)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
 
