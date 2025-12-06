@@ -185,7 +185,13 @@ export function BaseForm<T extends Record<string, any>>({
     try {
       // Filter data to only include fields defined in the form config
       // This prevents sending extra database fields like id, created_at, etc.
-      const formFieldNames = config.fields.map(f => f.name)
+      // Also include any managerField references (e.g., manager_of_departments)
+      const formFieldNames = config.fields.flatMap(f => {
+        const names = [f.name]
+        // Include managerField if defined (used by departmentWithManager type)
+        if (f.managerField) names.push(f.managerField)
+        return names
+      })
       const filteredData = Object.keys(state.data).reduce((acc, key) => {
         if (formFieldNames.includes(key)) {
           acc[key] = state.data[key]
