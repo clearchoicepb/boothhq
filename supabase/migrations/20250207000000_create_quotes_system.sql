@@ -5,7 +5,7 @@
 -- Create quotes table
 CREATE TABLE IF NOT EXISTS quotes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
 
   -- Quote associations
   opportunity_id UUID NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS quotes (
 -- Create quote_line_items table
 CREATE TABLE IF NOT EXISTS quote_line_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
   quote_id UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
 
   -- Item type and references (same as opportunity_line_items)

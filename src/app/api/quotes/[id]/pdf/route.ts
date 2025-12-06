@@ -1,14 +1,16 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { generateQuotePDF } from '@/lib/pdf-generator'
+
 export async function GET(
   request: NextRequest,
   routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const params = await routeContext.params
     const quoteId = params.id
 
@@ -47,73 +49,58 @@ export async function GET(
         .eq('tenant_id', dataSourceTenantId)
     }
 
-    // TODO: Implement actual PDF generation using a library like PDFKit or Puppeteer
-    // For now, return a simple HTML response that can be printed as PDF
+    // Get tenant settings for logo
+    const { data: logoSetting } = await supabase
+      .from('tenant_settings')
+      .select('setting_value')
+      .eq('tenant_id', dataSourceTenantId)
+      .eq('setting_key', 'appearance.logoUrl')
+      .single()
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Quote ${quote.quote_number}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .details { margin-bottom: 30px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-          th { background-color: #f8f9fa; }
-          .total { text-align: right; font-size: 18px; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>QUOTE</h1>
-          <p>Quote #: ${quote.quote_number}</p>
-        </div>
+    const logoUrl = logoSetting?.setting_value || null
 
-        <div class="details">
-          <p><strong>Issue Date:</strong> ${new Date(quote.issue_date).toLocaleDateString()}</p>
-          ${quote.valid_until ? `<p><strong>Valid Until:</strong> ${new Date(quote.valid_until).toLocaleDateString()}</p>` : ''}
-          <p><strong>Bill To:</strong> ${quote.accounts?.name || 'N/A'}</p>
-          ${quote.opportunities?.name ? `<p><strong>RE:</strong> ${quote.opportunities.name}</p>` : ''}
-        </div>
+    // Generate PDF
+    const pdfBuffer = await generateQuotePDF({
+      quote: {
+        id: quote.id,
+        quote_number: quote.quote_number,
+        account_name: quote.accounts?.name || null,
+        contact_name: quote.contacts ? `${quote.contacts.first_name} ${quote.contacts.last_name}` : null,
+        opportunity_name: quote.opportunities?.name || null,
+        issue_date: quote.issue_date,
+        valid_until: quote.valid_until,
+        status: quote.status,
+        subtotal: quote.subtotal,
+        tax_rate: quote.tax_rate,
+        tax_amount: quote.tax_amount,
+        total_amount: quote.total_amount,
+        notes: quote.notes,
+        terms: quote.terms,
+        line_items: (lineItems || [])
+          .map((item: any) => ({
+            name: item.name || item.description || 'Unnamed Item',
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total,
+            taxable: item.taxable
+          })),
+      },
+      companyInfo: {
+        name: process.env.COMPANY_NAME || 'ClearChoice Photo Booth',
+        address: process.env.COMPANY_ADDRESS || 'Your Company Address',
+        phone: process.env.COMPANY_PHONE || '(555) 123-4567',
+        email: process.env.GMAIL_USER || 'sales@yourcompany.com',
+        logoUrl: logoUrl,
+      },
+    })
 
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lineItems?.map(item => `
-              <tr>
-                <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>$${parseFloat(item.unit_price).toFixed(2)}</td>
-                <td>$${parseFloat(item.total).toFixed(2)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="total">
-          <p>Subtotal: $${parseFloat(quote.subtotal).toFixed(2)}</p>
-          <p>Tax (${(parseFloat(quote.tax_rate) * 100).toFixed(1)}%): $${parseFloat(quote.tax_amount).toFixed(2)}</p>
-          <p><strong>Total: $${parseFloat(quote.total_amount).toFixed(2)}</strong></p>
-        </div>
-
-        ${quote.notes ? `<div><p><strong>Notes:</strong> ${quote.notes}</p></div>` : ''}
-        ${quote.terms ? `<div><p><strong>Terms & Conditions:</strong> ${quote.terms}</p></div>` : ''}
-      </body>
-      </html>
-    `
-
-    return new NextResponse(html, {
+    // Return PDF as response
+    return new NextResponse(pdfBuffer, {
       headers: {
-        'Content-Type': 'text/html',
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="quote-${quote.quote_number}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
       },
     })
   } catch (error) {
