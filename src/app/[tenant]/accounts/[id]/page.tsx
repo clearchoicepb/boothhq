@@ -63,6 +63,7 @@ interface ContactWithRole extends Contact {
 
 import type { AccountEvent } from '@/types/events'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('id')
 
@@ -167,7 +168,7 @@ export default function AccountDetailPage() {
       router.push(`/${tenantSubdomain}/accounts`)
     } catch (error) {
       log.error({ error }, 'Error deleting account')
-      alert('Failed to delete account. It may have related records that need to be removed first.')
+      toast.error('Failed to delete account. It may have related records that need to be removed first.')
     } finally {
       setIsDeleting(false)
       setShowDeleteConfirm(false)

@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/select'
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -64,7 +65,7 @@ export function CloseOpportunityModal({
       onClose()
     } catch (error) {
       log.error({ error }, 'Error saving close reason')
-      alert('Failed to save. Please try again.')
+      toast.error('Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }

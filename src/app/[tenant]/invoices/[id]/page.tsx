@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus, Pencil } from 'lucide-react'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('id')
 
@@ -142,7 +143,7 @@ export default function InvoiceDetailPage() {
       document.body.removeChild(a)
     } catch (error) {
       log.error({ error }, 'Error downloading PDF')
-      alert('Failed to download PDF')
+      toast.error('Failed to download PDF')
     }
   }
 
@@ -157,11 +158,11 @@ export default function InvoiceDetailPage() {
 
       if (!response.ok) throw new Error('Failed to send invoice')
       
-      alert('Invoice sent successfully!')
+      toast.success('Invoice sent successfully!')
       fetchInvoice()
     } catch (error) {
       log.error({ error }, 'Error sending invoice')
-      alert('Failed to send invoice')
+      toast.error('Failed to send invoice')
     } finally {
       setUpdating(false)
     }
@@ -180,11 +181,11 @@ export default function InvoiceDetailPage() {
 
       if (!response.ok) throw new Error('Failed to update invoice')
 
-      alert('Invoice marked as paid!')
+      toast('Invoice marked as paid!')
       fetchInvoice()
     } catch (error) {
       log.error({ error }, 'Error updating invoice')
-      alert('Failed to update invoice')
+      toast.error('Failed to update invoice')
     } finally {
       setUpdating(false)
     }
@@ -203,11 +204,11 @@ export default function InvoiceDetailPage() {
 
       if (!response.ok) throw new Error('Failed to activate invoice')
 
-      alert('Invoice activated successfully!')
+      toast.success('Invoice activated successfully!')
       fetchInvoice()
     } catch (error) {
       log.error({ error }, 'Error activating invoice')
-      alert('Failed to activate invoice')
+      toast.error('Failed to activate invoice')
     } finally {
       setUpdating(false)
     }
@@ -226,18 +227,18 @@ export default function InvoiceDetailPage() {
       router.push(`/${tenantSubdomain}/invoices`)
     } catch (error) {
       log.error({ error }, 'Error deleting invoice')
-      alert('Failed to delete invoice')
+      toast.error('Failed to delete invoice')
     }
   }
 
   const handleCopyPublicLink = async () => {
     if (!invoice?.public_token) {
-      alert('Public link is not available for this invoice')
+      toast('Public link is not available for this invoice')
       return
     }
 
     if (!session?.user?.tenantId) {
-      alert('Tenant information is not available')
+      toast('Tenant information is not available')
       return
     }
 
@@ -252,7 +253,7 @@ export default function InvoiceDetailPage() {
       }, 2000)
     } catch (error) {
       log.error({ error }, 'Error copying link')
-      alert('Failed to copy link to clipboard')
+      toast.error('Failed to copy link to clipboard')
     }
   }
 
@@ -284,10 +285,10 @@ export default function InvoiceDetailPage() {
       setEditingPayment(null)
       await fetchInvoice()
 
-      alert(`Payment ${isEditing ? 'updated' : 'added'} successfully!`)
+      toast.success(`Payment ${isEditing ? 'updated' : 'added'} successfully!`)
     } catch (error) {
       log.error({ error }, 'Error saving payment')
-      alert(error instanceof Error ? error.message : 'Failed to save payment')
+      toast(error instanceof Error ? error.message : 'Failed to save payment')
     } finally {
       setUpdating(false)
     }
@@ -317,10 +318,10 @@ export default function InvoiceDetailPage() {
       }
 
       await fetchInvoice()
-      alert('Payment deleted successfully!')
+      toast.success('Payment deleted successfully!')
     } catch (error) {
       log.error({ error }, 'Error deleting payment')
-      alert(error instanceof Error ? error.message : 'Failed to delete payment')
+      toast(error instanceof Error ? error.message : 'Failed to delete payment')
     } finally {
       setUpdating(false)
     }
@@ -333,7 +334,7 @@ export default function InvoiceDetailPage() {
 
   const handleSaveInvoiceNumber = async () => {
     if (!newInvoiceNumber.trim()) {
-      alert('Invoice number cannot be empty')
+      toast.error('Invoice number cannot be empty')
       return
     }
 
@@ -352,10 +353,10 @@ export default function InvoiceDetailPage() {
 
       await fetchInvoice()
       setEditingInvoiceNumber(false)
-      alert('Invoice number updated successfully!')
+      toast.success('Invoice number updated successfully!')
     } catch (error) {
       log.error({ error }, 'Error updating invoice number')
-      alert(error instanceof Error ? error.message : 'Failed to update invoice number')
+      toast(error instanceof Error ? error.message : 'Failed to update invoice number')
     } finally {
       setUpdating(false)
     }

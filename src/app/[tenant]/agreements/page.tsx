@@ -12,6 +12,7 @@ import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import { Modal } from '@/components/ui/modal'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('agreements')
 
@@ -126,10 +127,10 @@ export default function AgreementsPage() {
       setAgreementToDelete(null)
       
       // Show success message
-      alert('Agreement deleted successfully')
+      toast.success('Agreement deleted successfully')
     } catch (error) {
       log.error({ error }, 'Error deleting agreement')
-      alert(error instanceof Error ? error.message : 'Failed to delete agreement')
+      toast(error instanceof Error ? error.message : 'Failed to delete agreement')
     } finally {
       setDeleting(false)
     }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('core-tasks')
 import {
@@ -76,7 +77,7 @@ export default function CoreTasksSettingsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error toggling task');
-      alert('Failed to update task status');
+      toast.error('Failed to update task status');
     }
   };
 
@@ -111,7 +112,7 @@ export default function CoreTasksSettingsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error updating task');
-      alert('Failed to update task name');
+      toast.error('Failed to update task name');
     }
   };
 
@@ -141,7 +142,7 @@ export default function CoreTasksSettingsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error reordering tasks');
-      alert('Failed to reorder tasks');
+      toast.error('Failed to reorder tasks');
     }
   };
 
@@ -171,13 +172,13 @@ export default function CoreTasksSettingsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error reordering tasks');
-      alert('Failed to reorder tasks');
+      toast.error('Failed to reorder tasks');
     }
   };
 
   const handleAddTask = async () => {
     if (!newTaskName.trim()) {
-      alert('Please enter a task name');
+      toast.error('Please enter a task name');
       return;
     }
 
@@ -198,11 +199,11 @@ export default function CoreTasksSettingsPage() {
         setShowAddForm(false);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to create task');
+        toast(error.error || 'Failed to create task');
       }
     } catch (error) {
       log.error({ error }, 'Error creating task');
-      alert('Failed to create task');
+      toast.error('Failed to create task');
     }
   };
 

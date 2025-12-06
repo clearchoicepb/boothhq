@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('new')
 
@@ -72,7 +73,7 @@ export default function NewEquipmentPage() {
     e.preventDefault()
     
     if (!formData.name) {
-      alert('Equipment name is required')
+      toast('Equipment name is required')
       return
     }
 
@@ -108,7 +109,7 @@ export default function NewEquipmentPage() {
       if (!response.ok) {
         const errorData = await response.json()
         log.error({ errorData }, 'Error creating equipment')
-        alert('Error creating equipment. Please try again.')
+        toast.error('Error creating equipment. Please try again.')
         return
       }
 
@@ -118,7 +119,7 @@ export default function NewEquipmentPage() {
       router.push(`/${tenantSubdomain}/inventory`)
     } catch (error) {
       log.error({ error }, 'Error')
-      alert('Error creating equipment. Please try again.')
+      toast.error('Error creating equipment. Please try again.')
     } finally {
       setLocalLoading(false)
     }

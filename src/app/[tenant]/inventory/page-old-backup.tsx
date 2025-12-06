@@ -11,6 +11,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('inventory')
 
@@ -155,11 +156,11 @@ export default function InventoryPage() {
         await fetchEquipment()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to delete equipment item'}`)
+        toast.error(`Error: ${error.error || 'Failed to delete equipment item'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error deleting equipment item')
-      alert('Failed to delete equipment item')
+      toast.error('Failed to delete equipment item')
     }
   }
 
@@ -186,11 +187,11 @@ export default function InventoryPage() {
         handleFormClose()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to save equipment item'}`)
+        toast.error(`Error: ${error.error || 'Failed to save equipment item'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error saving equipment item')
-      alert('Failed to save equipment item')
+      toast.error('Failed to save equipment item')
     }
   }
 

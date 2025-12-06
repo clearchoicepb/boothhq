@@ -9,6 +9,7 @@ import { OpportunityFormEnhanced } from '@/components/opportunity-form-enhanced'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, CheckCircle, Plus } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('new-sequential')
 
@@ -157,7 +158,7 @@ export default function NewOpportunitySequentialPage() {
           await fetchAccountContactAndProceed(primaryAccount.id, contactId)
         } else {
           // Contact has no account - show error or create account first
-          alert('This contact has no associated account. Please select or create an account first.')
+          toast.error('This contact has no associated account. Please select or create an account first.')
           router.push(`/${tenantSubdomain}/opportunities/select-account`)
         }
       }
@@ -218,11 +219,11 @@ export default function NewOpportunitySequentialPage() {
       } else {
         const errorData = await response.json()
         log.error({ errorData }, 'Failed to create lead')
-        alert(`Failed to create lead: ${errorData.error || 'Unknown error'}`)
+        toast.error(`Failed to create lead: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error creating lead')
-      alert('Error creating lead. Please try again.')
+      toast.error('Error creating lead. Please try again.')
     }
   }
 
@@ -260,7 +261,7 @@ export default function NewOpportunitySequentialPage() {
       router.push(`/${tenantSubdomain}/opportunities/${newOpportunity.id}`)
     } catch (error) {
       log.error({ error }, 'Error creating opportunity')
-      alert(`Error creating opportunity: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Error creating opportunity: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

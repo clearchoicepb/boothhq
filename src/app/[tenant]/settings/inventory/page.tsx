@@ -10,6 +10,7 @@ import { consumableService } from '@/lib/api/services/consumableService';
 import type { EquipmentCategory } from '@/lib/api/services/equipmentCategoryService';
 import type { ConsumableWithStatus } from '@/lib/api/services/consumableService';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('inventory')
 import {
@@ -213,7 +214,7 @@ export default function InventorySettingsPage() {
       setEditingCategory(newCategory.id);
     } catch (error) {
       log.error({ error }, 'Failed to create category');
-      alert('Failed to create category. Please try again.');
+      toast.error('Failed to create category. Please try again.');
     }
   };
 
@@ -223,7 +224,7 @@ export default function InventorySettingsPage() {
       setCategories(categories.map(cat => cat.id === id ? updated : cat));
     } catch (error) {
       log.error({ error }, 'Failed to update category');
-      alert('Failed to update category. Please try again.');
+      toast.error('Failed to update category. Please try again.');
     }
   };
 
@@ -237,7 +238,7 @@ export default function InventorySettingsPage() {
       setCategories(categories.filter(cat => cat.id !== id));
     } catch (error: any) {
       log.error({ error }, 'Failed to delete category');
-      alert(error.message || 'Failed to delete category. It may have items assigned to it.');
+      toast(error.message || 'Failed to delete category. It may have items assigned to it.');
     }
   };
 
@@ -248,10 +249,10 @@ export default function InventorySettingsPage() {
         ...globalSettings,
         inventory: settings
       });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       log.error({ error }, 'Error saving settings');
-      alert('Error saving settings. Please try again.');
+      toast.error('Error saving settings. Please try again.');
     } finally {
       setSaving(false);
     }

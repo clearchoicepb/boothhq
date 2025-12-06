@@ -8,6 +8,7 @@ import { SMSNotificationsProvider } from '@/lib/sms-notifications-context'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { SearchPalette } from '@/components/SearchPalette'
 import { QueryProvider } from '@/lib/api/QueryProvider'
+import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -35,10 +36,12 @@ export default function RootLayout({
               <TenantProvider>
                 <SettingsProvider>
                   <SMSNotificationsProvider>
-                    <div className="min-h-screen bg-gray-50">
-                      {children}
-                    </div>
-                    <SearchPalette />
+                    <ConfirmDialogProvider>
+                      <div className="min-h-screen bg-gray-50">
+                        {children}
+                      </div>
+                      <SearchPalette />
+                    </ConfirmDialogProvider>
                   </SMSNotificationsProvider>
                 </SettingsProvider>
               </TenantProvider>

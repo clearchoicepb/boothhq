@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select'
 import { EntityForm } from '@/components/forms/EntityForm'
 import Link from 'next/link'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('roles')
 
@@ -115,11 +116,11 @@ export default function RolesSettingsPage() {
         await fetchRoles()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to delete role'}`)
+        toast.error(`Error: ${error.message || 'Failed to delete role'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error deleting role')
-      alert('Failed to delete role')
+      toast.error('Failed to delete role')
     }
   }
 
@@ -152,11 +153,11 @@ export default function RolesSettingsPage() {
         handleFormClose()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.message || 'Failed to save role'}`)
+        toast.error(`Error: ${error.message || 'Failed to save role'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error saving role')
-      alert('Failed to save role')
+      toast.error('Failed to save role')
     }
   }
 

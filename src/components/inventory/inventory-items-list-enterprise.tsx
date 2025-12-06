@@ -24,6 +24,7 @@ import { ExportModal } from './export-modal'
 import { InventoryTableView } from './inventory-table-view'
 import { groupAndSortInventoryItems } from './inventory-grouping'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('inventory')
 
@@ -135,7 +136,7 @@ export function InventoryItemsListEnterprise() {
       setEditingItem(null)
     } catch (error: any) {
       log.error({ error }, 'Failed to save inventory item')
-      alert(`Failed to save: ${error.message}`)
+      toast.error('Failed to save: ${error.message}')
     }
   }, [editingItem, updateItem, addItem])
 

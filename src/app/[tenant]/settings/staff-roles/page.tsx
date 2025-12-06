@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('staff-roles')
 import {
@@ -76,7 +77,7 @@ export default function StaffRolesSettingsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error toggling role');
-      alert('Failed to update role status');
+      toast.error('Failed to update role status');
     }
   };
 
@@ -106,7 +107,7 @@ export default function StaffRolesSettingsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error updating role');
-      alert('Failed to update role name');
+      toast.error('Failed to update role name');
     }
   };
 
@@ -124,17 +125,17 @@ export default function StaffRolesSettingsPage() {
         setRoles(roles.filter(r => r.id !== roleId));
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to delete role');
+        toast(error.error || 'Failed to delete role');
       }
     } catch (error) {
       log.error({ error }, 'Error deleting role');
-      alert('Failed to delete role');
+      toast.error('Failed to delete role');
     }
   };
 
   const handleAddRole = async () => {
     if (!newRole.name.trim()) {
-      alert('Please enter a role name');
+      toast.error('Please enter a role name');
       return;
     }
 
@@ -156,11 +157,11 @@ export default function StaffRolesSettingsPage() {
         setShowAddForm(false);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to create role');
+        toast(error.error || 'Failed to create role');
       }
     } catch (error) {
       log.error({ error }, 'Error creating role');
-      alert('Failed to create role');
+      toast.error('Failed to create role');
     }
   };
 

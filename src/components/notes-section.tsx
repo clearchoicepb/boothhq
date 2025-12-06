@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { Plus, Edit, Trash2, MessageSquare } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -78,7 +79,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
       }
     } catch (error) {
       log.error({ error }, 'Error adding note')
-      alert('Failed to add note. Please try again.')
+      toast.error('Failed to add note. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -110,7 +111,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
       }
     } catch (error) {
       log.error({ error }, 'Error updating note')
-      alert('Failed to update note. Please try again.')
+      toast.error('Failed to update note. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -129,7 +130,7 @@ export function NotesSection({ entityType, entityId, className = '' }: NotesSect
       }
     } catch (error) {
       log.error({ error }, 'Error deleting note')
-      alert('Failed to delete note. Please try again.')
+      toast.error('Failed to delete note. Please try again.')
     }
   }
 

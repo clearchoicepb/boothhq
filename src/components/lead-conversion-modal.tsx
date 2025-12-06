@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal'
 import { AddressInput } from '@/components/ui/address-input'
 import { Lead, AccountInsert, ContactInsert } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -157,7 +158,7 @@ export function LeadConversionModal({
       onClose()
     } catch (error) {
       log.error({ error }, 'Error converting lead')
-      alert('Failed to convert lead. Please try again.')
+      toast.error('Failed to convert lead. Please try again.')
     } finally {
       setIsLoading(false)
     }

@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useSettings } from '@/lib/settings-context';
 import { useSession } from 'next-auth/react';
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('email')
 import {
@@ -246,10 +247,10 @@ export default function EmailServicesSettingsPage() {
         ...globalSettings,
         emailServices: settings
       });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       log.error({ error }, 'Error saving settings');
-      alert('Error saving settings. Please try again.');
+      toast.error('Error saving settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -512,11 +513,11 @@ export default function EmailServicesSettingsPage() {
                             if (data.authUrl) {
                               window.location.href = data.authUrl;
                             } else {
-                              alert('Error: ' + (data.error || 'Failed to initialize OAuth'));
+                              toast.error(data.error || 'Failed to initialize OAuth');
                             }
                           } catch (error) {
                             log.error({ error }, 'OAuth error');
-                            alert('Failed to connect to Gmail. Please try again.');
+                            toast.error('Failed to connect to Gmail. Please try again.');
                           }
                         }}
                         className="w-full sm:w-auto px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150 flex items-center justify-center font-medium cursor-pointer"

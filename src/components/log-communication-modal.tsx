@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -103,7 +104,7 @@ export function LogCommunicationModal({
       onClose()
     } catch (error) {
       log.error({ error }, 'Error logging communication')
-      alert('Failed to log communication. Please try again.')
+      toast.error('Failed to log communication. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

@@ -6,6 +6,7 @@ import { Upload, X, Camera, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { useFavicon } from '@/lib/use-favicon'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('ui')
 
@@ -56,13 +57,13 @@ export function PhotoUpload({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      toast.error('Please select an image file')
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB')
+      toast('File size must be less than 5MB')
       return
     }
 
@@ -102,7 +103,7 @@ export function PhotoUpload({
       onPhotoChange(photoUrl)
     } catch (error) {
       log.error({ error }, 'Error uploading photo')
-      alert(`Failed to upload photo: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Failed to upload photo: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsUploading(false)
     }

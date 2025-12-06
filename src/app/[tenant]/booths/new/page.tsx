@@ -9,6 +9,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('new')
 
@@ -64,7 +65,7 @@ export default function NewBoothPage() {
     e.preventDefault()
 
     if (!formData.booth_name.trim()) {
-      alert('Please enter a booth name')
+      toast.error('Please enter a booth name')
       return
     }
 
@@ -94,11 +95,11 @@ export default function NewBoothPage() {
         router.push(`/${tenantSubdomain}/booths/${data.id}/configure`)
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to create booth'}`)
+        toast.error(`Error: ${error.error || 'Failed to create booth'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error creating booth')
-      alert('Failed to create booth')
+      toast.error('Failed to create booth')
     } finally {
       setSaving(false)
     }

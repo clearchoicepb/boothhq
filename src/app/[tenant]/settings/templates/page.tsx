@@ -151,11 +151,11 @@ export default function TemplatesSettingsPage() {
         setIsModalOpen(false)
         fetchTemplates()
       } else {
-        alert('Failed to save template')
+        toast.error('Failed to save template')
       }
     } catch (error) {
       log.error({ error }, 'Error saving template')
-      alert('Error saving template')
+      toast.error('Error saving template')
     } finally {
       setSaving(false)
     }
@@ -174,11 +174,11 @@ export default function TemplatesSettingsPage() {
       if (response.ok) {
         fetchTemplates()
       } else {
-        alert('Failed to delete template')
+        toast.error('Failed to delete template')
       }
     } catch (error) {
       log.error({ error }, 'Error deleting template')
-      alert('Error deleting template')
+      toast.error('Error deleting template')
     }
   }
 

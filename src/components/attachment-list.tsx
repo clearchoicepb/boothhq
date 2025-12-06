@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Paperclip, Download, Trash2, File } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface Attachment {
   id: string
@@ -71,7 +72,7 @@ export default function AttachmentList({ entityType, entityId, refreshTrigger = 
       // Open download URL in new tab
       window.open(data.download_url, '_blank')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to download file')
+      toast(err instanceof Error ? err.message : 'Failed to download file')
     }
   }
 
@@ -94,7 +95,7 @@ export default function AttachmentList({ entityType, entityId, refreshTrigger = 
       // Remove from list
       setAttachments(prev => prev.filter(a => a.id !== attachmentId))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete file')
+      toast(err instanceof Error ? err.message : 'Failed to delete file')
     } finally {
       setDeletingId(null)
     }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { DollarSign, Plus, Trash2, Package, PlusCircle } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -177,7 +178,7 @@ export function OpportunityPricing({ opportunityId, onAmountUpdate }: Opportunit
 
   const handleGenerateQuote = async () => {
     if (lineItems.length === 0) {
-      alert('Please add at least one item before generating a quote')
+      toast.error('Please add at least one item before generating a quote')
       return
     }
 
@@ -204,7 +205,7 @@ export function OpportunityPricing({ opportunityId, onAmountUpdate }: Opportunit
       window.location.href = `/${tenantSubdomain}/quotes/${quote.id}?returnTo=opportunities/${opportunityId}`
     } catch (error) {
       log.error({ error }, 'Error generating quote')
-      alert('Failed to generate quote')
+      toast.error('Failed to generate quote')
     } finally {
       setGeneratingQuote(false)
     }

@@ -9,6 +9,7 @@ import { PhotoUpload } from '@/components/ui/photo-upload'
 import { ArrowLeft, Save, X } from 'lucide-react'
 import Link from 'next/link'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('new')
 
@@ -85,7 +86,7 @@ export default function NewContactPage() {
     e.preventDefault()
     
     if (!formData.first_name || !formData.last_name) {
-      alert('First name and last name are required')
+      toast('First name and last name are required')
       return
     }
 
@@ -124,7 +125,7 @@ export default function NewContactPage() {
       if (!response.ok) {
         const errorData = await response.json()
         log.error({ errorData }, 'Error creating contact')
-        alert('Error creating contact. Please try again.')
+        toast.error('Error creating contact. Please try again.')
         return
       }
 
@@ -142,7 +143,7 @@ export default function NewContactPage() {
       router.refresh()
     } catch (error) {
       log.error({ error }, 'Error')
-      alert('Error creating contact. Please try again.')
+      toast.error('Error creating contact. Please try again.')
     } finally {
       setLocalLoading(false)
     }

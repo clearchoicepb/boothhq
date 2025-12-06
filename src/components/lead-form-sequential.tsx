@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { PhotoUpload } from '@/components/ui/photo-upload'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -103,7 +104,7 @@ export function LeadFormSequential({ onSave, onCancel }: LeadFormSequentialProps
       // Don't call onClose() here - let the parent component handle the flow
     } catch (error) {
       log.error({ error }, 'Error saving lead')
-      alert('Error saving lead. Please try again.')
+      toast.error('Error saving lead. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

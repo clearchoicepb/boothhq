@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/modal'
 import { useSettings } from '@/lib/settings-context'
 import { useSMSNotifications } from '@/lib/sms-notifications-context'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('sms')
 
@@ -438,11 +439,11 @@ export default function SMSMessagesPage() {
         await fetchConversations()
       } else {
         const error = await response.json()
-        alert(`Failed to send SMS: ${error.error || 'Unknown error'}`)
+        toast.error(`Failed to send SMS: ${error.error || 'Unknown error'}`)
       }
     } catch (error) {
       log.error({ error }, 'Error sending SMS')
-      alert('Failed to send SMS. Please try again.')
+      toast.error('Failed to send SMS. Please try again.')
     } finally {
       setSending(false)
     }

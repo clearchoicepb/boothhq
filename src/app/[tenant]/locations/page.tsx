@@ -11,6 +11,7 @@ import { Location, LocationInsert, LocationUpdate } from '@/lib/supabase-client'
 import { useTenant } from '@/lib/tenant-context'
 import { usePermissions } from '@/lib/permissions'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('locations')
 
@@ -121,7 +122,7 @@ export default function LocationsPage() {
       }
     } catch (error) {
       log.error({ error }, 'Error deleting location')
-      alert('Failed to delete location. Please try again.')
+      toast.error('Failed to delete location. Please try again.')
     }
   }
 

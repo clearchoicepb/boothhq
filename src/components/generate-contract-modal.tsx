@@ -8,6 +8,7 @@ import { getMergeFieldData, replaceMergeFields } from '@/lib/merge-fields'
 import { useSettings } from '@/lib/settings-context'
 import jsPDF from 'jspdf'
 import { createLogger } from '@/lib/logger'
+import toast from 'react-hot-toast'
 
 const log = createLogger('components')
 
@@ -346,7 +347,7 @@ export function GenerateContractModal({
 
       // Success!
       setError('')
-      alert(`Contract successfully sent to ${recipientEmail}!`)
+      toast.success('Contract successfully sent to ${recipientEmail}!')
       if (onSuccess) {
         onSuccess()
       }
