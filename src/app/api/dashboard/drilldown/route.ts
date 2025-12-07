@@ -301,49 +301,63 @@ export async function GET(request: NextRequest) {
 
       case 'total-opportunities': {
         // Fetch configured stages from tenant_settings
-        // Keys are like: opportunities.stages.0.id, opportunities.stages.0.name, etc.
+        // Settings page saves stages as a single array under key 'opportunities.stages'
         const { data: stageSettings } = await supabase
           .from('tenant_settings')
           .select('setting_key, setting_value')
           .eq('tenant_id', dataSourceTenantId)
           .like('setting_key', 'opportunities.stages%')
 
-        // Parse stages from settings (same logic as /api/settings/opportunity-stages)
+        // Parse stages from settings
         let stages: StageConfig[] = defaultStages
         if (stageSettings && stageSettings.length > 0) {
           try {
-            const stagesMap = new Map<number, any>()
-            stageSettings.forEach((row: any) => {
-              const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
-              if (match) {
-                const index = parseInt(match[1], 10)
-                const field = match[2]
-
-                if (!stagesMap.has(index)) {
-                  stagesMap.set(index, {})
-                }
-
-                const stage = stagesMap.get(index)!
-
-                // Parse value based on field type
-                if (field === 'probability') {
-                  stage[field] = parseInt(row.setting_value, 10)
-                } else if (field === 'enabled') {
-                  stage[field] = row.setting_value === 'true'
-                } else {
-                  stage[field] = row.setting_value
-                }
+            // Check for new format: single 'opportunities.stages' key with array value
+            const arrayFormat = stageSettings.find((row: any) => row.setting_key === 'opportunities.stages')
+            if (arrayFormat?.setting_value) {
+              // Parse the array value (could be JSON string or already parsed)
+              let parsedStages = arrayFormat.setting_value
+              if (typeof parsedStages === 'string') {
+                parsedStages = JSON.parse(parsedStages)
               }
-            })
+              if (Array.isArray(parsedStages) && parsedStages.length > 0) {
+                stages = parsedStages.filter((s: any) => s.enabled !== false)
+              }
+            } else {
+              // Fallback to old format: indexed keys like opportunities.stages.0.id
+              const stagesMap = new Map<number, any>()
+              stageSettings.forEach((row: any) => {
+                const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
+                if (match) {
+                  const index = parseInt(match[1], 10)
+                  const field = match[2]
 
-            // Convert map to array sorted by index
-            const parsedStages = Array.from(stagesMap.entries())
-              .sort((a, b) => a[0] - b[0])
-              .map((entry) => entry[1])
-              .filter((stage) => stage.enabled !== false)
+                  if (!stagesMap.has(index)) {
+                    stagesMap.set(index, {})
+                  }
 
-            if (parsedStages.length > 0) {
-              stages = parsedStages
+                  const stage = stagesMap.get(index)!
+
+                  // Parse value based on field type
+                  if (field === 'probability') {
+                    stage[field] = parseInt(row.setting_value, 10)
+                  } else if (field === 'enabled') {
+                    stage[field] = row.setting_value === 'true'
+                  } else {
+                    stage[field] = row.setting_value
+                  }
+                }
+              })
+
+              // Convert map to array sorted by index
+              const parsedStages = Array.from(stagesMap.entries())
+                .sort((a, b) => a[0] - b[0])
+                .map((entry) => entry[1])
+                .filter((stage) => stage.enabled !== false)
+
+              if (parsedStages.length > 0) {
+                stages = parsedStages
+              }
             }
           } catch (e) {
             log.warn({ error: e }, 'Failed to parse stage settings, using defaults')
@@ -400,49 +414,63 @@ export async function GET(request: NextRequest) {
 
       case 'new-opportunities': {
         // Fetch configured stages from tenant_settings
-        // Keys are like: opportunities.stages.0.id, opportunities.stages.0.name, etc.
+        // Settings page saves stages as a single array under key 'opportunities.stages'
         const { data: stageSettings } = await supabase
           .from('tenant_settings')
           .select('setting_key, setting_value')
           .eq('tenant_id', dataSourceTenantId)
           .like('setting_key', 'opportunities.stages%')
 
-        // Parse stages from settings (same logic as /api/settings/opportunity-stages)
+        // Parse stages from settings
         let stages: StageConfig[] = defaultStages
         if (stageSettings && stageSettings.length > 0) {
           try {
-            const stagesMap = new Map<number, any>()
-            stageSettings.forEach((row: any) => {
-              const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
-              if (match) {
-                const index = parseInt(match[1], 10)
-                const field = match[2]
-
-                if (!stagesMap.has(index)) {
-                  stagesMap.set(index, {})
-                }
-
-                const stage = stagesMap.get(index)!
-
-                // Parse value based on field type
-                if (field === 'probability') {
-                  stage[field] = parseInt(row.setting_value, 10)
-                } else if (field === 'enabled') {
-                  stage[field] = row.setting_value === 'true'
-                } else {
-                  stage[field] = row.setting_value
-                }
+            // Check for new format: single 'opportunities.stages' key with array value
+            const arrayFormat = stageSettings.find((row: any) => row.setting_key === 'opportunities.stages')
+            if (arrayFormat?.setting_value) {
+              // Parse the array value (could be JSON string or already parsed)
+              let parsedStages = arrayFormat.setting_value
+              if (typeof parsedStages === 'string') {
+                parsedStages = JSON.parse(parsedStages)
               }
-            })
+              if (Array.isArray(parsedStages) && parsedStages.length > 0) {
+                stages = parsedStages.filter((s: any) => s.enabled !== false)
+              }
+            } else {
+              // Fallback to old format: indexed keys like opportunities.stages.0.id
+              const stagesMap = new Map<number, any>()
+              stageSettings.forEach((row: any) => {
+                const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
+                if (match) {
+                  const index = parseInt(match[1], 10)
+                  const field = match[2]
 
-            // Convert map to array sorted by index
-            const parsedStages = Array.from(stagesMap.entries())
-              .sort((a, b) => a[0] - b[0])
-              .map((entry) => entry[1])
-              .filter((stage) => stage.enabled !== false)
+                  if (!stagesMap.has(index)) {
+                    stagesMap.set(index, {})
+                  }
 
-            if (parsedStages.length > 0) {
-              stages = parsedStages
+                  const stage = stagesMap.get(index)!
+
+                  // Parse value based on field type
+                  if (field === 'probability') {
+                    stage[field] = parseInt(row.setting_value, 10)
+                  } else if (field === 'enabled') {
+                    stage[field] = row.setting_value === 'true'
+                  } else {
+                    stage[field] = row.setting_value
+                  }
+                }
+              })
+
+              // Convert map to array sorted by index
+              const parsedStages = Array.from(stagesMap.entries())
+                .sort((a, b) => a[0] - b[0])
+                .map((entry) => entry[1])
+                .filter((stage) => stage.enabled !== false)
+
+              if (parsedStages.length > 0) {
+                stages = parsedStages
+              }
             }
           } catch (e) {
             log.warn({ error: e }, 'Failed to parse stage settings, using defaults')
