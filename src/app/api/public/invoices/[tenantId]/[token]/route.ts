@@ -40,6 +40,7 @@ export async function GET(
         balance_amount,
         account_id,
         contact_id,
+        event_id,
         accounts (
           id,
           name,
@@ -52,6 +53,11 @@ export async function GET(
           last_name,
           email,
           phone
+        ),
+        events (
+          id,
+          title,
+          start_date
         )
       `)
       .eq('public_token', token)
@@ -100,6 +106,8 @@ export async function GET(
       invoice: {
         ...invoice,
         line_items: lineItems || [],
+        event_name: invoice.events?.title || null,
+        event_date: invoice.events?.start_date || null,
       },
       tenant: {
         id: invoice.tenant_id,

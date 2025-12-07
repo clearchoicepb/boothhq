@@ -637,6 +637,12 @@ export default function InvoiceDetailPage() {
             {/* Invoice Dates */}
             <div>
               <div className="space-y-3">
+                {invoice.event_date && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Event Date</p>
+                    <p className="text-base font-semibold text-gray-900">{new Date(invoice.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</p>
                   <p className="text-base font-semibold text-gray-900">{new Date(invoice.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
