@@ -42,6 +42,12 @@ interface Task {
   entity_id?: string
   created_at: string
   completed_at?: string
+  // Event data from API join
+  event?: {
+    id: string
+    title: string
+    event_dates: Array<{ event_date: string }>
+  }
 }
 
 interface EntityData {
@@ -226,24 +232,36 @@ export default function MyTasksPage() {
 
   const getTaskDisplayTitle = (task: Task) => {
     const parts = []
-    
-    // Event/Entity Name
-    if (task.entity_id && entityData[task.entity_id]) {
+
+    // Use event data from API if available
+    if (task.event) {
+      parts.push(task.event.title)
+    } else if (task.entity_id && entityData[task.entity_id]) {
+      // Fallback to separately fetched entity data
       const entity = entityData[task.entity_id]
       if (entity.name || entity.title) {
         parts.push(entity.name || entity.title)
       }
-      
+
       // Event Type
       if (entity.event_type) {
         parts.push(entity.event_type)
       }
     }
-    
+
     // Task Title
     parts.push(task.title)
-    
+
     return parts.join(' • ')
+  }
+
+  // Format event date for display
+  const getEventDateDisplay = (task: Task): string | null => {
+    if (task.event?.event_dates && task.event.event_dates.length > 0) {
+      const date = new Date(task.event.event_dates[0].event_date)
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    }
+    return null
   }
 
   const getDepartmentLabel = (deptId?: string) => {
@@ -412,10 +430,9 @@ export default function MyTasksPage() {
           </TabsList>
 
           <TabsContent value="active" className="mt-2">
-            <TaskList 
+            <TaskList
               tasks={filteredTasks}
               searchQuery={searchQuery}
-              entityData={entityData}
               onToggleComplete={handleToggleComplete}
               onOpenTask={setSelectedTask}
               onOpenEntity={handleOpenEntity}
@@ -423,14 +440,14 @@ export default function MyTasksPage() {
               getDepartmentLabel={getDepartmentLabel}
               getTaskDisplayTitle={getTaskDisplayTitle}
               getDaysUntil={getDaysUntil}
+              getEventDateDisplay={getEventDateDisplay}
             />
           </TabsContent>
 
           <TabsContent value="completed" className="mt-2">
-            <TaskList 
+            <TaskList
               tasks={filteredTasks}
               searchQuery={searchQuery}
-              entityData={entityData}
               onToggleComplete={handleToggleComplete}
               onOpenTask={setSelectedTask}
               onOpenEntity={handleOpenEntity}
@@ -438,6 +455,7 @@ export default function MyTasksPage() {
               getDepartmentLabel={getDepartmentLabel}
               getTaskDisplayTitle={getTaskDisplayTitle}
               getDaysUntil={getDaysUntil}
+              getEventDateDisplay={getEventDateDisplay}
             />
           </TabsContent>
         </Tabs>
@@ -467,18 +485,17 @@ export default function MyTasksPage() {
 function TaskList({
   tasks,
   searchQuery,
-  entityData,
   onToggleComplete,
   onOpenTask,
   onOpenEntity,
   getDepartmentIcon,
   getDepartmentLabel,
   getTaskDisplayTitle,
-  getDaysUntil
+  getDaysUntil,
+  getEventDateDisplay
 }: {
   tasks: Task[]
   searchQuery: string
-  entityData: EntityData
   onToggleComplete: (e: React.MouseEvent, taskId: string, currentStatus: string) => void
   onOpenTask: (task: Task) => void
   onOpenEntity: (e: React.MouseEvent, task: Task) => void
@@ -486,6 +503,7 @@ function TaskList({
   getDepartmentLabel: (deptId?: string) => string
   getTaskDisplayTitle: (task: Task) => string
   getDaysUntil: (dueDate: string) => number
+  getEventDateDisplay: (task: Task) => string | null
 }) {
   if (tasks.length === 0) {
     return (
@@ -534,11 +552,11 @@ function TaskList({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0 flex items-center gap-2">
-                    {/* Task Title (Event • Event Type • Task) */}
+                    {/* Task Title (Event • Task) */}
                     <h3 className={`text-xs font-medium text-gray-900 truncate ${isCompleted ? 'line-through' : ''}`}>
                       {getTaskDisplayTitle(task)}
                     </h3>
-                    
+
                     {/* Open Entity Link */}
                     {task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity') && (
                       <button
@@ -549,7 +567,15 @@ function TaskList({
                         <ExternalLink className="h-3 w-3" />
                       </button>
                     )}
-                    
+
+                    {/* Event Date Badge */}
+                    {getEventDateDisplay(task) && (
+                      <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                        <Calendar className="h-2.5 w-2.5 mr-0.5" />
+                        {getEventDateDisplay(task)}
+                      </span>
+                    )}
+
                     {/* Department & Priority */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span className="flex items-center text-xs text-gray-600">
@@ -566,12 +592,12 @@ function TaskList({
                   {task.due_date && (
                     <div className="flex-shrink-0">
                       <div className={`flex items-center text-xs font-medium ${
-                        isOverdue ? 'text-red-600' : 
+                        isOverdue ? 'text-red-600' :
                         daysUntil !== null && daysUntil === 0 ? 'text-orange-600' :
                         daysUntil !== null && daysUntil <= 3 ? 'text-yellow-600' :
                         'text-gray-600'
                       }`}>
-                        <Calendar className="h-3 w-3 mr-0.5" />
+                        <Clock className="h-3 w-3 mr-0.5" />
                         <span className="text-xs">
                           {isOverdue && '⚠️ '}
                           {daysUntil === 0 ? 'Today' :

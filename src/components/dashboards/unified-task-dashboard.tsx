@@ -51,6 +51,15 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('dashboards')
 
+// Extended task type with event info
+interface TaskWithEvent extends TaskWithUrgency {
+  event?: {
+    id: string
+    title: string
+    event_dates: Array<{ event_date: string }>
+  }
+}
+
 // User interface for staff filtering
 interface TenantUser {
   id: string
@@ -127,7 +136,7 @@ export function UnifiedTaskDashboard({
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedPriority, setSelectedPriority] = useState<string>('all')
   const [groupBy, setGroupBy] = useState<'urgency' | 'priority' | 'status' | 'assignee'>('urgency')
-  const [selectedTask, setSelectedTask] = useState<TaskWithUrgency | null>(null)
+  const [selectedTask, setSelectedTask] = useState<TaskWithEvent | null>(null)
   const [taskStatus, setTaskStatus] = useState('')
   const [taskPriority, setTaskPriority] = useState('')
   const [taskNotes, setTaskNotes] = useState('')
@@ -191,7 +200,7 @@ export function UnifiedTaskDashboard({
   const filteredTasks = useMemo(() => {
     if (!dashboardData?.tasks) return []
 
-    return dashboardData.tasks.filter((task) => {
+    return (dashboardData.tasks as TaskWithEvent[]).filter((task) => {
       // Status filter
       if (selectedStatus !== 'all' && task.status !== selectedStatus) return false
 
@@ -204,7 +213,7 @@ export function UnifiedTaskDashboard({
 
   // Group tasks
   const groupedTasks = useMemo(() => {
-    const groups: Record<string, TaskWithUrgency[]> = {}
+    const groups: Record<string, TaskWithEvent[]> = {}
 
     filteredTasks.forEach((task) => {
       let key: string
@@ -234,7 +243,7 @@ export function UnifiedTaskDashboard({
   }, [filteredTasks, groupBy])
 
   // Task modal handlers
-  const openTaskModal = (task: TaskWithUrgency) => {
+  const openTaskModal = (task: TaskWithEvent) => {
     setSelectedTask(task)
     setTaskStatus(task.status || 'pending')
     setTaskPriority(task.priority || 'medium')
@@ -612,9 +621,16 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: KPICardProps) {
   )
 }
 
+// Helper to format event date nicely
+const formatEventDate = (eventDates: Array<{ event_date: string }> | undefined): string => {
+  if (!eventDates || eventDates.length === 0) return ''
+  const date = new Date(eventDates[0].event_date)
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 // Task Row Component
 interface TaskRowProps {
-  task: TaskWithUrgency
+  task: TaskWithEvent
   onClick: () => void
   onEntityClick: (entityType: string, entityId: string) => void
   bgColor: string
@@ -641,8 +657,27 @@ function TaskRow({ task, onClick, onEntityClick, bgColor, textColor, getUserName
           </div>
         </div>
       </td>
-      <td className="px-4 py-1 whitespace-nowrap">
-        {task.entity_type && task.entity_id ? (
+      <td className="px-4 py-1">
+        {task.event ? (
+          <div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEntityClick('event', task.event!.id)
+              }}
+              className="inline-flex items-center font-medium hover:underline"
+              style={{ color: textColor }}
+            >
+              {task.event.title}
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </button>
+            {task.event.event_dates && task.event.event_dates.length > 0 && (
+              <div className="text-xs opacity-80">
+                {formatEventDate(task.event.event_dates)}
+              </div>
+            )}
+          </div>
+        ) : task.entity_type && task.entity_id ? (
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -728,7 +763,7 @@ function EmptyState({ departmentName, onNavigate }: EmptyStateProps) {
 
 // Task Detail Modal Component
 interface TaskDetailModalProps {
-  task: TaskWithUrgency
+  task: TaskWithEvent
   isOpen: boolean
   onClose: () => void
   taskStatus: string
@@ -775,7 +810,31 @@ function TaskDetailModal({
                 <p className="mt-1 text-gray-900">{task.description}</p>
               </div>
             )}
-            {task.entity_type && task.entity_id && (
+            {task.event ? (
+              <>
+                <div>
+                  <span className="text-gray-600">Event:</span>
+                  <button
+                    onClick={() => {
+                      onClose()
+                      onNavigateToEntity('event', task.event!.id)
+                    }}
+                    className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
+                  >
+                    {task.event.title}
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </button>
+                </div>
+                {task.event.event_dates && task.event.event_dates.length > 0 && (
+                  <div>
+                    <span className="text-gray-600">Event Date:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {formatEventDate(task.event.event_dates)}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : task.entity_type && task.entity_id && (
               <div>
                 <span className="text-gray-600">Related To:</span>
                 <button

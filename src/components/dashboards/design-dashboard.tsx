@@ -632,13 +632,21 @@ export function DesignDashboard() {
                             {isPhysical ? '📦 Physical' : '💻 Digital'}
                           </span>
                         </td>
-                        <td className="px-4 py-1" onClick={() => openTaskModal(item)}>
-                          <div className="font-medium">{item.event.title}</div>
-                          {item.event.start_date && (
-                            <div className="text-xs opacity-80">
-                              Event: {new Date(getEventDate(item.event)).toLocaleDateString()}
-                            </div>
-                          )}
+                        <td className="px-4 py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigateToEvent(item.event.id)
+                            }}
+                            className="font-medium hover:underline inline-flex items-center"
+                            style={{ color: textColor }}
+                          >
+                            {item.event.title}
+                            <ExternalLink className="h-3 w-3 ml-1" />
+                          </button>
+                          <div className="text-xs opacity-80">
+                            {new Date(getEventDate(item.event)).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
                         </td>
                         <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
                           {item.event.account?.name || '-'}
