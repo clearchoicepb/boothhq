@@ -7,6 +7,13 @@ const log = createLogger('api:tasks')
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+// Event data structure for tasks linked to events
+interface EventInfo {
+  id: string
+  title: string
+  event_dates: Array<{ event_date: string }>
+}
+
 export async function GET(request: Request) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
@@ -65,7 +72,40 @@ export async function GET(request: Request) {
       throw error
     }
 
-    return NextResponse.json({ tasks: tasks || [] })
+    // Fetch event data for tasks linked to events
+    const eventTaskIds = (tasks || [])
+      .filter(t => t.entity_type === 'event' && t.entity_id)
+      .map(t => t.entity_id!)
+
+    const uniqueEventIds = [...new Set(eventTaskIds)]
+    const eventsMap: Record<string, EventInfo> = {}
+
+    if (uniqueEventIds.length > 0) {
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, title, event_dates(event_date)')
+        .eq('tenant_id', dataSourceTenantId)
+        .in('id', uniqueEventIds)
+
+      if (events) {
+        events.forEach((event: EventInfo) => {
+          eventsMap[event.id] = event
+        })
+      }
+    }
+
+    // Attach event info to tasks
+    const tasksWithEvents = (tasks || []).map(task => {
+      if (task.entity_type === 'event' && task.entity_id && eventsMap[task.entity_id]) {
+        return {
+          ...task,
+          event: eventsMap[task.entity_id]
+        }
+      }
+      return task
+    })
+
+    return NextResponse.json({ tasks: tasksWithEvents })
   } catch (error: any) {
     log.error({ error }, '[MyTasks] Error')
     return NextResponse.json(

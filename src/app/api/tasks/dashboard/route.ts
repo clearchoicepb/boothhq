@@ -8,6 +8,13 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('api:tasks')
 
+// Event data structure for tasks linked to events
+interface EventInfo {
+  id: string
+  title: string
+  event_dates: Array<{ event_date: string }>
+}
+
 /**
  * GET /api/tasks/dashboard
  *
@@ -105,8 +112,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Enrich tasks with urgency information
-    const tasksWithUrgency = (tasks || []).map(enrichTaskWithUrgency)
+    // Fetch event data for tasks linked to events
+    const eventTaskIds = (tasks || [])
+      .filter(t => t.entity_type === 'event' && t.entity_id)
+      .map(t => t.entity_id!)
+
+    const uniqueEventIds = [...new Set(eventTaskIds)]
+    const eventsMap: Record<string, EventInfo> = {}
+
+    if (uniqueEventIds.length > 0) {
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, title, event_dates(event_date)')
+        .eq('tenant_id', dataSourceTenantId)
+        .in('id', uniqueEventIds)
+
+      if (events) {
+        events.forEach((event: EventInfo) => {
+          eventsMap[event.id] = event
+        })
+      }
+    }
+
+    // Enrich tasks with urgency information and event data
+    const tasksWithUrgency = (tasks || []).map(task => {
+      const enriched = enrichTaskWithUrgency(task)
+      // Attach event info if this task is linked to an event
+      if (task.entity_type === 'event' && task.entity_id && eventsMap[task.entity_id]) {
+        return {
+          ...enriched,
+          event: eventsMap[task.entity_id]
+        }
+      }
+      return enriched
+    })
 
     // Calculate statistics
     const stats = calculateStats(tasksWithUrgency)
