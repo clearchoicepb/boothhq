@@ -302,6 +302,12 @@ export default function PublicInvoicePage() {
             {/* Invoice Dates */}
             <div>
               <div className="space-y-3">
+                {invoice.event_date && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Event Date</p>
+                    <p className="text-base font-semibold text-gray-900">{formatDate(invoice.event_date)}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</p>
                   <p className="text-base font-semibold text-gray-900">{formatDate(invoice.issue_date)}</p>

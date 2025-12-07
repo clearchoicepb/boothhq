@@ -11,6 +11,7 @@ export interface InvoicePDFData {
     account_name: string | null
     contact_name: string | null
     opportunity_name: string | null
+    event_date: string | null
     issue_date: string
     due_date: string
     status: string
@@ -182,6 +183,21 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
   // Right Column - Dates
   let rightColY = billingYStart
   const rightColX = margin + (contentWidth * 0.55)
+
+  // Add event date if exists
+  if (invoice.event_date) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(100, 100, 100)
+    doc.text('EVENT DATE', rightColX, rightColY)
+    rightColY += 5
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    doc.text(formatDate(invoice.event_date), rightColX, rightColY)
+    rightColY += 8
+  }
 
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
