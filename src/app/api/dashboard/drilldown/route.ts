@@ -37,7 +37,43 @@ export interface OpportunityRecord {
   accountName: string | null
   value: number
   stage: string
+  stageName: string
+  stageColor: string | null
   expectedCloseDate: string | null
+}
+
+interface StageConfig {
+  id: string
+  name: string
+  probability: number
+  color?: string
+  backgroundColor?: string
+  textColor?: string
+  enabled: boolean
+}
+
+const defaultStages: StageConfig[] = [
+  { id: 'prospecting', name: 'Prospecting', probability: 10, color: 'blue', enabled: true },
+  { id: 'qualification', name: 'Qualification', probability: 25, color: 'yellow', enabled: true },
+  { id: 'proposal', name: 'Proposal', probability: 50, color: 'purple', enabled: true },
+  { id: 'negotiation', name: 'Negotiation', probability: 75, color: 'orange', enabled: true },
+  { id: 'closed_won', name: 'Closed Won', probability: 100, color: 'green', enabled: true },
+  { id: 'closed_lost', name: 'Closed Lost', probability: 0, color: 'red', enabled: true }
+]
+
+function getStageName(stageId: string, stages: StageConfig[]): string {
+  const stage = stages.find(s => s.id === stageId)
+  if (stage?.name) return stage.name
+  // Fallback: format the ID nicely ('closed_won' → 'Closed Won')
+  return stageId
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function getStageColor(stageId: string, stages: StageConfig[]): string | null {
+  const stage = stages.find(s => s.id === stageId)
+  return stage?.color || stage?.backgroundColor || null
 }
 
 export interface DrilldownResponse {
@@ -264,6 +300,40 @@ export async function GET(request: NextRequest) {
       }
 
       case 'total-opportunities': {
+        // Fetch configured stages from tenant_settings
+        const { data: stageSettings } = await supabase
+          .from('tenant_settings')
+          .select('key, value')
+          .eq('tenant_id', dataSourceTenantId)
+          .like('key', 'opportunities.stages.%')
+
+        // Parse stages from settings
+        let stages: StageConfig[] = defaultStages
+        if (stageSettings && stageSettings.length > 0) {
+          try {
+            const stagesMap: Record<string, any> = {}
+            stageSettings.forEach((setting: any) => {
+              const stageId = setting.key.replace('opportunities.stages.', '')
+              try {
+                stagesMap[stageId] = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+              } catch {
+                stagesMap[stageId] = setting.value
+              }
+            })
+            stages = Object.entries(stagesMap).map(([id, config]: [string, any]) => ({
+              id,
+              name: config.name || id,
+              probability: config.probability || 0,
+              color: config.color,
+              backgroundColor: config.backgroundColor,
+              textColor: config.textColor,
+              enabled: config.enabled !== false
+            }))
+          } catch (e) {
+            log.warn({ error: e }, 'Failed to parse stage settings, using defaults')
+          }
+        }
+
         // Get all active opportunities
         const { data: opportunities, error } = await supabase
           .from('opportunities')
@@ -294,6 +364,8 @@ export async function GET(request: NextRequest) {
           accountName: opp.accounts?.name || null,
           value: opp.amount || 0,
           stage: opp.stage,
+          stageName: getStageName(opp.stage, stages),
+          stageColor: getStageColor(opp.stage, stages),
           expectedCloseDate: opp.expected_close_date
         }))
 
@@ -311,6 +383,40 @@ export async function GET(request: NextRequest) {
       }
 
       case 'new-opportunities': {
+        // Fetch configured stages from tenant_settings
+        const { data: stageSettings } = await supabase
+          .from('tenant_settings')
+          .select('key, value')
+          .eq('tenant_id', dataSourceTenantId)
+          .like('key', 'opportunities.stages.%')
+
+        // Parse stages from settings
+        let stages: StageConfig[] = defaultStages
+        if (stageSettings && stageSettings.length > 0) {
+          try {
+            const stagesMap: Record<string, any> = {}
+            stageSettings.forEach((setting: any) => {
+              const stageId = setting.key.replace('opportunities.stages.', '')
+              try {
+                stagesMap[stageId] = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+              } catch {
+                stagesMap[stageId] = setting.value
+              }
+            })
+            stages = Object.entries(stagesMap).map(([id, config]: [string, any]) => ({
+              id,
+              name: config.name || id,
+              probability: config.probability || 0,
+              color: config.color,
+              backgroundColor: config.backgroundColor,
+              textColor: config.textColor,
+              enabled: config.enabled !== false
+            }))
+          } catch (e) {
+            log.warn({ error: e }, 'Failed to parse stage settings, using defaults')
+          }
+        }
+
         // Get opportunities created within the period
         const { data: opportunities, error } = await supabase
           .from('opportunities')
@@ -340,6 +446,8 @@ export async function GET(request: NextRequest) {
           accountName: opp.accounts?.name || null,
           value: opp.amount || 0,
           stage: opp.stage,
+          stageName: getStageName(opp.stage, stages),
+          stageColor: getStageColor(opp.stage, stages),
           expectedCloseDate: null
         }))
 

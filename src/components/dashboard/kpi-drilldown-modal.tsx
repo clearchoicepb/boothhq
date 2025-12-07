@@ -285,16 +285,28 @@ function OpportunitiesTable({
               {record.value > 0 ? formatCurrency(record.value) : <span className="text-gray-400">-</span>}
             </td>
             <td className="px-4 py-3 whitespace-nowrap">
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                record.stage === 'closed_won' ? 'bg-green-100 text-green-800' :
-                record.stage === 'closed_lost' ? 'bg-red-100 text-red-800' :
-                record.stage === 'negotiation' ? 'bg-yellow-100 text-yellow-800' :
-                record.stage === 'proposal' ? 'bg-purple-100 text-purple-800' :
-                record.stage === 'qualification' ? 'bg-blue-100 text-blue-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {record.stage?.replace(/_/g, ' ')}
-              </span>
+              {record.stageColor ? (
+                <span
+                  className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                  style={{
+                    backgroundColor: `${record.stageColor}20`,
+                    color: record.stageColor
+                  }}
+                >
+                  {record.stageName || record.stage?.replace(/_/g, ' ')}
+                </span>
+              ) : (
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  record.stage === 'closed_won' ? 'bg-green-100 text-green-800' :
+                  record.stage === 'closed_lost' ? 'bg-red-100 text-red-800' :
+                  record.stage === 'negotiation' ? 'bg-yellow-100 text-yellow-800' :
+                  record.stage === 'proposal' ? 'bg-purple-100 text-purple-800' :
+                  record.stage === 'qualification' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {record.stageName || record.stage?.replace(/_/g, ' ')}
+                </span>
+              )}
             </td>
             {showExpectedClose && (
               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
