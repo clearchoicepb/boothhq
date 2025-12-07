@@ -1,0 +1,371 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest, NextResponse } from 'next/server'
+import { getTenantContext } from '@/lib/tenant-helpers'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:dashboard:drilldown')
+
+export type DrilldownType = 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
+export type DrilldownPeriod = 'week' | 'month' | 'year'
+
+export interface EventOccurringRecord {
+  id: string
+  eventId: string
+  eventDate: string
+  eventName: string
+  accountName: string | null
+  location: string | null
+  eventType: string | null
+  eventCategory: string | null
+  eventCategoryColor: string | null
+  status: string
+}
+
+export interface EventBookedRecord {
+  id: string
+  createdAt: string
+  eventName: string
+  eventDate: string
+  accountName: string | null
+  revenue: number
+}
+
+export interface OpportunityRecord {
+  id: string
+  createdAt: string
+  name: string
+  accountName: string | null
+  value: number
+  stage: string
+  expectedCloseDate: string | null
+}
+
+export interface DrilldownResponse {
+  type: DrilldownType
+  period: DrilldownPeriod | null
+  periodLabel: string
+  records: EventOccurringRecord[] | EventBookedRecord[] | OpportunityRecord[]
+  totalCount: number
+  totalRevenue?: number
+}
+
+/**
+ * GET /api/dashboard/drilldown
+ * Returns detailed records for dashboard KPI drilldowns
+ *
+ * Query params:
+ * - type: 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
+ * - period: 'week' | 'month' | 'year' (not used for total-opportunities)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId } = context
+    const { searchParams } = new URL(request.url)
+
+    const type = searchParams.get('type') as DrilldownType
+    const period = searchParams.get('period') as DrilldownPeriod || 'month'
+
+    if (!type) {
+      return NextResponse.json({ error: 'type parameter is required' }, { status: 400 })
+    }
+
+    // Get date ranges
+    const now = new Date()
+
+    // Week range (Monday to Sunday)
+    const dayOfWeek = now.getDay()
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() - daysToMonday)
+    weekStart.setHours(0, 0, 0, 0)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+    const weekStartISO = weekStart.toISOString().split('T')[0]
+    const weekEndISO = weekEnd.toISOString().split('T')[0]
+
+    // Month range
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const monthStartISO = monthStart.toISOString().split('T')[0]
+    const monthEndISO = monthEnd.toISOString().split('T')[0]
+
+    // Year range
+    const yearStartISO = `${now.getFullYear()}-01-01`
+    const yearEndISO = `${now.getFullYear()}-12-31`
+
+    // Select date range based on period
+    let startISO: string
+    let endISO: string
+    let periodLabel: string
+
+    switch (period) {
+      case 'week':
+        startISO = weekStartISO
+        endISO = weekEndISO
+        periodLabel = 'This Week'
+        break
+      case 'year':
+        startISO = yearStartISO
+        endISO = yearEndISO
+        periodLabel = 'This Year'
+        break
+      case 'month':
+      default:
+        startISO = monthStartISO
+        endISO = monthEndISO
+        periodLabel = 'This Month'
+    }
+
+    let response: DrilldownResponse
+
+    switch (type) {
+      case 'events-occurring': {
+        // Get event dates within the period with event details
+        const { data: eventDates, error } = await supabase
+          .from('event_dates')
+          .select(`
+            id,
+            event_date,
+            event_id,
+            location_id,
+            locations(name),
+            events!inner(
+              id,
+              title,
+              status,
+              location,
+              account_id,
+              accounts(name),
+              event_categories(name, color),
+              event_types(name)
+            )
+          `)
+          .eq('tenant_id', dataSourceTenantId)
+          .gte('event_date', startISO)
+          .lte('event_date', endISO)
+          .order('event_date', { ascending: true })
+
+        if (error) {
+          log.error({ error }, 'Failed to fetch events occurring')
+          return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
+        }
+
+        const records: EventOccurringRecord[] = (eventDates || []).map((ed: any) => ({
+          id: ed.id,
+          eventId: ed.events?.id || ed.event_id,
+          eventDate: ed.event_date,
+          eventName: ed.events?.title || 'Untitled Event',
+          accountName: ed.events?.accounts?.name || null,
+          location: ed.locations?.name || ed.events?.location || null,
+          eventType: ed.events?.event_types?.name || null,
+          eventCategory: ed.events?.event_categories?.name || null,
+          eventCategoryColor: ed.events?.event_categories?.color || null,
+          status: ed.events?.status || 'unknown'
+        }))
+
+        response = {
+          type,
+          period,
+          periodLabel,
+          records,
+          totalCount: records.length
+        }
+        break
+      }
+
+      case 'events-booked': {
+        // Get events created within the period
+        const { data: events, error: eventsError } = await supabase
+          .from('events')
+          .select(`
+            id,
+            title,
+            created_at,
+            start_date,
+            opportunity_id,
+            account_id,
+            accounts(name)
+          `)
+          .eq('tenant_id', dataSourceTenantId)
+          .gte('created_at', `${startISO}T00:00:00`)
+          .lte('created_at', `${endISO}T23:59:59`)
+          .order('created_at', { ascending: false })
+
+        if (eventsError) {
+          log.error({ error: eventsError }, 'Failed to fetch events booked')
+          return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
+        }
+
+        // Get invoices for these events
+        const eventIds = (events || []).map((e: any) => e.id)
+        const opportunityIds = (events || []).map((e: any) => e.opportunity_id).filter(Boolean)
+
+        const invoicesByEvent: Record<string, number> = {}
+        const opportunityAmounts: Record<string, number> = {}
+
+        if (eventIds.length > 0) {
+          const { data: invoices } = await supabase
+            .from('invoices')
+            .select('event_id, total_amount')
+            .eq('tenant_id', dataSourceTenantId)
+            .in('event_id', eventIds)
+
+          if (invoices) {
+            invoices.forEach((inv: any) => {
+              if (inv.event_id) {
+                invoicesByEvent[inv.event_id] = (invoicesByEvent[inv.event_id] || 0) + (inv.total_amount || 0)
+              }
+            })
+          }
+        }
+
+        if (opportunityIds.length > 0) {
+          const { data: opportunities } = await supabase
+            .from('opportunities')
+            .select('id, amount')
+            .in('id', opportunityIds)
+
+          if (opportunities) {
+            opportunities.forEach((opp: any) => {
+              opportunityAmounts[opp.id] = opp.amount || 0
+            })
+          }
+        }
+
+        const records: EventBookedRecord[] = (events || []).map((e: any) => {
+          let revenue = invoicesByEvent[e.id] || 0
+          if (!revenue && e.opportunity_id && opportunityAmounts[e.opportunity_id]) {
+            revenue = opportunityAmounts[e.opportunity_id]
+          }
+          return {
+            id: e.id,
+            createdAt: e.created_at,
+            eventName: e.title || 'Untitled Event',
+            eventDate: e.start_date,
+            accountName: e.accounts?.name || null,
+            revenue
+          }
+        })
+
+        const totalRevenue = records.reduce((sum, r) => sum + r.revenue, 0)
+
+        response = {
+          type,
+          period,
+          periodLabel,
+          records,
+          totalCount: records.length,
+          totalRevenue
+        }
+        break
+      }
+
+      case 'total-opportunities': {
+        // Get all active opportunities
+        const { data: opportunities, error } = await supabase
+          .from('opportunities')
+          .select(`
+            id,
+            name,
+            created_at,
+            amount,
+            stage,
+            expected_close_date,
+            account_id,
+            accounts(name)
+          `)
+          .eq('tenant_id', dataSourceTenantId)
+          .not('stage', 'in', '("closed_won","closed_lost")')
+          .eq('is_converted', false)
+          .order('amount', { ascending: false, nullsFirst: false })
+
+        if (error) {
+          log.error({ error }, 'Failed to fetch total opportunities')
+          return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
+        }
+
+        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => ({
+          id: opp.id,
+          createdAt: opp.created_at,
+          name: opp.name,
+          accountName: opp.accounts?.name || null,
+          value: opp.amount || 0,
+          stage: opp.stage,
+          expectedCloseDate: opp.expected_close_date
+        }))
+
+        const totalRevenue = records.reduce((sum, r) => sum + r.value, 0)
+
+        response = {
+          type,
+          period: null,
+          periodLabel: 'Active Pipeline',
+          records,
+          totalCount: records.length,
+          totalRevenue
+        }
+        break
+      }
+
+      case 'new-opportunities': {
+        // Get opportunities created within the period
+        const { data: opportunities, error } = await supabase
+          .from('opportunities')
+          .select(`
+            id,
+            name,
+            created_at,
+            amount,
+            stage,
+            account_id,
+            accounts(name)
+          `)
+          .eq('tenant_id', dataSourceTenantId)
+          .gte('created_at', `${startISO}T00:00:00`)
+          .lte('created_at', `${endISO}T23:59:59`)
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          log.error({ error }, 'Failed to fetch new opportunities')
+          return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
+        }
+
+        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => ({
+          id: opp.id,
+          createdAt: opp.created_at,
+          name: opp.name,
+          accountName: opp.accounts?.name || null,
+          value: opp.amount || 0,
+          stage: opp.stage,
+          expectedCloseDate: null
+        }))
+
+        const totalRevenue = records.reduce((sum, r) => sum + r.value, 0)
+
+        response = {
+          type,
+          period,
+          periodLabel,
+          records,
+          totalCount: records.length,
+          totalRevenue
+        }
+        break
+      }
+
+      default:
+        return NextResponse.json({ error: 'Invalid type parameter' }, { status: 400 })
+    }
+
+    const jsonResponse = NextResponse.json(response)
+    jsonResponse.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
+
+    return jsonResponse
+  } catch (error) {
+    log.error({ error }, 'Unexpected error in GET /api/dashboard/drilldown')
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

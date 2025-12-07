@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
         {/* KPI Cards Section */}
         <div className="mb-6 lg:mb-8">
-          <KPICardsSection />
+          <KPICardsSection tenantSubdomain={tenantSubdomain} />
         </div>
 
         {/* This Week's Events Table */}
