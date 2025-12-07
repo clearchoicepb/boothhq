@@ -36,6 +36,8 @@ export interface OpportunityRecord {
   name: string
   accountName: string | null
   value: number
+  probability: number
+  weightedValue: number
   stage: string
   stageName: string
   stageColor: string | null
@@ -76,6 +78,11 @@ function getStageColor(stageId: string, stages: StageConfig[]): string | null {
   return stage?.color || stage?.backgroundColor || null
 }
 
+function getStageProbability(stageId: string, stages: StageConfig[]): number {
+  const stage = stages.find(s => s.id === stageId)
+  return stage?.probability ?? 0
+}
+
 export interface DrilldownResponse {
   type: DrilldownType
   period: DrilldownPeriod | null
@@ -83,6 +90,7 @@ export interface DrilldownResponse {
   records: EventOccurringRecord[] | EventBookedRecord[] | OpportunityRecord[]
   totalCount: number
   totalRevenue?: number
+  totalWeightedRevenue?: number
 }
 
 /**
@@ -387,19 +395,26 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => ({
-          id: opp.id,
-          createdAt: opp.created_at,
-          name: opp.name,
-          accountName: opp.accounts?.name || null,
-          value: opp.amount || 0,
-          stage: opp.stage,
-          stageName: getStageName(opp.stage, stages),
-          stageColor: getStageColor(opp.stage, stages),
-          expectedCloseDate: opp.expected_close_date
-        }))
+        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => {
+          const probability = getStageProbability(opp.stage, stages)
+          const value = opp.amount || 0
+          return {
+            id: opp.id,
+            createdAt: opp.created_at,
+            name: opp.name,
+            accountName: opp.accounts?.name || null,
+            value,
+            probability,
+            weightedValue: value * (probability / 100),
+            stage: opp.stage,
+            stageName: getStageName(opp.stage, stages),
+            stageColor: getStageColor(opp.stage, stages),
+            expectedCloseDate: opp.expected_close_date
+          }
+        })
 
         const totalRevenue = records.reduce((sum, r) => sum + r.value, 0)
+        const totalWeightedRevenue = records.reduce((sum, r) => sum + r.weightedValue, 0)
 
         response = {
           type,
@@ -407,7 +422,8 @@ export async function GET(request: NextRequest) {
           periodLabel: 'Active Pipeline',
           records,
           totalCount: records.length,
-          totalRevenue
+          totalRevenue,
+          totalWeightedRevenue
         }
         break
       }
@@ -499,19 +515,26 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => ({
-          id: opp.id,
-          createdAt: opp.created_at,
-          name: opp.name,
-          accountName: opp.accounts?.name || null,
-          value: opp.amount || 0,
-          stage: opp.stage,
-          stageName: getStageName(opp.stage, stages),
-          stageColor: getStageColor(opp.stage, stages),
-          expectedCloseDate: null
-        }))
+        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => {
+          const probability = getStageProbability(opp.stage, stages)
+          const value = opp.amount || 0
+          return {
+            id: opp.id,
+            createdAt: opp.created_at,
+            name: opp.name,
+            accountName: opp.accounts?.name || null,
+            value,
+            probability,
+            weightedValue: value * (probability / 100),
+            stage: opp.stage,
+            stageName: getStageName(opp.stage, stages),
+            stageColor: getStageColor(opp.stage, stages),
+            expectedCloseDate: null
+          }
+        })
 
         const totalRevenue = records.reduce((sum, r) => sum + r.value, 0)
+        const totalWeightedRevenue = records.reduce((sum, r) => sum + r.weightedValue, 0)
 
         response = {
           type,
@@ -519,7 +542,8 @@ export async function GET(request: NextRequest) {
           periodLabel,
           records,
           totalCount: records.length,
-          totalRevenue
+          totalRevenue,
+          totalWeightedRevenue
         }
         break
       }

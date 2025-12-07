@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import Link from 'next/link'
 import { Calendar } from 'lucide-react'
@@ -12,6 +13,8 @@ import type {
   OpportunityRecord
 } from '@/hooks/useDashboardDrilldown'
 import { formatDateShort } from '@/lib/utils/date-utils'
+
+type ValueDisplayMode = 'actual' | 'weighted'
 
 interface KPIDrilldownModalProps {
   isOpen: boolean
@@ -232,11 +235,13 @@ function EventsBookedTable({
 function OpportunitiesTable({
   records,
   tenantSubdomain,
-  showExpectedClose = false
+  showExpectedClose = false,
+  valueMode = 'actual'
 }: {
   records: OpportunityRecord[]
   tenantSubdomain: string
   showExpectedClose?: boolean
+  valueMode?: ValueDisplayMode
 }) {
   return (
     <table className="min-w-full divide-y divide-gray-200">
@@ -252,7 +257,7 @@ function OpportunitiesTable({
             Account
           </th>
           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Value
+            {valueMode === 'weighted' ? 'Weighted Value' : 'Value'}
           </th>
           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Stage
@@ -265,35 +270,38 @@ function OpportunitiesTable({
         </tr>
       </thead>
       <tbody className="bg-white divide-y divide-gray-200">
-        {records.map((record) => (
-          <tr key={record.id} className="hover:bg-gray-50">
-            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-              {formatDateTime(record.createdAt)}
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap">
-              <Link
-                href={`/${tenantSubdomain}/opportunities/${record.id}`}
-                className="text-sm font-medium text-[#347dc4] hover:text-[#2c6ba8] hover:underline"
-              >
-                {record.name}
-              </Link>
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-              {record.accountName || <span className="text-gray-400">No account</span>}
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-              {record.value > 0 ? formatCurrency(record.value) : <span className="text-gray-400">-</span>}
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-              {record.stageName || record.stage?.replace(/_/g, ' ')}
-            </td>
-            {showExpectedClose && (
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                {record.expectedCloseDate ? formatDateShort(record.expectedCloseDate) : <span className="text-gray-400">-</span>}
+        {records.map((record) => {
+          const displayValue = valueMode === 'weighted' ? record.weightedValue : record.value
+          return (
+            <tr key={record.id} className="hover:bg-gray-50">
+              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                {formatDateTime(record.createdAt)}
               </td>
-            )}
-          </tr>
-        ))}
+              <td className="px-4 py-3 whitespace-nowrap">
+                <Link
+                  href={`/${tenantSubdomain}/opportunities/${record.id}`}
+                  className="text-sm font-medium text-[#347dc4] hover:text-[#2c6ba8] hover:underline"
+                >
+                  {record.name}
+                </Link>
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                {record.accountName || <span className="text-gray-400">No account</span>}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                {displayValue > 0 ? formatCurrency(displayValue) : <span className="text-gray-400">-</span>}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                {record.stageName || record.stage?.replace(/_/g, ' ')}
+              </td>
+              {showExpectedClose && (
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                  {record.expectedCloseDate ? formatDateShort(record.expectedCloseDate) : <span className="text-gray-400">-</span>}
+                </td>
+              )}
+            </tr>
+          )
+        })}
       </tbody>
     </table>
   )
@@ -306,6 +314,7 @@ export function KPIDrilldownModal({
   period,
   tenantSubdomain
 }: KPIDrilldownModalProps) {
+  const [valueMode, setValueMode] = useState<ValueDisplayMode>('actual')
   const { data, isLoading, error } = useDashboardDrilldown({
     type,
     period,
@@ -314,6 +323,7 @@ export function KPIDrilldownModal({
 
   const title = getModalTitle(type, data?.periodLabel || period)
   const isEmpty = !isLoading && (!data?.records || data.records.length === 0)
+  const isOpportunityType = type === 'total-opportunities' || type === 'new-opportunities'
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} className="sm:max-w-5xl">
@@ -322,6 +332,36 @@ export function KPIDrilldownModal({
         <p className="text-sm text-gray-500 -mt-2 mb-4">
           Showing: {data.periodLabel}
         </p>
+      )}
+
+      {/* Value toggle for opportunities */}
+      {isOpportunityType && !isLoading && !isEmpty && (
+        <div className="flex justify-end mb-3">
+          <div className="inline-flex rounded-md shadow-sm" role="group">
+            <button
+              type="button"
+              onClick={() => setValueMode('actual')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-l-md border ${
+                valueMode === 'actual'
+                  ? 'bg-[#347dc4] text-white border-[#347dc4]'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Actual Value
+            </button>
+            <button
+              type="button"
+              onClick={() => setValueMode('weighted')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-r-md border-t border-b border-r ${
+                valueMode === 'weighted'
+                  ? 'bg-[#347dc4] text-white border-[#347dc4]'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Weighted Value
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Loading State */}
@@ -368,12 +408,14 @@ export function KPIDrilldownModal({
                 records={data.records as OpportunityRecord[]}
                 tenantSubdomain={tenantSubdomain}
                 showExpectedClose
+                valueMode={valueMode}
               />
             )}
             {type === 'new-opportunities' && (
               <OpportunitiesTable
                 records={data.records as OpportunityRecord[]}
                 tenantSubdomain={tenantSubdomain}
+                valueMode={valueMode}
               />
             )}
           </div>
@@ -383,9 +425,17 @@ export function KPIDrilldownModal({
             <span className="text-gray-600">
               Total: <span className="font-semibold text-gray-900">{data.totalCount} {data.totalCount === 1 ? 'item' : 'items'}</span>
             </span>
-            {data.totalRevenue !== undefined && data.totalRevenue > 0 && (
+            {isOpportunityType && (
               <span className="text-gray-600">
-                {type === 'total-opportunities' ? 'Pipeline Value' : type === 'events-booked' ? 'Total Revenue' : 'Total Value'}:{' '}
+                {valueMode === 'weighted' ? 'Weighted Pipeline' : 'Pipeline Value'}:{' '}
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(valueMode === 'weighted' ? (data.totalWeightedRevenue || 0) : (data.totalRevenue || 0))}
+                </span>
+              </span>
+            )}
+            {!isOpportunityType && data.totalRevenue !== undefined && data.totalRevenue > 0 && (
+              <span className="text-gray-600">
+                {type === 'events-booked' ? 'Total Revenue' : 'Total Value'}:{' '}
                 <span className="font-semibold text-gray-900">{formatCurrency(data.totalRevenue)}</span>
               </span>
             )}
