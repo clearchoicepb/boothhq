@@ -296,7 +296,7 @@ export function toDateTimeLocalValue(datetimeString: string | null | undefined):
 
   try {
     // Handle different datetime formats and extract the datetime portion
-    let cleaned = datetimeString.trim()
+    const cleaned = datetimeString.trim()
 
     // If it already has the format YYYY-MM-DDTHH:mm, extract just that
     const match = cleaned.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/)
@@ -351,6 +351,147 @@ export function formatDateTimeLocal(datetimeString: string | null | undefined): 
   } catch (error) {
     log.error({ error }, 'Error formatting datetime local')
     return 'Not set'
+  }
+}
+
+// =====================================================
+// DATE RANGE UTILITIES
+// =====================================================
+
+export interface DateRange {
+  start: Date
+  end: Date
+  startISO: string  // YYYY-MM-DD format for database queries
+  endISO: string    // YYYY-MM-DD format for database queries
+}
+
+/**
+ * Get the current week's date range (Monday 00:00:00 to Sunday 23:59:59)
+ *
+ * @returns DateRange object with start and end dates for the current week
+ *
+ * @example
+ * // If today is Wednesday, Dec 4, 2025:
+ * getWeekRange()
+ * // → { start: Mon Dec 1, end: Sun Dec 7, startISO: '2025-12-01', endISO: '2025-12-07' }
+ */
+export function getWeekRange(): DateRange {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Get current day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const dayOfWeek = today.getDay()
+
+  // Calculate days to subtract to get to Monday
+  // If Sunday (0), go back 6 days; otherwise, go back (dayOfWeek - 1) days
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+
+  const start = new Date(today)
+  start.setDate(today.getDate() - daysToMonday)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  end.setHours(23, 59, 59, 999)
+
+  return {
+    start,
+    end,
+    startISO: toDateInputValue(start),
+    endISO: toDateInputValue(end)
+  }
+}
+
+/**
+ * Get the current month's date range (1st day 00:00:00 to last day 23:59:59)
+ *
+ * @returns DateRange object with start and end dates for the current month
+ *
+ * @example
+ * // If today is Dec 15, 2025:
+ * getMonthRange()
+ * // → { start: Dec 1, end: Dec 31, startISO: '2025-12-01', endISO: '2025-12-31' }
+ */
+export function getMonthRange(): DateRange {
+  const today = new Date()
+
+  const start = new Date(today.getFullYear(), today.getMonth(), 1)
+  start.setHours(0, 0, 0, 0)
+
+  // Last day of month: go to next month's day 0
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  end.setHours(23, 59, 59, 999)
+
+  return {
+    start,
+    end,
+    startISO: toDateInputValue(start),
+    endISO: toDateInputValue(end)
+  }
+}
+
+/**
+ * Get the current year's date range (Jan 1 00:00:00 to Dec 31 23:59:59)
+ *
+ * @returns DateRange object with start and end dates for the current year
+ *
+ * @example
+ * // If today is any day in 2025:
+ * getYearRange()
+ * // → { start: Jan 1, end: Dec 31, startISO: '2025-01-01', endISO: '2025-12-31' }
+ */
+export function getYearRange(): DateRange {
+  const today = new Date()
+  const year = today.getFullYear()
+
+  const start = new Date(year, 0, 1)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(year, 11, 31)
+  end.setHours(23, 59, 59, 999)
+
+  return {
+    start,
+    end,
+    startISO: toDateInputValue(start),
+    endISO: toDateInputValue(end)
+  }
+}
+
+/**
+ * Get date range for a specified period
+ *
+ * @param period - 'week' | 'month' | 'year'
+ * @returns DateRange object for the specified period
+ */
+export function getDateRangeForPeriod(period: 'week' | 'month' | 'year'): DateRange {
+  switch (period) {
+    case 'week':
+      return getWeekRange()
+    case 'month':
+      return getMonthRange()
+    case 'year':
+      return getYearRange()
+    default:
+      return getMonthRange()
+  }
+}
+
+/**
+ * Check if a date string falls within a date range
+ *
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @param range - DateRange object to check against
+ * @returns true if the date is within the range (inclusive)
+ */
+export function isDateInRange(dateString: string | null | undefined, range: DateRange): boolean {
+  if (!dateString) return false
+
+  try {
+    const date = parseLocalDate(dateString)
+    return date >= range.start && date <= range.end
+  } catch {
+    return false
   }
 }
 
