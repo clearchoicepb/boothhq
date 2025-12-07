@@ -78,7 +78,7 @@ export function Calendar({ events, onEventClick, className = '' }: CalendarProps
     // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(
-        <div key={`empty-${i}`} className="h-20 border-r border-b border-gray-200 bg-gray-50"></div>
+        <div key={`empty-${i}`} className="min-h-20 border-r border-b border-gray-200 bg-gray-50"></div>
       )
     }
 
@@ -89,9 +89,9 @@ export function Calendar({ events, onEventClick, className = '' }: CalendarProps
       const isToday = date.toDateString() === new Date().toDateString()
 
       days.push(
-        <div 
-          key={day} 
-          className={`h-20 border-r border-b border-gray-200 p-2 ${
+        <div
+          key={day}
+          className={`min-h-20 border-r border-b border-gray-200 p-2 ${
             isToday ? 'bg-[#347dc4]/10' : 'bg-white'
           } hover:bg-gray-50 transition-colors duration-200`}
         >
@@ -101,7 +101,7 @@ export function Calendar({ events, onEventClick, className = '' }: CalendarProps
             {day}
           </div>
           <div className="space-y-1">
-            {dayEvents.slice(0, 2).map((event) => (
+            {dayEvents.map((event) => (
               <div
                 key={event.id}
                 onClick={() => onEventClick?.(event)}
@@ -111,11 +111,6 @@ export function Calendar({ events, onEventClick, className = '' }: CalendarProps
                 {getEventDisplayName(event.name)}
               </div>
             ))}
-            {dayEvents.length > 2 && (
-              <div className="text-xs text-gray-500 px-1">
-                +{dayEvents.length - 2} more
-              </div>
-            )}
           </div>
         </div>
       )
@@ -161,7 +156,7 @@ export function Calendar({ events, onEventClick, className = '' }: CalendarProps
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7" style={{ gridAutoRows: 'minmax(80px, auto)' }}>
         {renderCalendarDays()}
       </div>
     </div>

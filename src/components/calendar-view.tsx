@@ -178,10 +178,10 @@ export function CalendarView({ events, onDateClick, onEventClick, className = ''
         </div>
 
         {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-1" style={{ gridAutoRows: 'minmax(96px, auto)' }}>
           {calendarDays.map((date, index) => {
             if (!date) {
-              return <div key={index} className="h-24 border border-gray-100"></div>
+              return <div key={index} className="min-h-24 border border-gray-100"></div>
             }
 
             const dayEvents = getEventsForDate(date)
@@ -191,7 +191,7 @@ export function CalendarView({ events, onDateClick, onEventClick, className = ''
             return (
               <div
                 key={date.toISOString()}
-                className={`h-24 border border-gray-100 p-1 cursor-pointer hover:bg-gray-50 ${
+                className={`min-h-24 border border-gray-100 p-1 cursor-pointer hover:bg-gray-50 ${
                   isToday ? 'bg-blue-50 border-blue-200' : ''
                 } ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : ''}`}
                 onClick={() => onDateClick?.(date.toISOString().split('T')[0])}
@@ -200,7 +200,7 @@ export function CalendarView({ events, onDateClick, onEventClick, className = ''
                   {date.getDate()}
                 </div>
                 <div className="space-y-1">
-                  {dayEvents.slice(0, 2).map(event => (
+                  {dayEvents.map(event => (
                     <div
                       key={event.id}
                       className={`text-xs p-1 rounded border truncate cursor-pointer ${getStatusColor(event.status, event.type)}`}
@@ -213,11 +213,6 @@ export function CalendarView({ events, onDateClick, onEventClick, className = ''
                       {event.title}
                     </div>
                   ))}
-                  {dayEvents.length > 2 && (
-                    <div className="text-xs text-gray-500">
-                      +{dayEvents.length - 2} more
-                    </div>
-                  )}
                 </div>
               </div>
             )
