@@ -759,10 +759,31 @@ export default function OpportunityDetailPage() {
                             confirmText: 'Delete',
                             variant: 'danger'
                           })
-                          
+
                           if (confirmed) {
-                            // TODO: Add delete logic here
-                            toast.error('Delete functionality not yet implemented')
+                            const toastId = toast.loading('Deleting opportunity...')
+                            try {
+                              const response = await fetch(`/api/opportunities/${opportunity.id}`, {
+                                method: 'DELETE'
+                              })
+
+                              if (!response.ok) {
+                                const errorData = await response.json()
+                                throw new Error(errorData.error || 'Failed to delete opportunity')
+                              }
+
+                              // Invalidate opportunities cache
+                              queryClient.invalidateQueries({ queryKey: ['opportunities'] })
+
+                              toast.success('Opportunity deleted successfully', { id: toastId })
+                              router.push(`/${tenantSubdomain}/opportunities`)
+                            } catch (error) {
+                              log.error({ error }, 'Error deleting opportunity')
+                              toast.error(
+                                error instanceof Error ? error.message : 'Failed to delete opportunity',
+                                { id: toastId }
+                              )
+                            }
                           }
                           setIsActionsOpen(false)
                         }}
