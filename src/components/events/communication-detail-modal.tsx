@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
+import { linkifyText } from "@/lib/linkify"
 
 interface CommunicationDetailModalProps {
   communication: any | null
@@ -73,7 +74,11 @@ export function CommunicationDetailModal({
                  'Notes'}
               </label>
               <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
-                <p className="whitespace-pre-wrap text-sm text-gray-900">{communication.notes}</p>
+                <p className="whitespace-pre-wrap text-sm text-gray-900">
+                  {communication.communication_type === 'sms'
+                    ? linkifyText(communication.notes, 'text-blue-600 underline hover:text-blue-800')
+                    : communication.notes}
+                </p>
               </div>
             </div>
           )}

@@ -16,6 +16,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileText, MessageSquare } from 'lucide-react'
 import { SMSThread } from '@/components/sms-thread'
+import { linkifyText } from '@/lib/linkify'
 
 export interface Communication {
   id: string
@@ -205,7 +206,11 @@ export function CommunicationsTab({
                       <h4 className={`${subjectText} font-medium text-gray-900 mb-1`}>{comm.subject}</h4>
                     )}
                     {comm.notes && (
-                      <p className={`${notesText} text-gray-600 ${maxLines}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{comm.notes}</p>
+                      <p className={`${notesText} text-gray-600 ${maxLines}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {comm.communication_type === 'sms'
+                          ? linkifyText(comm.notes, 'text-blue-600 underline hover:text-blue-800')
+                          : comm.notes}
+                      </p>
                     )}
                   </div>
                 ))}

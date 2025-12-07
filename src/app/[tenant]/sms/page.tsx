@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { useSettings } from '@/lib/settings-context'
 import { useSMSNotifications } from '@/lib/sms-notifications-context'
+import { linkifyText } from '@/lib/linkify'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 
@@ -619,7 +620,12 @@ export default function SMSMessagesPage() {
                           }`}
                         >
                           <p className={`text-sm whitespace-pre-wrap break-words ${isRecent && msg.direction === 'inbound' ? 'font-semibold' : ''}`}>
-                            {msg.notes}
+                            {linkifyText(
+                              msg.notes,
+                              msg.direction === 'outbound'
+                                ? 'underline hover:opacity-80'
+                                : 'text-blue-600 underline hover:text-blue-800'
+                            )}
                           </p>
                           <p
                             className={`text-xs mt-1 ${
