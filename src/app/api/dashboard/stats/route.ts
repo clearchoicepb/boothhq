@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
@@ -39,7 +40,6 @@ export async function GET(_request: NextRequest) {
 
     // Get date ranges
     const now = new Date()
-    const today = now.toISOString().split('T')[0]
 
     // Week range (Monday to Sunday)
     const dayOfWeek = now.getDay()
@@ -49,7 +49,6 @@ export async function GET(_request: NextRequest) {
     weekStart.setHours(0, 0, 0, 0)
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6)
-    weekEnd.setHours(23, 59, 59, 999)
     const weekStartISO = weekStart.toISOString().split('T')[0]
     const weekEndISO = weekEnd.toISOString().split('T')[0]
 
@@ -63,135 +62,195 @@ export async function GET(_request: NextRequest) {
     const yearStartISO = `${now.getFullYear()}-01-01`
     const yearEndISO = `${now.getFullYear()}-12-31`
 
-    // Fetch all required data in parallel
+    // =====================================================
+    // EVENTS OCCURRING - Count event_dates with linked events
+    // Uses inner join with events table (events!inner)
+    // =====================================================
     const [
-      eventDatesResult,
-      eventsResult,
-      opportunitiesResult,
-      invoicesResult
+      eventsOccurringWeekResult,
+      eventsOccurringMonthResult,
+      eventsOccurringYearResult
     ] = await Promise.all([
-      // Event dates for "Events Occurring" - when events actually happen
       supabase
         .from('event_dates')
-        .select('id, event_date, event_id')
-        .eq('tenant_id', dataSourceTenantId),
-
-      // Events for "Events Booked" - when events were created
-      supabase
-        .from('events')
-        .select('id, created_at, opportunity_id')
-        .eq('tenant_id', dataSourceTenantId),
-
-      // Opportunities for pipeline stats
-      supabase
-        .from('opportunities')
-        .select('id, stage, amount, created_at, is_converted')
-        .eq('tenant_id', dataSourceTenantId),
-
-      // Invoices linked to events for revenue calculation
-      supabase
-        .from('invoices')
-        .select('id, event_id, opportunity_id, total_amount, created_at')
+        .select('id, events!inner(id)', { count: 'exact', head: true })
         .eq('tenant_id', dataSourceTenantId)
+        .gte('event_date', weekStartISO)
+        .lte('event_date', weekEndISO),
+      supabase
+        .from('event_dates')
+        .select('id, events!inner(id)', { count: 'exact', head: true })
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('event_date', monthStartISO)
+        .lte('event_date', monthEndISO),
+      supabase
+        .from('event_dates')
+        .select('id, events!inner(id)', { count: 'exact', head: true })
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('event_date', yearStartISO)
+        .lte('event_date', yearEndISO)
     ])
 
-    // Handle errors
-    if (eventDatesResult.error) {
-      log.error({ error: eventDatesResult.error }, 'Failed to fetch event dates')
-    }
-    if (eventsResult.error) {
-      log.error({ error: eventsResult.error }, 'Failed to fetch events')
-    }
-    if (opportunitiesResult.error) {
-      log.error({ error: opportunitiesResult.error }, 'Failed to fetch opportunities')
-    }
-    if (invoicesResult.error) {
-      log.error({ error: invoicesResult.error }, 'Failed to fetch invoices')
-    }
+    const eventsOccurringWeek = eventsOccurringWeekResult.count || 0
+    const eventsOccurringMonth = eventsOccurringMonthResult.count || 0
+    const eventsOccurringYear = eventsOccurringYearResult.count || 0
 
-    const eventDates = eventDatesResult.data || []
-    const events = eventsResult.data || []
-    const opportunities = opportunitiesResult.data || []
-    const invoices = invoicesResult.data || []
+    // =====================================================
+    // EVENTS BOOKED - Count events by created_at with revenue
+    // =====================================================
+    const [
+      eventsBookedWeekResult,
+      eventsBookedMonthResult,
+      eventsBookedYearResult
+    ] = await Promise.all([
+      supabase
+        .from('events')
+        .select('id, opportunity_id')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${weekStartISO}T00:00:00`)
+        .lte('created_at', `${weekEndISO}T23:59:59`),
+      supabase
+        .from('events')
+        .select('id, opportunity_id')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${monthStartISO}T00:00:00`)
+        .lte('created_at', `${monthEndISO}T23:59:59`),
+      supabase
+        .from('events')
+        .select('id, opportunity_id')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${yearStartISO}T00:00:00`)
+        .lte('created_at', `${yearEndISO}T23:59:59`)
+    ])
 
-    // Build event to invoice/opportunity amount map for revenue calculation
-    const eventRevenueMap: Record<string, number> = {}
+    // Get all invoices and opportunities for revenue calculation
+    const allEventIds = [
+      ...(eventsBookedWeekResult.data || []),
+      ...(eventsBookedMonthResult.data || []),
+      ...(eventsBookedYearResult.data || [])
+    ].map(e => e.id)
 
-    // First, map invoice totals to events
-    invoices.forEach(invoice => {
-      if (invoice.event_id) {
-        eventRevenueMap[invoice.event_id] = (eventRevenueMap[invoice.event_id] || 0) + (invoice.total_amount || 0)
+    const allOpportunityIds = [
+      ...(eventsBookedWeekResult.data || []),
+      ...(eventsBookedMonthResult.data || []),
+      ...(eventsBookedYearResult.data || [])
+    ].map(e => e.opportunity_id).filter(Boolean)
+
+    const invoicesByEvent: Record<string, number> = {}
+    const opportunityAmounts: Record<string, number> = {}
+
+    if (allEventIds.length > 0) {
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('event_id, total_amount')
+        .eq('tenant_id', dataSourceTenantId)
+        .in('event_id', allEventIds)
+
+      if (invoices) {
+        invoices.forEach((inv: any) => {
+          if (inv.event_id) {
+            invoicesByEvent[inv.event_id] = (invoicesByEvent[inv.event_id] || 0) + (inv.total_amount || 0)
+          }
+        })
       }
-    })
-
-    // For events without invoices, try to get amount from linked opportunity
-    const eventToOpportunityMap: Record<string, string> = {}
-    events.forEach(event => {
-      if (event.opportunity_id) {
-        eventToOpportunityMap[event.id] = event.opportunity_id
-      }
-    })
-
-    const opportunityAmountMap: Record<string, number> = {}
-    opportunities.forEach(opp => {
-      opportunityAmountMap[opp.id] = opp.amount || 0
-    })
-
-    // Helper function to check if date is in range
-    const isInRange = (dateStr: string | null, startISO: string, endISO: string): boolean => {
-      if (!dateStr) return false
-      const date = dateStr.split('T')[0]
-      return date >= startISO && date <= endISO
     }
 
-    // Calculate Events Occurring (by event_date field from event_dates table)
-    const eventsOccurringWeek = eventDates.filter(ed => isInRange(ed.event_date, weekStartISO, weekEndISO)).length
-    const eventsOccurringMonth = eventDates.filter(ed => isInRange(ed.event_date, monthStartISO, monthEndISO)).length
-    const eventsOccurringYear = eventDates.filter(ed => isInRange(ed.event_date, yearStartISO, yearEndISO)).length
+    if (allOpportunityIds.length > 0) {
+      const { data: opportunities } = await supabase
+        .from('opportunities')
+        .select('id, amount')
+        .in('id', allOpportunityIds)
 
-    // Calculate Events Booked (by created_at from events table) with revenue
-    const getEventsBookedStats = (startISO: string, endISO: string) => {
-      const bookedEvents = events.filter(e => isInRange(e.created_at, startISO, endISO))
-      const count = bookedEvents.length
+      if (opportunities) {
+        opportunities.forEach((opp: any) => {
+          opportunityAmounts[opp.id] = opp.amount || 0
+        })
+      }
+    }
 
-      // Calculate revenue from invoices linked to these events
-      // If no invoice, fall back to opportunity amount
+    // Calculate revenue for each period
+    const calculateRevenue = (events: any[]) => {
       let revenue = 0
-      bookedEvents.forEach(event => {
-        if (eventRevenueMap[event.id]) {
-          revenue += eventRevenueMap[event.id]
-        } else if (event.opportunity_id && opportunityAmountMap[event.opportunity_id]) {
-          revenue += opportunityAmountMap[event.opportunity_id]
+      events.forEach(event => {
+        if (invoicesByEvent[event.id]) {
+          revenue += invoicesByEvent[event.id]
+        } else if (event.opportunity_id && opportunityAmounts[event.opportunity_id]) {
+          revenue += opportunityAmounts[event.opportunity_id]
         }
       })
-
-      return { count, revenue }
+      return revenue
     }
 
-    const eventsBookedWeek = getEventsBookedStats(weekStartISO, weekEndISO)
-    const eventsBookedMonth = getEventsBookedStats(monthStartISO, monthEndISO)
-    const eventsBookedYear = getEventsBookedStats(yearStartISO, yearEndISO)
-
-    // Calculate Total Active Opportunities (not closed-won or closed-lost)
-    const activeOpportunities = opportunities.filter(opp =>
-      opp.stage !== 'closed_won' &&
-      opp.stage !== 'closed_lost' &&
-      !opp.is_converted
-    )
-    const totalOpportunitiesCount = activeOpportunities.length
-    const totalPipelineValue = activeOpportunities.reduce((sum, opp) => sum + (opp.amount || 0), 0)
-
-    // Calculate New Opportunities (by created_at)
-    const getNewOpportunitiesStats = (startISO: string, endISO: string) => {
-      const newOpps = opportunities.filter(opp => isInRange(opp.created_at, startISO, endISO))
-      const count = newOpps.length
-      const value = newOpps.reduce((sum, opp) => sum + (opp.amount || 0), 0)
-      return { count, value }
+    const eventsBookedWeek = {
+      count: eventsBookedWeekResult.data?.length || 0,
+      revenue: calculateRevenue(eventsBookedWeekResult.data || [])
+    }
+    const eventsBookedMonth = {
+      count: eventsBookedMonthResult.data?.length || 0,
+      revenue: calculateRevenue(eventsBookedMonthResult.data || [])
+    }
+    const eventsBookedYear = {
+      count: eventsBookedYearResult.data?.length || 0,
+      revenue: calculateRevenue(eventsBookedYearResult.data || [])
     }
 
-    const newOpportunitiesWeek = getNewOpportunitiesStats(weekStartISO, weekEndISO)
-    const newOpportunitiesMonth = getNewOpportunitiesStats(monthStartISO, monthEndISO)
-    const newOpportunitiesYear = getNewOpportunitiesStats(yearStartISO, yearEndISO)
+    // =====================================================
+    // TOTAL OPPORTUNITIES - Active pipeline
+    // =====================================================
+    const { data: activeOpportunities, error: oppError } = await supabase
+      .from('opportunities')
+      .select('id, amount')
+      .eq('tenant_id', dataSourceTenantId)
+      .not('stage', 'in', '("closed_won","closed_lost")')
+      .eq('is_converted', false)
+
+    if (oppError) {
+      log.error({ error: oppError }, 'Failed to fetch active opportunities')
+    }
+
+    const totalOpportunitiesCount = activeOpportunities?.length || 0
+    const totalPipelineValue = (activeOpportunities || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+
+    // =====================================================
+    // NEW OPPORTUNITIES - By created_at
+    // =====================================================
+    const [
+      newOppsWeekResult,
+      newOppsMonthResult,
+      newOppsYearResult
+    ] = await Promise.all([
+      supabase
+        .from('opportunities')
+        .select('id, amount')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${weekStartISO}T00:00:00`)
+        .lte('created_at', `${weekEndISO}T23:59:59`),
+      supabase
+        .from('opportunities')
+        .select('id, amount')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${monthStartISO}T00:00:00`)
+        .lte('created_at', `${monthEndISO}T23:59:59`),
+      supabase
+        .from('opportunities')
+        .select('id, amount')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${yearStartISO}T00:00:00`)
+        .lte('created_at', `${yearEndISO}T23:59:59`)
+    ])
+
+    const newOpportunitiesWeek = {
+      count: newOppsWeekResult.data?.length || 0,
+      value: (newOppsWeekResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+    }
+    const newOpportunitiesMonth = {
+      count: newOppsMonthResult.data?.length || 0,
+      value: (newOppsMonthResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+    }
+    const newOpportunitiesYear = {
+      count: newOppsYearResult.data?.length || 0,
+      value: (newOppsYearResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+    }
 
     const response: DashboardStatsResponse = {
       eventsOccurring: {
