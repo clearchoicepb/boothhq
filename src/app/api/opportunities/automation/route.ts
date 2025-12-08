@@ -2,7 +2,10 @@
  * Opportunity Automation API
  *
  * Handles automated stage transitions for opportunities:
- * 1. Stale Lead: Move open opportunities to 'stale' if stage unchanged for 21+ days
+ * 1. Stale Lead: Move open opportunities to 'stale' if:
+ *    - Stage unchanged for 21+ days, OR
+ *    - Opportunity created 30+ days ago
+ *    AND event date is in future (or no event date)
  * 2. Auto Close-Lost: Move open opportunities to 'closed_lost' if event date has passed
  *
  * This endpoint processes ALL tenants and is designed to be called by a cron job.
@@ -19,7 +22,8 @@ import { authOptions } from '@/lib/auth'
 const log = createLogger('api:opportunities:automation')
 
 // Automation configuration
-const STALE_THRESHOLD_DAYS = 21
+const STALE_THRESHOLD_DAYS = 21          // Days without stage change
+const STALE_AGE_THRESHOLD_DAYS = 30      // Days since creation
 const AUTO_CLOSE_REASON = 'Auto-Closed - Event Passed'
 
 type AutomationAction = 'process-stale' | 'auto-close' | 'run-all'
@@ -133,6 +137,13 @@ async function hasEventPassed(
 
 /**
  * Process stale opportunities for a tenant
+ *
+ * Conditions for stale:
+ * 1. Stage hasn't changed in 21+ days, OR
+ * 2. Opportunity was created 30+ days ago
+ *
+ * AND the opportunity is open (not in closed stages)
+ * AND the event date is in the future (or no event date)
  */
 async function processStaleOpportunities(
   tenantDb: any,
@@ -143,30 +154,62 @@ async function processStaleOpportunities(
   const processedIds: string[] = []
 
   try {
-    // Calculate the stale threshold date
-    const thresholdDate = new Date()
-    thresholdDate.setDate(thresholdDate.getDate() - STALE_THRESHOLD_DAYS)
-    const thresholdISO = thresholdDate.toISOString()
+    // Calculate threshold dates
+    const stageThresholdDate = new Date()
+    stageThresholdDate.setDate(stageThresholdDate.getDate() - STALE_THRESHOLD_DAYS)
+    const stageThresholdISO = stageThresholdDate.toISOString()
+
+    const ageThresholdDate = new Date()
+    ageThresholdDate.setDate(ageThresholdDate.getDate() - STALE_AGE_THRESHOLD_DAYS)
+    const ageThresholdISO = ageThresholdDate.toISOString()
 
     // Build the NOT IN filter for closed stages
     const closedStagesFilter = `(${CLOSED_STAGES.join(',')})`
 
-    // Find opportunities that are stale candidates
-    const { data: candidates, error: queryError } = await tenantDb
+    // Find opportunities that are stale candidates based on stage_changed_at
+    const { data: stageStaleCandidates, error: stageQueryError } = await tenantDb
       .from('opportunities')
-      .select('id, name, stage, stage_changed_at')
+      .select('id, name, stage, stage_changed_at, created_at')
       .eq('tenant_id', tenantId)
       .not('stage', 'in', closedStagesFilter)
-      .lt('stage_changed_at', thresholdISO)
+      .lt('stage_changed_at', stageThresholdISO)
 
-    if (queryError) {
-      errors.push(`Query error: ${queryError.message}`)
+    if (stageQueryError) {
+      errors.push(`Stage query error: ${stageQueryError.message}`)
+    }
+
+    // Find opportunities that are stale candidates based on created_at (30+ days old)
+    const { data: ageStaleCandidates, error: ageQueryError } = await tenantDb
+      .from('opportunities')
+      .select('id, name, stage, stage_changed_at, created_at')
+      .eq('tenant_id', tenantId)
+      .not('stage', 'in', closedStagesFilter)
+      .lt('created_at', ageThresholdISO)
+
+    if (ageQueryError) {
+      errors.push(`Age query error: ${ageQueryError.message}`)
+    }
+
+    // Combine candidates, removing duplicates
+    const candidateMap = new Map<string, { id: string; name: string; stage: string; reason: string }>()
+
+    for (const opp of (stageStaleCandidates || [])) {
+      candidateMap.set(opp.id, { ...opp, reason: 'stage_unchanged_21_days' })
+    }
+
+    for (const opp of (ageStaleCandidates || [])) {
+      if (!candidateMap.has(opp.id)) {
+        candidateMap.set(opp.id, { ...opp, reason: 'created_over_30_days' })
+      }
+    }
+
+    const candidates = Array.from(candidateMap.values())
+
+    if (candidates.length === 0) {
       return { processed: 0, opportunityIds: [], errors }
     }
 
-    if (!candidates || candidates.length === 0) {
-      return { processed: 0, opportunityIds: [], errors }
-    }
+    log.info({ count: candidates.length, tenantId }, 'Found stale candidates')
 
     // Filter to only those with future or no event dates
     for (const opp of candidates) {
@@ -175,7 +218,7 @@ async function processStaleOpportunities(
 
         if (hasEventFuture) {
           if (dryRun) {
-            log.info({ opportunityId: opp.id, name: opp.name }, '[DRY RUN] Would mark as stale')
+            log.info({ opportunityId: opp.id, name: opp.name, reason: opp.reason }, '[DRY RUN] Would mark as stale')
             processedIds.push(opp.id)
           } else {
             // Update to stale stage
@@ -190,7 +233,7 @@ async function processStaleOpportunities(
             if (updateError) {
               errors.push(`Failed to update ${opp.id}: ${updateError.message}`)
             } else {
-              log.info({ opportunityId: opp.id, name: opp.name }, 'Marked as stale')
+              log.info({ opportunityId: opp.id, name: opp.name, reason: opp.reason }, 'Marked as stale')
               processedIds.push(opp.id)
             }
           }
@@ -479,6 +522,7 @@ export async function GET() {
     actions: ['process-stale', 'auto-close', 'run-all'],
     config: {
       staleThresholdDays: STALE_THRESHOLD_DAYS,
+      staleAgeThresholdDays: STALE_AGE_THRESHOLD_DAYS,
       autoCloseReason: AUTO_CLOSE_REASON
     }
   })

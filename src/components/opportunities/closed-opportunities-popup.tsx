@@ -89,7 +89,7 @@ export function ClosedOpportunitiesPopup({
     ? 'Auto-Close Past Events'
     : ''
   const syncDescription = type === 'stale'
-    ? 'Find opportunities with no stage change for 21+ days'
+    ? 'Find opportunities with no stage change for 21+ days or created 30+ days ago'
     : type === 'lost'
     ? 'Close opportunities where event date has passed'
     : ''
