@@ -4,6 +4,7 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('hooks')
 
 type CalculationMode = 'total' | 'expected'
+export type TimePeriod = 'week' | 'month' | 'year' | 'all'
 
 interface CalculationStats {
   qty: number
@@ -29,38 +30,46 @@ interface UseOpportunityCalculationsReturn {
   openOpportunities: number
   loading: boolean
   fullStats: OpportunityStats | null
+  timePeriod: TimePeriod
+  setTimePeriod: React.Dispatch<React.SetStateAction<TimePeriod>>
 }
 
 /**
  * Custom hook for calculating opportunity statistics from stats API
- * 
+ *
  * NOW FETCHES FROM /api/opportunities/stats (ALL opportunities)
  * Instead of calculating from current page data only
- * 
+ *
  * @param filterStage - Stage filter to apply
  * @param filterOwner - Owner filter to apply
+ * @param initialTimePeriod - Initial time period filter (default: 'month')
  * @returns Calculation mode, statistics from ALL opportunities, and setters
  */
 export function useOpportunityCalculations(
   filterStage: string,
-  filterOwner: string
+  filterOwner: string,
+  initialTimePeriod: TimePeriod = 'month'
 ): UseOpportunityCalculationsReturn {
   const [calculationMode, setCalculationMode] = useState<CalculationMode>('total')
   const [fullStats, setFullStats] = useState<OpportunityStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(initialTimePeriod)
 
   // Fetch stats from API (all opportunities, not just current page)
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setLoading(true)
-        
+
         const params = new URLSearchParams()
         if (filterStage && filterStage !== 'all') {
           params.append('stage', filterStage)
         }
         if (filterOwner && filterOwner !== 'all') {
           params.append('owner_id', filterOwner)
+        }
+        if (timePeriod && timePeriod !== 'all') {
+          params.append('period', timePeriod)
         }
 
         const response = await fetch(`/api/opportunities/stats?${params.toString()}`)
@@ -76,11 +85,11 @@ export function useOpportunityCalculations(
     }
 
     fetchStats()
-  }, [filterStage, filterOwner])
+  }, [filterStage, filterOwner, timePeriod])
 
   // Format stats for display based on calculation mode
   const currentStats: CalculationStats = {
-    qty: calculationMode === 'total' 
+    qty: calculationMode === 'total'
       ? (fullStats?.total || 0)
       : (fullStats?.openCount || 0),
     amount: calculationMode === 'total'
@@ -94,7 +103,9 @@ export function useOpportunityCalculations(
     currentStats,
     openOpportunities: fullStats?.openCount || 0,
     loading,
-    fullStats
+    fullStats,
+    timePeriod,
+    setTimePeriod
   }
 }
 

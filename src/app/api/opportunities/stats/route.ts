@@ -1,18 +1,23 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { getDateRangeForPeriod } from '@/lib/utils/date-utils'
 
 const log = createLogger('api:opportunities')
+
+type TimePeriod = 'week' | 'month' | 'year' | 'all'
+
 /**
  * GET /api/opportunities/stats
- * 
+ *
  * Returns aggregated statistics for all opportunities (not just current page)
  * Uses SQL aggregation for performance and scalability
- * 
+ *
  * Query Parameters:
  * - stage: Filter by stage (optional, default: 'all')
  * - owner_id: Filter by owner (optional, default: 'all')
- * 
+ * - period: Time period filter (optional, 'week' | 'month' | 'year' | 'all', default: 'all')
+ *
  * Returns:
  * - total: Total count of opportunities
  * - openCount: Count of open opportunities (not closed)
@@ -24,25 +29,27 @@ const log = createLogger('api:opportunities')
  */
 export async function GET(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
     const stageFilter = searchParams.get('stage') || 'all'
     const ownerFilter = searchParams.get('owner_id')
-    
+    const periodFilter = (searchParams.get('period') || 'all') as TimePeriod
+
     // Build query with filters
     let query = supabase
       .from('opportunities')
-      .select('amount, probability, stage')
+      .select('amount, probability, stage, created_at')
       .eq('tenant_id', dataSourceTenantId)
-    
-    // Apply filters (same as main opportunities query)
+
+    // Apply stage filter
     if (stageFilter !== 'all') {
       query = query.eq('stage', stageFilter)
     }
-    
+
+    // Apply owner filter
     if (ownerFilter && ownerFilter !== 'all') {
       if (ownerFilter === 'unassigned') {
         query = query.is('owner_id', null)
@@ -50,39 +57,47 @@ export async function GET(request: NextRequest) {
         query = query.eq('owner_id', ownerFilter)
       }
     }
-    
+
+    // Apply time period filter
+    if (periodFilter !== 'all') {
+      const dateRange = getDateRangeForPeriod(periodFilter)
+      query = query
+        .gte('created_at', dateRange.startISO)
+        .lte('created_at', dateRange.endISO + 'T23:59:59')
+    }
+
     const { data: opportunities, error } = await query
-    
+
     if (error) {
       log.error({ error }, 'Error fetching opportunities for stats')
       return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
     }
-    
+
     // Calculate statistics (JavaScript aggregation - fast for moderate datasets)
     const total = opportunities?.length || 0
-    
-    const totalValue = opportunities?.reduce((sum, opp) => 
+
+    const totalValue = opportunities?.reduce((sum, opp) =>
       sum + (opp.amount || 0), 0
     ) || 0
-    
+
     const expectedValue = opportunities?.reduce((sum, opp) => {
       const amount = opp.amount || 0
       const probability = opp.probability || 0
       return sum + (amount * probability / 100)
     }, 0) || 0
-    
-    const openOpportunities = opportunities?.filter(opp => 
+
+    const openOpportunities = opportunities?.filter(opp =>
       !['closed_won', 'closed_lost'].includes(opp.stage)
     ) || []
-    
-    const closedWonOpportunities = opportunities?.filter(opp => 
+
+    const closedWonOpportunities = opportunities?.filter(opp =>
       opp.stage === 'closed_won'
     ) || []
-    
-    const closedLostOpportunities = opportunities?.filter(opp => 
+
+    const closedLostOpportunities = opportunities?.filter(opp =>
       opp.stage === 'closed_lost'
     ) || []
-    
+
     const stats = {
       total,
       openCount: openOpportunities.length,
@@ -94,16 +109,16 @@ export async function GET(request: NextRequest) {
       // Average opportunity value
       averageValue: total > 0 ? totalValue / total : 0,
       // Average probability
-      averageProbability: total > 0 
-        ? opportunities.reduce((sum, opp) => sum + (opp.probability || 0), 0) / total 
+      averageProbability: total > 0
+        ? opportunities.reduce((sum, opp) => sum + (opp.probability || 0), 0) / total
         : 0
     }
-    
+
     const response = NextResponse.json(stats)
-    
+
     // Cache for 30 seconds (balance between performance and freshness)
     response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
-    
+
     return response
   } catch (error) {
     log.error({ error }, 'Error in opportunities stats API')

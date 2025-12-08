@@ -26,7 +26,7 @@ import { useOpportunityCalculations } from '@/hooks/useOpportunityCalculations'
 import { useOpportunityDragAndDrop } from '@/hooks/useOpportunityDragAndDrop'
 
 // Opportunity components
-import { OpportunityStatsCard } from '@/components/opportunities/opportunity-stats-card'
+import { OpportunityStatsCard, TimePeriod } from '@/components/opportunities/opportunity-stats-card'
 import { OpportunitySuccessAnimation } from '@/components/opportunities/opportunity-success-animation'
 import { OpportunityEmptyState } from '@/components/opportunities/opportunity-empty-state'
 import { OpportunityCalculationModeToggle } from '@/components/opportunities/opportunity-calculation-mode-toggle'
@@ -173,7 +173,9 @@ function OpportunitiesPageContent() {
     currentStats,
     openOpportunities,
     loading: statsLoading,
-  } = useOpportunityCalculations(filterStage, filterOwner)
+    timePeriod,
+    setTimePeriod,
+  } = useOpportunityCalculations(filterStage, filterOwner, 'month')
 
   // Drag and drop
   const dragAndDrop = useOpportunityDragAndDrop({
@@ -343,8 +345,14 @@ function OpportunitiesPageContent() {
               subtitle={
                 filterStage !== 'all' || filterOwner !== 'all'
                   ? 'Filtered total'
-                  : 'All opportunities'
+                  : timePeriod === 'all'
+                    ? 'All opportunities'
+                    : `Created ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'}`
               }
+              showPeriodSelector
+              selectedPeriod={timePeriod}
+              onPeriodChange={setTimePeriod}
+              isLoading={statsLoading}
             />
 
             <OpportunityStatsCard
@@ -356,8 +364,11 @@ function OpportunitiesPageContent() {
                   ? `Probability-weighted ${settings.opportunities?.autoCalculateProbability ? '(stage-based)' : '(manual)'}`
                   : filterStage !== 'all' || filterOwner !== 'all'
                     ? 'Filtered total'
-                    : 'All opportunities'
+                    : timePeriod === 'all'
+                      ? 'All opportunities'
+                      : `From ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'}`
               }
+              isLoading={statsLoading}
             />
 
             <OpportunityStatsCard
@@ -367,8 +378,11 @@ function OpportunitiesPageContent() {
               subtitle={
                 filterStage !== 'all' || filterOwner !== 'all'
                   ? 'Filtered count'
-                  : 'Not closed won/lost'
+                  : timePeriod === 'all'
+                    ? 'Not closed won/lost'
+                    : `Not closed (${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'})`
               }
+              isLoading={statsLoading}
             />
           </div>
 
