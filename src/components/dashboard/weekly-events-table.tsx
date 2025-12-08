@@ -1,11 +1,16 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, MapPin, Building2, Eye } from 'lucide-react'
+import { Calendar, MapPin, Building2, Eye, Download } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
 import { getWeekRange, isDateInRange, formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
 import { getEventPriority } from '@/lib/utils/event-priority'
+import { useSettings } from '@/lib/settings-context'
+import { useTenant } from '@/lib/tenant-context'
+import { Button } from '@/components/ui/button'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import type { Event } from '@/types/events'
 
 interface StaffAssignment {
@@ -75,6 +80,49 @@ function groupStaffByType(assignments: StaffAssignment[]): GroupedStaffByType[] 
   })
 }
 
+// Format the week date range for PDF header (e.g., "December 9 - December 15, 2025")
+function formatWeekRangeForPDF(weekRange: { start: Date; end: Date }): string {
+  const startMonth = weekRange.start.toLocaleDateString('en-US', { month: 'long' })
+  const endMonth = weekRange.end.toLocaleDateString('en-US', { month: 'long' })
+  const startDay = weekRange.start.getDate()
+  const endDay = weekRange.end.getDate()
+  const year = weekRange.end.getFullYear()
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay} - ${endDay}, ${year}`
+  }
+  return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`
+}
+
+// Format staffing details for PDF cell
+function formatStaffingForPDF(assignments: StaffAssignment[]): string {
+  const grouped = groupStaffByType(assignments)
+  if (grouped.length === 0) return ''
+
+  return grouped.map(group => {
+    const names = group.staff.map(p => formatStaffName(p.firstName, p.lastName)).join('\n')
+    return `${group.displayName}:\n${names}`
+  }).join('\n\n')
+}
+
+// Load image as base64 for PDF
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
 interface WeeklyEventsTableProps {
   tenantSubdomain: string
 }
@@ -89,6 +137,9 @@ interface EventDateRow {
 
 export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
   const { data: events = [], isLoading } = useEvents()
+  const { settings } = useSettings()
+  const { tenant } = useTenant()
+  const [isExporting, setIsExporting] = useState(false)
   const weekRange = useMemo(() => getWeekRange(), [])
 
   // Filter and flatten events to show upcoming event dates within this week (today and future only)
@@ -139,6 +190,127 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
     return rows
   }, [events, weekRange])
 
+  // Export to PDF function
+  const handleExportPDF = async () => {
+    if (weeklyEventDates.length === 0) return
+
+    setIsExporting(true)
+
+    try {
+      // Create PDF in landscape orientation for better table fit
+      const doc = new jsPDF({ orientation: 'landscape' })
+
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const margin = 15
+      let yPos = 20
+
+      // Load logo if available
+      const logoUrl = settings?.logoUrl || settings?.appearance?.logoUrl
+      let logoLoaded = false
+
+      if (logoUrl) {
+        try {
+          const logoBase64 = await loadImageAsBase64(logoUrl)
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 20, undefined, 'FAST')
+            logoLoaded = true
+          }
+        } catch {
+          // Logo failed to load, will use text fallback
+        }
+      }
+
+      // If no logo, show tenant name as fallback
+      if (!logoLoaded && tenant?.name) {
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(52, 125, 196) // Brand blue
+        doc.text(tenant.name, margin, yPos + 12)
+      }
+
+      // Title and date range (centered)
+      doc.setFontSize(20)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(0, 0, 0)
+      doc.text('Weekly Events', pageWidth / 2, yPos + 8, { align: 'center' })
+
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 100, 100)
+      doc.text(formatWeekRangeForPDF(weekRange), pageWidth / 2, yPos + 16, { align: 'center' })
+
+      yPos += 35
+
+      // Prepare table data
+      const tableData = weeklyEventDates.map(row => {
+        const { event, eventDate, location } = row
+        const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+
+        return [
+          formatDateShort(eventDate),
+          event.title || 'Untitled Event',
+          event.account_name || '-',
+          location,
+          event.event_types?.name || '-',
+          formatStaffingForPDF(staffAssignments)
+        ]
+      })
+
+      // Generate table using autoTable
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Date', 'Event Name', 'Account', 'Location', 'Type', 'Staffing Details']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [52, 125, 196], // Brand blue
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10
+        },
+        bodyStyles: {
+          fontSize: 9,
+          cellPadding: 4
+        },
+        columnStyles: {
+          0: { cellWidth: 30 }, // Date
+          1: { cellWidth: 50 }, // Event Name
+          2: { cellWidth: 40 }, // Account
+          3: { cellWidth: 45 }, // Location
+          4: { cellWidth: 30 }, // Type
+          5: { cellWidth: 'auto' } // Staffing Details
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: (data) => {
+          // Add page number at bottom
+          const pageNumber = doc.getNumberOfPages()
+          doc.setFontSize(8)
+          doc.setTextColor(150)
+          doc.text(
+            `Page ${data.pageNumber} of ${pageNumber}`,
+            pageWidth / 2,
+            doc.internal.pageSize.getHeight() - 10,
+            { align: 'center' }
+          )
+        }
+      })
+
+      // Generate filename with week start date
+      const weekStartStr = weekRange.start.toISOString().split('T')[0]
+      const filename = `weekly-events-${weekStartStr}.pdf`
+
+      // Download the PDF
+      doc.save(filename)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg shadow">
@@ -172,9 +344,23 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
             <Calendar className="h-5 w-5 text-[#347dc4]" />
             <h2 className="text-lg font-medium text-gray-900">Upcoming Events This Week</h2>
           </div>
-          <span className="text-sm text-gray-500">
-            {weeklyEventDates.length} event{weeklyEventDates.length !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">
+              {weeklyEventDates.length} event{weeklyEventDates.length !== 1 ? 's' : ''}
+            </span>
+            {weeklyEventDates.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExporting}
+                className="flex items-center gap-1.5"
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? 'Exporting...' : 'Export PDF'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
