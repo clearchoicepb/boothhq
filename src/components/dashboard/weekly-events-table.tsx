@@ -8,6 +8,77 @@ import { getWeekRange, isDateInRange, formatDateShort, getDaysUntil, isDateToday
 import { getEventPriority } from '@/lib/utils/event-priority'
 import type { Event } from '@/types/events'
 
+interface StaffAssignment {
+  id: string
+  user_id: string
+  event_id: string
+  event_date_id: string | null
+  staff_role_id: string | null
+  users?: {
+    id: string
+    first_name: string
+    last_name: string
+  }
+  staff_roles?: {
+    id: string
+    name: string
+    type: 'operations' | 'event_staff'
+    sort_order: number
+  }
+}
+
+interface GroupedStaff {
+  roleName: string
+  roleType: 'operations' | 'event_staff'
+  sortOrder: number
+  staff: { firstName: string; lastName: string }[]
+}
+
+// Format name as "First Name + Last Initial" (e.g., "John S.")
+function formatStaffName(firstName: string, lastName: string): string {
+  const lastInitial = lastName ? lastName.charAt(0).toUpperCase() + '.' : ''
+  return `${firstName} ${lastInitial}`.trim()
+}
+
+// Group staff by role, sorted by role type (operations first) then sort_order
+function groupStaffByRole(assignments: StaffAssignment[]): GroupedStaff[] {
+  const grouped: Record<string, GroupedStaff> = {}
+
+  assignments.forEach(assignment => {
+    if (!assignment.users || !assignment.staff_roles) return
+
+    const roleId = assignment.staff_role_id || 'unknown'
+    const roleName = assignment.staff_roles.name
+    const roleType = assignment.staff_roles.type
+    const sortOrder = assignment.staff_roles.sort_order ?? 999
+
+    if (!grouped[roleId]) {
+      grouped[roleId] = {
+        roleName,
+        roleType,
+        sortOrder,
+        staff: []
+      }
+    }
+
+    grouped[roleId].staff.push({
+      firstName: assignment.users.first_name,
+      lastName: assignment.users.last_name
+    })
+  })
+
+  // Sort: operations first, then by sort_order, then by role name
+  return Object.values(grouped).sort((a, b) => {
+    // Operations roles first
+    if (a.roleType === 'operations' && b.roleType !== 'operations') return -1
+    if (a.roleType !== 'operations' && b.roleType === 'operations') return 1
+    // Then by sort_order
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
+    // Then alphabetically by role name
+    return a.roleName.localeCompare(b.roleName)
+  })
+}
+
 interface WeeklyEventsTableProps {
   tenantSubdomain: string
 }
@@ -140,7 +211,7 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Staffing Details
                   </th>
                 </tr>
               </thead>
@@ -228,17 +299,35 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                         )}
                       </td>
 
-                      {/* Status */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                          event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          event.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {event.status || 'Unknown'}
-                        </span>
+                      {/* Staffing Details */}
+                      <td className="px-6 py-4 align-middle">
+                        {(() => {
+                          const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+                          const groupedStaff = groupStaffByRole(staffAssignments)
+
+                          if (groupedStaff.length === 0) {
+                            return null
+                          }
+
+                          return (
+                            <div className="space-y-2">
+                              {groupedStaff.map((group, groupIndex) => (
+                                <div key={groupIndex}>
+                                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                                    {group.roleName}
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {group.staff.map((person, personIndex) => (
+                                      <div key={personIndex} className="text-sm text-gray-700">
+                                        {formatStaffName(person.firstName, person.lastName)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
                       </td>
                     </tr>
                   )
@@ -257,33 +346,23 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
 
               return (
                 <div key={eventDateId} className={`p-4 ${priority.border} border-l-4`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <Link
-                        href={`/${tenantSubdomain}/events/${event.id}`}
-                        className="text-sm font-medium text-[#347dc4] hover:underline"
-                      >
-                        {event.title || 'Untitled Event'}
-                      </Link>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-gray-600">
-                          {formatDateShort(eventDate)}
+                  <div className="mb-2">
+                    <Link
+                      href={`/${tenantSubdomain}/events/${event.id}`}
+                      className="text-sm font-medium text-[#347dc4] hover:underline"
+                    >
+                      {event.title || 'Untitled Event'}
+                    </Link>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-gray-600">
+                        {formatDateShort(eventDate)}
+                      </span>
+                      {isToday && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800">
+                          TODAY
                         </span>
-                        {isToday && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800">
-                            TODAY
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                      event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {event.status || 'Unknown'}
-                    </span>
                   </div>
 
                   <div className="space-y-1 text-sm text-gray-600">
@@ -298,6 +377,35 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                       {location}
                     </div>
                   </div>
+
+                  {/* Staffing Details */}
+                  {(() => {
+                    const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+                    const groupedStaff = groupStaffByRole(staffAssignments)
+
+                    if (groupedStaff.length === 0) {
+                      return null
+                    }
+
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                        {groupedStaff.map((group, groupIndex) => (
+                          <div key={groupIndex}>
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                              {group.roleName}
+                            </div>
+                            <div className="space-y-0.5">
+                              {group.staff.map((person, personIndex) => (
+                                <div key={personIndex} className="text-sm text-gray-700">
+                                  {formatStaffName(person.firstName, person.lastName)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
 
                   <div className="mt-3">
                     <Link
