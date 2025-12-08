@@ -26,7 +26,7 @@ import { useOpportunityCalculations } from '@/hooks/useOpportunityCalculations'
 import { useOpportunityDragAndDrop } from '@/hooks/useOpportunityDragAndDrop'
 
 // Opportunity components
-import { OpportunityStatsCard, TimePeriod } from '@/components/opportunities/opportunity-stats-card'
+import { KPICard, KPICardGrid, KPISection, periodOptionsWithAll, type TimePeriod } from '@/components/ui/kpi-card'
 import { OpportunitySuccessAnimation } from '@/components/opportunities/opportunity-success-animation'
 import { OpportunityEmptyState } from '@/components/opportunities/opportunity-empty-state'
 import { OpportunityCalculationModeToggle } from '@/components/opportunities/opportunity-calculation-mode-toggle'
@@ -337,11 +337,11 @@ function OpportunitiesPageContent() {
           />
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <OpportunityStatsCard
-              icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title={calculationMode === 'total' ? 'Total Opportunities' : 'Open Opportunities'}
-              value={statsLoading ? '...' : currentStats.qty}
+          <KPICardGrid columns={3} className="mb-8">
+            <KPICard
+              icon={<DollarSign className="h-5 w-5" />}
+              label={calculationMode === 'total' ? 'Total Opportunities' : 'Open Opportunities'}
+              value={currentStats.qty}
               subtitle={
                 filterStage !== 'all' || filterOwner !== 'all'
                   ? 'Filtered total'
@@ -349,16 +349,18 @@ function OpportunitiesPageContent() {
                     ? 'All opportunities'
                     : `Created ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'}`
               }
-              showPeriodSelector
-              selectedPeriod={timePeriod}
-              onPeriodChange={setTimePeriod}
-              isLoading={statsLoading}
+              dropdown={{
+                value: timePeriod,
+                options: periodOptionsWithAll,
+                onChange: (value) => setTimePeriod(value as TimePeriod)
+              }}
+              loading={statsLoading}
             />
 
-            <OpportunityStatsCard
-              icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title={calculationMode === 'total' ? 'Total Value' : 'Expected Value'}
-              value={statsLoading ? '...' : `$${Math.round(currentStats.amount).toLocaleString()}`}
+            <KPICard
+              icon={<DollarSign className="h-5 w-5" />}
+              label={calculationMode === 'total' ? 'Total Value' : 'Expected Value'}
+              value={`$${Math.round(currentStats.amount).toLocaleString()}`}
               subtitle={
                 calculationMode === 'expected'
                   ? `Probability-weighted ${settings.opportunities?.autoCalculateProbability ? '(stage-based)' : '(manual)'}`
@@ -368,13 +370,13 @@ function OpportunitiesPageContent() {
                       ? 'All opportunities'
                       : `From ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'}`
               }
-              isLoading={statsLoading}
+              loading={statsLoading}
             />
 
-            <OpportunityStatsCard
-              icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title="Open Opportunities"
-              value={statsLoading ? '...' : openOpportunities}
+            <KPICard
+              icon={<DollarSign className="h-5 w-5" />}
+              label="Open Opportunities"
+              value={openOpportunities}
               subtitle={
                 filterStage !== 'all' || filterOwner !== 'all'
                   ? 'Filtered count'
@@ -382,9 +384,9 @@ function OpportunitiesPageContent() {
                     ? 'Not closed won/lost'
                     : `Not closed (${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'})`
               }
-              isLoading={statsLoading}
+              loading={statsLoading}
             />
-          </div>
+          </KPICardGrid>
 
           {/* Filters and Search - Only show on table and card views */}
           {currentView !== 'pipeline' && (

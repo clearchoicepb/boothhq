@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { createLogger } from '@/lib/logger'
+import type { TimePeriod } from '@/components/ui/kpi-card'
+
+// Re-export TimePeriod for backwards compatibility
+export type { TimePeriod }
 
 const log = createLogger('hooks')
 
 type CalculationMode = 'total' | 'expected'
-export type TimePeriod = 'week' | 'month' | 'year' | 'all'
 
 interface CalculationStats {
   qty: number
