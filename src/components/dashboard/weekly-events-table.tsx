@@ -1,12 +1,127 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, MapPin, Building2, Eye } from 'lucide-react'
+import { Calendar, MapPin, Building2, Eye, Download } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
 import { getWeekRange, isDateInRange, formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
 import { getEventPriority } from '@/lib/utils/event-priority'
+import { useSettings } from '@/lib/settings-context'
+import { useTenant } from '@/lib/tenant-context'
+import { Button } from '@/components/ui/button'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import type { Event } from '@/types/events'
+
+interface StaffAssignment {
+  id: string
+  user_id: string
+  event_id: string
+  event_date_id: string | null
+  staff_role_id: string | null
+  users?: {
+    id: string
+    first_name: string
+    last_name: string
+  }
+  staff_roles?: {
+    id: string
+    name: string
+    type: 'operations' | 'event_staff'
+    sort_order: number
+  }
+}
+
+interface GroupedStaffByType {
+  type: 'operations' | 'event_staff'
+  displayName: string
+  staff: { firstName: string; lastName: string }[]
+}
+
+// Format name as "First Name + Last Initial" (e.g., "John S.")
+function formatStaffName(firstName: string, lastName: string): string {
+  const lastInitial = lastName ? lastName.charAt(0).toUpperCase() + '.' : ''
+  return `${firstName} ${lastInitial}`.trim()
+}
+
+// Get display name for staff type
+function getTypeDisplayName(type: 'operations' | 'event_staff'): string {
+  return type === 'operations' ? 'Operations Team' : 'Event Staff'
+}
+
+// Group staff by type (operations vs event_staff), matching the event detail staffing tab
+function groupStaffByType(assignments: StaffAssignment[]): GroupedStaffByType[] {
+  const grouped: Record<string, GroupedStaffByType> = {}
+
+  assignments.forEach(assignment => {
+    if (!assignment.users || !assignment.staff_roles) return
+
+    const staffType = assignment.staff_roles.type
+
+    if (!grouped[staffType]) {
+      grouped[staffType] = {
+        type: staffType,
+        displayName: getTypeDisplayName(staffType),
+        staff: []
+      }
+    }
+
+    grouped[staffType].staff.push({
+      firstName: assignment.users.first_name,
+      lastName: assignment.users.last_name
+    })
+  })
+
+  // Sort: operations first, then event_staff
+  return Object.values(grouped).sort((a, b) => {
+    if (a.type === 'operations' && b.type !== 'operations') return -1
+    if (a.type !== 'operations' && b.type === 'operations') return 1
+    return 0
+  })
+}
+
+// Format the week date range for PDF header (e.g., "December 9 - December 15, 2025")
+function formatWeekRangeForPDF(weekRange: { start: Date; end: Date }): string {
+  const startMonth = weekRange.start.toLocaleDateString('en-US', { month: 'long' })
+  const endMonth = weekRange.end.toLocaleDateString('en-US', { month: 'long' })
+  const startDay = weekRange.start.getDate()
+  const endDay = weekRange.end.getDate()
+  const year = weekRange.end.getFullYear()
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay} - ${endDay}, ${year}`
+  }
+  return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`
+}
+
+// Format staffing details for PDF cell
+function formatStaffingForPDF(assignments: StaffAssignment[]): string {
+  const grouped = groupStaffByType(assignments)
+  if (grouped.length === 0) return ''
+
+  return grouped.map(group => {
+    const names = group.staff.map(p => formatStaffName(p.firstName, p.lastName)).join('\n')
+    return `${group.displayName}:\n${names}`
+  }).join('\n\n')
+}
+
+// Load image as base64 for PDF
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
 
 interface WeeklyEventsTableProps {
   tenantSubdomain: string
@@ -22,6 +137,9 @@ interface EventDateRow {
 
 export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
   const { data: events = [], isLoading } = useEvents()
+  const { settings } = useSettings()
+  const { tenant } = useTenant()
+  const [isExporting, setIsExporting] = useState(false)
   const weekRange = useMemo(() => getWeekRange(), [])
 
   // Filter and flatten events to show upcoming event dates within this week (today and future only)
@@ -72,6 +190,127 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
     return rows
   }, [events, weekRange])
 
+  // Export to PDF function
+  const handleExportPDF = async () => {
+    if (weeklyEventDates.length === 0) return
+
+    setIsExporting(true)
+
+    try {
+      // Create PDF in landscape orientation for better table fit
+      const doc = new jsPDF({ orientation: 'landscape' })
+
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const margin = 15
+      let yPos = 20
+
+      // Load logo if available
+      const logoUrl = settings?.logoUrl || settings?.appearance?.logoUrl
+      let logoLoaded = false
+
+      if (logoUrl) {
+        try {
+          const logoBase64 = await loadImageAsBase64(logoUrl)
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 20, undefined, 'FAST')
+            logoLoaded = true
+          }
+        } catch {
+          // Logo failed to load, will use text fallback
+        }
+      }
+
+      // If no logo, show tenant name as fallback
+      if (!logoLoaded && tenant?.name) {
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(52, 125, 196) // Brand blue
+        doc.text(tenant.name, margin, yPos + 12)
+      }
+
+      // Title and date range (centered)
+      doc.setFontSize(20)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(0, 0, 0)
+      doc.text('Weekly Events', pageWidth / 2, yPos + 8, { align: 'center' })
+
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 100, 100)
+      doc.text(formatWeekRangeForPDF(weekRange), pageWidth / 2, yPos + 16, { align: 'center' })
+
+      yPos += 35
+
+      // Prepare table data
+      const tableData = weeklyEventDates.map(row => {
+        const { event, eventDate, location } = row
+        const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+
+        return [
+          formatDateShort(eventDate),
+          event.title || 'Untitled Event',
+          event.account_name || '-',
+          location,
+          event.event_types?.name || '-',
+          formatStaffingForPDF(staffAssignments)
+        ]
+      })
+
+      // Generate table using autoTable
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Date', 'Event Name', 'Account', 'Location', 'Type', 'Staffing Details']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [52, 125, 196], // Brand blue
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10
+        },
+        bodyStyles: {
+          fontSize: 9,
+          cellPadding: 4
+        },
+        columnStyles: {
+          0: { cellWidth: 30 }, // Date
+          1: { cellWidth: 50 }, // Event Name
+          2: { cellWidth: 40 }, // Account
+          3: { cellWidth: 45 }, // Location
+          4: { cellWidth: 30 }, // Type
+          5: { cellWidth: 'auto' } // Staffing Details
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: (data) => {
+          // Add page number at bottom
+          const pageNumber = doc.getNumberOfPages()
+          doc.setFontSize(8)
+          doc.setTextColor(150)
+          doc.text(
+            `Page ${data.pageNumber} of ${pageNumber}`,
+            pageWidth / 2,
+            doc.internal.pageSize.getHeight() - 10,
+            { align: 'center' }
+          )
+        }
+      })
+
+      // Generate filename with week start date
+      const weekStartStr = weekRange.start.toISOString().split('T')[0]
+      const filename = `weekly-events-${weekStartStr}.pdf`
+
+      // Download the PDF
+      doc.save(filename)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg shadow">
@@ -105,9 +344,23 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
             <Calendar className="h-5 w-5 text-[#347dc4]" />
             <h2 className="text-lg font-medium text-gray-900">Upcoming Events This Week</h2>
           </div>
-          <span className="text-sm text-gray-500">
-            {weeklyEventDates.length} event{weeklyEventDates.length !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">
+              {weeklyEventDates.length} event{weeklyEventDates.length !== 1 ? 's' : ''}
+            </span>
+            {weeklyEventDates.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExporting}
+                className="flex items-center gap-1.5"
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? 'Exporting...' : 'Export PDF'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -140,10 +393,7 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                    Staffing Details
                   </th>
                 </tr>
               </thead>
@@ -231,28 +481,35 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                         )}
                       </td>
 
-                      {/* Status */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                          event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          event.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {event.status || 'Unknown'}
-                        </span>
-                      </td>
+                      {/* Staffing Details */}
+                      <td className="px-6 py-4 align-middle">
+                        {(() => {
+                          const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+                          const groupedStaff = groupStaffByType(staffAssignments)
 
-                      {/* Actions */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/${tenantSubdomain}/events/${event.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-[#347dc4] bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Link>
+                          if (groupedStaff.length === 0) {
+                            return null
+                          }
+
+                          return (
+                            <div className="space-y-2">
+                              {groupedStaff.map((group, groupIndex) => (
+                                <div key={groupIndex}>
+                                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                                    {group.displayName}
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {group.staff.map((person, personIndex) => (
+                                      <div key={personIndex} className="text-sm text-gray-700">
+                                        {formatStaffName(person.firstName, person.lastName)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
                       </td>
                     </tr>
                   )
@@ -271,33 +528,23 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
 
               return (
                 <div key={eventDateId} className={`p-4 ${priority.border} border-l-4`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <Link
-                        href={`/${tenantSubdomain}/events/${event.id}`}
-                        className="text-sm font-medium text-[#347dc4] hover:underline"
-                      >
-                        {event.title || 'Untitled Event'}
-                      </Link>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-gray-600">
-                          {formatDateShort(eventDate)}
+                  <div className="mb-2">
+                    <Link
+                      href={`/${tenantSubdomain}/events/${event.id}`}
+                      className="text-sm font-medium text-[#347dc4] hover:underline"
+                    >
+                      {event.title || 'Untitled Event'}
+                    </Link>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-gray-600">
+                        {formatDateShort(eventDate)}
+                      </span>
+                      {isToday && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800">
+                          TODAY
                         </span>
-                        {isToday && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800">
-                            TODAY
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                      event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {event.status || 'Unknown'}
-                    </span>
                   </div>
 
                   <div className="space-y-1 text-sm text-gray-600">
@@ -312,6 +559,35 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                       {location}
                     </div>
                   </div>
+
+                  {/* Staffing Details */}
+                  {(() => {
+                    const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+                    const groupedStaff = groupStaffByType(staffAssignments)
+
+                    if (groupedStaff.length === 0) {
+                      return null
+                    }
+
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                        {groupedStaff.map((group, groupIndex) => (
+                          <div key={groupIndex}>
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                              {group.displayName}
+                            </div>
+                            <div className="space-y-0.5">
+                              {group.staff.map((person, personIndex) => (
+                                <div key={personIndex} className="text-sm text-gray-700">
+                                  {formatStaffName(person.firstName, person.lastName)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
 
                   <div className="mt-3">
                     <Link

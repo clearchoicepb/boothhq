@@ -118,7 +118,20 @@ export async function GET(request: NextRequest) {
       try {
         const { data: staffData, error: staffError } = await supabase
           .from('event_staff_assignments')
-          .select('id, user_id, event_id, event_date_id, staff_role_id, notes, start_time, end_time')
+          .select(`
+            id, user_id, event_id, event_date_id, staff_role_id, notes, start_time, end_time,
+            users!event_staff_assignments_user_id_fkey (
+              id,
+              first_name,
+              last_name
+            ),
+            staff_roles!event_staff_assignments_staff_role_id_fkey (
+              id,
+              name,
+              type,
+              sort_order
+            )
+          `)
           .eq('tenant_id', dataSourceTenantId)
           .in('event_id', eventIds)
 
