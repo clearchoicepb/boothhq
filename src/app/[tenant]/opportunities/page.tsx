@@ -121,41 +121,6 @@ function OpportunitiesPageContent() {
     setDateFilter('all')
   }, [])
 
-  // Helper function to filter opportunities by time period (for closed buckets)
-  const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
-    if (period === 'all') return opps
-
-    const now = new Date()
-    let startDate: Date
-
-    switch (period) {
-      case 'week':
-        startDate = new Date(now)
-        startDate.setDate(now.getDate() - 7)
-        break
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1)
-        break
-      default:
-        return opps
-    }
-
-    return opps.filter(opp => {
-      const updatedAt = opp.updated_at ? new Date(opp.updated_at) : null
-      return updatedAt && updatedAt >= startDate
-    })
-  }, [])
-
-  // Get bucket counts filtered by time period
-  const getBucketCount = useCallback((stage: string) => {
-    const stageOpps = opportunities.filter(opp => opp.stage === stage)
-    const filteredOpps = filterByTimePeriod(stageOpps, timePeriod)
-    return filteredOpps.length
-  }, [opportunities, timePeriod, filterByTimePeriod])
-
   // Helper function to get the earliest date from an opportunity
   const getEarliestDate = (opp: OpportunityWithRelations): number | null => {
     if (opp.event_dates && Array.isArray(opp.event_dates) && opp.event_dates.length > 0) {
@@ -222,6 +187,41 @@ function OpportunitiesPageContent() {
     getAvgDealSize,
     getClosingSoon,
   } = useOpportunityCalculations(filterStage, filterOwner, 'month')
+
+  // Helper function to filter opportunities by time period (for closed buckets)
+  const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
+    if (period === 'all') return opps
+
+    const now = new Date()
+    let startDate: Date
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - 7)
+        break
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        break
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1)
+        break
+      default:
+        return opps
+    }
+
+    return opps.filter(opp => {
+      const updatedAt = opp.updated_at ? new Date(opp.updated_at) : null
+      return updatedAt && updatedAt >= startDate
+    })
+  }, [])
+
+  // Get bucket counts filtered by time period
+  const getBucketCount = useCallback((stage: string) => {
+    const stageOpps = opportunities.filter(opp => opp.stage === stage)
+    const filteredOpps = filterByTimePeriod(stageOpps, timePeriod)
+    return filteredOpps.length
+  }, [opportunities, timePeriod, filterByTimePeriod])
 
   // Drag and drop
   const dragAndDrop = useOpportunityDragAndDrop({
