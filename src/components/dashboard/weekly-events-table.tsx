@@ -2,16 +2,58 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, MapPin, Building2, Eye, Download } from 'lucide-react'
+import { Calendar, MapPin, Building2, Eye, Download, X } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
-import { getWeekRange, isDateInRange, formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
+import { getWeekRange, isDateInRange, formatDateShort, getDaysUntil, isDateToday, toDateInputValue, type DateRange } from '@/lib/utils/date-utils'
 import { getEventPriority } from '@/lib/utils/event-priority'
 import { useSettings } from '@/lib/settings-context'
 import { useTenant } from '@/lib/tenant-context'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Event } from '@/types/events'
+
+type WeekTab = 'last' | 'this' | 'next'
+
+interface WeekInfo {
+  key: WeekTab
+  label: string
+  range: DateRange
+  dateLabel: string
+}
+
+// Get week range offset by number of weeks from current week
+function getWeekRangeOffset(weeksOffset: number): DateRange {
+  const currentWeek = getWeekRange()
+  const offsetDays = weeksOffset * 7
+
+  const start = new Date(currentWeek.start)
+  start.setDate(start.getDate() + offsetDays)
+
+  const end = new Date(currentWeek.end)
+  end.setDate(end.getDate() + offsetDays)
+
+  return {
+    start,
+    end,
+    startISO: toDateInputValue(start),
+    endISO: toDateInputValue(end)
+  }
+}
+
+// Format date range for tab display (e.g., "Dec 9-15")
+function formatWeekRangeShort(range: DateRange): string {
+  const startMonth = range.start.toLocaleDateString('en-US', { month: 'short' })
+  const endMonth = range.end.toLocaleDateString('en-US', { month: 'short' })
+  const startDay = range.start.getDate()
+  const endDay = range.end.getDate()
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay}-${endDay}`
+  }
+  return `${startMonth} ${startDay} - ${endMonth} ${endDay}`
+}
 
 interface StaffAssignment {
   id: string
@@ -140,11 +182,47 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
   const { settings } = useSettings()
   const { tenant } = useTenant()
   const [isExporting, setIsExporting] = useState(false)
-  const weekRange = useMemo(() => getWeekRange(), [])
+  const [activeTab, setActiveTab] = useState<WeekTab>('this')
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [selectedWeeksForExport, setSelectedWeeksForExport] = useState<Set<WeekTab>>(new Set(['this']))
 
-  // Filter and flatten events to show upcoming event dates within this week (today and future only)
+  // Calculate all week ranges
+  const weekInfos = useMemo<WeekInfo[]>(() => {
+    const lastWeekRange = getWeekRangeOffset(-1)
+    const thisWeekRange = getWeekRange()
+    const nextWeekRange = getWeekRangeOffset(1)
+
+    return [
+      {
+        key: 'last',
+        label: 'Last Week',
+        range: lastWeekRange,
+        dateLabel: formatWeekRangeShort(lastWeekRange)
+      },
+      {
+        key: 'this',
+        label: 'This Week',
+        range: thisWeekRange,
+        dateLabel: formatWeekRangeShort(thisWeekRange)
+      },
+      {
+        key: 'next',
+        label: 'Next Week',
+        range: nextWeekRange,
+        dateLabel: formatWeekRangeShort(nextWeekRange)
+      }
+    ]
+  }, [])
+
+  const activeWeekInfo = weekInfos.find(w => w.key === activeTab)!
+  const weekRange = activeWeekInfo.range
+
+  // Filter and flatten events to show event dates within the selected week
+  // For "This Week" tab: show today and future only
+  // For "Last Week" and "Next Week" tabs: show all events in that week
   const weeklyEventDates: EventDateRow[] = useMemo(() => {
     const rows: EventDateRow[] = []
+    const filterFutureOnly = activeTab === 'this'
 
     events.forEach(event => {
       const eventDates = event.event_dates || []
@@ -153,8 +231,8 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
         // Event has no event_dates, check start_date
         if (event.start_date && isDateInRange(event.start_date, weekRange)) {
           const daysUntil = getDaysUntil(event.start_date)
-          // Only include if today or future (daysUntil >= 0)
-          if (daysUntil !== null && daysUntil >= 0) {
+          // Only filter to today/future for "This Week" tab
+          if (!filterFutureOnly || (daysUntil !== null && daysUntil >= 0)) {
             rows.push({
               eventId: event.id,
               eventDateId: event.id,
@@ -169,8 +247,8 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
         eventDates.forEach(ed => {
           if (isDateInRange(ed.event_date, weekRange)) {
             const daysUntil = getDaysUntil(ed.event_date)
-            // Only include if today or future (daysUntil >= 0)
-            if (daysUntil !== null && daysUntil >= 0) {
+            // Only filter to today/future for "This Week" tab
+            if (!filterFutureOnly || (daysUntil !== null && daysUntil >= 0)) {
               rows.push({
                 eventId: event.id,
                 eventDateId: ed.id,
@@ -188,121 +266,202 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
     rows.sort((a, b) => a.eventDate.localeCompare(b.eventDate))
 
     return rows
-  }, [events, weekRange])
+  }, [events, weekRange, activeTab])
 
-  // Export to PDF function
+  // Helper to get events for a specific week range (for PDF export)
+  const getEventsForWeek = (range: DateRange): EventDateRow[] => {
+    const rows: EventDateRow[] = []
+
+    events.forEach(event => {
+      const eventDates = event.event_dates || []
+
+      if (eventDates.length === 0) {
+        if (event.start_date && isDateInRange(event.start_date, range)) {
+          rows.push({
+            eventId: event.id,
+            eventDateId: event.id,
+            eventDate: event.start_date,
+            event,
+            location: event.location || 'No location'
+          })
+        }
+      } else {
+        eventDates.forEach(ed => {
+          if (isDateInRange(ed.event_date, range)) {
+            rows.push({
+              eventId: event.id,
+              eventDateId: ed.id,
+              eventDate: ed.event_date,
+              event,
+              location: ed.locations?.name || event.location || 'No location'
+            })
+          }
+        })
+      }
+    })
+
+    rows.sort((a, b) => a.eventDate.localeCompare(b.eventDate))
+    return rows
+  }
+
+  // Open export modal and pre-select current tab
+  const handleOpenExportModal = () => {
+    setSelectedWeeksForExport(new Set([activeTab]))
+    setShowExportModal(true)
+  }
+
+  // Toggle week selection for export
+  const toggleWeekForExport = (weekKey: WeekTab) => {
+    setSelectedWeeksForExport(prev => {
+      const next = new Set(prev)
+      if (next.has(weekKey)) {
+        next.delete(weekKey)
+      } else {
+        next.add(weekKey)
+      }
+      return next
+    })
+  }
+
+  // Export to PDF function (supports multi-week)
   const handleExportPDF = async () => {
-    if (weeklyEventDates.length === 0) return
+    if (selectedWeeksForExport.size === 0) return
 
     setIsExporting(true)
+    setShowExportModal(false)
 
     try {
-      // Create PDF in landscape orientation for better table fit
       const doc = new jsPDF({ orientation: 'landscape' })
-
       const pageWidth = doc.internal.pageSize.getWidth()
       const margin = 15
-      let yPos = 20
 
-      // Load logo if available
+      // Load logo once
       const logoUrl = settings?.logoUrl || settings?.appearance?.logoUrl
-      let logoLoaded = false
+      let logoBase64: string | null = null
 
       if (logoUrl) {
         try {
-          const logoBase64 = await loadImageAsBase64(logoUrl)
-          if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 20, undefined, 'FAST')
-            logoLoaded = true
-          }
+          logoBase64 = await loadImageAsBase64(logoUrl)
         } catch {
-          // Logo failed to load, will use text fallback
+          // Logo failed to load
         }
       }
 
-      // If no logo, show tenant name as fallback
-      if (!logoLoaded && tenant?.name) {
-        doc.setFontSize(16)
+      // Get selected weeks in order: last, this, next
+      const orderedWeeks: WeekInfo[] = weekInfos.filter(w => selectedWeeksForExport.has(w.key))
+      let isFirstPage = true
+
+      for (const week of orderedWeeks) {
+        const weekEvents = getEventsForWeek(week.range)
+
+        // Add new page for subsequent weeks
+        if (!isFirstPage) {
+          doc.addPage()
+        }
+        isFirstPage = false
+
+        let yPos = 20
+
+        // Add logo or tenant name
+        if (logoBase64) {
+          doc.addImage(logoBase64, 'PNG', margin, yPos, 0, 20, undefined, 'FAST')
+        } else if (tenant?.name) {
+          doc.setFontSize(16)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(52, 125, 196)
+          doc.text(tenant.name, margin, yPos + 12)
+        }
+
+        // Title and date range (centered)
+        doc.setFontSize(20)
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(52, 125, 196) // Brand blue
-        doc.text(tenant.name, margin, yPos + 12)
+        doc.setTextColor(0, 0, 0)
+        doc.text(`${week.label} Events`, pageWidth / 2, yPos + 8, { align: 'center' })
+
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(100, 100, 100)
+        doc.text(formatWeekRangeForPDF(week.range), pageWidth / 2, yPos + 16, { align: 'center' })
+
+        yPos += 35
+
+        if (weekEvents.length === 0) {
+          doc.setFontSize(12)
+          doc.setTextColor(128, 128, 128)
+          doc.text('No events scheduled for this week.', pageWidth / 2, yPos + 20, { align: 'center' })
+        } else {
+          // Prepare table data
+          const tableData = weekEvents.map(row => {
+            const { event, eventDate, location } = row
+            const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
+
+            return [
+              formatDateShort(eventDate),
+              event.title || 'Untitled Event',
+              event.account_name || '-',
+              location,
+              event.event_types?.name || '-',
+              formatStaffingForPDF(staffAssignments)
+            ]
+          })
+
+          // Generate table
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Date', 'Event Name', 'Account', 'Location', 'Type', 'Staffing Details']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: {
+              fillColor: [52, 125, 196],
+              textColor: 255,
+              fontStyle: 'bold',
+              fontSize: 10
+            },
+            bodyStyles: {
+              fontSize: 9,
+              cellPadding: 4
+            },
+            columnStyles: {
+              0: { cellWidth: 30 },
+              1: { cellWidth: 50 },
+              2: { cellWidth: 40 },
+              3: { cellWidth: 45 },
+              4: { cellWidth: 30 },
+              5: { cellWidth: 'auto' }
+            },
+            alternateRowStyles: {
+              fillColor: [248, 250, 252]
+            },
+            margin: { left: margin, right: margin }
+          })
+        }
       }
 
-      // Title and date range (centered)
-      doc.setFontSize(20)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(0, 0, 0)
-      doc.text('Weekly Events', pageWidth / 2, yPos + 8, { align: 'center' })
+      // Add page numbers
+      const totalPages = doc.getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i)
+        doc.setFontSize(8)
+        doc.setTextColor(150)
+        doc.text(
+          `Page ${i} of ${totalPages}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        )
+      }
 
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(100, 100, 100)
-      doc.text(formatWeekRangeForPDF(weekRange), pageWidth / 2, yPos + 16, { align: 'center' })
+      // Generate filename
+      let filename: string
+      if (orderedWeeks.length === 1) {
+        const weekStartStr = toDateInputValue(orderedWeeks[0].range.start)
+        filename = `weekly-events-${weekStartStr}.pdf`
+      } else {
+        const firstWeekStart = toDateInputValue(orderedWeeks[0].range.start)
+        const lastWeekEnd = toDateInputValue(orderedWeeks[orderedWeeks.length - 1].range.end)
+        filename = `weekly-events-${firstWeekStart}-to-${lastWeekEnd}.pdf`
+      }
 
-      yPos += 35
-
-      // Prepare table data
-      const tableData = weeklyEventDates.map(row => {
-        const { event, eventDate, location } = row
-        const staffAssignments = (event.event_staff_assignments || []) as StaffAssignment[]
-
-        return [
-          formatDateShort(eventDate),
-          event.title || 'Untitled Event',
-          event.account_name || '-',
-          location,
-          event.event_types?.name || '-',
-          formatStaffingForPDF(staffAssignments)
-        ]
-      })
-
-      // Generate table using autoTable
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Date', 'Event Name', 'Account', 'Location', 'Type', 'Staffing Details']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: {
-          fillColor: [52, 125, 196], // Brand blue
-          textColor: 255,
-          fontStyle: 'bold',
-          fontSize: 10
-        },
-        bodyStyles: {
-          fontSize: 9,
-          cellPadding: 4
-        },
-        columnStyles: {
-          0: { cellWidth: 30 }, // Date
-          1: { cellWidth: 50 }, // Event Name
-          2: { cellWidth: 40 }, // Account
-          3: { cellWidth: 45 }, // Location
-          4: { cellWidth: 30 }, // Type
-          5: { cellWidth: 'auto' } // Staffing Details
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252]
-        },
-        margin: { left: margin, right: margin },
-        didDrawPage: (data) => {
-          // Add page number at bottom
-          const pageNumber = doc.getNumberOfPages()
-          doc.setFontSize(8)
-          doc.setTextColor(150)
-          doc.text(
-            `Page ${data.pageNumber} of ${pageNumber}`,
-            pageWidth / 2,
-            doc.internal.pageSize.getHeight() - 10,
-            { align: 'center' }
-          )
-        }
-      })
-
-      // Generate filename with week start date
-      const weekStartStr = weekRange.start.toISOString().split('T')[0]
-      const filename = `weekly-events-${weekStartStr}.pdf`
-
-      // Download the PDF
       doc.save(filename)
     } catch (error) {
       console.error('Error generating PDF:', error)
@@ -317,7 +476,7 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[#347dc4]" />
-            <h2 className="text-lg font-medium text-gray-900">Upcoming Events This Week</h2>
+            <h2 className="text-lg font-medium text-gray-900">Weekly Events</h2>
           </div>
         </div>
         <div className="p-6">
@@ -336,39 +495,123 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
     )
   }
 
+  // Determine section title based on active tab
+  const getSectionTitle = () => {
+    switch (activeTab) {
+      case 'last': return 'Last Week\'s Events'
+      case 'this': return 'This Week\'s Events'
+      case 'next': return 'Next Week\'s Events'
+      default: return 'Weekly Events'
+    }
+  }
+
   return (
     <div className="bg-white rounded-lg shadow">
+      {/* Header with title and export button */}
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[#347dc4]" />
-            <h2 className="text-lg font-medium text-gray-900">Upcoming Events This Week</h2>
+            <h2 className="text-lg font-medium text-gray-900">{getSectionTitle()}</h2>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">
               {weeklyEventDates.length} event{weeklyEventDates.length !== 1 ? 's' : ''}
             </span>
-            {weeklyEventDates.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportPDF}
-                disabled={isExporting}
-                className="flex items-center gap-1.5"
-              >
-                <Download className="h-4 w-4" />
-                {isExporting ? 'Exporting...' : 'Export PDF'}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenExportModal}
+              disabled={isExporting}
+              className="flex items-center gap-1.5"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exporting...' : 'Export PDF'}
+            </Button>
           </div>
         </div>
       </div>
 
+      {/* Week tabs */}
+      <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WeekTab)}>
+          <TabsList>
+            {weekInfos.map(week => (
+              <TabsTrigger key={week.key} value={week.key}>
+                <span className="hidden sm:inline">{week.label}</span>
+                <span className="sm:hidden">{week.key === 'last' ? 'Last' : week.key === 'this' ? 'This' : 'Next'}</span>
+                <span className="ml-1.5 text-xs text-gray-500">({week.dateLabel})</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Export Weekly Events</h3>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-600 mb-4">Select weeks to include in the PDF export:</p>
+              <div className="space-y-3">
+                {weekInfos.map(week => (
+                  <label key={week.key} className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedWeeksForExport.has(week.key)}
+                      onChange={() => toggleWeekForExport(week.key)}
+                      className="h-4 w-4 text-[#347dc4] border-gray-300 rounded focus:ring-[#347dc4]"
+                    />
+                    <span className="text-sm text-gray-700">
+                      {week.label} <span className="text-gray-500">({week.dateLabel})</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <Button variant="outline" size="sm" onClick={() => setShowExportModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={selectedWeeksForExport.size === 0}
+                className="bg-[#347dc4] hover:bg-[#2c6ba8] text-white"
+              >
+                Export PDF
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {weeklyEventDates.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <Calendar className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">No upcoming events this week</p>
-          <p className="text-sm text-gray-400 mt-1">Upcoming events will appear here.</p>
+          <p className="text-gray-500 font-medium">
+            {activeTab === 'last'
+              ? 'No events last week'
+              : activeTab === 'next'
+                ? 'No events scheduled for next week'
+                : 'No upcoming events this week'}
+          </p>
+          <p className="text-sm text-gray-400 mt-1">
+            {activeTab === 'last'
+              ? 'There were no events during this period.'
+              : activeTab === 'next'
+                ? 'Events scheduled for next week will appear here.'
+                : 'Upcoming events will appear here.'}
+          </p>
         </div>
       ) : (
         <>
@@ -403,13 +646,15 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                   const daysUntil = getDaysUntil(eventDate)
                   const { config: priority } = getEventPriority(daysUntil)
                   const isToday = isDateToday(eventDate)
+                  // Show strikethrough for completed (past) events only in "This Week" tab
+                  const isCompleted = activeTab === 'this' && daysUntil !== null && daysUntil < 0
 
                   return (
                     <tr key={eventDateId} className={`hover:bg-gray-50 ${priority.border}`}>
                       {/* Date */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className={`text-sm font-medium ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                             {formatDateShort(eventDate)}
                           </span>
                           {isToday && (
@@ -429,14 +674,14 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link
                           href={`/${tenantSubdomain}/events/${event.id}`}
-                          className="text-sm font-medium text-[#347dc4] hover:text-[#2c6ba8] hover:underline"
+                          className={`text-sm font-medium hover:underline ${isCompleted ? 'text-[#347dc4]/60 line-through' : 'text-[#347dc4] hover:text-[#2c6ba8]'}`}
                         >
                           {event.title || 'Untitled Event'}
                         </Link>
                         {event.event_categories && (
                           <div className="mt-1">
                             <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${isCompleted ? 'opacity-60' : ''}`}
                               style={{
                                 backgroundColor: event.event_categories.color + '20',
                                 color: event.event_categories.color
@@ -446,7 +691,9 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                                 className="w-2 h-2 rounded-full"
                                 style={{ backgroundColor: event.event_categories.color }}
                               />
-                              {event.event_categories.name}
+                              <span className={isCompleted ? 'line-through' : ''}>
+                                {event.event_categories.name}
+                              </span>
                             </span>
                           </div>
                         )}
@@ -454,17 +701,19 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
 
                       {/* Account */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                          <Building2 className="h-4 w-4 text-gray-400" />
-                          {event.account_name || 'No account'}
+                        <div className={`flex items-center gap-1.5 text-sm ${isCompleted ? 'text-gray-400' : 'text-gray-700'}`}>
+                          <Building2 className={`h-4 w-4 ${isCompleted ? 'text-gray-300' : 'text-gray-400'}`} />
+                          <span className={isCompleted ? 'line-through' : ''}>
+                            {event.account_name || 'No account'}
+                          </span>
                         </div>
                       </td>
 
                       {/* Location */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="truncate max-w-32" title={location}>
+                        <div className={`flex items-center gap-1.5 text-sm ${isCompleted ? 'text-gray-400' : 'text-gray-700'}`}>
+                          <MapPin className={`h-4 w-4 ${isCompleted ? 'text-gray-300' : 'text-gray-400'}`} />
+                          <span className={`truncate max-w-32 ${isCompleted ? 'line-through' : ''}`} title={location}>
                             {location}
                           </span>
                         </div>
@@ -473,7 +722,7 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                       {/* Type */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {event.event_types ? (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                          <span className={`px-2 py-1 bg-gray-100 rounded text-xs font-medium ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                             {event.event_types.name}
                           </span>
                         ) : (
@@ -495,12 +744,12 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                             <div className="space-y-2">
                               {groupedStaff.map((group, groupIndex) => (
                                 <div key={groupIndex}>
-                                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                                  <div className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${isCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
                                     {group.displayName}
                                   </div>
                                   <div className="space-y-0.5">
                                     {group.staff.map((person, personIndex) => (
-                                      <div key={personIndex} className="text-sm text-gray-700">
+                                      <div key={personIndex} className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                                         {formatStaffName(person.firstName, person.lastName)}
                                       </div>
                                     ))}
@@ -525,18 +774,20 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
               const daysUntil = getDaysUntil(eventDate)
               const { config: priority } = getEventPriority(daysUntil)
               const isToday = isDateToday(eventDate)
+              // Show strikethrough for completed (past) events only in "This Week" tab
+              const isCompleted = activeTab === 'this' && daysUntil !== null && daysUntil < 0
 
               return (
                 <div key={eventDateId} className={`p-4 ${priority.border} border-l-4`}>
                   <div className="mb-2">
                     <Link
                       href={`/${tenantSubdomain}/events/${event.id}`}
-                      className="text-sm font-medium text-[#347dc4] hover:underline"
+                      className={`text-sm font-medium hover:underline ${isCompleted ? 'text-[#347dc4]/60 line-through' : 'text-[#347dc4]'}`}
                     >
                       {event.title || 'Untitled Event'}
                     </Link>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-gray-600">
+                      <span className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
                         {formatDateShort(eventDate)}
                       </span>
                       {isToday && (
@@ -547,16 +798,16 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                     </div>
                   </div>
 
-                  <div className="space-y-1 text-sm text-gray-600">
+                  <div className={`space-y-1 text-sm ${isCompleted ? 'text-gray-400' : 'text-gray-600'}`}>
                     {event.account_name && (
                       <div className="flex items-center gap-1.5">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        {event.account_name}
+                        <Building2 className={`h-4 w-4 ${isCompleted ? 'text-gray-300' : 'text-gray-400'}`} />
+                        <span className={isCompleted ? 'line-through' : ''}>{event.account_name}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      {location}
+                      <MapPin className={`h-4 w-4 ${isCompleted ? 'text-gray-300' : 'text-gray-400'}`} />
+                      <span className={isCompleted ? 'line-through' : ''}>{location}</span>
                     </div>
                   </div>
 
@@ -573,12 +824,12 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                       <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
                         {groupedStaff.map((group, groupIndex) => (
                           <div key={groupIndex}>
-                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                            <div className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${isCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
                               {group.displayName}
                             </div>
                             <div className="space-y-0.5">
                               {group.staff.map((person, personIndex) => (
-                                <div key={personIndex} className="text-sm text-gray-700">
+                                <div key={personIndex} className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                                   {formatStaffName(person.firstName, person.lastName)}
                                 </div>
                               ))}
@@ -592,7 +843,7 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                   <div className="mt-3">
                     <Link
                       href={`/${tenantSubdomain}/events/${event.id}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-[#347dc4] rounded-md hover:bg-[#2c6ba8] transition-colors"
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white rounded-md transition-colors ${isCompleted ? 'bg-[#347dc4]/60 hover:bg-[#347dc4]/70' : 'bg-[#347dc4] hover:bg-[#2c6ba8]'}`}
                     >
                       <Eye className="h-4 w-4" />
                       View Details
