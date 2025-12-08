@@ -9,7 +9,6 @@ import {
   FileSignature,
   CheckSquare,
   MessageSquare,
-  FolderKanban,
   LifeBuoy,
   Package,
   BarChart3
@@ -142,15 +141,6 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
           )}
         </SidebarSection>
 
-        {/* Projects (standalone, outside sections) */}
-        <div className="mt-2">
-          <SidebarNavItem
-            href={`/${tenantSubdomain}/projects`}
-            icon={<FolderKanban className="h-5 w-5" />}
-            label="Projects"
-            onClick={onNavigate}
-          />
-        </div>
       </nav>
 
       {/* Bottom Pinned - Support Tickets */}
