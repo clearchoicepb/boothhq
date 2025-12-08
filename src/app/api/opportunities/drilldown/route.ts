@@ -4,6 +4,7 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
 import { getDateRangeForPeriod } from '@/lib/utils/date-utils'
 import type { TimePeriod } from '@/components/ui/kpi-card'
+import { CLOSED_STAGES } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('api:opportunities:drilldown')
 
@@ -49,11 +50,13 @@ const defaultStages: StageConfig[] = [
   { id: 'qualification', name: 'Qualification', probability: 25, enabled: true },
   { id: 'proposal', name: 'Proposal', probability: 50, enabled: true },
   { id: 'negotiation', name: 'Negotiation', probability: 75, enabled: true },
+  { id: 'stale', name: 'Stale', probability: 1, enabled: true },
   { id: 'closed_won', name: 'Closed Won', probability: 100, enabled: true },
   { id: 'closed_lost', name: 'Closed Lost', probability: 0, enabled: true }
 ]
 
-const OPEN_STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation']
+// Filter for Supabase NOT IN query - excludes closed/terminal stages
+const closedStagesFilter = `(${CLOSED_STAGES.join(',')})`
 
 function getStageName(stageId: string, stages: StageConfig[]): string {
   const stage = stages.find(s => s.id === stageId)
@@ -229,6 +232,7 @@ export async function GET(request: NextRequest) {
 
       case 'open-pipeline': {
         // Open opportunities (current state, no period filter)
+        // Use NOT IN closed stages to support tenant-configurable open stages
         const { data: opportunities, error } = await supabase
           .from('opportunities')
           .select(`
@@ -237,7 +241,7 @@ export async function GET(request: NextRequest) {
             event_dates(event_date)
           `)
           .eq('tenant_id', dataSourceTenantId)
-          .in('stage', OPEN_STAGES)
+          .not('stage', 'in', closedStagesFilter)
           .order('amount', { ascending: false, nullsFirst: false })
 
         if (error) {
@@ -636,6 +640,7 @@ export async function GET(request: NextRequest) {
 
       case 'closing-soon': {
         // Open opportunities with expected_close_date in next 7 days
+        // Use NOT IN closed stages to support tenant-configurable open stages
         const { data: opportunities, error } = await supabase
           .from('opportunities')
           .select(`
@@ -644,7 +649,7 @@ export async function GET(request: NextRequest) {
             event_dates(event_date)
           `)
           .eq('tenant_id', dataSourceTenantId)
-          .in('stage', OPEN_STAGES)
+          .not('stage', 'in', closedStagesFilter)
           .gte('expected_close_date', todayISO)
           .lte('expected_close_date', closingSoonEndISO)
           .order('expected_close_date', { ascending: true })

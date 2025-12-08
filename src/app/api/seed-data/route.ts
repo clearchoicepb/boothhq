@@ -1,6 +1,7 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { isOpenStage } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('api:seed-data')
 
@@ -441,7 +442,7 @@ export async function POST(request: Request) {
 
     // STEP 7: Create Quotes (from open opportunities, 12 max)
     log.debug('Creating quotes...')
-    const openOpportunities = opportunities?.filter(o => !['closed_won', 'closed_lost'].includes(o.stage)) || []
+    const openOpportunities = opportunities?.filter(o => isOpenStage(o.stage)) || []
     const quotesToCreate = Math.min(12, openOpportunities.length)
     const quoteStatuses = [
       ...Array(5).fill('accepted'),

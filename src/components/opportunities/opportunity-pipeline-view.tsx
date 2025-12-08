@@ -4,6 +4,7 @@ import { OpportunityPreviewModal } from './opportunity-preview-modal'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 import type { TenantUser } from '@/lib/users'
 import { createLogger } from '@/lib/logger'
+import { CLOSED_STAGES } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('opportunities')
 
@@ -66,8 +67,8 @@ export function OpportunityPipelineView({
     { id: 'closed_lost', name: 'Closed Lost', enabled: true }
   ]
 
-  const activeStages = stages.filter((stage: any) => 
-    stage.enabled !== false && !['closed_won', 'closed_lost'].includes(stage.id || stage)
+  const activeStages = stages.filter((stage: any) =>
+    stage.enabled !== false && !CLOSED_STAGES.includes(stage.id || stage)
   )
 
   return (

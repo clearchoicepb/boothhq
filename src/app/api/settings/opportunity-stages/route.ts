@@ -84,6 +84,7 @@ export async function GET(request: Request) {
         { id: 'qualification', name: 'Qualification', probability: 25, color: 'yellow', enabled: true },
         { id: 'proposal', name: 'Proposal', probability: 50, color: 'purple', enabled: true },
         { id: 'negotiation', name: 'Negotiation', probability: 75, color: 'orange', enabled: true },
+        { id: 'stale', name: 'Stale', probability: 1, color: 'gray', enabled: true },
         { id: 'closed_won', name: 'Closed Won', probability: 100, color: 'green', enabled: true },
         { id: 'closed_lost', name: 'Closed Lost', probability: 0, color: 'red', enabled: true }
       ]

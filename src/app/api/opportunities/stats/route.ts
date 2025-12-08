@@ -2,12 +2,9 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
 import { getDateRangeForPeriod, toDateInputValue } from '@/lib/utils/date-utils'
+import { CLOSED_STAGES, isOpenStage } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('api:opportunities')
-
-type TimePeriod = 'week' | 'month' | 'year' | 'all'
-
-const OPEN_STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation']
 
 /**
  * GET /api/opportunities/stats
@@ -78,11 +75,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Query 2: Open Pipeline (no time filter - current state)
+    // Use NOT IN closed stages to support tenant-configurable open stages
+    const closedStagesFilter = `(${CLOSED_STAGES.join(',')})`
     let openPipelineQuery = supabase
       .from('opportunities')
       .select('id, amount, probability, stage')
       .eq('tenant_id', dataSourceTenantId)
-      .in('stage', OPEN_STAGES)
+      .not('stage', 'in', closedStagesFilter)
 
     // Only apply owner filter to open pipeline, not stage filter
     if (ownerFilter && ownerFilter !== 'all') {
@@ -98,7 +97,7 @@ export async function GET(request: NextRequest) {
       .from('opportunities')
       .select('id, amount, probability, stage, expected_close_date')
       .eq('tenant_id', dataSourceTenantId)
-      .in('stage', OPEN_STAGES)
+      .not('stage', 'in', closedStagesFilter)
       .gte('expected_close_date', todayISO)
       .lte('expected_close_date', next7DaysISO)
 
@@ -215,7 +214,7 @@ export async function GET(request: NextRequest) {
     const total = timeFilteredOpps.length
     const totalValue = newOppsValue
     const expectedValue = newOppsWeightedValue
-    const openCount = timeFilteredOpps.filter(opp => OPEN_STAGES.includes(opp.stage)).length
+    const openCount = timeFilteredOpps.filter(opp => isOpenStage(opp.stage)).length
     const closedWonCount = timeFilteredOpps.filter(opp => opp.stage === 'closed_won').length
     const closedWonValue = timeFilteredOpps.filter(opp => opp.stage === 'closed_won')
       .reduce((sum, opp) => sum + (opp.amount || 0), 0)

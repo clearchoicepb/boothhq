@@ -55,7 +55,7 @@ function OpportunitiesPageContent() {
   // Local state for view and modals
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
   const [currentView, setCurrentView] = useState<'table' | 'pipeline' | 'cards'>('table')
-  const [showBucketPopup, setShowBucketPopup] = useState<'won' | 'lost' | null>(null)
+  const [showBucketPopup, setShowBucketPopup] = useState<'won' | 'lost' | 'stale' | null>(null)
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithRelations | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
@@ -497,9 +497,18 @@ function OpportunitiesPageContent() {
                 )}
               </div>
               <div className="flex items-center gap-4">
-                {/* Closed Buckets - Only show in pipeline view */}
+                {/* Closed/Terminal Buckets - Only show in pipeline view */}
                 {currentView === 'pipeline' && (
                   <div className="flex gap-3">
+                    <ClosedOpportunitiesBucket
+                      type="stale"
+                      count={opportunities.filter(opp => opp.stage === 'stale').length}
+                      isDragOver={dragAndDrop.dragOverStage === 'stale'}
+                      onClick={() => setShowBucketPopup('stale')}
+                      onDragOver={(e) => dragAndDrop.handleDragOver(e, 'stale')}
+                      onDragLeave={dragAndDrop.handleDragLeave}
+                      onDrop={(e) => dragAndDrop.handleDrop(e, 'stale')}
+                    />
                     <ClosedOpportunitiesBucket
                       type="won"
                       count={opportunities.filter(opp => opp.stage === 'closed_won').length}

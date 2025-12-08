@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { createLogger } from '@/lib/logger'
+import { isOpenStage, isClosedStage } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('dashboard')
-import { 
-  Users, 
-  UserPlus, 
-  Target, 
-  Building2, 
-  TrendingUp, 
+import {
+  Users,
+  UserPlus,
+  Target,
+  Building2,
+  TrendingUp,
   TrendingDown,
   DollarSign,
   Calendar,
@@ -195,19 +196,19 @@ export function StatsDashboard() {
       // Opportunity statistics
       const opportunityStats = {
         total: opportunities.length,
-        open: opportunities.filter((o: any) => !['closed_won', 'closed_lost'].includes(o.stage)).length,
+        open: opportunities.filter((o: any) => isOpenStage(o.stage)).length,
         closedWon: opportunities.filter((o: any) => o.stage === 'closed_won').length,
         closedLost: opportunities.filter((o: any) => o.stage === 'closed_lost').length,
         totalValue: opportunities.reduce((sum: number, o: any) => sum + (o.amount || 0), 0),
         expectedValue: 0, // Will be calculated with probability
-        winRate: opportunities.filter((o: any) => ['closed_won', 'closed_lost'].includes(o.stage)).length > 0 
-          ? (opportunities.filter((o: any) => o.stage === 'closed_won').length / 
-             opportunities.filter((o: any) => ['closed_won', 'closed_lost'].includes(o.stage)).length) * 100 
+        winRate: opportunities.filter((o: any) => isClosedStage(o.stage)).length > 0
+          ? (opportunities.filter((o: any) => o.stage === 'closed_won').length /
+             opportunities.filter((o: any) => isClosedStage(o.stage)).length) * 100
           : 0
       }
 
       // Calculate expected value based on probability
-      const openOpportunities = opportunities.filter((o: any) => !['closed_won', 'closed_lost'].includes(o.stage))
+      const openOpportunities = opportunities.filter((o: any) => isOpenStage(o.stage))
       opportunityStats.expectedValue = openOpportunities.reduce((sum: number, o: any) => {
         const amount = o.amount || 0
         const probability = o.probability || 0
