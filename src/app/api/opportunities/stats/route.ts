@@ -2,12 +2,9 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
 import { getDateRangeForPeriod, toDateInputValue } from '@/lib/utils/date-utils'
+import { CLOSED_STAGES, isOpenStage } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('api:opportunities')
-
-type TimePeriod = 'week' | 'month' | 'year' | 'all'
-
-const OPEN_STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation']
 
 /**
  * GET /api/opportunities/stats
@@ -78,11 +75,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Query 2: Open Pipeline (no time filter - current state)
+    // Use NOT IN closed stages to support tenant-configurable open stages
+    const closedStagesFilter = `(${CLOSED_STAGES.join(',')})`
     let openPipelineQuery = supabase
       .from('opportunities')
       .select('id, amount, probability, stage')
       .eq('tenant_id', dataSourceTenantId)
-      .in('stage', OPEN_STAGES)
+      .not('stage', 'in', closedStagesFilter)
 
     // Only apply owner filter to open pipeline, not stage filter
     if (ownerFilter && ownerFilter !== 'all') {
@@ -98,7 +97,7 @@ export async function GET(request: NextRequest) {
       .from('opportunities')
       .select('id, amount, probability, stage, expected_close_date')
       .eq('tenant_id', dataSourceTenantId)
-      .in('stage', OPEN_STAGES)
+      .not('stage', 'in', closedStagesFilter)
       .gte('expected_close_date', todayISO)
       .lte('expected_close_date', next7DaysISO)
 
@@ -110,10 +109,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Query 4: Won/Lost in period (filter by actual_close_date)
+    // Query 4: Won/Lost in period (filter by updated_at since actual_close_date may not be set)
     let closedInPeriodQuery = supabase
       .from('opportunities')
-      .select('id, amount, probability, stage, created_at, actual_close_date')
+      .select('id, amount, probability, stage, created_at, actual_close_date, updated_at')
       .eq('tenant_id', dataSourceTenantId)
       .in('stage', ['closed_won', 'closed_lost'])
 
@@ -127,9 +126,10 @@ export async function GET(request: NextRequest) {
 
     if (periodFilter !== 'all') {
       const dateRange = getDateRangeForPeriod(periodFilter)
+      // Use updated_at for period filtering since actual_close_date may not always be set
       closedInPeriodQuery = closedInPeriodQuery
-        .gte('actual_close_date', dateRange.startISO)
-        .lte('actual_close_date', dateRange.endISO)
+        .gte('updated_at', dateRange.startISO)
+        .lte('updated_at', dateRange.endISO + 'T23:59:59')
     }
 
     // Execute all queries in parallel
@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
     const total = timeFilteredOpps.length
     const totalValue = newOppsValue
     const expectedValue = newOppsWeightedValue
-    const openCount = timeFilteredOpps.filter(opp => OPEN_STAGES.includes(opp.stage)).length
+    const openCount = timeFilteredOpps.filter(opp => isOpenStage(opp.stage)).length
     const closedWonCount = timeFilteredOpps.filter(opp => opp.stage === 'closed_won').length
     const closedWonValue = timeFilteredOpps.filter(opp => opp.stage === 'closed_won')
       .reduce((sum, opp) => sum + (opp.amount || 0), 0)

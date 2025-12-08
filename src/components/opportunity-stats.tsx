@@ -5,6 +5,7 @@ import { opportunitiesApi } from '@/lib/db/opportunities'
 import { DollarSign, TrendingUp, Users, Calendar } from 'lucide-react'
 import type { Opportunity } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
+import { isOpenStage } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('components')
 
@@ -54,8 +55,8 @@ export function OpportunityStats() {
   }
 
   const totalValue = opportunities.reduce((sum, opp) => sum + (opp.amount || 0), 0)
-  const activeOpportunities = opportunities.filter(opp => 
-    !['closed_won', 'closed_lost'].includes(opp.stage)
+  const activeOpportunities = opportunities.filter(opp =>
+    isOpenStage(opp.stage)
   ).length
   const wonOpportunities = opportunities.filter(opp => opp.stage === 'closed_won').length
   const avgProbability = opportunities.length > 0 

@@ -228,6 +228,7 @@ export interface Database {
           is_converted: boolean
           converted_at: string | null
           converted_event_id: string | null
+          stage_changed_at: string
           created_at: string
           updated_at: string
         }
@@ -261,6 +262,7 @@ export interface Database {
           is_converted?: boolean
           converted_at?: string | null
           converted_event_id?: string | null
+          stage_changed_at?: string
           created_at?: string
           updated_at?: string
         }
@@ -294,6 +296,7 @@ export interface Database {
           is_converted?: boolean
           converted_at?: string | null
           converted_event_id?: string | null
+          stage_changed_at?: string
           created_at?: string
           updated_at?: string
         }

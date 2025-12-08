@@ -4,13 +4,65 @@ const log = createLogger('utils')
 
 /**
  * Date Utilities for handling date strings without timezone issues
- * 
+ *
+ * All date calculations use EST (America/New_York) timezone consistently
+ * to avoid timezone conversion issues across the application.
+ *
  * Problem: Database stores dates as strings (e.g., '2025-01-15')
  * When parsing with new Date('2025-01-15'), JavaScript interprets as UTC midnight
  * This causes off-by-one errors for users in negative UTC timezones (EST, PST, etc.)
- * 
- * Solution: Parse date strings in local timezone to avoid conversion issues
+ *
+ * Solution: Use EST timezone consistently for all date operations
  */
+
+const EST_TIMEZONE = 'America/New_York'
+
+/**
+ * Get the current date/time in EST timezone
+ * @returns Object with year, month, day, hour, minute in EST
+ */
+function getESTDateParts(): { year: number; month: number; day: number; hour: number; minute: number } {
+  const now = new Date()
+  const estString = now.toLocaleString('en-US', {
+    timeZone: EST_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+
+  // Parse "MM/DD/YYYY, HH:MM" format
+  const match = estString.match(/(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{2}):(\d{2})/)
+  if (match) {
+    return {
+      month: parseInt(match[1]),
+      day: parseInt(match[2]),
+      year: parseInt(match[3]),
+      hour: parseInt(match[4]),
+      minute: parseInt(match[5])
+    }
+  }
+
+  // Fallback to local time if parsing fails
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    day: now.getDate(),
+    hour: now.getHours(),
+    minute: now.getMinutes()
+  }
+}
+
+/**
+ * Get today's date in EST as a Date object (midnight EST)
+ * Exported for use in other modules that need consistent EST-based "today"
+ */
+export function getTodayEST(): Date {
+  const parts = getESTDateParts()
+  return new Date(parts.year, parts.month - 1, parts.day, 0, 0, 0, 0)
+}
 
 /**
  * Parse a date string (YYYY-MM-DD) in local timezone
@@ -133,15 +185,14 @@ export function formatDateLong(dateString: string | null | undefined): string {
  */
 export function getDaysUntil(dateString: string | null | undefined): number | null {
   if (!dateString) return null
-  
+
   try {
     const targetDate = parseLocalDate(dateString)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0) // Reset to midnight for accurate day calculation
-    
+    const today = getTodayEST() // Use EST for consistent "today" calculation
+
     const diffTime = targetDate.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
+
     return diffDays
   } catch (error) {
     log.error({ error }, 'Error calculating days until')
@@ -376,8 +427,7 @@ export interface DateRange {
  * // → { start: Mon Dec 1, end: Sun Dec 7, startISO: '2025-12-01', endISO: '2025-12-07' }
  */
 export function getWeekRange(): DateRange {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = getTodayEST() // Use EST for consistent date calculation
 
   // Get current day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
   const dayOfWeek = today.getDay()
@@ -413,13 +463,13 @@ export function getWeekRange(): DateRange {
  * // → { start: Dec 1, end: Dec 31, startISO: '2025-12-01', endISO: '2025-12-31' }
  */
 export function getMonthRange(): DateRange {
-  const today = new Date()
+  const estParts = getESTDateParts() // Use EST for consistent date calculation
 
-  const start = new Date(today.getFullYear(), today.getMonth(), 1)
+  const start = new Date(estParts.year, estParts.month - 1, 1)
   start.setHours(0, 0, 0, 0)
 
   // Last day of month: go to next month's day 0
-  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  const end = new Date(estParts.year, estParts.month, 0)
   end.setHours(23, 59, 59, 999)
 
   return {
@@ -441,8 +491,8 @@ export function getMonthRange(): DateRange {
  * // → { start: Jan 1, end: Dec 31, startISO: '2025-01-01', endISO: '2025-12-31' }
  */
 export function getYearRange(): DateRange {
-  const today = new Date()
-  const year = today.getFullYear()
+  const estParts = getESTDateParts() // Use EST for consistent date calculation
+  const year = estParts.year
 
   const start = new Date(year, 0, 1)
   start.setHours(0, 0, 0, 0)

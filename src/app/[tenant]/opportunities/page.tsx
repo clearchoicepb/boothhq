@@ -40,6 +40,7 @@ import { OpportunityTable } from '@/components/opportunities/opportunity-table'
 import { OpportunityPipelineView } from '@/components/opportunities/opportunity-pipeline-view'
 import { OpportunitySourceSelector } from '@/components/opportunity-source-selector'
 import { createLogger } from '@/lib/logger'
+import { getDateRangeForPeriod } from '@/lib/utils/date-utils'
 import toast from 'react-hot-toast'
 
 const log = createLogger('opportunities')
@@ -55,7 +56,7 @@ function OpportunitiesPageContent() {
   // Local state for view and modals
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
   const [currentView, setCurrentView] = useState<'table' | 'pipeline' | 'cards'>('table')
-  const [showBucketPopup, setShowBucketPopup] = useState<'won' | 'lost' | null>(null)
+  const [showBucketPopup, setShowBucketPopup] = useState<'won' | 'lost' | 'stale' | null>(null)
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityWithRelations | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
@@ -187,6 +188,30 @@ function OpportunitiesPageContent() {
     getAvgDealSize,
     getClosingSoon,
   } = useOpportunityCalculations(filterStage, filterOwner, 'month')
+
+  // Helper function to filter opportunities by time period (for closed buckets)
+  // Uses same date range logic as stats API for consistency
+  // Compare ISO date strings to avoid timezone issues
+  const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
+    if (period === 'all') return opps
+
+    const dateRange = getDateRangeForPeriod(period)
+    const startISO = dateRange.startISO
+    const endISO = dateRange.endISO + 'T23:59:59'
+
+    return opps.filter(opp => {
+      if (!opp.updated_at) return false
+      // Compare ISO strings to match API behavior and avoid timezone issues
+      return opp.updated_at >= startISO && opp.updated_at <= endISO
+    })
+  }, [])
+
+  // Get bucket counts filtered by time period
+  const getBucketCount = useCallback((stage: string) => {
+    const stageOpps = opportunities.filter(opp => opp.stage === stage)
+    const filteredOpps = filterByTimePeriod(stageOpps, timePeriod)
+    return filteredOpps.length
+  }, [opportunities, timePeriod, filterByTimePeriod])
 
   // Drag and drop
   const dragAndDrop = useOpportunityDragAndDrop({
@@ -497,12 +522,23 @@ function OpportunitiesPageContent() {
                 )}
               </div>
               <div className="flex items-center gap-4">
-                {/* Closed Buckets - Only show in pipeline view */}
+                {/* Closed/Terminal Buckets - Only show in pipeline view */}
                 {currentView === 'pipeline' && (
                   <div className="flex gap-3">
                     <ClosedOpportunitiesBucket
+                      type="stale"
+                      count={getBucketCount('stale')}
+                      timePeriod={timePeriod}
+                      isDragOver={dragAndDrop.dragOverStage === 'stale'}
+                      onClick={() => setShowBucketPopup('stale')}
+                      onDragOver={(e) => dragAndDrop.handleDragOver(e, 'stale')}
+                      onDragLeave={dragAndDrop.handleDragLeave}
+                      onDrop={(e) => dragAndDrop.handleDrop(e, 'stale')}
+                    />
+                    <ClosedOpportunitiesBucket
                       type="won"
-                      count={opportunities.filter(opp => opp.stage === 'closed_won').length}
+                      count={getBucketCount('closed_won')}
+                      timePeriod={timePeriod}
                       isDragOver={dragAndDrop.dragOverStage === 'closed_won'}
                       onClick={() => setShowBucketPopup('won')}
                       onDragOver={(e) => dragAndDrop.handleDragOver(e, 'closed_won')}
@@ -511,7 +547,8 @@ function OpportunitiesPageContent() {
                     />
                     <ClosedOpportunitiesBucket
                       type="lost"
-                      count={opportunities.filter(opp => opp.stage === 'closed_lost').length}
+                      count={getBucketCount('closed_lost')}
+                      timePeriod={timePeriod}
                       isDragOver={dragAndDrop.dragOverStage === 'closed_lost'}
                       onClick={() => setShowBucketPopup('lost')}
                       onDragOver={(e) => dragAndDrop.handleDragOver(e, 'closed_lost')}
@@ -697,10 +734,15 @@ function OpportunitiesPageContent() {
             type={showBucketPopup}
             opportunities={opportunities}
             tenantSubdomain={tenantSubdomain}
+            timePeriod={timePeriod}
             onClose={() => setShowBucketPopup(null)}
             onDragStart={(e, opportunity) => dragAndDrop.handleDragStart(e, opportunity)}
             onDragEnd={dragAndDrop.handleDragEnd}
             onOpportunityClick={(id) => window.open(`/${tenantSubdomain}/opportunities/${id}`, '_blank')}
+            onSyncComplete={() => {
+              fetchOpportunities()
+              toast.success('Automation completed successfully')
+            }}
           />
         </div>
       </div>
