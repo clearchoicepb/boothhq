@@ -358,13 +358,35 @@ export function BaseForm<T extends Record<string, any>>({
           )
 
         case 'email':
+          return (
+            <Input
+              {...commonProps}
+              type={field.type}
+              autoComplete="email"
+            />
+          )
         case 'url':
+          return (
+            <Input
+              {...commonProps}
+              type={field.type}
+              autoComplete="url"
+            />
+          )
         case 'phone':
+          return (
+            <Input
+              {...commonProps}
+              type={field.type}
+              autoComplete="tel"
+            />
+          )
         case 'password':
           return (
             <Input
               {...commonProps}
               type={field.type}
+              autoComplete="new-password"
             />
           )
 
