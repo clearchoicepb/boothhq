@@ -71,24 +71,24 @@ export default function UsersSettingsPage() {
 
   const tenantSubdomain = useParams().tenant as string
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/users')
-        if (response.ok) {
-          const data = await response.json()
-          setUsers(data)
-        } else {
-          log.error('Failed to fetch users')
-        }
-      } catch (error) {
-        log.error({ error }, 'Error fetching users')
-      } finally {
-        setLoading(false)
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/users')
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data)
+      } else {
+        log.error('Failed to fetch users')
       }
+    } catch (error) {
+      log.error({ error }, 'Error fetching users')
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchUsers()
   }, [])
 
@@ -957,6 +957,7 @@ export default function UsersSettingsPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password (min 8 characters)"
               className="w-full"
+              autoComplete="new-password"
             />
             <p className="mt-1 text-xs text-gray-500">
               Password must be at least 8 characters long
