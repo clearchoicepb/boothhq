@@ -7,7 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
-import { Plus, DollarSign, Grid, List, Download, ListFilter } from 'lucide-react'
+import { Plus, DollarSign, Grid, List, Download, ListFilter, TrendingUp, TrendingDown, Target, Clock, Calendar, CheckCircle, XCircle, Percent } from 'lucide-react'
 import Link from 'next/link'
 import { exportToCSV } from '@/lib/csv-export'
 import { useParams } from 'next/navigation'
@@ -29,7 +29,7 @@ import { useOpportunityDragAndDrop } from '@/hooks/useOpportunityDragAndDrop'
 import { KPICard, KPICardGrid, KPISection, periodOptionsWithAll, type TimePeriod } from '@/components/ui/kpi-card'
 import { OpportunitySuccessAnimation } from '@/components/opportunities/opportunity-success-animation'
 import { OpportunityEmptyState } from '@/components/opportunities/opportunity-empty-state'
-import { OpportunityCalculationModeToggle } from '@/components/opportunities/opportunity-calculation-mode-toggle'
+// OpportunityCalculationModeToggle replaced by KPISection toggle
 import { OpportunityFilters } from '@/components/opportunities/opportunity-filters'
 import { OpportunityMobileCard } from '@/components/opportunities/opportunity-mobile-card'
 import { ClosedOpportunitiesBucket } from '@/components/opportunities/closed-opportunities-bucket'
@@ -168,13 +168,19 @@ function OpportunitiesPageContent() {
 
   // Calculations (now from stats API - shows ALL opportunities, not just current page)
   const {
-    calculationMode,
-    setCalculationMode,
-    currentStats,
-    openOpportunities,
     loading: statsLoading,
     timePeriod,
     setTimePeriod,
+    valueMode,
+    setValueMode,
+    getNewOpps,
+    getOpenPipeline,
+    getWon,
+    getLost,
+    getWinRate,
+    getAvgDaysToClose,
+    getAvgDealSize,
+    getClosingSoon,
   } = useOpportunityCalculations(filterStage, filterOwner, 'month')
 
   // Drag and drop
@@ -329,64 +335,107 @@ function OpportunitiesPageContent() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Calculation Mode Toggle */}
-          <OpportunityCalculationModeToggle
-            mode={calculationMode}
-            onChange={setCalculationMode}
-            settings={settings}
-          />
+          {/* KPI Statistics Section */}
+          <KPISection
+            timePeriod={{
+              value: timePeriod,
+              options: periodOptionsWithAll,
+              onChange: (value) => setTimePeriod(value as TimePeriod)
+            }}
+            toggle={{
+              value: valueMode,
+              options: [
+                { label: 'Total Value', value: 'total' },
+                { label: 'Weighted Value', value: 'weighted' }
+              ],
+              onChange: (value) => setValueMode(value as 'total' | 'weighted')
+            }}
+          >
+            <KPICardGrid columns={4}>
+              {/* Row 1 */}
+              <KPICard
+                size="compact"
+                icon={<TrendingUp className="h-4 w-4" />}
+                label="New Opps"
+                value={getNewOpps().count}
+                secondaryValue={`$${Math.round(getNewOpps().value).toLocaleString()}`}
+                loading={statsLoading}
+              />
 
-          {/* Statistics Cards */}
-          <KPICardGrid columns={3} className="mb-8">
-            <KPICard
-              icon={<DollarSign className="h-5 w-5" />}
-              label={calculationMode === 'total' ? 'Total Opportunities' : 'Open Opportunities'}
-              value={currentStats.qty}
-              subtitle={
-                filterStage !== 'all' || filterOwner !== 'all'
-                  ? 'Filtered total'
-                  : timePeriod === 'all'
-                    ? 'All opportunities'
-                    : `Created ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'}`
-              }
-              dropdown={{
-                value: timePeriod,
-                options: periodOptionsWithAll,
-                onChange: (value) => setTimePeriod(value as TimePeriod)
-              }}
-              loading={statsLoading}
-            />
+              <KPICard
+                size="compact"
+                icon={<Target className="h-4 w-4" />}
+                label="Open Pipeline"
+                value={getOpenPipeline().count}
+                secondaryValue={`$${Math.round(getOpenPipeline().value).toLocaleString()}`}
+                subtitle="Current state"
+                loading={statsLoading}
+              />
 
-            <KPICard
-              icon={<DollarSign className="h-5 w-5" />}
-              label={calculationMode === 'total' ? 'Total Value' : 'Expected Value'}
-              value={`$${Math.round(currentStats.amount).toLocaleString()}`}
-              subtitle={
-                calculationMode === 'expected'
-                  ? `Probability-weighted ${settings.opportunities?.autoCalculateProbability ? '(stage-based)' : '(manual)'}`
-                  : filterStage !== 'all' || filterOwner !== 'all'
-                    ? 'Filtered total'
-                    : timePeriod === 'all'
-                      ? 'All opportunities'
-                      : `From ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'}`
-              }
-              loading={statsLoading}
-            />
+              <KPICard
+                size="compact"
+                icon={<CheckCircle className="h-4 w-4" />}
+                label="Won"
+                value={getWon().count}
+                secondaryValue={`$${Math.round(getWon().value).toLocaleString()}`}
+                loading={statsLoading}
+              />
 
-            <KPICard
-              icon={<DollarSign className="h-5 w-5" />}
-              label="Open Opportunities"
-              value={openOpportunities}
-              subtitle={
-                filterStage !== 'all' || filterOwner !== 'all'
-                  ? 'Filtered count'
-                  : timePeriod === 'all'
-                    ? 'Not closed won/lost'
-                    : `Not closed (${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? 'this month' : 'this year'})`
-              }
-              loading={statsLoading}
-            />
-          </KPICardGrid>
+              <KPICard
+                size="compact"
+                icon={<XCircle className="h-4 w-4" />}
+                label="Lost"
+                value={getLost().count}
+                secondaryValue={`$${Math.round(getLost().value).toLocaleString()}`}
+                loading={statsLoading}
+              />
+
+              {/* Row 2 */}
+              <KPICard
+                size="compact"
+                icon={<Percent className="h-4 w-4" />}
+                label="Win Rate"
+                value={getWinRate() !== null ? `${getWinRate()}%` : 0}
+                empty={getWinRate() === null}
+                emptyText="N/A"
+                subtitle={getWinRate() !== null ? 'Won / Closed' : 'No closed deals'}
+                loading={statsLoading}
+              />
+
+              <KPICard
+                size="compact"
+                icon={<Clock className="h-4 w-4" />}
+                label="Avg Days to Close"
+                value={getAvgDaysToClose() ?? 0}
+                empty={getAvgDaysToClose() === null}
+                emptyText="N/A"
+                secondaryLabel="days"
+                subtitle={getAvgDaysToClose() !== null ? 'For won deals' : 'No won deals'}
+                loading={statsLoading}
+              />
+
+              <KPICard
+                size="compact"
+                icon={<DollarSign className="h-4 w-4" />}
+                label="Avg Deal Size"
+                value={getAvgDealSize() !== null ? `$${getAvgDealSize()?.toLocaleString()}` : 0}
+                empty={getAvgDealSize() === null}
+                emptyText="N/A"
+                subtitle={getAvgDealSize() !== null ? 'Won deals avg' : 'No won deals'}
+                loading={statsLoading}
+              />
+
+              <KPICard
+                size="compact"
+                icon={<Calendar className="h-4 w-4" />}
+                label="Closing Soon"
+                value={getClosingSoon().count}
+                secondaryValue={`$${Math.round(getClosingSoon().value).toLocaleString()}`}
+                subtitle="Next 7 days"
+                loading={statsLoading}
+              />
+            </KPICardGrid>
+          </KPISection>
 
           {/* Filters and Search - Only show on table and card views */}
           {currentView !== 'pipeline' && (
