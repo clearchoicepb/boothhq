@@ -40,6 +40,7 @@ import { OpportunityTable } from '@/components/opportunities/opportunity-table'
 import { OpportunityPipelineView } from '@/components/opportunities/opportunity-pipeline-view'
 import { OpportunitySourceSelector } from '@/components/opportunity-source-selector'
 import { createLogger } from '@/lib/logger'
+import { getDateRangeForPeriod } from '@/lib/utils/date-utils'
 import toast from 'react-hot-toast'
 
 const log = createLogger('opportunities')
@@ -189,30 +190,15 @@ function OpportunitiesPageContent() {
   } = useOpportunityCalculations(filterStage, filterOwner, 'month')
 
   // Helper function to filter opportunities by time period (for closed buckets)
+  // Uses same date range logic as stats API for consistency
   const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
     if (period === 'all') return opps
 
-    const now = new Date()
-    let startDate: Date
-
-    switch (period) {
-      case 'week':
-        startDate = new Date(now)
-        startDate.setDate(now.getDate() - 7)
-        break
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1)
-        break
-      default:
-        return opps
-    }
+    const dateRange = getDateRangeForPeriod(period)
 
     return opps.filter(opp => {
       const updatedAt = opp.updated_at ? new Date(opp.updated_at) : null
-      return updatedAt && updatedAt >= startDate
+      return updatedAt && updatedAt >= dateRange.start && updatedAt <= dateRange.end
     })
   }, [])
 
