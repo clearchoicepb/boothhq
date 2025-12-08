@@ -461,10 +461,11 @@ export function getYearRange(): DateRange {
 /**
  * Get date range for a specified period
  *
- * @param period - 'week' | 'month' | 'year'
+ * @param period - 'week' | 'month' | 'year' | 'all'
  * @returns DateRange object for the specified period
+ *         For 'all', returns a very wide range (1970 - 2099)
  */
-export function getDateRangeForPeriod(period: 'week' | 'month' | 'year'): DateRange {
+export function getDateRangeForPeriod(period: 'week' | 'month' | 'year' | 'all'): DateRange {
   switch (period) {
     case 'week':
       return getWeekRange()
@@ -472,6 +473,18 @@ export function getDateRangeForPeriod(period: 'week' | 'month' | 'year'): DateRa
       return getMonthRange()
     case 'year':
       return getYearRange()
+    case 'all':
+      // Return a very wide range for "all time"
+      const allStart = new Date(1970, 0, 1)
+      allStart.setHours(0, 0, 0, 0)
+      const allEnd = new Date(2099, 11, 31)
+      allEnd.setHours(23, 59, 59, 999)
+      return {
+        start: allStart,
+        end: allEnd,
+        startISO: '1970-01-01',
+        endISO: '2099-12-31'
+      }
     default:
       return getMonthRange()
   }

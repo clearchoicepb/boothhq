@@ -7,7 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
-import { Plus, DollarSign, Grid, List, Download, ListFilter } from 'lucide-react'
+import { Plus, DollarSign, Grid, List, Download, ListFilter, TrendingUp, TrendingDown, Target, Clock, Calendar, CheckCircle, XCircle, Percent } from 'lucide-react'
 import Link from 'next/link'
 import { exportToCSV } from '@/lib/csv-export'
 import { useParams } from 'next/navigation'
@@ -26,10 +26,12 @@ import { useOpportunityCalculations } from '@/hooks/useOpportunityCalculations'
 import { useOpportunityDragAndDrop } from '@/hooks/useOpportunityDragAndDrop'
 
 // Opportunity components
-import { OpportunityStatsCard } from '@/components/opportunities/opportunity-stats-card'
+import { KPICard, KPICardGrid, KPISection, periodOptionsWithAll, type TimePeriod } from '@/components/ui/kpi-card'
+import { OpportunitiesDrilldownModal } from '@/components/opportunities/opportunities-drilldown-modal'
+import type { OpportunityDrilldownType } from '@/hooks/useOpportunitiesDrilldown'
 import { OpportunitySuccessAnimation } from '@/components/opportunities/opportunity-success-animation'
 import { OpportunityEmptyState } from '@/components/opportunities/opportunity-empty-state'
-import { OpportunityCalculationModeToggle } from '@/components/opportunities/opportunity-calculation-mode-toggle'
+// OpportunityCalculationModeToggle replaced by KPISection toggle
 import { OpportunityFilters } from '@/components/opportunities/opportunity-filters'
 import { OpportunityMobileCard } from '@/components/opportunities/opportunity-mobile-card'
 import { ClosedOpportunitiesBucket } from '@/components/opportunities/closed-opportunities-bucket'
@@ -73,6 +75,9 @@ function OpportunitiesPageContent() {
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [pendingCloseStage, setPendingCloseStage] = useState<'closed_won' | 'closed_lost' | null>(null)
   const [opportunityToClose, setOpportunityToClose] = useState<OpportunityWithRelations | null>(null)
+
+  // KPI drilldown modal state
+  const [activeDrilldown, setActiveDrilldown] = useState<OpportunityDrilldownType | null>(null)
 
   // Apply client-side filters first (to get filter state)
   const [searchTerm, setSearchTerm] = useState('')
@@ -168,12 +173,20 @@ function OpportunitiesPageContent() {
 
   // Calculations (now from stats API - shows ALL opportunities, not just current page)
   const {
-    calculationMode,
-    setCalculationMode,
-    currentStats,
-    openOpportunities,
     loading: statsLoading,
-  } = useOpportunityCalculations(filterStage, filterOwner)
+    timePeriod,
+    setTimePeriod,
+    valueMode,
+    setValueMode,
+    getNewOpps,
+    getOpenPipeline,
+    getWon,
+    getLost,
+    getWinRate,
+    getAvgDaysToClose,
+    getAvgDealSize,
+    getClosingSoon,
+  } = useOpportunityCalculations(filterStage, filterOwner, 'month')
 
   // Drag and drop
   const dragAndDrop = useOpportunityDragAndDrop({
@@ -327,50 +340,115 @@ function OpportunitiesPageContent() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Calculation Mode Toggle */}
-          <OpportunityCalculationModeToggle
-            mode={calculationMode}
-            onChange={setCalculationMode}
-            settings={settings}
-          />
+          {/* KPI Statistics Section */}
+          <KPISection
+            timePeriod={{
+              value: timePeriod,
+              options: periodOptionsWithAll,
+              onChange: (value) => setTimePeriod(value as TimePeriod)
+            }}
+            toggle={{
+              value: valueMode,
+              options: [
+                { label: 'Total Value', value: 'total' },
+                { label: 'Weighted Value', value: 'weighted' }
+              ],
+              onChange: (value) => setValueMode(value as 'total' | 'weighted')
+            }}
+          >
+            <KPICardGrid columns={4}>
+              {/* Row 1 */}
+              <KPICard
+                size="compact"
+                icon={<TrendingUp className="h-4 w-4" />}
+                label="New Opps"
+                value={getNewOpps().count}
+                secondaryValue={`$${Math.round(getNewOpps().value).toLocaleString()}`}
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('new-opps')}
+              />
 
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <OpportunityStatsCard
-              icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title={calculationMode === 'total' ? 'Total Opportunities' : 'Open Opportunities'}
-              value={statsLoading ? '...' : currentStats.qty}
-              subtitle={
-                filterStage !== 'all' || filterOwner !== 'all'
-                  ? 'Filtered total'
-                  : 'All opportunities'
-              }
-            />
+              <KPICard
+                size="compact"
+                icon={<Target className="h-4 w-4" />}
+                label="Open Pipeline"
+                value={getOpenPipeline().count}
+                secondaryValue={`$${Math.round(getOpenPipeline().value).toLocaleString()}`}
+                subtitle="Current state"
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('open-pipeline')}
+              />
 
-            <OpportunityStatsCard
-              icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title={calculationMode === 'total' ? 'Total Value' : 'Expected Value'}
-              value={statsLoading ? '...' : `$${Math.round(currentStats.amount).toLocaleString()}`}
-              subtitle={
-                calculationMode === 'expected'
-                  ? `Probability-weighted ${settings.opportunities?.autoCalculateProbability ? '(stage-based)' : '(manual)'}`
-                  : filterStage !== 'all' || filterOwner !== 'all'
-                    ? 'Filtered total'
-                    : 'All opportunities'
-              }
-            />
+              <KPICard
+                size="compact"
+                icon={<CheckCircle className="h-4 w-4" />}
+                label="Won"
+                value={getWon().count}
+                secondaryValue={`$${Math.round(getWon().value).toLocaleString()}`}
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('won')}
+              />
 
-            <OpportunityStatsCard
-              icon={<DollarSign className="h-8 w-8 text-[#347dc4]" />}
-              title="Open Opportunities"
-              value={statsLoading ? '...' : openOpportunities}
-              subtitle={
-                filterStage !== 'all' || filterOwner !== 'all'
-                  ? 'Filtered count'
-                  : 'Not closed won/lost'
-              }
-            />
-          </div>
+              <KPICard
+                size="compact"
+                icon={<XCircle className="h-4 w-4" />}
+                label="Lost"
+                value={getLost().count}
+                secondaryValue={`$${Math.round(getLost().value).toLocaleString()}`}
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('lost')}
+              />
+
+              {/* Row 2 */}
+              <KPICard
+                size="compact"
+                icon={<Percent className="h-4 w-4" />}
+                label="Win Rate"
+                value={getWinRate() !== null ? `${getWinRate()}%` : 0}
+                empty={getWinRate() === null}
+                emptyText="N/A"
+                subtitle={getWinRate() !== null ? 'Won / Closed' : 'No closed deals'}
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('win-rate')}
+              />
+
+              <KPICard
+                size="compact"
+                icon={<Clock className="h-4 w-4" />}
+                label="Avg Days to Close"
+                value={getAvgDaysToClose() ?? 0}
+                empty={getAvgDaysToClose() === null}
+                emptyText="N/A"
+                secondaryLabel="days"
+                subtitle={getAvgDaysToClose() !== null ? 'For won deals' : 'No won deals'}
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('avg-days')}
+              />
+
+              <KPICard
+                size="compact"
+                icon={<DollarSign className="h-4 w-4" />}
+                label="Avg Deal Size"
+                value={getAvgDealSize() !== null ? `$${getAvgDealSize()?.toLocaleString()}` : 0}
+                empty={getAvgDealSize() === null}
+                emptyText="N/A"
+                subtitle={getAvgDealSize() !== null ? 'Won deals avg' : 'No won deals'}
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('avg-deal')}
+              />
+
+              <KPICard
+                size="compact"
+                icon={<Calendar className="h-4 w-4" />}
+                label="Closing Soon"
+                value={getClosingSoon().count}
+                secondaryValue={`$${Math.round(getClosingSoon().value).toLocaleString()}`}
+                subtitle="Next 7 days"
+                loading={statsLoading}
+                onClick={() => setActiveDrilldown('closing-soon')}
+              />
+            </KPICardGrid>
+          </KPISection>
 
           {/* Filters and Search - Only show on table and card views */}
           {currentView !== 'pipeline' && (
@@ -680,6 +758,15 @@ function OpportunitiesPageContent() {
       <OpportunitySourceSelector
         isOpen={showSourceSelector}
         onClose={() => setShowSourceSelector(false)}
+        tenantSubdomain={tenantSubdomain}
+      />
+
+      {/* KPI Drilldown Modal */}
+      <OpportunitiesDrilldownModal
+        isOpen={activeDrilldown !== null}
+        onClose={() => setActiveDrilldown(null)}
+        type={activeDrilldown}
+        period={timePeriod}
         tenantSubdomain={tenantSubdomain}
       />
     </AppLayout>
