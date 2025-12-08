@@ -189,29 +189,29 @@ function OpportunitiesPageContent() {
     getClosingSoon,
   } = useOpportunityCalculations(filterStage, filterOwner, 'month')
 
-  // Helper function to filter opportunities by time period (for closed buckets)
-  // Uses same date range logic as stats API for consistency
-  // Compare ISO date strings to avoid timezone issues
-  const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
-    if (period === 'all') return opps
-
-    const dateRange = getDateRangeForPeriod(period)
-    const startISO = dateRange.startISO
-    const endISO = dateRange.endISO + 'T23:59:59'
-
-    return opps.filter(opp => {
-      if (!opp.updated_at) return false
-      // Compare ISO strings to match API behavior and avoid timezone issues
-      return opp.updated_at >= startISO && opp.updated_at <= endISO
-    })
-  }, [])
-
   // Get bucket counts filtered by time period
+  // For won/lost: use actual_close_date to match stats API behavior
+  // For stale: use updated_at since stale opps don't have close dates
   const getBucketCount = useCallback((stage: string) => {
     const stageOpps = opportunities.filter(opp => opp.stage === stage)
-    const filteredOpps = filterByTimePeriod(stageOpps, timePeriod)
-    return filteredOpps.length
-  }, [opportunities, timePeriod, filterByTimePeriod])
+
+    if (timePeriod === 'all') return stageOpps.length
+
+    const dateRange = getDateRangeForPeriod(timePeriod)
+    const startISO = dateRange.startISO
+    const endISO = dateRange.endISO
+
+    return stageOpps.filter(opp => {
+      // For won/lost, filter by actual_close_date to match stats API behavior
+      if (stage === 'closed_won' || stage === 'closed_lost') {
+        if (!opp.actual_close_date) return false
+        return opp.actual_close_date >= startISO && opp.actual_close_date <= endISO
+      }
+      // For stale, use updated_at since stale opps don't have close dates
+      if (!opp.updated_at) return false
+      return opp.updated_at >= startISO && opp.updated_at <= endISO + 'T23:59:59'
+    }).length
+  }, [opportunities, timePeriod])
 
   // Drag and drop
   const dragAndDrop = useOpportunityDragAndDrop({

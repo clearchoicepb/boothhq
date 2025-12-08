@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
-import { getDateRangeForPeriod } from '@/lib/utils/date-utils'
+import { getDateRangeForPeriod, getTodayEST, toDateInputValue } from '@/lib/utils/date-utils'
 import type { TimePeriod } from '@/components/ui/kpi-card'
 import { CLOSED_STAGES } from '@/lib/constants/opportunity-stages'
 
@@ -153,12 +153,12 @@ export async function GET(request: NextRequest) {
     const startISO = dateRange.start.toISOString().split('T')[0]
     const endISO = dateRange.end.toISOString().split('T')[0]
 
-    // For closing soon, get next 7 days
-    const now = new Date()
+    // For closing soon, get next 7 days using EST timezone for consistency
+    const now = getTodayEST()
     const closingSoonEnd = new Date(now)
     closingSoonEnd.setDate(now.getDate() + 7)
-    const todayISO = now.toISOString().split('T')[0]
-    const closingSoonEndISO = closingSoonEnd.toISOString().split('T')[0]
+    const todayISO = toDateInputValue(now)
+    const closingSoonEndISO = toDateInputValue(closingSoonEnd)
 
     let response: OpportunityDrilldownResponse
 
@@ -667,13 +667,12 @@ export async function GET(request: NextRequest) {
             ? eventDates.map((ed: any) => ed.event_date).filter(Boolean).sort()[0]
             : null
 
-          // Calculate days until close
+          // Calculate days until close using EST timezone for consistency
           let daysUntilClose: number | null = null
           if (opp.expected_close_date) {
             const expected = new Date(opp.expected_close_date)
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            daysUntilClose = Math.round((expected.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+            const todayForCalc = getTodayEST()
+            daysUntilClose = Math.round((expected.getTime() - todayForCalc.getTime()) / (1000 * 60 * 60 * 24))
           }
 
           return {

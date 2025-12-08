@@ -1,7 +1,7 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
-import { getDateRangeForPeriod, toDateInputValue } from '@/lib/utils/date-utils'
+import { getDateRangeForPeriod, toDateInputValue, getTodayEST } from '@/lib/utils/date-utils'
 import { CLOSED_STAGES, isOpenStage } from '@/lib/constants/opportunity-stages'
 
 const log = createLogger('api:opportunities')
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
       return query
     }
 
-    // Calculate date ranges
-    const today = new Date()
+    // Calculate date ranges using EST timezone for consistency
+    const today = getTodayEST()
     const todayISO = toDateInputValue(today)
     const next7Days = new Date(today)
     next7Days.setDate(next7Days.getDate() + 7)
@@ -109,10 +109,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Query 4: Won/Lost in period (filter by updated_at since actual_close_date may not be set)
+    // Query 4: Won/Lost in period (filter by actual_close_date for accurate period attribution)
+    // Using actual_close_date ensures opportunities are counted in the period they were actually closed,
+    // not when they were last updated (which could be a later edit)
     let closedInPeriodQuery = supabase
       .from('opportunities')
-      .select('id, amount, probability, stage, created_at, actual_close_date, updated_at')
+      .select('id, amount, probability, stage, created_at, actual_close_date')
       .eq('tenant_id', dataSourceTenantId)
       .in('stage', ['closed_won', 'closed_lost'])
 
@@ -126,10 +128,10 @@ export async function GET(request: NextRequest) {
 
     if (periodFilter !== 'all') {
       const dateRange = getDateRangeForPeriod(periodFilter)
-      // Use updated_at for period filtering since actual_close_date may not always be set
+      // Filter by actual_close_date to match drilldown API behavior
       closedInPeriodQuery = closedInPeriodQuery
-        .gte('updated_at', dateRange.startISO)
-        .lte('updated_at', dateRange.endISO + 'T23:59:59')
+        .gte('actual_close_date', dateRange.startISO)
+        .lte('actual_close_date', dateRange.endISO)
     }
 
     // Execute all queries in parallel

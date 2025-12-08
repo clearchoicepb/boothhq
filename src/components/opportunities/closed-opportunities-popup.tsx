@@ -86,14 +86,22 @@ export function ClosedOpportunitiesPopup({
   let filteredOpportunities = opportunities.filter(opp => opp.stage === config.stage)
 
   // Then filter by time period to match bucket counts
+  // For won/lost: use actual_close_date (when the opportunity was actually closed)
+  // For stale: use updated_at (when it was marked stale)
   if (timePeriod !== 'all') {
     const dateRange = getDateRangeForPeriod(timePeriod)
     const startISO = dateRange.startISO
-    const endISO = dateRange.endISO + 'T23:59:59'
+    const endISO = dateRange.endISO
 
     filteredOpportunities = filteredOpportunities.filter(opp => {
+      // For won/lost, filter by actual_close_date to match stats API behavior
+      if (type === 'won' || type === 'lost') {
+        if (!opp.actual_close_date) return false
+        return opp.actual_close_date >= startISO && opp.actual_close_date <= endISO
+      }
+      // For stale, use updated_at since stale opps don't have close dates
       if (!opp.updated_at) return false
-      return opp.updated_at >= startISO && opp.updated_at <= endISO
+      return opp.updated_at >= startISO && opp.updated_at <= endISO + 'T23:59:59'
     })
   }
 
