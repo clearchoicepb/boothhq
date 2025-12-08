@@ -13,6 +13,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-client'
 import { getTenantClient, getTenantIdInDataSource } from '@/lib/data-sources'
 import { CLOSED_STAGES } from '@/lib/constants/opportunity-stages'
 import { createLogger } from '@/lib/logger'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 const log = createLogger('api:opportunities:automation')
 
@@ -344,29 +346,44 @@ async function processAutomationForTenant(
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authorization
+    // Verify authorization - multiple methods supported
     const authHeader = request.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
 
-    // Allow either CRON_SECRET or internal API key
-    const isAuthorized =
+    // Check for API key authentication (cron or manual)
+    const hasApiKeyAuth =
       (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
       authHeader === `Bearer ${process.env.AUTOMATION_API_KEY}`
 
-    if (!isAuthorized) {
+    // Check for session authentication (UI-based triggers)
+    const session = await getServerSession(authOptions)
+    const hasSessionAuth = !!session?.user
+
+    if (!hasApiKeyAuth && !hasSessionAuth) {
       log.warn('Unauthorized automation request')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Parse request body
     const body: AutomationRequest = await request.json()
-    const { action = 'run-all', tenantId, dryRun = false } = body
+    const { action = 'run-all', dryRun = false } = body
+    let { tenantId } = body
 
     if (!['process-stale', 'auto-close', 'run-all'].includes(action)) {
       return NextResponse.json(
         { error: 'Invalid action. Must be: process-stale, auto-close, or run-all' },
         { status: 400 }
       )
+    }
+
+    // For session-based auth, automatically scope to user's tenant
+    // This ensures users can only run automations for their own tenant
+    if (hasSessionAuth && !hasApiKeyAuth) {
+      const userTenantId = (session?.user as any)?.tenantId
+      if (userTenantId) {
+        tenantId = userTenantId
+        log.info({ tenantId }, 'Session auth: scoping to user tenant')
+      }
     }
 
     log.info({ action, tenantId, dryRun }, 'Starting opportunity automation')

@@ -1,4 +1,8 @@
-import { ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
+'use client'
+
+import { useState } from 'react'
+import { ThumbsUp, ThumbsDown, Clock, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
 
 interface ClosedOpportunitiesPopupProps {
@@ -9,6 +13,14 @@ interface ClosedOpportunitiesPopupProps {
   onDragStart: (e: React.DragEvent, opportunity: OpportunityWithRelations) => void
   onDragEnd: () => void
   onOpportunityClick: (opportunityId: string) => void
+  onSyncComplete?: () => void
+}
+
+interface AutomationResult {
+  success: boolean
+  processed: number
+  errors: number
+  message?: string
 }
 
 const typeConfig = {
@@ -44,6 +56,7 @@ const typeConfig = {
 /**
  * Popup modal showing closed/terminal opportunities (won, lost, or stale)
  * Displays list of opportunities with drag-to-reopen functionality
+ * Includes sync buttons for stale/lost to run automations
  *
  * @param props - Popup state and handlers
  * @returns Modal popup component
@@ -51,17 +64,94 @@ const typeConfig = {
 export function ClosedOpportunitiesPopup({
   type,
   opportunities,
-  tenantSubdomain,
+  tenantSubdomain: _tenantSubdomain, // Reserved for future tenant-scoped automation
   onClose,
   onDragStart,
   onDragEnd,
-  onOpportunityClick
+  onOpportunityClick,
+  onSyncComplete
 }: ClosedOpportunitiesPopupProps) {
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<AutomationResult | null>(null)
+
   if (!type) return null
 
   const config = typeConfig[type]
   const filteredOpportunities = opportunities.filter(opp => opp.stage === config.stage)
   const Icon = config.Icon
+
+  // Determine if sync is available for this type
+  const canSync = type === 'stale' || type === 'lost'
+  const syncAction = type === 'stale' ? 'process-stale' : type === 'lost' ? 'auto-close' : null
+  const syncLabel = type === 'stale'
+    ? 'Sync Stale Opportunities'
+    : type === 'lost'
+    ? 'Auto-Close Past Events'
+    : ''
+  const syncDescription = type === 'stale'
+    ? 'Find opportunities with no stage change for 21+ days'
+    : type === 'lost'
+    ? 'Close opportunities where event date has passed'
+    : ''
+
+  const handleSync = async () => {
+    if (!syncAction) return
+
+    setSyncing(true)
+    setSyncResult(null)
+
+    try {
+      const response = await fetch('/api/opportunities/automation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: syncAction,
+          dryRun: false
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setSyncResult({
+          success: false,
+          processed: 0,
+          errors: 1,
+          message: data.error || 'Failed to run automation'
+        })
+        return
+      }
+
+      const processed = type === 'stale'
+        ? data.summary?.totalStale || 0
+        : data.summary?.totalAutoClosed || 0
+
+      setSyncResult({
+        success: true,
+        processed,
+        errors: data.summary?.totalErrors || 0,
+        message: processed > 0
+          ? `Successfully processed ${processed} opportunit${processed === 1 ? 'y' : 'ies'}`
+          : 'No opportunities needed processing'
+      })
+
+      // Refresh the opportunities list if any were processed
+      if (processed > 0 && onSyncComplete) {
+        onSyncComplete()
+      }
+    } catch (error) {
+      setSyncResult({
+        success: false,
+        processed: 0,
+        errors: 1,
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   return (
     <div
@@ -92,6 +182,46 @@ export function ClosedOpportunitiesPopup({
             </svg>
           </button>
         </div>
+
+        {/* Sync Button Section - only for stale and lost */}
+        {canSync && (
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-600 truncate">{syncDescription}</p>
+              </div>
+              <Button
+                onClick={handleSync}
+                disabled={syncing}
+                size="sm"
+                variant="outline"
+                className="flex-shrink-0 text-xs"
+                title={syncLabel}
+              >
+                <RefreshCw className={`w-3 h-3 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Running...' : 'Run Now'}
+              </Button>
+            </div>
+
+            {/* Sync Result Message */}
+            {syncResult && (
+              <div className={`mt-2 flex items-center gap-2 text-xs ${
+                syncResult.success && syncResult.errors === 0
+                  ? 'text-green-700'
+                  : syncResult.success && syncResult.errors > 0
+                  ? 'text-amber-700'
+                  : 'text-red-700'
+              }`}>
+                {syncResult.success && syncResult.errors === 0 ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                )}
+                <span>{syncResult.message}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-4 overflow-y-auto max-h-[50vh]">

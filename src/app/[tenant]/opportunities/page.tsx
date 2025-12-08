@@ -710,6 +710,10 @@ function OpportunitiesPageContent() {
             onDragStart={(e, opportunity) => dragAndDrop.handleDragStart(e, opportunity)}
             onDragEnd={dragAndDrop.handleDragEnd}
             onOpportunityClick={(id) => window.open(`/${tenantSubdomain}/opportunities/${id}`, '_blank')}
+            onSyncComplete={() => {
+              fetchOpportunities()
+              toast.success('Automation completed successfully')
+            }}
           />
         </div>
       </div>
