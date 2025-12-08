@@ -734,6 +734,7 @@ function OpportunitiesPageContent() {
             type={showBucketPopup}
             opportunities={opportunities}
             tenantSubdomain={tenantSubdomain}
+            timePeriod={timePeriod}
             onClose={() => setShowBucketPopup(null)}
             onDragStart={(e, opportunity) => dragAndDrop.handleDragStart(e, opportunity)}
             onDragEnd={dragAndDrop.handleDragEnd}

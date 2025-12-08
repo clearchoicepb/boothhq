@@ -4,11 +4,14 @@ import { useState } from 'react'
 import { ThumbsUp, ThumbsDown, Clock, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OpportunityWithRelations } from '@/hooks/useOpportunitiesData'
+import type { TimePeriod } from '@/components/ui/kpi-card'
+import { getDateRangeForPeriod } from '@/lib/utils/date-utils'
 
 interface ClosedOpportunitiesPopupProps {
   type: 'won' | 'lost' | 'stale' | null
   opportunities: OpportunityWithRelations[]
   tenantSubdomain: string
+  timePeriod?: TimePeriod
   onClose: () => void
   onDragStart: (e: React.DragEvent, opportunity: OpportunityWithRelations) => void
   onDragEnd: () => void
@@ -65,6 +68,7 @@ export function ClosedOpportunitiesPopup({
   type,
   opportunities,
   tenantSubdomain: _tenantSubdomain, // Reserved for future tenant-scoped automation
+  timePeriod = 'all',
   onClose,
   onDragStart,
   onDragEnd,
@@ -77,7 +81,22 @@ export function ClosedOpportunitiesPopup({
   if (!type) return null
 
   const config = typeConfig[type]
-  const filteredOpportunities = opportunities.filter(opp => opp.stage === config.stage)
+
+  // Filter by stage first
+  let filteredOpportunities = opportunities.filter(opp => opp.stage === config.stage)
+
+  // Then filter by time period to match bucket counts
+  if (timePeriod !== 'all') {
+    const dateRange = getDateRangeForPeriod(timePeriod)
+    const startISO = dateRange.startISO
+    const endISO = dateRange.endISO + 'T23:59:59'
+
+    filteredOpportunities = filteredOpportunities.filter(opp => {
+      if (!opp.updated_at) return false
+      return opp.updated_at >= startISO && opp.updated_at <= endISO
+    })
+  }
+
   const Icon = config.Icon
 
   // Determine if sync is available for this type
