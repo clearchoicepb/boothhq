@@ -1,13 +1,22 @@
 import { ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
+import type { TimePeriod } from '@/components/ui/kpi-card'
 
 interface ClosedOpportunitiesBucketProps {
   type: 'won' | 'lost' | 'stale'
   count: number
+  timePeriod?: TimePeriod
   isDragOver: boolean
   onClick: () => void
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
+}
+
+const timePeriodLabels: Record<TimePeriod, string> = {
+  week: 'This Week',
+  month: 'This Month',
+  year: 'This Year',
+  all: 'All Time'
 }
 
 /**
@@ -21,6 +30,7 @@ interface ClosedOpportunitiesBucketProps {
 export function ClosedOpportunitiesBucket({
   type,
   count,
+  timePeriod = 'all',
   isDragOver,
   onClick,
   onDragOver,
@@ -67,6 +77,7 @@ export function ClosedOpportunitiesBucket({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
+      title={`${colors.label} - ${timePeriodLabels[timePeriod]}`}
     >
       <div className={`w-6 h-6 ${colors.iconBg} rounded-full flex items-center justify-center`}>
         <Icon className="w-4 h-4 text-white" />
@@ -75,8 +86,11 @@ export function ClosedOpportunitiesBucket({
         <div className={`font-medium ${colors.textTitle}`}>
           {colors.label}
         </div>
-        <div className={colors.textCount}>
-          {count}
+        <div className={`flex items-baseline gap-1 ${colors.textCount}`}>
+          <span className="font-semibold">{count}</span>
+          {timePeriod !== 'all' && (
+            <span className="text-xs opacity-75">({timePeriodLabels[timePeriod].toLowerCase()})</span>
+          )}
         </div>
       </div>
     </div>

@@ -121,6 +121,41 @@ function OpportunitiesPageContent() {
     setDateFilter('all')
   }, [])
 
+  // Helper function to filter opportunities by time period (for closed buckets)
+  const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
+    if (period === 'all') return opps
+
+    const now = new Date()
+    let startDate: Date
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - 7)
+        break
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        break
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1)
+        break
+      default:
+        return opps
+    }
+
+    return opps.filter(opp => {
+      const updatedAt = opp.updated_at ? new Date(opp.updated_at) : null
+      return updatedAt && updatedAt >= startDate
+    })
+  }, [])
+
+  // Get bucket counts filtered by time period
+  const getBucketCount = useCallback((stage: string) => {
+    const stageOpps = opportunities.filter(opp => opp.stage === stage)
+    const filteredOpps = filterByTimePeriod(stageOpps, timePeriod)
+    return filteredOpps.length
+  }, [opportunities, timePeriod, filterByTimePeriod])
+
   // Helper function to get the earliest date from an opportunity
   const getEarliestDate = (opp: OpportunityWithRelations): number | null => {
     if (opp.event_dates && Array.isArray(opp.event_dates) && opp.event_dates.length > 0) {
@@ -502,7 +537,8 @@ function OpportunitiesPageContent() {
                   <div className="flex gap-3">
                     <ClosedOpportunitiesBucket
                       type="stale"
-                      count={opportunities.filter(opp => opp.stage === 'stale').length}
+                      count={getBucketCount('stale')}
+                      timePeriod={timePeriod}
                       isDragOver={dragAndDrop.dragOverStage === 'stale'}
                       onClick={() => setShowBucketPopup('stale')}
                       onDragOver={(e) => dragAndDrop.handleDragOver(e, 'stale')}
@@ -511,7 +547,8 @@ function OpportunitiesPageContent() {
                     />
                     <ClosedOpportunitiesBucket
                       type="won"
-                      count={opportunities.filter(opp => opp.stage === 'closed_won').length}
+                      count={getBucketCount('closed_won')}
+                      timePeriod={timePeriod}
                       isDragOver={dragAndDrop.dragOverStage === 'closed_won'}
                       onClick={() => setShowBucketPopup('won')}
                       onDragOver={(e) => dragAndDrop.handleDragOver(e, 'closed_won')}
@@ -520,7 +557,8 @@ function OpportunitiesPageContent() {
                     />
                     <ClosedOpportunitiesBucket
                       type="lost"
-                      count={opportunities.filter(opp => opp.stage === 'closed_lost').length}
+                      count={getBucketCount('closed_lost')}
+                      timePeriod={timePeriod}
                       isDragOver={dragAndDrop.dragOverStage === 'closed_lost'}
                       onClick={() => setShowBucketPopup('lost')}
                       onDragOver={(e) => dragAndDrop.handleDragOver(e, 'closed_lost')}
