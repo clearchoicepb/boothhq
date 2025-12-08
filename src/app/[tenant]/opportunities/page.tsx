@@ -27,6 +27,8 @@ import { useOpportunityDragAndDrop } from '@/hooks/useOpportunityDragAndDrop'
 
 // Opportunity components
 import { KPICard, KPICardGrid, KPISection, periodOptionsWithAll, type TimePeriod } from '@/components/ui/kpi-card'
+import { OpportunitiesDrilldownModal } from '@/components/opportunities/opportunities-drilldown-modal'
+import type { OpportunityDrilldownType } from '@/hooks/useOpportunitiesDrilldown'
 import { OpportunitySuccessAnimation } from '@/components/opportunities/opportunity-success-animation'
 import { OpportunityEmptyState } from '@/components/opportunities/opportunity-empty-state'
 // OpportunityCalculationModeToggle replaced by KPISection toggle
@@ -73,6 +75,9 @@ function OpportunitiesPageContent() {
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [pendingCloseStage, setPendingCloseStage] = useState<'closed_won' | 'closed_lost' | null>(null)
   const [opportunityToClose, setOpportunityToClose] = useState<OpportunityWithRelations | null>(null)
+
+  // KPI drilldown modal state
+  const [activeDrilldown, setActiveDrilldown] = useState<OpportunityDrilldownType | null>(null)
 
   // Apply client-side filters first (to get filter state)
   const [searchTerm, setSearchTerm] = useState('')
@@ -360,6 +365,7 @@ function OpportunitiesPageContent() {
                 value={getNewOpps().count}
                 secondaryValue={`$${Math.round(getNewOpps().value).toLocaleString()}`}
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('new-opps')}
               />
 
               <KPICard
@@ -370,6 +376,7 @@ function OpportunitiesPageContent() {
                 secondaryValue={`$${Math.round(getOpenPipeline().value).toLocaleString()}`}
                 subtitle="Current state"
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('open-pipeline')}
               />
 
               <KPICard
@@ -379,6 +386,7 @@ function OpportunitiesPageContent() {
                 value={getWon().count}
                 secondaryValue={`$${Math.round(getWon().value).toLocaleString()}`}
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('won')}
               />
 
               <KPICard
@@ -388,6 +396,7 @@ function OpportunitiesPageContent() {
                 value={getLost().count}
                 secondaryValue={`$${Math.round(getLost().value).toLocaleString()}`}
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('lost')}
               />
 
               {/* Row 2 */}
@@ -400,6 +409,7 @@ function OpportunitiesPageContent() {
                 emptyText="N/A"
                 subtitle={getWinRate() !== null ? 'Won / Closed' : 'No closed deals'}
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('win-rate')}
               />
 
               <KPICard
@@ -412,6 +422,7 @@ function OpportunitiesPageContent() {
                 secondaryLabel="days"
                 subtitle={getAvgDaysToClose() !== null ? 'For won deals' : 'No won deals'}
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('avg-days')}
               />
 
               <KPICard
@@ -423,6 +434,7 @@ function OpportunitiesPageContent() {
                 emptyText="N/A"
                 subtitle={getAvgDealSize() !== null ? 'Won deals avg' : 'No won deals'}
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('avg-deal')}
               />
 
               <KPICard
@@ -433,6 +445,7 @@ function OpportunitiesPageContent() {
                 secondaryValue={`$${Math.round(getClosingSoon().value).toLocaleString()}`}
                 subtitle="Next 7 days"
                 loading={statsLoading}
+                onClick={() => setActiveDrilldown('closing-soon')}
               />
             </KPICardGrid>
           </KPISection>
@@ -745,6 +758,15 @@ function OpportunitiesPageContent() {
       <OpportunitySourceSelector
         isOpen={showSourceSelector}
         onClose={() => setShowSourceSelector(false)}
+        tenantSubdomain={tenantSubdomain}
+      />
+
+      {/* KPI Drilldown Modal */}
+      <OpportunitiesDrilldownModal
+        isOpen={activeDrilldown !== null}
+        onClose={() => setActiveDrilldown(null)}
+        type={activeDrilldown}
+        period={timePeriod}
         tenantSubdomain={tenantSubdomain}
       />
     </AppLayout>
