@@ -1,12 +1,26 @@
 'use client'
 
-import Link from 'next/link'
-import { useParams, usePathname } from 'next/navigation'
-import { Building2, Users, TrendingUp, FileText, FileSignature, CheckSquare, MessageSquare, FolderKanban, LifeBuoy } from 'lucide-react'
+import { useParams } from 'next/navigation'
+import {
+  Building2,
+  Users,
+  TrendingUp,
+  FileText,
+  FileSignature,
+  CheckSquare,
+  MessageSquare,
+  FolderKanban,
+  LifeBuoy,
+  Package,
+  BarChart3
+} from 'lucide-react'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
 import { useSMSNotifications } from '@/lib/sms-notifications-context'
+import { SidebarActionButton } from './SidebarActionButton'
+import { SidebarSection } from './SidebarSection'
+import { SidebarNavItem } from './SidebarNavItem'
 
 interface SidebarProps {
   onNavigate?: () => void
@@ -14,128 +28,139 @@ interface SidebarProps {
 
 export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const params = useParams()
-  const pathname = usePathname()
   const tenantSubdomain = params.tenant as string
   const { permissions } = usePermissions()
   const { tenant } = useTenant()
   const { settings } = useSettings()
   const { unreadCount } = useSMSNotifications()
 
-  const sidebarItems = [
-    {
-      label: 'My Tasks',
-      href: `/${tenantSubdomain}/dashboard/my-tasks`,
-      icon: CheckSquare,
-      permission: true // Always visible to authenticated users
-    },
-    {
-      label: 'Support Tickets',
-      href: `/${tenantSubdomain}/tickets`,
-      icon: LifeBuoy,
-      permission: true // Always visible to authenticated users
-    },
-    {
-      label: 'Projects',
-      href: `/${tenantSubdomain}/projects`,
-      icon: FolderKanban,
-      permission: permissions.projects?.view || true // Default to visible
-    },
-    {
-      label: 'Leads',
-      href: `/${tenantSubdomain}/leads`,
-      icon: TrendingUp,
-      permission: permissions.leads?.view
-    },
-    {
-      label: 'Contacts',
-      href: `/${tenantSubdomain}/contacts`,
-      icon: Users,
-      permission: permissions.contacts?.view
-    },
-    {
-      label: 'Accounts',
-      href: `/${tenantSubdomain}/accounts`,
-      icon: Building2,
-      permission: permissions.accounts?.view
-    },
-    {
-      label: 'Invoices',
-      href: `/${tenantSubdomain}/invoices`,
-      icon: FileText,
-      permission: permissions.invoices?.view
-    },
-    {
-      label: 'Agreements',
-      href: `/${tenantSubdomain}/agreements`,
-      icon: FileSignature,
-      permission: permissions.contracts?.view
-    },
-    {
-      label: 'SMS Messages',
-      href: `/${tenantSubdomain}/sms`,
-      icon: MessageSquare,
-      permission: true, // Always visible to authenticated users
-      badge: unreadCount > 0 ? unreadCount : undefined
-    }
-  ]
-
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 overflow-y-auto">
+    <div className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 flex flex-col">
+      {/* Logo/Tenant Name */}
       <div className="p-4 pt-6">
-        {/* Tenant Name or Logo */}
-        <div className="mb-8">
-          {settings?.appearance?.logoUrl ? (
-            <div className="flex flex-col items-start">
-              <img
-                src={settings.appearance.logoUrl}
-                alt={tenant?.name || 'Company Logo'}
-                className="h-12 w-auto object-contain mb-2"
-              />
-              <p className="text-sm text-gray-500">Photo Booth CRM</p>
-            </div>
-          ) : (
-            <>
-              <h1 className="text-xl font-bold text-gray-900">
-                {tenant?.name || 'ClearChoice'}
-              </h1>
-              <p className="text-sm text-gray-500">Photo Booth CRM</p>
-            </>
-          )}
-        </div>
+        {settings?.appearance?.logoUrl ? (
+          <div className="flex flex-col items-start">
+            <img
+              src={settings.appearance.logoUrl}
+              alt={tenant?.name || 'Company Logo'}
+              className="h-12 w-auto object-contain mb-2"
+            />
+            <p className="text-sm text-gray-500">Photo Booth CRM</p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-xl font-bold text-gray-900">
+              {tenant?.name || 'ClearChoice'}
+            </h1>
+            <p className="text-sm text-gray-500">Photo Booth CRM</p>
+          </>
+        )}
+      </div>
 
-        {/* Navigation Links */}
-        <nav className="space-y-2">
-          {sidebarItems
-            .filter(item => item.permission !== false)
-            .map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                    isActive
-                      ? 'bg-[#347dc4] text-white'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-[#347dc4]'
-                  }`}
-                >
-                  <Icon className="h-5 w-5 mr-3" />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                      isActive
-                        ? 'bg-white text-[#347dc4]'
-                        : 'bg-red-500 text-white'
-                    }`}>
-                      {item.badge > 99 ? '99+' : item.badge}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
-        </nav>
+      {/* Action Buttons */}
+      <div className="px-4 pb-4 space-y-2">
+        <SidebarActionButton
+          icon={<CheckSquare className="h-4 w-4" />}
+          label="My Tasks"
+          href={`/${tenantSubdomain}/dashboard/my-tasks`}
+          onClick={onNavigate}
+        />
+        <SidebarActionButton
+          icon={<MessageSquare className="h-4 w-4" />}
+          label="SMS Messages"
+          href={`/${tenantSubdomain}/sms`}
+          badge={unreadCount}
+          onClick={onNavigate}
+        />
+      </div>
+
+      {/* Collapsible Sections - Scrollable */}
+      <nav className="flex-1 overflow-y-auto px-4 pb-4">
+        {/* People Section */}
+        <SidebarSection title="People" sectionKey="people" defaultExpanded>
+          {permissions.leads?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/leads`}
+              icon={<TrendingUp className="h-5 w-5" />}
+              label="Leads"
+              onClick={onNavigate}
+            />
+          )}
+          {permissions.contacts?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/contacts`}
+              icon={<Users className="h-5 w-5" />}
+              label="Contacts"
+              onClick={onNavigate}
+            />
+          )}
+          {permissions.accounts?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/accounts`}
+              icon={<Building2 className="h-5 w-5" />}
+              label="Accounts"
+              onClick={onNavigate}
+            />
+          )}
+        </SidebarSection>
+
+        {/* Operations Section */}
+        <SidebarSection title="Operations" sectionKey="operations" defaultExpanded>
+          {permissions.events?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/inventory`}
+              icon={<Package className="h-5 w-5" />}
+              label="Inventory"
+              onClick={onNavigate}
+            />
+          )}
+          <SidebarNavItem
+            href={`/${tenantSubdomain}/reports`}
+            icon={<BarChart3 className="h-5 w-5" />}
+            label="Reports"
+            onClick={onNavigate}
+          />
+        </SidebarSection>
+
+        {/* Documents Section */}
+        <SidebarSection title="Documents" sectionKey="documents" defaultExpanded>
+          {permissions.invoices?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/invoices`}
+              icon={<FileText className="h-5 w-5" />}
+              label="Invoices"
+              onClick={onNavigate}
+            />
+          )}
+          {permissions.contracts?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/agreements`}
+              icon={<FileSignature className="h-5 w-5" />}
+              label="Agreements"
+              onClick={onNavigate}
+            />
+          )}
+        </SidebarSection>
+
+        {/* Projects (standalone, outside sections) */}
+        <div className="mt-2">
+          <SidebarNavItem
+            href={`/${tenantSubdomain}/projects`}
+            icon={<FolderKanban className="h-5 w-5" />}
+            label="Projects"
+            onClick={onNavigate}
+          />
+        </div>
+      </nav>
+
+      {/* Bottom Pinned - Support Tickets */}
+      <div className="mt-auto p-4 border-t border-gray-200">
+        <SidebarActionButton
+          icon={<LifeBuoy className="h-4 w-4" />}
+          label="Support Tickets"
+          href={`/${tenantSubdomain}/tickets`}
+          onClick={onNavigate}
+        />
       </div>
     </div>
   )

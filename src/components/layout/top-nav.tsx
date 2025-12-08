@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
-import { LogOut, User, ChevronDown, LayoutDashboard, Users, Building2, Target, Calendar, FileText, Camera, TrendingUp, Settings, Menu, Plus, BarChart3 } from 'lucide-react'
+import { LogOut, User, ChevronDown, LayoutDashboard, Users, Building2, Target, Calendar, FileText, TrendingUp, Settings, Menu, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { usePermissions } from '@/lib/permissions'
@@ -37,8 +37,7 @@ export function TopNav({ leftContent }: TopNavProps = {}) {
     { name: 'Dashboard', href: `/${tenantSubdomain}/dashboard`, icon: LayoutDashboard },
     { name: 'Opportunities', href: `/${tenantSubdomain}/opportunities`, icon: TrendingUp, permission: permissions.opportunities?.view },
     { name: 'Events', href: `/${tenantSubdomain}/events`, icon: Calendar, permission: permissions.events.view },
-    { name: 'Reports', href: `/${tenantSubdomain}/reports`, icon: BarChart3 },
-    { name: 'Inventory', href: `/${tenantSubdomain}/inventory`, icon: Camera, permission: permissions.events.view },
+    { name: 'Projects', href: `/${tenantSubdomain}/projects`, icon: Target, permission: permissions.projects?.view },
     { name: 'Settings', href: `/${tenantSubdomain}/settings`, icon: Settings, permission: permissions.settings?.view },
   ]
 
