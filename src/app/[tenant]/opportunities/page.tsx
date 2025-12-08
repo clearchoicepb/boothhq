@@ -191,14 +191,18 @@ function OpportunitiesPageContent() {
 
   // Helper function to filter opportunities by time period (for closed buckets)
   // Uses same date range logic as stats API for consistency
+  // Compare ISO date strings to avoid timezone issues
   const filterByTimePeriod = useCallback((opps: OpportunityWithRelations[], period: TimePeriod) => {
     if (period === 'all') return opps
 
     const dateRange = getDateRangeForPeriod(period)
+    const startISO = dateRange.startISO
+    const endISO = dateRange.endISO + 'T23:59:59'
 
     return opps.filter(opp => {
-      const updatedAt = opp.updated_at ? new Date(opp.updated_at) : null
-      return updatedAt && updatedAt >= dateRange.start && updatedAt <= dateRange.end
+      if (!opp.updated_at) return false
+      // Compare ISO strings to match API behavior and avoid timezone issues
+      return opp.updated_at >= startISO && opp.updated_at <= endISO
     })
   }, [])
 
