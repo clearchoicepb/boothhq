@@ -7,11 +7,13 @@ const log = createLogger('api:dashboard:stats')
 
 export interface DashboardStatsResponse {
   eventsOccurring: {
+    today: number
     week: number
     month: number
     year: number
   }
   eventsBooked: {
+    today: { count: number; revenue: number }
     week: { count: number; revenue: number }
     month: { count: number; revenue: number }
     year: { count: number; revenue: number }
@@ -21,6 +23,7 @@ export interface DashboardStatsResponse {
     pipelineValue: number
   }
   newOpportunities: {
+    today: { count: number; value: number }
     week: { count: number; value: number }
     month: { count: number; value: number }
     year: { count: number; value: number }
@@ -40,6 +43,9 @@ export async function GET(_request: NextRequest) {
 
     // Get date ranges
     const now = new Date()
+
+    // Today range
+    const todayISO = now.toISOString().split('T')[0]
 
     // Week range (Monday to Sunday)
     const dayOfWeek = now.getDay()
@@ -67,10 +73,16 @@ export async function GET(_request: NextRequest) {
     // Uses inner join with events table (events!inner)
     // =====================================================
     const [
+      eventsOccurringTodayResult,
       eventsOccurringWeekResult,
       eventsOccurringMonthResult,
       eventsOccurringYearResult
     ] = await Promise.all([
+      supabase
+        .from('event_dates')
+        .select('id, events!inner(id)', { count: 'exact', head: true })
+        .eq('tenant_id', dataSourceTenantId)
+        .eq('event_date', todayISO),
       supabase
         .from('event_dates')
         .select('id, events!inner(id)', { count: 'exact', head: true })
@@ -91,6 +103,7 @@ export async function GET(_request: NextRequest) {
         .lte('event_date', yearEndISO)
     ])
 
+    const eventsOccurringToday = eventsOccurringTodayResult.count || 0
     const eventsOccurringWeek = eventsOccurringWeekResult.count || 0
     const eventsOccurringMonth = eventsOccurringMonthResult.count || 0
     const eventsOccurringYear = eventsOccurringYearResult.count || 0
@@ -99,10 +112,17 @@ export async function GET(_request: NextRequest) {
     // EVENTS BOOKED - Count events by created_at with revenue
     // =====================================================
     const [
+      eventsBookedTodayResult,
       eventsBookedWeekResult,
       eventsBookedMonthResult,
       eventsBookedYearResult
     ] = await Promise.all([
+      supabase
+        .from('events')
+        .select('id, opportunity_id')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${todayISO}T00:00:00`)
+        .lte('created_at', `${todayISO}T23:59:59`),
       supabase
         .from('events')
         .select('id, opportunity_id')
@@ -125,12 +145,14 @@ export async function GET(_request: NextRequest) {
 
     // Get all invoices and opportunities for revenue calculation
     const allEventIds = [
+      ...(eventsBookedTodayResult.data || []),
       ...(eventsBookedWeekResult.data || []),
       ...(eventsBookedMonthResult.data || []),
       ...(eventsBookedYearResult.data || [])
     ].map(e => e.id)
 
     const allOpportunityIds = [
+      ...(eventsBookedTodayResult.data || []),
       ...(eventsBookedWeekResult.data || []),
       ...(eventsBookedMonthResult.data || []),
       ...(eventsBookedYearResult.data || [])
@@ -181,6 +203,10 @@ export async function GET(_request: NextRequest) {
       return revenue
     }
 
+    const eventsBookedToday = {
+      count: eventsBookedTodayResult.data?.length || 0,
+      revenue: calculateRevenue(eventsBookedTodayResult.data || [])
+    }
     const eventsBookedWeek = {
       count: eventsBookedWeekResult.data?.length || 0,
       revenue: calculateRevenue(eventsBookedWeekResult.data || [])
@@ -215,10 +241,17 @@ export async function GET(_request: NextRequest) {
     // NEW OPPORTUNITIES - By created_at
     // =====================================================
     const [
+      newOppsTodayResult,
       newOppsWeekResult,
       newOppsMonthResult,
       newOppsYearResult
     ] = await Promise.all([
+      supabase
+        .from('opportunities')
+        .select('id, amount')
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('created_at', `${todayISO}T00:00:00`)
+        .lte('created_at', `${todayISO}T23:59:59`),
       supabase
         .from('opportunities')
         .select('id, amount')
@@ -239,6 +272,10 @@ export async function GET(_request: NextRequest) {
         .lte('created_at', `${yearEndISO}T23:59:59`)
     ])
 
+    const newOpportunitiesToday = {
+      count: newOppsTodayResult.data?.length || 0,
+      value: (newOppsTodayResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+    }
     const newOpportunitiesWeek = {
       count: newOppsWeekResult.data?.length || 0,
       value: (newOppsWeekResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
@@ -254,11 +291,13 @@ export async function GET(_request: NextRequest) {
 
     const response: DashboardStatsResponse = {
       eventsOccurring: {
+        today: eventsOccurringToday,
         week: eventsOccurringWeek,
         month: eventsOccurringMonth,
         year: eventsOccurringYear
       },
       eventsBooked: {
+        today: eventsBookedToday,
         week: eventsBookedWeek,
         month: eventsBookedMonth,
         year: eventsBookedYear
@@ -268,6 +307,7 @@ export async function GET(_request: NextRequest) {
         pipelineValue: totalPipelineValue
       },
       newOpportunities: {
+        today: newOpportunitiesToday,
         week: newOpportunitiesWeek,
         month: newOpportunitiesMonth,
         year: newOpportunitiesYear

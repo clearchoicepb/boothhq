@@ -417,6 +417,35 @@ export interface DateRange {
 }
 
 /**
+ * Get today's date range (00:00:00 to 23:59:59)
+ *
+ * @returns DateRange object with start and end dates for today
+ *
+ * @example
+ * // If today is Dec 9, 2025:
+ * getTodayRange()
+ * // → { start: Dec 9 00:00, end: Dec 9 23:59, startISO: '2025-12-09', endISO: '2025-12-09' }
+ */
+export function getTodayRange(): DateRange {
+  const today = getTodayEST() // Use EST for consistent date calculation
+
+  const start = new Date(today)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(today)
+  end.setHours(23, 59, 59, 999)
+
+  const todayISO = toDateInputValue(start)
+
+  return {
+    start,
+    end,
+    startISO: todayISO,
+    endISO: todayISO
+  }
+}
+
+/**
  * Get the current week's date range (Monday 00:00:00 to Sunday 23:59:59)
  *
  * @returns DateRange object with start and end dates for the current week
@@ -511,12 +540,14 @@ export function getYearRange(): DateRange {
 /**
  * Get date range for a specified period
  *
- * @param period - 'week' | 'month' | 'year' | 'all'
+ * @param period - 'today' | 'week' | 'month' | 'year' | 'all'
  * @returns DateRange object for the specified period
  *         For 'all', returns a very wide range (1970 - 2099)
  */
-export function getDateRangeForPeriod(period: 'week' | 'month' | 'year' | 'all'): DateRange {
+export function getDateRangeForPeriod(period: 'today' | 'week' | 'month' | 'year' | 'all'): DateRange {
   switch (period) {
+    case 'today':
+      return getTodayRange()
     case 'week':
       return getWeekRange()
     case 'month':

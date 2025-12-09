@@ -6,7 +6,7 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('api:dashboard:drilldown')
 
 export type DrilldownType = 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
-export type DrilldownPeriod = 'week' | 'month' | 'year'
+export type DrilldownPeriod = 'today' | 'week' | 'month' | 'year'
 
 export interface EventOccurringRecord {
   id: string
@@ -119,6 +119,9 @@ export async function GET(request: NextRequest) {
     // Get date ranges
     const now = new Date()
 
+    // Today range
+    const todayISO = now.toISOString().split('T')[0]
+
     // Week range (Monday to Sunday)
     const dayOfWeek = now.getDay()
     const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
@@ -146,6 +149,11 @@ export async function GET(request: NextRequest) {
     let periodLabel: string
 
     switch (period) {
+      case 'today':
+        startISO = todayISO
+        endISO = todayISO
+        periodLabel = 'Today'
+        break
       case 'week':
         startISO = weekStartISO
         endISO = weekEndISO
