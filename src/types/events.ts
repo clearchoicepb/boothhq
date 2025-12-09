@@ -360,3 +360,46 @@ export interface SelectedDateTime {
   startTime: string
   endTime: string
 }
+
+// =============================================================================
+// Event Filter Types
+// =============================================================================
+
+/** Filter state for the events list page */
+export interface FilterState {
+  searchTerm: string
+  dateRangeFilter: 'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past' | 'custom_days'
+  customDaysFilter: number | null
+  statusFilter: string
+  taskFilter: 'all' | 'incomplete'
+  taskDateRangeFilter: number
+  selectedTaskIds: string[]
+  assignedToFilter: 'all' | 'my_events'
+}
+
+/** Event counts for filter display */
+export interface EventCounts {
+  total: number
+  filtered: number
+  today: number
+  thisWeek: number
+  thisMonth: number
+  upcoming: number
+  past: number
+  next10Days: number
+  next45Days: number
+}
+
+/** Core task data for filter checkboxes */
+export interface CoreTask {
+  id: string
+  task_name: string
+}
+
+/** Props for the EventFilters component */
+export interface EventFiltersProps {
+  filters: FilterState
+  onFiltersChange: (filters: FilterState) => void
+  coreTasks: CoreTask[]
+  eventCounts: EventCounts
+}
