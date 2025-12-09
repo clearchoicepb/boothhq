@@ -18,7 +18,6 @@ import { useEventData } from '@/hooks/useEventData'
 import { getNextEventDate } from '@/lib/utils/event-utils'
 import { useEventReferences } from '@/hooks/useEventReferences'
 import { useEventTabs } from '@/hooks/useEventTabs'
-import { useEventEditing } from '@/hooks/useEventEditing'
 import { useEventStaff } from '@/hooks/useEventStaff'
 import { EventHeader } from '@/components/events/event-header'
 import { LoadingState } from '@/components/events/loading-state'
@@ -57,7 +56,6 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   const references = useEventReferences(session, tenantSubdomain)
   const tabs = useEventTabs(eventId, session, tenant)
   const staff = useEventStaff(eventId)
-  const editing = useEventEditing()
 
   // Context
   const context = useEventDetail()
@@ -462,7 +460,6 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
       {/* All Modals */}
       <EventDetailModals
         staff={staff}
-        editing={editing}
         tabs={tabs}
         references={references}
         onEventRefresh={eventData.fetchEvent}

@@ -2,12 +2,10 @@
 
 import { useParams } from 'next/navigation'
 import { useEventDetail } from '@/contexts/EventDetailContext'
-import { useEventEditing } from '@/hooks/useEventEditing'
 import { useEventStaff } from '@/hooks/useEventStaff'
 import { useEventTabs } from '@/hooks/useEventTabs'
 import { useEventReferences } from '@/hooks/useEventReferences'
 import { useSession } from 'next-auth/react'
-import { useTenant } from '@/lib/tenant-context'
 import toast from 'react-hot-toast'
 
 // Modal Components
@@ -40,8 +38,6 @@ interface OperationsStaffRequest {
 interface EventDetailModalsProps {
   // Staff management (from useEventStaff hook)
   staff: ReturnType<typeof useEventStaff>
-  // Event editing state (from useEventEditing hook)
-  editing: ReturnType<typeof useEventEditing>
   // Tabs data for callbacks (from useEventTabs hook)
   tabs: ReturnType<typeof useEventTabs>
   // Reference data
@@ -54,7 +50,6 @@ interface EventDetailModalsProps {
 
 export function EventDetailModals({
   staff,
-  editing,
   tabs,
   references,
   onEventRefresh,
@@ -64,20 +59,26 @@ export function EventDetailModals({
   const eventId = params.id as string
   const { data: session } = useSession()
 
-  // Get context for modal state
+  // Get context for modal state and editing state
   const context = useEventDetail()
   const {
     event,
     eventDates,
     modals: contextModals,
     detailModals,
+    editing: contextEditing,
     openModal,
     closeModal,
     refreshData,
     setSelectedCommunication,
     setSelectedActivity,
     setSelectedEventDate,
-    triggerAttachmentsRefresh
+    triggerAttachmentsRefresh,
+    // Event Date editing (from consolidated context)
+    startEditEventDate,
+    updateEditEventDateField,
+    cancelEditEventDate,
+    finishEditEventDate
   } = context
 
   // Destructure staff hook
@@ -101,15 +102,8 @@ export function EventDetailModals({
     resetAddStaffForm
   } = staff
 
-  // Destructure editing hook
-  const {
-    isEditingEventDate,
-    editEventDateData,
-    setEditEventDateData,
-    startEditingEventDate,
-    cancelEditingEventDate,
-    finishEditingEventDate
-  } = editing
+  // Event date editing from context (consolidated from useEventEditing hook)
+  const { isEditingEventDate, editEventDateData } = contextEditing
 
   // Destructure tabs for refetch functions
   const {
@@ -120,10 +114,10 @@ export function EventDetailModals({
   // Destructure references for locations
   const { locations } = references
 
-  // Event date editing handlers
+  // Event date editing handlers (using context methods)
   const handleStartEditEventDate = () => {
     if (detailModals.selectedEventDate) {
-      startEditingEventDate({
+      startEditEventDate({
         event_date: detailModals.selectedEventDate.event_date,
         start_time: detailModals.selectedEventDate.start_time || '',
         end_time: detailModals.selectedEventDate.end_time || '',
@@ -135,7 +129,7 @@ export function EventDetailModals({
   }
 
   const handleCancelEditEventDate = () => {
-    cancelEditingEventDate()
+    cancelEditEventDate()
   }
 
   const handleSaveEventDate = async () => {
@@ -149,7 +143,7 @@ export function EventDetailModals({
 
       await onEventDatesRefresh()
       setSelectedEventDate(updatedEventDate)
-      finishEditingEventDate()
+      finishEditEventDate()
       toast.success('Event date updated successfully')
     } catch (error) {
       log.error({ error }, 'Error updating event date')
@@ -410,7 +404,7 @@ export function EventDetailModals({
         onStartEdit={handleStartEditEventDate}
         onSave={handleSaveEventDate}
         onCancel={handleCancelEditEventDate}
-        onFieldChange={(field, value) => setEditEventDateData({ ...editEventDateData, [field]: value })}
+        onFieldChange={(field, value) => updateEditEventDateField(field, value)}
         canEdit={true}
       />
     </>
