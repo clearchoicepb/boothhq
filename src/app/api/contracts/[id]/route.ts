@@ -53,7 +53,7 @@ export async function GET(
       }
     } catch (error) {
       // Logo is optional, don't fail if it doesn't exist
-      log.debug('No logo configured for tenant')
+      log.debug({}, 'No logo configured for tenant')
     }
 
     // Return contract with logo URL for public display

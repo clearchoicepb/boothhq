@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
     // Verify this is from Vercel Cron
     const authHeader = request.headers.get('authorization')
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      log.warn('Unauthorized cron request')
+      log.warn({}, 'Unauthorized cron request')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    log.info('Starting opportunity automation cron job')
+    log.info({}, 'Starting opportunity automation cron job')
 
     // Call the automation endpoint directly
     const automationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/opportunities/automation`

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const { supabase, dataSourceTenantId, session } = context
 
-    log.debug('Starting recalculation for tenant:', dataSourceTenantId)
+    log.debug({ tenantId: dataSourceTenantId }, 'Starting recalculation for tenant')
 
     // Get all invoices for the tenant
     const { data: invoices, error: fetchError } = await supabase
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    log.debug(`Found ${invoices.length} invoices`)
+    log.debug({ count: invoices.length }, 'Found invoices')
 
     // Recalculate balance for each invoice
     let updatedCount = 0
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
       // Only update if balance or status is incorrect
       if (needsUpdate) {
-        log.debug(`Invoice ${invoice.id}: Fixing balance from ${invoice.balance_amount} to ${correctBalance}, status: ${currentInvoice?.status} -> ${correctStatus}`)
+        log.debug({ invoiceId: invoice.id, oldBalance: invoice.balance_amount, newBalance: correctBalance, oldStatus: currentInvoice?.status, newStatus: correctStatus }, 'Fixing invoice balance')
 
         const updateData: any = {
           balance_amount: correctBalance,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
           .eq('tenant_id', dataSourceTenantId)
 
         if (updateError) {
-          log.error({ updateError }, '[Recalculate Balances] Error updating invoice ${invoice.id}')
+          log.error({ updateError, invoiceId: invoice.id }, '[Recalculate Balances] Error updating invoice')
           errorCount++
           errors.push({ invoiceId: invoice.id, error: updateError.message })
         } else {
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    log.debug(`Complete. Updated: ${updatedCount}, Errors: ${errorCount}`)
+    log.debug({ updatedCount, errorCount }, 'Recalculation complete')
 
     return NextResponse.json({
       message: 'Balance recalculation complete',

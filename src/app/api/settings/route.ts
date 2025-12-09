@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         log.error({ appDbError }, '⚠️ Warning: Could not save phone number to Application DB')
         // Don't fail the request - Tenant DB save succeeded
       } else {
-        log.debug('✅ Twilio phone number saved to Application DB')
+        log.debug({}, '✅ Twilio phone number saved to Application DB')
       }
     }
 

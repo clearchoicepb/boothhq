@@ -15,7 +15,7 @@ export async function GET(
     const params = await routeContext.params
     const eventId = params.id
 
-    log.debug('Fetching activities for event:', eventId, 'tenant:', dataSourceTenantId)
+    log.debug({ eventId, tenantId: dataSourceTenantId }, 'Fetching activities for event')
 
     // Fetch all activity types with user information
     const [communications, tasks, invoices, notes, attachments] = await Promise.all([
@@ -104,13 +104,13 @@ export async function GET(
     ])
 
     // Debug logging
-    log.debug('Query results:', {
+    log.debug({
       communications: { count: communications.data?.length || 0, error: communications.error?.message },
       tasks: { count: tasks.data?.length || 0, error: tasks.error?.message },
       invoices: { count: invoices.data?.length || 0, error: invoices.error?.message },
       notes: { count: notes.data?.length || 0, error: notes.error?.message },
       attachments: { count: attachments.data?.length || 0, error: attachments.error?.message },
-    })
+    }, 'Query results')
 
     if (communications.error) console.error('[Activity] Communications error:', communications.error)
     if (tasks.error) console.error('[Activity] Tasks error:', tasks.error)

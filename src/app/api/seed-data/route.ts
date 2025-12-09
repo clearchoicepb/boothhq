@@ -140,10 +140,10 @@ export async function POST(request: Request) {
     const threeMonthsFromNow = new Date(now.getTime() + 3 * 30 * 24 * 60 * 60 * 1000)
     const sixMonthsFromNow = new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000)
 
-    log.debug('Starting seed data generation...')
+    log.debug({}, 'Starting seed data generation...')
 
     // STEP 1: Create Leads (45 records)
-    log.debug('Creating leads...')
+    log.debug({}, 'Creating leads...')
     const leadStatuses = [
       ...Array(14).fill('new'),
       ...Array(11).fill('contacted'),
@@ -189,10 +189,10 @@ export async function POST(request: Request) {
       .select()
 
     if (leadsError) throw leadsError
-    log.debug('Created ${leads?.length} leads')
+    log.debug({ count: leads?.length }, 'Created leads')
 
     // STEP 2: Create Accounts (45 records)
-    log.debug('Creating accounts...')
+    log.debug({}, 'Creating accounts...')
     const accountTypes = [...Array(27).fill('company'), ...Array(18).fill('individual')]
     const accountStatuses = [...Array(32).fill('active'), ...Array(9).fill('inactive'), ...Array(4).fill('suspended')]
 
@@ -230,10 +230,10 @@ export async function POST(request: Request) {
       .select()
 
     if (accountsError) throw accountsError
-    log.debug('Created ${accounts?.length} accounts')
+    log.debug({ count: accounts?.length }, 'Created accounts')
 
     // STEP 3: Create Contacts (45 records, 80% linked to accounts)
-    log.debug('Creating contacts...')
+    log.debug({}, 'Creating contacts...')
     const contactsData = []
     for (let i = 0; i < 45; i++) {
       const firstName = random(firstNames)
@@ -271,10 +271,10 @@ export async function POST(request: Request) {
       .select()
 
     if (contactsError) throw contactsError
-    log.debug('Created ${contacts?.length} contacts')
+    log.debug({ count: contacts?.length }, 'Created contacts')
 
     // STEP 4: Create Opportunities (35 records)
-    log.debug('Creating opportunities...')
+    log.debug({}, 'Creating opportunities...')
     const stages = [
       ...Array(7).fill('prospecting'),
       ...Array(7).fill('qualification'),
@@ -345,10 +345,10 @@ export async function POST(request: Request) {
       .select()
 
     if (opportunitiesError) throw opportunitiesError
-    log.debug('Created ${opportunities?.length} opportunities')
+    log.debug({ count: opportunities?.length }, 'Created opportunities')
 
     // STEP 5: Create Events (from won opportunities, 25 max)
-    log.debug('Creating events...')
+    log.debug({}, 'Creating events...')
     const wonOpportunities = opportunities?.filter(o => o.stage === 'closed_won') || []
     const eventsToCreate = Math.min(25, wonOpportunities.length)
 
@@ -389,10 +389,10 @@ export async function POST(request: Request) {
       .select()
 
     if (eventsError) throw eventsError
-    log.debug('Created ${events?.length} events')
+    log.debug({ count: events?.length }, 'Created events')
 
     // STEP 6: Create Invoices (from events, 20 max)
-    log.debug('Creating invoices...')
+    log.debug({}, 'Creating invoices...')
     const invoicesToCreate = Math.min(20, events?.length || 0)
     const invoiceStatuses = [
       ...Array(8).fill('paid'),
@@ -438,10 +438,10 @@ export async function POST(request: Request) {
       .select()
 
     if (invoicesError) throw invoicesError
-    log.debug('Created ${invoices?.length} invoices')
+    log.debug({ count: invoices?.length }, 'Created invoices')
 
     // STEP 7: Create Quotes (from open opportunities, 12 max)
-    log.debug('Creating quotes...')
+    log.debug({}, 'Creating quotes...')
     const openOpportunities = opportunities?.filter(o => isOpenStage(o.stage)) || []
     const quotesToCreate = Math.min(12, openOpportunities.length)
     const quoteStatuses = [
@@ -488,7 +488,7 @@ export async function POST(request: Request) {
       .select()
 
     if (quotesError) throw quotesError
-    log.debug('Created ${quotes?.length} quotes')
+    log.debug({ count: quotes?.length }, 'Created quotes')
 
     // Return summary
     return NextResponse.json({

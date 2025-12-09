@@ -36,7 +36,7 @@ export async function GET(
     const { supabase, tenantId, dataSourceTenantId } = context
 
     // Fetch workflow details (no join - event_type_ids is an array)
-    log.debug('GET - Looking for workflow:', workflowId)
+    log.debug({ workflowId }, 'GET - Looking for workflow')
     const { data: workflow, error: workflowError } = await supabase
       .from('workflows')
       .select('*')
@@ -52,14 +52,14 @@ export async function GET(
     }
 
     if (!workflow) {
-      log.error('[ApplyWorkflow] GET - No workflow returned')
+      log.error({}, '[ApplyWorkflow] GET - No workflow returned')
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       )
     }
 
-    log.debug('GET - Found workflow:', workflow.name)
+    log.debug({ workflowName: workflow.name }, 'GET - Found workflow')
 
     // Get event type IDs this workflow applies to
     const eventTypeIds = Array.isArray(workflow.event_type_ids) 
@@ -150,7 +150,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  log.debug('🚀🚀🚀 WORKFLOW APPLY ENDPOINT CALLED! 🚀🚀🚀')
+  log.debug({}, '🚀🚀🚀 WORKFLOW APPLY ENDPOINT CALLED! 🚀🚀🚀')
   console.log('='.repeat(80))
   
   try {
@@ -160,8 +160,8 @@ export async function POST(
     const body = await request.json().catch(() => ({}))
     const forceRerun = body.force === true
     
-    log.debug('POST - Looking for workflow:', workflowId, 'Force rerun:', forceRerun)
-    log.debug('Request body:', JSON.stringify(body, null, 2))
+    log.debug({ workflowId, forceRerun }, 'POST - Looking for workflow')
+    log.debug({ body }, 'Request body')
     const context = await getTenantContext()
 
     if (context instanceof NextResponse) {
@@ -186,14 +186,14 @@ export async function POST(
     }
 
     if (!workflow) {
-      log.error('[ApplyWorkflow] POST - No workflow returned')
+      log.error({}, '[ApplyWorkflow] POST - No workflow returned')
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       )
     }
 
-    log.debug('POST - Found workflow:', workflow.name)
+    log.debug({ workflowName: workflow.name }, 'POST - Found workflow')
 
     if (!workflow.is_active) {
       return NextResponse.json(
@@ -252,9 +252,9 @@ export async function POST(
       // Filter to only events that haven't been executed yet
       eligibleEvents = events.filter(e => !executedEventIds.has(e.id))
       
-      log.debug(`Processing ${eligibleEvents.length} events for workflow ${workflowId} (${executedEventIds.size} already executed)`)
+      log.debug({ eventCount: eligibleEvents.length, workflowId, alreadyExecuted: executedEventIds.size }, 'Processing events for workflow')
     } else {
-      log.debug(`FORCE RERUN: Processing ${eligibleEvents.length} events for workflow ${workflowId} (skipping duplicate check)`)
+      log.debug({ eventCount: eligibleEvents.length, workflowId }, 'FORCE RERUN: Processing events for workflow (skipping duplicate check)')
     }
 
     // Execute workflow for each eligible event
@@ -262,14 +262,14 @@ export async function POST(
     let failed = 0
     const results = []
 
-    log.debug('Starting execution loop for', eligibleEvents.length, 'events')
-    log.debug('Event IDs:', eligibleEvents.map(e => e.id))
+    log.debug({ eventCount: eligibleEvents.length }, 'Starting execution loop')
+    log.debug({ eventIds: eligibleEvents.map(e => e.id) }, 'Event IDs')
 
     for (const event of eligibleEvents) {
       try {
-        log.debug('Processing event:', event.id, event.title)
-        log.debug('Event type ID:', event.event_type_id)
-        log.debug('Calling workflowEngine.executeWorkflowsForEvent...')
+        log.debug({ eventId: event.id, eventTitle: event.title }, 'Processing event')
+        log.debug({ eventTypeId: event.event_type_id }, 'Event type ID')
+        log.debug({}, 'Calling workflowEngine.executeWorkflowsForEvent...')
         
         const workflowResults = await workflowEngine.executeWorkflowsForEvent({
           eventId: event.id,
@@ -280,11 +280,11 @@ export async function POST(
           force: forceRerun // Pass the force flag to skip duplicate check
         })
 
-        log.debug('Workflow results for event', event.id, ':', JSON.stringify(workflowResults, null, 2))
+        log.debug({ eventId: event.id, workflowResults }, 'Workflow results for event')
 
         // Check if any workflows executed successfully
         const hasSuccess = workflowResults.some(r => r.status === 'completed' || r.status === 'partial')
-        log.debug('Has success?', hasSuccess)
+        log.debug({ hasSuccess }, 'Has success?')
         
         if (hasSuccess) {
           processed++
@@ -321,7 +321,7 @@ export async function POST(
           })
         }
       } catch (error: any) {
-        log.error('[ApplyWorkflow] ❌ CRITICAL ERROR processing event ${event.id}:')
+        log.error({ eventId: event.id }, '[ApplyWorkflow] ❌ CRITICAL ERROR processing event')
         console.error('[ApplyWorkflow] Error type:', typeof error)
         console.error('[ApplyWorkflow] Error message:', error?.message)
         console.error('[ApplyWorkflow] Error stack:', error?.stack)
@@ -337,7 +337,7 @@ export async function POST(
       }
     }
 
-    log.debug(`Complete. Processed: ${processed}, Failed: ${failed}`)
+    log.debug({ processed, failed }, 'Complete')
 
     return NextResponse.json({
       success: true,

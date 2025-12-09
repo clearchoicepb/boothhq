@@ -86,12 +86,12 @@ export async function POST(request: NextRequest) {
 
     const { supabase, dataSourceTenantId, session } = context
 
-    log.debug('POST - Creating project')
-    log.debug('Tenant ID:', dataSourceTenantId)
-    log.debug('User ID:', session.user.id)
+    log.debug({}, 'POST - Creating project')
+    log.debug({ tenantId: dataSourceTenantId }, 'Tenant ID')
+    log.debug({ userId: session.user.id }, 'User ID')
 
     const body: CreateProjectInput = await request.json()
-    log.debug('Request body:', body)
+    log.debug({ body }, 'Request body')
 
     // Clean up empty date fields
     const cleanedData = { ...body }
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       updated_by: session.user.id,
     }
 
-    log.debug('Insert data:', projectData)
+    log.debug({ projectData }, 'Insert data')
 
     // Insert project
     const { data: project, error } = await supabase
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create project', details: error.message }, { status: 500 })
     }
 
-    log.debug('Project created successfully:', project.id)
+    log.debug({ projectId: project.id }, 'Project created successfully')
 
     // Revalidate the projects page
     revalidatePath('/[tenant]/projects', 'page')

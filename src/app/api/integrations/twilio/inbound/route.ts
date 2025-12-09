@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       const isValid = twilio.validateRequest(authToken, twilioSignature, url, params)
 
       if (!isValid) {
-        log.error('Invalid Twilio signature')
+        log.error({}, 'Invalid Twilio signature')
         return new NextResponse('Forbidden', { status: 403 })
       }
     }
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const normalizedFrom = normalizePhone(from)
 
     // STEP 1: Find which tenant owns the receiving phone number
-    log.debug('Finding tenant for receiving phone number')
+    log.debug({}, 'Finding tenant for receiving phone number')
 
     const appSupabase = createServerSupabaseClient()
     const { data: settingsRows, error: settingsError } = await appSupabase
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       tenantId = matchingTenant.tenant_id
       log.debug({ tenantFound: true }, 'Tenant matched to receiving phone number')
     } else {
-      log.warn('Could not determine tenant for incoming SMS')
+      log.warn({}, 'Could not determine tenant for incoming SMS')
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`,
         { status: 200, headers: { 'Content-Type': 'text/xml' } }
@@ -101,11 +101,11 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 2: Get Tenant Database client
-    log.debug('Connecting to tenant database')
+    log.debug({}, 'Connecting to tenant database')
     const tenantSupabase = await getTenantClient(tenantId)
 
     // STEP 3: Try to find matching contact, lead, or account in TENANT DB
-    log.debug('Looking for contact/lead/account by phone number')
+    log.debug({}, 'Looking for contact/lead/account by phone number')
     
     let contactId: string | null = null
     let accountId: string | null = null
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
     }, 'Phone number matching completed')
 
     // STEP 4: Log the communication to TENANT DATABASE
-    log.debug('Logging communication to tenant database')
+    log.debug({}, 'Logging communication to tenant database')
     
     const communicationData = {
       tenant_id: tenantId,

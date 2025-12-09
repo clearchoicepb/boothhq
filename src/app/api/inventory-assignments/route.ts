@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         
         // Validate quantity
         if (item.total_quantity && quantityToAssign > item.total_quantity) {
-          log.warn('⚠️ Quantity ${quantityToAssign} exceeds total ${item.total_quantity} for item ${item.item_name}')
+          log.warn({ quantityToAssign, totalQuantity: item.total_quantity, itemName: item.item_name }, '⚠️ Quantity exceeds total for item')
           quantityToAssign = item.total_quantity
         }
       }
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    log.debug('✅ Created ${createdAssignments?.length || 0} inventory assignments')
+    log.debug({ count: createdAssignments?.length || 0 }, '✅ Created inventory assignments')
 
     return NextResponse.json({
       success: true,

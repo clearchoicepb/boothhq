@@ -114,7 +114,7 @@ export async function POST(
       // Don't fail the request since Supabase Auth is the source of truth
     }
 
-    log.debug('Password updated successfully for user ${id} (${user.email})')
+    log.debug({ userId: id, email: user.email }, 'Password updated successfully')
 
     return NextResponse.json({ 
       success: true,

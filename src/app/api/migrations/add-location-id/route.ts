@@ -11,7 +11,7 @@ export async function POST() {
 
     const { supabase, dataSourceTenantId, session } = context
 
-    log.debug('🚀 Starting migration: add_location_id_to_events')
+    log.debug({}, '🚀 Starting migration: add_location_id_to_events')
 
     // Since we can't run DDL directly through Supabase client,
     // we'll use the database via the service role

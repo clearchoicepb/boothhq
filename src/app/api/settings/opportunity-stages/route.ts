@@ -78,7 +78,7 @@ export async function GET(request: Request) {
 
     // If no stages configured in settings, return default stages
     if (stages.length === 0) {
-      log.debug('No stages in settings, using defaults')
+      log.debug({}, 'No stages in settings, using defaults')
       stages = [
         { id: 'prospecting', name: 'Prospecting', probability: 10, color: 'blue', enabled: true },
         { id: 'qualification', name: 'Qualification', probability: 25, color: 'yellow', enabled: true },
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
       ]
     }
 
-    log.debug(`Returning ${stages.length} stages for tenant ${dataSourceTenantId}`)
+    log.debug({ stageCount: stages.length, tenantId: dataSourceTenantId }, 'Returning stages')
 
     // Return array directly (consistent with /api/event-types pattern)
     return NextResponse.json(stages)

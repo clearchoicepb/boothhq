@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
             staffAssignmentsByEvent[assignment.event_id].push(assignment)
           })
         } else if (staffData?.length === 0) {
-          log.debug('No staff assignments found in database')
+          log.debug({}, 'No staff assignments found in database')
         }
       } catch (staffErr) {
         log.warn({ error: staffErr }, 'Could not fetch staff assignments')

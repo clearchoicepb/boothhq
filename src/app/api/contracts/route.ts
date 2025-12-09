@@ -11,33 +11,33 @@ export const runtime = 'nodejs'
 
 // API endpoint for creating and fetching contracts
 export async function POST(request: NextRequest) {
-  log.debug('POST request received')
-  log.debug('URL:', request.url)
-  log.debug('Method:', request.method)
-  
+  log.debug({}, 'POST request received')
+  log.debug({ url: request.url }, 'URL')
+  log.debug({ method: request.method }, 'Method')
+
   try {
-    log.debug('Getting tenant context...')
+    log.debug({}, 'Getting tenant context...')
     const context = await getTenantContext()
     if (context instanceof NextResponse) {
-      log.debug('Context returned NextResponse (error)')
+      log.debug({}, 'Context returned NextResponse (error)')
       return context
     }
 
     const { supabase, dataSourceTenantId, session } = context
-    log.debug('Context obtained:', {
+    log.debug({
       hasSupabase: !!supabase,
       dataSourceTenantId,
       hasSession: !!session
-    })
+    }, 'Context obtained')
 
     if (!session?.user) {
-      log.debug('No session user - Unauthorized')
+      log.debug({}, 'No session user - Unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    log.debug('Reading request body...')
+    log.debug({}, 'Reading request body...')
     const body = await request.json()
-    log.debug('Request body:', body)
+    log.debug({ body }, 'Request body')
     
     const {
       event_id,
@@ -50,18 +50,18 @@ export async function POST(request: NextRequest) {
     } = body
 
     if (!event_id || !template_content || !title) {
-      log.debug('Missing required fields:', { event_id, has_template_content: !!template_content, title })
+      log.debug({ event_id, has_template_content: !!template_content, title }, 'Missing required fields')
       return NextResponse.json(
         { error: 'event_id, template_content, and title are required' },
         { status: 400 }
       )
     }
     
-    log.debug('All required fields present, proceeding...')
+    log.debug({}, 'All required fields present, proceeding...')
 
     // Get event data
-    log.debug('Fetching event with ID:', event_id)
-    log.debug('Using tenant_id:', dataSourceTenantId)
+    log.debug({ event_id }, 'Fetching event with ID')
+    log.debug({ tenant_id: dataSourceTenantId }, 'Using tenant_id')
     
     // Note: RLS handles tenant filtering automatically via app.current_tenant_id
     // Specify the exact foreign key relationship since events has multiple contacts relationships
@@ -75,12 +75,12 @@ export async function POST(request: NextRequest) {
       .eq('id', event_id)
       .single()
 
-    log.debug('Event query result:', {
+    log.debug({
       hasEvent: !!event,
       eventError: eventError?.message,
       eventErrorCode: eventError?.code,
       eventErrorDetails: eventError?.details
-    })
+    }, 'Event query result')
 
     if (eventError || !event) {
       log.error({ eventError }, '[contracts/route.ts] Event not found. Error')
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
     
-    log.debug('Event found:', event.id, event.title)
+    log.debug({ eventId: event.id, eventTitle: event.title }, 'Event found')
 
     // Build merge field data directly from event (server-side, can't use HTTP fetch)
     const mergeData: any = {}
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    log.debug('Merge data built:', Object.keys(mergeData))
+    log.debug({ keys: Object.keys(mergeData) }, 'Merge data built')
 
     // Replace merge fields in template
     const processedContent = replaceMergeFields(template_content, mergeData)
@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
       .from('contracts')
       .select('*', { count: 'exact', head: true })
 
-    log.debug('Contract count:', contractCount)
+    log.debug({ contractCount }, 'Contract count')
     const contractNumber = `CON-${String((contractCount || 0) + 1).padStart(5, '0')}`
-    log.debug('Generated contract number:', contractNumber)
+    log.debug({ contractNumber }, 'Generated contract number')
 
     // Calculate expiration date
     const expiresAt = new Date()
@@ -168,13 +168,13 @@ export async function POST(request: NextRequest) {
     if (expiresAt) insertData.expires_at = expiresAt.toISOString()
     if (session.user.id) insertData.created_by = session.user.id
     
-    log.debug('Inserting with data:', Object.keys(insertData))
-    log.debug('Insert values:', { 
+    log.debug({ keys: Object.keys(insertData) }, 'Inserting with data')
+    log.debug({
       template_name: insertData.template_name,
       recipient_email: insertData.recipient_email,
       recipient_name: insertData.recipient_name,
       status: insertData.status
-    })
+    }, 'Insert values')
     
     const { data: contract, error: contractError} = await supabase
       .from('contracts')
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
     
-    log.debug('Insert result:', { hasContract: !!contract, error: contractError })
+    log.debug({ hasContract: !!contract, error: contractError }, 'Insert result')
 
     if (contractError) {
       log.error({ contractError }, 'Error creating contract')
@@ -192,8 +192,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    log.debug('Contract created successfully:', contract.id)
-    log.debug('NOTE: File entry NOT auto-created - waiting for user to save')
+    log.debug({ contractId: contract.id }, 'Contract created successfully')
+    log.debug({}, 'NOTE: File entry NOT auto-created - waiting for user to save')
     
     return NextResponse.json(contract)
   } catch (error) {
@@ -207,22 +207,22 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  log.debug('GET request received')
-  log.debug('URL:', request.url)
-  
+  log.debug({}, 'GET request received')
+  log.debug({ url: request.url }, 'URL')
+
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
-    log.debug('GET Context obtained:', {
+    log.debug({
       hasSupabase: !!supabase,
       dataSourceTenantId,
       hasSession: !!session
-    })
+    }, 'GET Context obtained')
 
     if (!session?.user) {
-      log.debug('GET No session - Unauthorized')
+      log.debug({}, 'GET No session - Unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    log.debug('GET Query successful, contracts count:', data?.length || 0)
+    log.debug({ count: data?.length || 0 }, 'GET Query successful, contracts count')
 
     // Fetch event names separately to avoid schema conflicts
     const contractsWithEventNames = await Promise.all(
@@ -279,7 +279,7 @@ export async function GET(request: NextRequest) {
               }
             }
           } catch (error) {
-            log.debug('Could not fetch event name for contract:', contract.id)
+            log.debug({ contractId: contract.id }, 'Could not fetch event name for contract')
           }
         }
         return contract

@@ -403,7 +403,7 @@ export async function POST(request: NextRequest) {
     const hasSessionAuth = !!session?.user
 
     if (!hasApiKeyAuth && !hasSessionAuth) {
-      log.warn('Unauthorized automation request')
+      log.warn({}, 'Unauthorized automation request')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -454,7 +454,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!tenants || tenants.length === 0) {
-        log.info('No active tenants found')
+        log.info({}, 'No active tenants found')
         return NextResponse.json({
           success: true,
           action,

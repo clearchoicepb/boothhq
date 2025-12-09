@@ -65,7 +65,7 @@ function verifyAuth(request: NextRequest): boolean {
 
   // Allow in development without auth
   if (process.env.NODE_ENV === 'development') {
-    log.debug('Development mode - skipping auth')
+    log.debug({}, 'Development mode - skipping auth')
     return true
   }
 
@@ -77,11 +77,11 @@ function verifyAuth(request: NextRequest): boolean {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function GET(request: NextRequest) {
-  log.debug('Cron job started')
+  log.debug({}, 'Cron job started')
 
   // Verify authentication
   if (!verifyAuth(request)) {
-    log.debug('Unauthorized request')
+    log.debug({}, 'Unauthorized request')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!tenants || tenants.length === 0) {
-      log.debug('No active tenants found')
+      log.debug({}, 'No active tenants found')
       return NextResponse.json({
         success: true,
         message: 'No active tenants to process',
@@ -152,10 +152,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    log.debug('Cron job completed', {
+    log.debug({
       duration: Date.now() - startTime,
       ...results,
-    })
+    }, 'Cron job completed')
 
     return NextResponse.json({
       success: results.errors.length === 0,

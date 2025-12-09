@@ -39,7 +39,7 @@ export async function POST(
       let contactId = opportunity.contact_id
 
       if (opportunity.lead_id && !opportunity.account_id) {
-        log.debug('Converting lead to account/contact...')
+        log.debug({}, 'Converting lead to account/contact...')
 
         // Fetch the lead data
         const { data: lead, error: leadError } = await supabase
@@ -174,7 +174,7 @@ export async function POST(
           .eq('id', opportunityId)
           .eq('tenant_id', dataSourceTenantId)
 
-        log.debug('Lead converted successfully to account/contact')
+        log.debug({}, 'Lead converted successfully to account/contact')
       }
 
       // 2. Create the event
@@ -224,9 +224,9 @@ export async function POST(
         if (eventTypeData) {
           eventTypeId = eventTypeData.id
           eventCategoryId = eventTypeData.event_category_id
-          log.debug(`Found event_type_id: ${eventTypeId} for slug: ${eventTypeSlug}`)
+          log.debug({ eventTypeId, slug: eventTypeSlug }, 'Found event_type_id for slug')
         } else {
-          log.warn('[Convert to Event] Could not find event_type_id for slug: ${eventTypeSlug}')
+          log.warn({ slug: eventTypeSlug }, '[Convert to Event] Could not find event_type_id for slug')
         }
       }
 
@@ -302,7 +302,7 @@ export async function POST(
       // 3.5. Execute workflows for this event type (if event_type_id was found)
       if (event.event_type_id) {
         try {
-          log.debug(`Executing workflows for event type: ${event.event_type_id}`)
+          log.debug({ eventTypeId: event.event_type_id }, 'Executing workflows for event type')
           
           // Import workflowEngine dynamically
           const { workflowEngine } = await import('@/lib/services/workflowEngine')
@@ -323,16 +323,16 @@ export async function POST(
             const totalDesignItems = workflowResults.reduce((sum, result) => {
               return sum + (result?.createdDesignItemIds?.length || 0)
             }, 0)
-            log.debug(`✅ Executed ${workflowResults.length} workflow(s), created ${totalTasks} task(s), ${totalDesignItems} design item(s)`)
+            log.debug({ workflowCount: workflowResults.length, taskCount: totalTasks, designItemCount: totalDesignItems }, '✅ Executed workflows')
           } else {
-            log.debug(`ℹ️  No active workflows found for event type ${event.event_type_id}`)
+            log.debug({ eventTypeId: event.event_type_id }, 'ℹ️  No active workflows found for event type')
           }
         } catch (error) {
           log.error({ error }, '[Convert to Event] Error executing workflows')
           // Don't fail the conversion, just log
         }
       } else {
-        log.debug('⚠️  No event_type_id found, skipping workflow execution')
+        log.debug({}, '⚠️  No event_type_id found, skipping workflow execution')
       }
 
       // 4. Update the opportunity to mark it as converted

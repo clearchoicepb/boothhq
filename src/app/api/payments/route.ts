@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const { supabase, dataSourceTenantId } = context
     const body = await request.json()
 
-    log.debug('Creating payment for tenant:', dataSourceTenantId)
+    log.debug({ tenantId: dataSourceTenantId }, 'Creating payment for tenant')
 
     // Validate required fields
     if (!body.invoice_id || !body.amount || !body.payment_method) {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create payment record
-    log.debug('About to insert payment:', JSON.stringify(paymentData, null, 2))
+    log.debug({ paymentData }, 'About to insert payment')
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert(paymentData)
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       log.error({ updateError }, 'Error updating invoice')
       // Payment was created but invoice update failed - log but don't fail the request
-      log.warn('Payment created successfully but invoice update failed')
+      log.warn({}, 'Payment created successfully but invoice update failed')
     }
 
     return NextResponse.json(payment, { status: 201 })

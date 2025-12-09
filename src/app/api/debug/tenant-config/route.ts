@@ -11,19 +11,19 @@ const log = createLogger('api:debug')
  */
 export async function GET(request: NextRequest) {
   try {
-    log.debug('=== TENANT CONFIG DEBUG START ===')
+    log.debug({}, '=== TENANT CONFIG DEBUG START ===')
 
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
 
-    log.debug('Session user:', {
+    log.debug({
       id: session.user.id,
       email: session.user.email,
       tenantId: dataSourceTenantId,
       tenantName: session.user.tenantName
-    })
+    }, 'Session user')
 
     // Query APPLICATION database for tenant metadata
     const appDb = createServerSupabaseClient()
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    log.debug('Tenant found:', {
+    log.debug({
       id: tenant.id,
       name: tenant.name,
       subdomain: tenant.subdomain,
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       dataSourceUrl: tenant.data_source_url ? tenant.data_source_url.substring(0, 30) + '...' : null,
       region: tenant.data_source_region,
       status: tenant.status
-    })
+    }, 'Tenant found')
 
     // Test if we can connect to tenant database
     let canConnectToTenantDb = false
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
           log.error({ tenantDbError }, '[Debug] Tenant DB query failed')
         } else {
           canConnectToTenantDb = true
-          log.debug('Successfully connected to tenant database')
+          log.debug({}, 'Successfully connected to tenant database')
         }
       } catch (err: any) {
         tenantDbError = {
@@ -119,8 +119,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    log.debug('Response:', response)
-    log.debug('=== TENANT CONFIG DEBUG END ===')
+    log.debug({ response }, 'Response')
+    log.debug({}, '=== TENANT CONFIG DEBUG END ===')
 
     return NextResponse.json(response)
   } catch (error: any) {

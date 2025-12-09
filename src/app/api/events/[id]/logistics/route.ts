@@ -125,7 +125,7 @@ export async function GET(
       .order('assigned_date', { ascending: true })
 
     // Fetch staff assignments
-    log.debug('Fetching staff for eventId:', eventId, 'tenantId:', session.user.tenantId)
+    log.debug({ eventId, tenantId: session.user.tenantId }, 'Fetching staff')
     const { data: staffAssignments, error: staffError } = await supabase
       .from('event_staff_assignments')
       .select(`
@@ -149,8 +149,8 @@ export async function GET(
     if (staffError) {
       log.error({ staffError }, '[LOGISTICS-API] Staff query error')
     } else {
-      log.debug('Staff query success, found records:', staffAssignments?.length || 0)
-      log.debug('Raw staff data:', JSON.stringify(staffAssignments, null, 2))
+      log.debug({ recordCount: staffAssignments?.length || 0 }, 'Staff query success')
+      log.debug({ staffAssignments }, 'Raw staff data')
     }
 
     // Build location object - prefer event_dates location, fall back to old TEXT field
@@ -184,7 +184,7 @@ export async function GET(
       is_event_day: !!sa.event_date_id
     })) || []
 
-    log.debug('Transformed staff array:', JSON.stringify(staffArray, null, 2))
+    log.debug({ staffArray }, 'Transformed staff array')
 
     const logistics = {
       client_name: event.account?.name,

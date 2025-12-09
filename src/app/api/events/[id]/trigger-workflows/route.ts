@@ -28,7 +28,7 @@ export async function POST(
     const params = await routeContext.params
     const eventId = params.id
 
-    log.debug(`Manual trigger requested for event ${eventId}`)
+    log.debug({ eventId }, 'Manual trigger requested for event')
 
     // Fetch the event to get event_type_id
     const { data: event, error: eventError } = await supabase
@@ -44,14 +44,14 @@ export async function POST(
     }
 
     if (!event.event_type_id) {
-      log.warn('[Trigger Workflows] Event ${eventId} has no event_type_id')
+      log.warn({ eventId }, '[Trigger Workflows] Event has no event_type_id')
       return NextResponse.json({ 
         error: 'Cannot trigger workflows: Event type is not set',
         hint: 'Please set an event type first'
       }, { status: 400 })
     }
 
-    log.debug(`Executing workflows for event type: ${event.event_type_id}`)
+    log.debug({ eventTypeId: event.event_type_id }, 'Executing workflows for event type')
 
     // Execute workflows (duplicate prevention is handled inside workflowEngine)
     const workflowResults = await workflowEngine.executeWorkflowsForEvent({
@@ -68,7 +68,7 @@ export async function POST(
 
     // If no workflows executed (because of duplicate prevention), inform user
     if (workflowResults.length === 0) {
-      log.debug(`No workflows executed (already completed or none found)`)
+      log.debug({}, 'No workflows executed (already completed or none found)')
       return NextResponse.json({
         success: true,
         message: 'Workflows have already been executed for this event',
@@ -80,7 +80,7 @@ export async function POST(
       })
     }
 
-    log.debug(`✅ Success: ${workflowResults.length} workflows, ${totalTasks} tasks, ${totalDesignItems} design items`)
+    log.debug({ workflowCount: workflowResults.length, taskCount: totalTasks, designItemCount: totalDesignItems }, '✅ Success')
 
     return NextResponse.json({
       success: true,

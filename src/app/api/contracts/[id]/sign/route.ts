@@ -197,9 +197,9 @@ export async function POST(
             })
             .eq('id', attachment.id)
           
-          log.debug('Attachment entry status updated to signed')
+          log.debug({}, 'Attachment entry status updated to signed')
         } else {
-          log.debug('No attachment entry found for contract')
+          log.debug({}, 'No attachment entry found for contract')
         }
       } catch (err) {
         log.error({ err }, 'Error updating attachment entry')

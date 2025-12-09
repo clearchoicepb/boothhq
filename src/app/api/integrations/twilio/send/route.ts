@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         hasPhoneNumber: !!twilioSettings?.phoneNumber
       }, 'Twilio settings loaded')
     } else {
-      log.warn('Failed to load settings from API, will use env vars')
+      log.warn({}, 'Failed to load settings from API, will use env vars')
     }
 
     let accountSid: string | undefined
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!accountSid || !authToken || !fromNumber) {
-      log.error('Twilio credentials not configured')
+      log.error({}, 'Twilio credentials not configured')
       return NextResponse.json({ error: 'Twilio credentials not configured' }, { status: 500 })
     }
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     let resolvedOpportunityId = opportunity_id
 
     if (!contact_id && !lead_id && !account_id) {
-      log.debug('No relationship IDs provided, attempting phone number lookup')
+      log.debug({}, 'No relationship IDs provided, attempting phone number lookup')
 
       // Search contacts by phone number
       const { data: contactsArray } = await supabase

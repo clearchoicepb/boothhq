@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     
     // Debug relationship data for first 3 messages
     if (data && data.length > 0) {
-      log.debug('🔍 [Communications API] Sample relationship data:')
+      log.debug({}, '🔍 [Communications API] Sample relationship data')
       data.slice(0, 3).forEach((msg, i) => {
         console.log(`  Message ${i + 1}:`, {
           id: msg.id,
@@ -117,14 +117,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Log what we're receiving for debugging
-    log.debug('Received data:', {
+    log.debug({
       ...body,
       // Redact sensitive info, just show structure
       hasEventId: !!body.event_id,
       hasAccountId: !!body.account_id,
       hasContactId: !!body.contact_id,
       communicationType: body.communication_type,
-    })
+    }, 'Received data')
 
     const communicationData = {
       ...body,
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create communication', details: error.message }, { status: 500 })
     }
 
-    log.debug('Success! Created communication:', data.id)
+    log.debug({ communicationId: data.id }, 'Success! Created communication')
 
     return NextResponse.json(data)
   } catch (error) {

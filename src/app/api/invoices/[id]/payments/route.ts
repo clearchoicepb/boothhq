@@ -27,7 +27,7 @@ export async function GET(
       log.error({ error }, 'Error fetching payments')
       // If the table doesn't exist yet, return empty array instead of error
       if (error.code === '42P01') {
-        log.warn('Payments table does not exist yet. Run migration 20251112000002_add_stripe_fields_to_payments.sql')
+        log.warn({}, 'Payments table does not exist yet. Run migration 20251112000002_add_stripe_fields_to_payments.sql')
         return NextResponse.json([])
       }
       return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 })
