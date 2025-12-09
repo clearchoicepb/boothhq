@@ -82,3 +82,92 @@ export function useDeleteEvent(eventId: string) {
     }
   })
 }
+
+/**
+ * Response type for duplicate event API
+ */
+interface DuplicateEventResponse {
+  id: string
+  title: string
+  warnings?: string[]
+}
+
+/**
+ * Mutation hook for duplicating an event
+ */
+export function useDuplicateEvent(eventId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (): Promise<DuplicateEventResponse> => {
+      const response = await fetch(`/api/events/${eventId}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to duplicate event')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.list() })
+      toast.success('Event duplicated successfully!')
+    },
+    onError: (error: Error) => {
+      log.error({ error, eventId }, 'Failed to duplicate event')
+      toast.error(error.message || 'Failed to duplicate event')
+    }
+  })
+}
+
+/**
+ * Response type for trigger workflows API
+ */
+interface TriggerWorkflowsResponse {
+  success: boolean
+  message: string
+  error?: string
+  hint?: string
+  stats: {
+    workflowsExecuted: number
+    tasksCreated: number
+    designItemsCreated: number
+  }
+}
+
+/**
+ * Mutation hook for triggering workflows on an event
+ */
+export function useTriggerWorkflows(eventId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (): Promise<TriggerWorkflowsResponse> => {
+      const response = await fetch(`/api/events/${eventId}/trigger-workflows`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        const error = new Error(result.error || 'Failed to trigger workflows') as Error & { hint?: string }
+        error.hint = result.hint
+        throw error
+      }
+      return result
+    },
+    onSuccess: (data) => {
+      if (data.stats.workflowsExecuted === 0) {
+        toast('Workflows have already been executed for this event.')
+      } else {
+        toast.success(`Success! Created ${data.stats.tasksCreated} tasks and ${data.stats.designItemsCreated} design items.`)
+        // Invalidate relevant queries to refresh data
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.detail(eventId) })
+      }
+    },
+    onError: (error: Error & { hint?: string }) => {
+      log.error({ error, eventId }, 'Failed to trigger workflows')
+      toast.error(`Failed: ${error.message}${error.hint ? ` - ${error.hint}` : ''}`)
+    }
+  })
+}
