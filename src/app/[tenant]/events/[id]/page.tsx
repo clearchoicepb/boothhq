@@ -39,7 +39,6 @@ import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewT
 import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
 import { CommunicationsTab } from '@/components/shared/CommunicationsTab'
 import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
-import { FloatingQuickActions } from '@/components/events/detail/shared/FloatingQuickActions'
 import { eventsService } from '@/lib/api/services/eventsService'
 import { EventDetailProvider, useEventDetail } from '@/contexts/EventDetailContext'
 import { GenerateEventAgreementModal } from '@/components/generate-event-agreement-modal'
@@ -737,16 +736,6 @@ function EventDetailContent({ eventData }: EventDetailContentProps) {
         </Tabs>
           </div>
         </div>
-
-        {/* Floating Quick Actions - Accessible from all tabs */}
-        <FloatingQuickActions
-          eventId={event.id}
-          accountId={event.account_id}
-          contactId={event.contact_id}
-          tenantSubdomain={tenantSubdomain}
-          canCreate={canManageEvents}
-          onGenerateContract={() => setIsGenerateAgreementModalOpen(true)}
-        />
       </AppLayout>
 
       {/* Add/Edit Staff Modal */}
