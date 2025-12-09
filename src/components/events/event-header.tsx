@@ -6,10 +6,7 @@ import { ArrowLeft, Edit, Trash2, MoreVertical, Copy, RefreshCw } from 'lucide-r
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
-import { createLogger } from '@/lib/logger'
-import toast from 'react-hot-toast'
-
-const log = createLogger('events')
+import { useDuplicateEvent, useTriggerWorkflows } from '@/hooks/useEventDetail'
 
 interface EventHeaderProps {
   title: string
@@ -30,6 +27,10 @@ export function EventHeader({
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { confirm } = useConfirmDialog()
+
+  // Use mutation hooks for API calls
+  const duplicateMutation = useDuplicateEvent(eventId)
+  const triggerWorkflowsMutation = useTriggerWorkflows(eventId)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -56,23 +57,8 @@ export function EventHeader({
     })
 
     if (confirmed) {
-      try {
-        const response = await fetch(`/api/events/${eventId}/duplicate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          toast.success('Event duplicated successfully!')
-          router.push(`/${tenantSubdomain}/events/${data.id}`)
-        } else {
-          toast.error('Failed to duplicate event')
-        }
-      } catch (error) {
-        log.error({ error }, 'Error duplicating event')
-        toast.error('Error duplicating event')
-      }
+      const result = await duplicateMutation.mutateAsync()
+      router.push(`/${tenantSubdomain}/events/${result.id}`)
     }
   }
 
@@ -87,27 +73,10 @@ export function EventHeader({
     })
 
     if (confirmed) {
-      try {
-        const response = await fetch(`/api/events/${eventId}/trigger-workflows`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        const result = await response.json()
-
-        if (response.ok) {
-          if (result.stats.workflowsExecuted === 0) {
-            toast('Workflows have already been executed for this event.')
-          } else {
-            toast.success(`Success! Created ${result.stats.tasksCreated} tasks and ${result.stats.designItemsCreated} design items.`)
-            window.location.reload() // Refresh to show new tasks
-          }
-        } else {
-          toast.error(`Failed: ${result.error}${result.hint ? ` - ${result.hint}` : ''}`)
-        }
-      } catch (error) {
-        log.error({ error }, 'Error triggering workflows')
-        toast.error('Failed to trigger workflows')
+      const result = await triggerWorkflowsMutation.mutateAsync()
+      // Refresh page if workflows were executed to show new tasks
+      if (result.stats.workflowsExecuted > 0) {
+        window.location.reload()
       }
     }
   }
