@@ -5,7 +5,7 @@ import AttachmentUpload from './attachment-upload'
 import AttachmentList from './attachment-list'
 
 interface AttachmentsSectionProps {
-  entityType: 'opportunity' | 'account' | 'contact' | 'lead' | 'invoice' | 'event' | 'ticket'
+  entityType: 'opportunity' | 'account' | 'contact' | 'lead' | 'invoice' | 'event' | 'ticket' | 'project'
   entityId: string
 }
 

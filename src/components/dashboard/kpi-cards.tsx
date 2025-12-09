@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Calendar, DollarSign, Target, TrendingUp } from 'lucide-react'
 import { useDashboardStats } from '@/hooks/useDashboardStats'
 import { KPIDrilldownModal } from './kpi-drilldown-modal'
-import { KPICard, KPICardGrid, periodOptions, type TimePeriod } from '@/components/ui/kpi-card'
+import { KPICard, KPICardGrid, periodOptions, type TimePeriodWithoutAll } from '@/components/ui/kpi-card'
 import type { DrilldownType, DrilldownPeriod } from '@/hooks/useDashboardDrilldown'
 
 function formatCurrency(value: number): string {
@@ -24,9 +24,9 @@ export function KPICardsSection({ tenantSubdomain }: KPICardsSectionProps) {
   const { data: stats, isLoading } = useDashboardStats()
 
   // Individual period states for each card that has a dropdown
-  const [eventsOccurringPeriod, setEventsOccurringPeriod] = useState<TimePeriod>('month')
-  const [eventsBookedPeriod, setEventsBookedPeriod] = useState<TimePeriod>('month')
-  const [newOpportunitiesPeriod, setNewOpportunitiesPeriod] = useState<TimePeriod>('month')
+  const [eventsOccurringPeriod, setEventsOccurringPeriod] = useState<TimePeriodWithoutAll>('month')
+  const [eventsBookedPeriod, setEventsBookedPeriod] = useState<TimePeriodWithoutAll>('month')
+  const [newOpportunitiesPeriod, setNewOpportunitiesPeriod] = useState<TimePeriodWithoutAll>('month')
 
   // Modal state
   const [openModal, setOpenModal] = useState<DrilldownType | null>(null)
@@ -74,7 +74,7 @@ export function KPICardsSection({ tenantSubdomain }: KPICardsSectionProps) {
           dropdown={{
             value: eventsOccurringPeriod,
             options: periodOptions,
-            onChange: (value) => setEventsOccurringPeriod(value as TimePeriod)
+            onChange: (value) => setEventsOccurringPeriod(value as TimePeriodWithoutAll)
           }}
         />
 
@@ -90,7 +90,7 @@ export function KPICardsSection({ tenantSubdomain }: KPICardsSectionProps) {
           dropdown={{
             value: eventsBookedPeriod,
             options: periodOptions,
-            onChange: (value) => setEventsBookedPeriod(value as TimePeriod)
+            onChange: (value) => setEventsBookedPeriod(value as TimePeriodWithoutAll)
           }}
         />
 
@@ -117,7 +117,7 @@ export function KPICardsSection({ tenantSubdomain }: KPICardsSectionProps) {
           dropdown={{
             value: newOpportunitiesPeriod,
             options: periodOptions,
-            onChange: (value) => setNewOpportunitiesPeriod(value as TimePeriod)
+            onChange: (value) => setNewOpportunitiesPeriod(value as TimePeriodWithoutAll)
           }}
         />
       </KPICardGrid>

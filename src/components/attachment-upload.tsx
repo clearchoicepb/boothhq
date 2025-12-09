@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { Paperclip, X, Upload } from 'lucide-react'
 
 interface AttachmentUploadProps {
-  entityType: 'opportunity' | 'account' | 'contact' | 'lead' | 'invoice' | 'event' | 'ticket'
+  entityType: 'opportunity' | 'account' | 'contact' | 'lead' | 'invoice' | 'event' | 'ticket' | 'project'
   entityId: string
   onUploadComplete?: () => void
 }

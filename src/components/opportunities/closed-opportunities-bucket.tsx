@@ -13,6 +13,8 @@ interface ClosedOpportunitiesBucketProps {
 }
 
 const timePeriodLabels: Record<TimePeriod, string> = {
+  today: 'Today',
+  yesterday: 'Yesterday',
   week: 'This Week',
   month: 'This Month',
   year: 'This Year',

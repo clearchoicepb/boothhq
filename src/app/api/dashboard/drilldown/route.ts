@@ -6,7 +6,7 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('api:dashboard:drilldown')
 
 export type DrilldownType = 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
-export type DrilldownPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year'
+export type DrilldownPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
 
 export interface EventOccurringRecord {
   id: string

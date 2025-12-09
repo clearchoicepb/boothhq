@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
 import { getDateRangeForPeriod, toDateInputValue, getTodayEST } from '@/lib/utils/date-utils'
 import { CLOSED_STAGES, isOpenStage } from '@/lib/constants/opportunity-stages'
+import type { TimePeriod } from '@/components/ui/kpi-card'
 
 const log = createLogger('api:opportunities')
 

@@ -19,7 +19,7 @@ interface Note {
 }
 
 interface NotesSectionProps {
-  entityType: 'lead' | 'account' | 'contact' | 'opportunity' | 'event'
+  entityType: 'lead' | 'account' | 'contact' | 'opportunity' | 'event' | 'project' | 'ticket'
   entityId: string
   className?: string
 }
