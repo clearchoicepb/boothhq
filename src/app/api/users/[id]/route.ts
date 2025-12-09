@@ -180,14 +180,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    log.debug('=== DELETE USER API START ===')
+    log.debug({}, '=== DELETE USER API START ===')
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
     const { id } = await params
     
-    log.debug('Attempting to delete user:', id)
+    log.debug({ id }, 'Attempting to delete user')
     
     if (!session?.user) {
       log.error('[Delete User] No session found')
@@ -207,7 +207,7 @@ export async function DELETE(
     }
 
     // Step 1: Delete from Tenant DB
-    log.debug('Deleting from Tenant DB...')
+    log.debug({}, 'Deleting from Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
     const { error: tenantError } = await supabase
       .from('users')
@@ -220,10 +220,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete user from database' }, { status: 500 })
     }
 
-    log.debug('Deleted from Tenant DB successfully')
+    log.debug({}, 'Deleted from Tenant DB successfully')
 
     // Step 2: Delete from Supabase Auth
-    log.debug('Deleting from Supabase Auth...')
+    log.debug({}, 'Deleting from Supabase Auth...')
     const appSupabase = createServerSupabaseClient()
     
     const { error: authError } = await appSupabase.auth.admin.deleteUser(id)
@@ -234,11 +234,11 @@ export async function DELETE(
       // This handles cases where the user might not exist in Auth
       log.warn('[Delete User] User may not exist in Supabase Auth, continuing...')
     } else {
-      log.debug('Deleted from Supabase Auth successfully')
+      log.debug({}, 'Deleted from Supabase Auth successfully')
     }
 
-    log.debug('User deleted successfully:', id)
-    log.debug('=== DELETE USER API END (SUCCESS) ===')
+    log.debug({ id }, 'User deleted successfully')
+    log.debug({}, '=== DELETE USER API END (SUCCESS) ===')
     return NextResponse.json({ message: 'User deleted successfully' })
   } catch (error) {
     log.error({ error }, '[Delete User] Caught exception')

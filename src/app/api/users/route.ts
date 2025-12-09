@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    log.debug('=== CREATE USER API START ===')
+    log.debug({}, '=== CREATE USER API START ===')
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
@@ -53,14 +53,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    log.debug('Request body:', {
+    log.debug({
       email: body.email,
       first_name: body.first_name,
       last_name: body.last_name,
       role: body.role,
       tenant_id: body.tenant_id,
       has_password: !!body.password
-    })
+    }, 'Request body')
 
     const {
       email,
@@ -114,10 +114,10 @@ export async function POST(request: NextRequest) {
 
     // Normalize email to lowercase for consistency
     const normalizedEmail = email.toLowerCase()
-    log.debug('Normalized email:', normalizedEmail)
+    log.debug({ normalizedEmail }, 'Normalized email')
 
     // Check if user already exists in Tenant DB users table
-    log.debug('Checking if user exists in Tenant DB...')
+    log.debug({}, 'Checking if user exists in Tenant DB...')
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
     const tenantSupabase = await getTenantDatabaseClient(tenant_id)
     
@@ -134,14 +134,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists in Supabase Auth
-    log.debug('Checking if user exists in Supabase Auth...')
+    log.debug({}, 'Checking if user exists in Supabase Auth...')
     const { data: existingAuthUsers } = await appSupabase.auth.admin.listUsers()
     const existingAuthUser = existingAuthUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
     let authUserId: string
 
     if (existingAuthUser) {
-      log.debug('User exists in Supabase Auth but not in Tenant DB - reusing auth user:', normalizedEmail)
+      log.debug({ normalizedEmail }, 'User exists in Supabase Auth but not in Tenant DB - reusing auth user')
       // User was previously deleted from Tenant DB but still exists in Auth
       // Update their password and reuse the account
       const { error: updateError } = await appSupabase.auth.admin.updateUserById(
@@ -164,10 +164,10 @@ export async function POST(request: NextRequest) {
       }
 
       authUserId = existingAuthUser.id
-      log.debug('Reusing existing auth user:', authUserId)
+      log.debug({ authUserId }, 'Reusing existing auth user')
     } else {
       // Step 1: Create new auth user in Supabase Auth
-      log.debug('Creating new user in Supabase Auth...')
+      log.debug({}, 'Creating new user in Supabase Auth...')
       const { data: authData, error: authError } = await appSupabase.auth.admin.createUser({
         email: normalizedEmail,
         password,
@@ -190,15 +190,15 @@ export async function POST(request: NextRequest) {
       }
 
       authUserId = authData.user.id
-      log.debug('User created in Supabase Auth:', authUserId)
+      log.debug({ authUserId }, 'User created in Supabase Auth')
     }
 
     // Step 2: Hash the password for Tenant DB
-    log.debug('Hashing password for Tenant DB...')
+    log.debug({}, 'Hashing password for Tenant DB...')
     const password_hash = await bcrypt.hash(password, 10)
 
     // Step 3: Create user record in Tenant DB users table with the auth user's ID
-    log.debug('Creating user record in Tenant DB with ID:', authUserId)
+    log.debug({ authUserId }, 'Creating user record in Tenant DB with ID')
 
     // Prepare insert data
     const insertData: any = {
@@ -244,14 +244,14 @@ export async function POST(request: NextRequest) {
       log.error({ userError }, '[Create User] Error creating user in Tenant DB')
       // Rollback: delete the auth user if we can't create the user record (only if it was newly created)
       if (!existingAuthUser) {
-        log.debug('Rolling back newly created Supabase Auth user...')
+        log.debug({}, 'Rolling back newly created Supabase Auth user...')
         await appSupabase.auth.admin.deleteUser(authUserId)
       }
       return NextResponse.json({ error: `Failed to create user record: ${userError.message}` }, { status: 500 })
     }
 
-    log.debug('User created successfully:', user.id)
-    log.debug('=== CREATE USER API END (SUCCESS) ===')
+    log.debug({ userId: user.id }, 'User created successfully')
+    log.debug({}, '=== CREATE USER API END (SUCCESS) ===')
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
     log.error({ error }, '[Create User] Caught exception')

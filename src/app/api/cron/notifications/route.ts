@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    log.debug('Notifications cron completed: ${totalSent} sent, ${totalFailed} failed')
+    log.debug({ totalSent, totalFailed }, 'Notifications cron completed')
 
     return NextResponse.json({
       success: true,

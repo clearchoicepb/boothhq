@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
-    log.debug('Fetching sections for tenant:', dataSourceTenantId)
+    log.debug({ dataSourceTenantId }, 'Fetching sections for tenant')
 
     // Use RPC function to bypass RLS and get sections
     // This function returns both system sections and tenant-specific sections
@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
       p_category: category
     })
 
-    log.debug('Query result:', {
+    log.debug({
       count: data?.length || 0,
       error: error?.message,
       sample: data?.[0]
-    })
+    }, 'Query result')
 
     if (error) {
       log.error({ error }, '[Template Sections API] Database error')

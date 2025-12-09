@@ -22,7 +22,7 @@ export async function POST(
     const body = await request.json()
     const { event_id, status = 'sent' } = body
 
-    log.debug('Request params:', { contractId, event_id, status })
+    log.debug({ contractId, event_id, status }, 'Request params')
 
     if (!event_id) {
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
@@ -41,11 +41,11 @@ export async function POST(
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
 
-    log.debug('Contract found:', {
+    log.debug({
       id: contract.id,
       template_name: contract.template_name,
       status: contract.status
-    })
+    }, 'Contract found')
 
     // Check if file entry already exists using description field to track contract ID
     const { data: existingFile } = await supabase
@@ -58,7 +58,7 @@ export async function POST(
       .single()
 
     if (existingFile) {
-      log.debug('File entry already exists:', existingFile.id)
+      log.debug({ id: existingFile.id }, 'File entry already exists')
       
       // Update existing file entry description to reflect new status
       const updatedDescription = `Agreement: ${contract.template_name || 'Contract'} [CONTRACT:${contractId}] [STATUS:${status}]`
@@ -78,7 +78,7 @@ export async function POST(
         )
       }
 
-      log.debug('File entry updated successfully')
+      log.debug({}, 'File entry updated successfully')
       return NextResponse.json({ success: true, fileId: existingFile.id })
     }
 
@@ -96,7 +96,7 @@ export async function POST(
       uploaded_by: session.user.id
     }
 
-    log.debug('Creating file entry:', fileData)
+    log.debug({ fileData }, 'Creating file entry')
 
     const { data: newFile, error: fileError } = await supabase
       .from('attachments')
@@ -118,7 +118,7 @@ export async function POST(
       )
     }
 
-    log.debug('File entry created successfully:', newFile.id)
+    log.debug({ id: newFile.id }, 'File entry created successfully')
 
     // Also update contract status to match
     if (status === 'sent') {
