@@ -60,6 +60,10 @@ interface EditingState {
 
   isEditingDescription: boolean
   editedDescription: string
+
+  // Event Date editing (consolidated from useEventEditing hook)
+  isEditingEventDate: boolean
+  editEventDateData: Partial<EventDate>
 }
 
 // ============================================================================
@@ -128,6 +132,12 @@ interface EventDetailContextValue {
   saveEditDescription: (description: string) => Promise<void>
   cancelEditDescription: () => void
   updateEditDescription: (description: string) => void
+
+  // Event Date editing (consolidated from useEventEditing hook)
+  startEditEventDate: (eventDate: Partial<EventDate>) => void
+  updateEditEventDateField: (field: string, value: string | null) => void
+  cancelEditEventDate: () => void
+  finishEditEventDate: () => void
 }
 
 // ============================================================================
@@ -189,7 +199,7 @@ export function EventDetailProvider({
     attachmentsRefreshTrigger: 0
   })
 
-  // Editing state
+  // Editing state (consolidated - single source of truth for all editing)
   const [editing, setEditing] = useState<EditingState>({
     isEditingAccountContact: false,
     editAccountId: event?.account_id || '',
@@ -200,7 +210,11 @@ export function EventDetailProvider({
     editPaymentStatus: event?.payment_status || '',
 
     isEditingDescription: false,
-    editedDescription: event?.description || ''
+    editedDescription: event?.description || '',
+
+    // Event Date editing (consolidated from useEventEditing hook)
+    isEditingEventDate: false,
+    editEventDateData: {}
   })
 
   // Modal actions
@@ -367,6 +381,38 @@ export function EventDetailProvider({
     setEditing(prev => ({ ...prev, editedDescription: description }))
   }
 
+  // Event Date editing (consolidated from useEventEditing hook)
+  const startEditEventDate = (eventDate: Partial<EventDate>) => {
+    setEditing(prev => ({
+      ...prev,
+      isEditingEventDate: true,
+      editEventDateData: eventDate
+    }))
+  }
+
+  const updateEditEventDateField = (field: string, value: string | null) => {
+    setEditing(prev => ({
+      ...prev,
+      editEventDateData: { ...prev.editEventDateData, [field]: value }
+    }))
+  }
+
+  const cancelEditEventDate = () => {
+    setEditing(prev => ({
+      ...prev,
+      isEditingEventDate: false,
+      editEventDateData: {}
+    }))
+  }
+
+  const finishEditEventDate = () => {
+    setEditing(prev => ({
+      ...prev,
+      isEditingEventDate: false,
+      editEventDateData: {}
+    }))
+  }
+
   const value: EventDetailContextValue = {
     // Event data
     event,
@@ -411,7 +457,13 @@ export function EventDetailProvider({
     startEditDescription,
     saveEditDescription,
     cancelEditDescription,
-    updateEditDescription
+    updateEditDescription,
+
+    // Event Date editing
+    startEditEventDate,
+    updateEditEventDateField,
+    cancelEditEventDate,
+    finishEditEventDate
   }
 
   return (
