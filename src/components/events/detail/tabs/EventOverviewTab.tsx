@@ -17,7 +17,7 @@ import { EventDatesCard } from '../../event-dates-card'
 import { EventDescriptionCard } from '../../event-description-card'
 import { EventTypeBadge } from '../../event-type-badge'
 import { NotesSection } from '@/components/notes-section'
-import type { Event, EventDate } from '@/types/events'
+import type { Event, EventDate, StaffAssignmentWithJoins } from '@/types/events'
 
 interface PaymentStatusOption {
   id: string
@@ -76,7 +76,7 @@ interface EventOverviewTabProps {
   onDateClick: (date: EventDate) => void
 
   // Staff data for sidebar
-  staffAssignments: any[]
+  staffAssignments: StaffAssignmentWithJoins[]
   onNavigateToStaffing: () => void
 }
 

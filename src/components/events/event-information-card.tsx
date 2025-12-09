@@ -5,9 +5,15 @@ import { PaymentStatusBadge } from './payment-status-badge'
 import { EventWithRelations } from '@/hooks/useEventData'
 import { formatDate } from '@/lib/utils/date-utils'
 
+interface PaymentStatusOption {
+  id: string
+  status_name: string
+  status_color: string | null
+}
+
 interface EventInformationCardProps {
   event: EventWithRelations
-  paymentStatusOptions: any[]
+  paymentStatusOptions: PaymentStatusOption[]
   isEditingPaymentStatus: boolean
   canManageEvents: boolean
   onStartEditPaymentStatus: () => void

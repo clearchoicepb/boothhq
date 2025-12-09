@@ -11,6 +11,7 @@ import { usePermissions } from '@/lib/permissions'
 import { Event as EventType } from '@/lib/supabase-client'
 import { eventsService } from '@/lib/api/services/eventsService'
 import { createLogger } from '@/lib/logger'
+import type { EventUpdate } from '@/types/events'
 
 const log = createLogger('edit')
 
@@ -44,7 +45,7 @@ export default function EventEditPage() {
     }
   }
 
-  const handleSave = async (eventData: any) => {
+  const handleSave = async (eventData: EventUpdate) => {
     try {
       console.log('Sending event data:', eventData)
       await eventsService.update(eventId, eventData)

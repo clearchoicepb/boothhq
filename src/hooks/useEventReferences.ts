@@ -48,14 +48,10 @@ async function fetchPaymentStatusOptions(): Promise<any[]> {
  * Custom hook for managing event reference/dropdown data
  * Now powered by React Query for automatic caching and parallel fetching
  *
- * @param session - The user session object (now optional)
  * @param tenantSubdomain - The tenant subdomain for routing (now optional)
  * @returns Reference data and refetch functions
  */
-export function useEventReferences(
-  session?: any,
-  tenantSubdomain?: string
-) {
+export function useEventReferences(tenantSubdomain?: string) {
   // Use React Query hooks - all queries run in parallel automatically
   const accountsQuery = useQuery({
     queryKey: ['accounts'],

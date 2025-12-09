@@ -42,6 +42,16 @@ interface DesignItem {
   task_id?: string
 }
 
+interface DesignStatus {
+  id: string
+  slug: string
+  name: string
+  color?: string
+  is_completed?: boolean
+  is_active?: boolean
+  sort_order?: number
+}
+
 interface EventDesignItemsProps {
   eventId: string
   eventDate: string
@@ -50,7 +60,7 @@ interface EventDesignItemsProps {
 
 export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItemsProps) {
   const [designItems, setDesignItems] = useState<DesignItem[]>([])
-  const [designStatuses, setDesignStatuses] = useState<any[]>([])
+  const [designStatuses, setDesignStatuses] = useState<DesignStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<DesignItem | null>(null)
@@ -129,7 +139,7 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
 
   // Helper to check if a status is a completion status
   const isCompletedStatus = (statusSlug: string) => {
-    const statusConfig = designStatuses.find((s: any) => s.slug === statusSlug)
+    const statusConfig = designStatuses.find((s) => s.slug === statusSlug)
     return statusConfig?.is_completed || false
   }
 
@@ -144,7 +154,7 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
 
   const getStatusBadge = (status: string) => {
     // Find status configuration from dynamic statuses
-    const statusConfig = designStatuses.find((s: any) => s.slug === status)
+    const statusConfig = designStatuses.find((s) => s.slug === status)
     const label = statusConfig?.name || status
     const color = statusConfig?.color || 'gray'
 
@@ -323,7 +333,7 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
                     {/* Quick Status Update - only show if not already in a completion status */}
                     {!isCompletedStatus(item.status) && (() => {
                       // Find the first available completion status
-                      const completionStatus = designStatuses.find((s: any) => s.is_completed && s.is_active)
+                      const completionStatus = designStatuses.find((s) => s.is_completed && s.is_active)
                       return completionStatus ? (
                         <button
                           onClick={() => handleStatusUpdate(item.id, completionStatus.slug)}

@@ -104,7 +104,7 @@ export default function EventsCalendarPage() {
     }
   }
 
-  const handleEventClick = (calendarEvent: any) => {
+  const handleEventClick = (calendarEvent: CalendarEvent) => {
     // Navigate to the event detail page
     router.push(`/${tenantSubdomain}/events/${calendarEvent.event_id}`)
   }

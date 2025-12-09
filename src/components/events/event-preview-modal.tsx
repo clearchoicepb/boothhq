@@ -5,7 +5,7 @@ import { Calendar, MapPin, Building2, User, CheckCircle2, Clock, ExternalLink } 
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
-import type { EventDate } from '@/types/events'
+import type { Event, EventDate, TaskCompletion } from '@/types/events'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('events')
@@ -25,7 +25,7 @@ export function EventPreviewModal({
   tenantSubdomain,
   selectedEventDate
 }: EventPreviewModalProps) {
-  const [event, setEvent] = useState<any>(null)
+  const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Debug: Log what date we're supposed to show
@@ -198,7 +198,7 @@ export function EventPreviewModal({
                 <div className="border-t border-gray-200 pt-4">
                   <p className="mb-3 text-sm font-medium text-gray-900">Tasks</p>
                   <div className="space-y-2">
-                    {event.task_completions.map((task: any, index: number) => (
+                    {event.task_completions.map((task: TaskCompletion, index: number) => (
                       <div key={index} className="flex items-center gap-2">
                         {task.is_completed ? (
                           <CheckCircle2 className="h-4 w-4 text-green-500" />

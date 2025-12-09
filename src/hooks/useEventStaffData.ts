@@ -1,13 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
+import type { StaffAssignmentWithJoins } from '@/types/events'
 
 const log = createLogger('hooks')
+
+/** Data shape for creating/updating staff assignments */
+export interface StaffFormData {
+  event_id?: string
+  user_id?: string
+  event_date_id?: string | null
+  staff_role_id?: string | null
+  notes?: string | null
+  start_time?: string | null
+  end_time?: string | null
+}
 
 /**
  * Fetches staff assignments for an event
  */
-async function fetchEventStaff(eventId: string): Promise<any[]> {
+async function fetchEventStaff(eventId: string): Promise<StaffAssignmentWithJoins[]> {
   const response = await fetch(`/api/event-staff?event_id=${eventId}`)
   if (!response.ok) {
     throw new Error('Failed to fetch event staff')
@@ -34,7 +46,7 @@ export function useAddEventStaff(eventId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (staffData: any) => {
+    mutationFn: async (staffData: StaffFormData) => {
       const response = await fetch('/api/event-staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -63,7 +75,7 @@ export function useUpdateEventStaff(eventId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ staffId, staffData }: { staffId: string; staffData: any }) => {
+    mutationFn: async ({ staffId, staffData }: { staffId: string; staffData: StaffFormData }) => {
       const response = await fetch(`/api/event-staff/${staffId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

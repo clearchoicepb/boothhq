@@ -10,15 +10,9 @@ import { useEventCommunications } from './useEventCommunications'
  * Now powered by React Query for automatic caching and parallel queries
  *
  * @param eventId - The ID of the event
- * @param session - The user session object (now optional)
- * @param tenant - The tenant object (now optional)
  * @returns Tab state, data, and functions
  */
-export function useEventTabs(
-  eventId: string,
-  session?: any,
-  tenant?: any
-) {
+export function useEventTabs(eventId: string) {
   const searchParams = useSearchParams()
   const tabFromUrl = searchParams?.get('tab')
 

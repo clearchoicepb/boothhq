@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useEventStaffData, useAddEventStaff, useUpdateEventStaff, useRemoveEventStaff } from './useEventStaffData'
+import { useEventStaffData, useAddEventStaff, useUpdateEventStaff, useRemoveEventStaff, StaffFormData } from './useEventStaffData'
 import { useUsers } from './useUsers'
 import { useStaffRoles } from './useStaffRoles'
 import { createLogger } from '@/lib/logger'
@@ -40,7 +40,7 @@ export function useEventStaff(eventId: string) {
   /**
    * Add a new staff assignment
    */
-  const addStaff = useCallback(async (staffData: any) => {
+  const addStaff = useCallback(async (staffData: StaffFormData) => {
     try {
       await addStaffMutation.mutateAsync(staffData)
       return true
@@ -66,7 +66,7 @@ export function useEventStaff(eventId: string) {
   /**
    * Update a staff assignment
    */
-  const updateStaff = useCallback(async (staffId: string, staffData: any) => {
+  const updateStaff = useCallback(async (staffId: string, staffData: StaffFormData) => {
     try {
       await updateStaffMutation.mutateAsync({ staffId, staffData })
       return true
