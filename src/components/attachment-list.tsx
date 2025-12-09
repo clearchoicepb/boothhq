@@ -19,7 +19,7 @@ interface Attachment {
 }
 
 interface AttachmentListProps {
-  entityType: 'opportunity' | 'account' | 'contact' | 'lead' | 'invoice' | 'event' | 'ticket'
+  entityType: 'opportunity' | 'account' | 'contact' | 'lead' | 'invoice' | 'event' | 'ticket' | 'project'
   entityId: string
   refreshTrigger?: number
 }

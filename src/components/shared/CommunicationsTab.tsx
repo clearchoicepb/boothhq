@@ -29,7 +29,7 @@ export interface Communication {
 
 export interface CommunicationsTabProps {
   // Entity information
-  entityType: 'event' | 'opportunity' | 'account' | 'lead' | 'contact'
+  entityType: 'event' | 'opportunity' | 'account' | 'lead' | 'contact' | 'project' | 'ticket'
   entityId: string
 
   // Communications data

@@ -102,12 +102,15 @@ export async function GET(
 
     const logoUrl = logoSetting?.setting_value || null;
 
+    // Cast events as single object (many-to-one relationship)
+    const event = invoice.events as { id: string; title: string; start_date: string } | null
+
     return NextResponse.json({
       invoice: {
         ...invoice,
         line_items: lineItems || [],
-        event_name: invoice.events?.title || null,
-        event_date: invoice.events?.start_date || null,
+        event_name: event?.title || null,
+        event_date: event?.start_date || null,
       },
       tenant: {
         id: invoice.tenant_id,

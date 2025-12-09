@@ -98,13 +98,16 @@ export async function GET(request: NextRequest) {
             // Determine recipients
             let recipients: string[] = []
 
+            // Cast inventory_item as single object (many-to-one relationship)
+            const inventoryItem = notification.inventory_item as { id: string; item_name: string; assigned_to_id: string | null; assigned_to_type: string | null } | null
+
             // Try to get email from assigned user
-            if (notification.inventory_item?.assigned_to_id &&
-                notification.inventory_item?.assigned_to_type === 'user') {
+            if (inventoryItem?.assigned_to_id &&
+                inventoryItem?.assigned_to_type === 'user') {
               const { data: user } = await supabase
                 .from('users')
                 .select('email')
-                .eq('id', notification.inventory_item.assigned_to_id)
+                .eq('id', inventoryItem.assigned_to_id)
                 .single()
 
               if (user?.email) {

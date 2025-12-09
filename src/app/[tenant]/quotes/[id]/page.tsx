@@ -26,6 +26,7 @@ interface QuoteLineItem {
 interface Quote {
   id: string
   quote_number: string
+  title: string | null
   opportunity_id: string | null
   account_id: string | null
   contact_id: string | null

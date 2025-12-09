@@ -55,17 +55,19 @@ export class ConsumableAutomation {
 
       // Create notifications for low stock items
       for (const consumable of consumables) {
-        const threshold = consumable.category?.low_stock_threshold || 0
+        // Cast category as single object (many-to-one relationship)
+        const category = consumable.category as { id: string; name: string; low_stock_threshold: number; estimated_consumption_per_event: number | null } | null
+        const threshold = category?.low_stock_threshold || 0
         const isLowStock = consumable.current_quantity <= threshold
 
         if (!isLowStock || consumablesWithNotifications.has(consumable.id)) continue
 
         try {
-          const eventsRemaining = consumable.category?.estimated_consumption_per_event
-            ? Math.floor(consumable.current_quantity / consumable.category.estimated_consumption_per_event)
+          const eventsRemaining = category?.estimated_consumption_per_event
+            ? Math.floor(consumable.current_quantity / category.estimated_consumption_per_event)
             : null
 
-          let message = `Stock level for ${consumable.category?.name || 'consumable'} is low: ${consumable.current_quantity} ${consumable.unit_of_measure} remaining.`
+          let message = `Stock level for ${category?.name || 'consumable'} is low: ${consumable.current_quantity} ${consumable.unit_of_measure} remaining.`
 
           if (eventsRemaining !== null && eventsRemaining < 3) {
             message += ` Only enough for approximately ${eventsRemaining} event(s).`
@@ -79,7 +81,7 @@ export class ConsumableAutomation {
               tenant_id: tenantId,
               consumable_id: consumable.id,
               notification_type: 'low_stock',
-              title: `Low Stock: ${consumable.category?.name || 'Consumable'}`,
+              title: `Low Stock: ${category?.name || 'Consumable'}`,
               message,
               status: 'pending',
               priority: consumable.current_quantity === 0 ? 'high' : 'medium'
@@ -90,7 +92,7 @@ export class ConsumableAutomation {
           if (notificationError) throw notificationError
           if (notification) created.push(notification.id)
         } catch (err: any) {
-          errors.push(`Failed to create notification for ${consumable.category?.name}: ${err.message}`)
+          errors.push(`Failed to create notification for ${category?.name}: ${err.message}`)
         }
       }
 
@@ -153,6 +155,9 @@ export class ConsumableAutomation {
       for (const consumable of consumables) {
         if (consumablesWithNotifications.has(consumable.id)) continue
 
+        // Cast category as single object (many-to-one relationship)
+        const category = consumable.category as { id: string; name: string } | null
+
         try {
           const { data: notification, error: notificationError } = await supabase
             .from('inventory_notifications')
@@ -160,8 +165,8 @@ export class ConsumableAutomation {
               tenant_id: tenantId,
               consumable_id: consumable.id,
               notification_type: 'out_of_stock',
-              title: `OUT OF STOCK: ${consumable.category?.name || 'Consumable'}`,
-              message: `${consumable.category?.name || 'This consumable'} is completely out of stock. Immediate reorder required!`,
+              title: `OUT OF STOCK: ${category?.name || 'Consumable'}`,
+              message: `${category?.name || 'This consumable'} is completely out of stock. Immediate reorder required!`,
               status: 'pending',
               priority: 'high'
             })
@@ -171,7 +176,7 @@ export class ConsumableAutomation {
           if (notificationError) throw notificationError
           if (notification) created.push(notification.id)
         } catch (err: any) {
-          errors.push(`Failed to create notification for ${consumable.category?.name}: ${err.message}`)
+          errors.push(`Failed to create notification for ${category?.name}: ${err.message}`)
         }
       }
 

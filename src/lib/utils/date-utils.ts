@@ -540,14 +540,34 @@ export function getYearRange(): DateRange {
 /**
  * Get date range for a specified period
  *
- * @param period - 'today' | 'week' | 'month' | 'year' | 'all'
+ * @param period - 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
  * @returns DateRange object for the specified period
  *         For 'all', returns a very wide range (1970 - 2099)
  */
-export function getDateRangeForPeriod(period: 'today' | 'week' | 'month' | 'year' | 'all'): DateRange {
+export function getDateRangeForPeriod(period: 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'): DateRange {
   switch (period) {
     case 'today':
       return getTodayRange()
+    case 'yesterday': {
+      const today = getTodayEST()
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      const start = new Date(yesterday)
+      start.setHours(0, 0, 0, 0)
+
+      const end = new Date(yesterday)
+      end.setHours(23, 59, 59, 999)
+
+      const yesterdayISO = toDateInputValue(start)
+
+      return {
+        start,
+        end,
+        startISO: yesterdayISO,
+        endISO: yesterdayISO
+      }
+    }
     case 'week':
       return getWeekRange()
     case 'month':

@@ -37,12 +37,12 @@ export default function OpportunitiesSettingsPage() {
     
     // Opportunity Stages
     stages: [
-      { id: 'prospecting', name: 'Prospecting', probability: 10, color: 'blue', enabled: true },
-      { id: 'qualification', name: 'Qualification', probability: 25, color: 'yellow', enabled: true },
-      { id: 'proposal', name: 'Proposal', probability: 50, color: 'purple', enabled: true },
-      { id: 'negotiation', name: 'Negotiation', probability: 75, color: 'orange', enabled: true },
-      { id: 'closed_won', name: 'Closed Won', probability: 100, color: 'green', enabled: true },
-      { id: 'closed_lost', name: 'Closed Lost', probability: 0, color: 'red', enabled: true }
+      { id: 'prospecting', name: 'Prospecting', probability: 10, color: 'blue', backgroundColor: '#3B82F6', textColor: '#FFFFFF', enabled: true },
+      { id: 'qualification', name: 'Qualification', probability: 25, color: 'yellow', backgroundColor: '#EAB308', textColor: '#000000', enabled: true },
+      { id: 'proposal', name: 'Proposal', probability: 50, color: 'purple', backgroundColor: '#8B5CF6', textColor: '#FFFFFF', enabled: true },
+      { id: 'negotiation', name: 'Negotiation', probability: 75, color: 'orange', backgroundColor: '#F97316', textColor: '#FFFFFF', enabled: true },
+      { id: 'closed_won', name: 'Closed Won', probability: 100, color: 'green', backgroundColor: '#22C55E', textColor: '#FFFFFF', enabled: true },
+      { id: 'closed_lost', name: 'Closed Lost', probability: 0, color: 'red', backgroundColor: '#EF4444', textColor: '#FFFFFF', enabled: true }
     ],
     
     // Field Settings

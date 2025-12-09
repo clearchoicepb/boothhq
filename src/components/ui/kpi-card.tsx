@@ -4,6 +4,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 export type TimePeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
+export type TimePeriodWithoutAll = Exclude<TimePeriod, 'all'>
 
 interface DropdownOption {
   label: string
