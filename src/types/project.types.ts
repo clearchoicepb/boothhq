@@ -109,7 +109,10 @@ export interface CreateProjectInput {
 }
 
 export interface UpdateProjectInput extends Partial<CreateProjectInput> {
-  completed_date?: string
+  completed_date?: string | null
+  // Allow null for date fields when clearing dates
+  start_date?: string | null
+  target_date?: string | null
 }
 
 export interface ProjectWithRelations extends Project {

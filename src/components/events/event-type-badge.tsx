@@ -8,8 +8,8 @@ interface EventType {
 }
 
 interface EventTypeBadgeProps {
-  category?: EventCategory
-  type?: EventType
+  category?: EventCategory | null
+  type?: EventType | null
 }
 
 export function EventTypeBadge({ category, type }: EventTypeBadgeProps) {

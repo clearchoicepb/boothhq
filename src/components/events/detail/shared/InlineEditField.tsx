@@ -19,7 +19,7 @@ interface InlineEditFieldProps {
   value: string | null
   displayValue?: string // Optional custom display (e.g., formatted date)
   placeholder?: string
-  type?: 'text' | 'email' | 'tel' | 'url' | 'number'
+  type?: 'text' | 'email' | 'tel' | 'url' | 'number' | 'date'
   isEditing: boolean
   isLoading?: boolean
   canEdit: boolean

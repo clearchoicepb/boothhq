@@ -58,7 +58,7 @@ export interface FormSection {
 
 export interface BaseFormProps<T> {
   config: FormConfig<T>
-  initialData?: Partial<T>
+  initialData?: Partial<T> | null
   onSubmit: (data: T) => Promise<void> | void
   onClose: () => void
   isOpen: boolean

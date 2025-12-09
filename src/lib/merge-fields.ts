@@ -65,7 +65,7 @@ interface MergeFieldData {
   event_end_time?: string
   event_setup_time?: string
   event_load_in_notes?: string
-  event_total_amount?: number
+  event_total_amount?: number | null
 
   // Invoice/Financial data
   invoice_number?: string

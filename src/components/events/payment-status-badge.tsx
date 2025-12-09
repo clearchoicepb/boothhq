@@ -1,6 +1,6 @@
 interface PaymentStatusBadgeProps {
-  status: string | null
-  color?: string
+  status: string | null | undefined
+  color?: string | null
   size?: 'sm' | 'md' | 'lg'
 }
 
@@ -10,7 +10,7 @@ const sizeClasses = {
   lg: 'px-3 py-1 text-sm',
 }
 
-function getPaymentStatusColor(color: string | undefined): string {
+function getPaymentStatusColor(color: string | null | undefined): string {
   switch (color) {
     case 'red':
       return 'bg-red-100 text-red-800'
