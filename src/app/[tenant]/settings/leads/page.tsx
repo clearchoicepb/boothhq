@@ -41,7 +41,10 @@ export default function LeadsSettingsPage() {
     duplicateDetection: true,
     leadScoring: false,
     autoFollowUp: false,
-    followUpDays: 3
+    followUpDays: 3,
+    leadSources: [] as Array<{ id: string; name: string; enabled: boolean }>,
+    leadStatuses: [] as Array<{ id: string; name: string; color: string; enabled: boolean }>,
+    customFields: [] as Array<{ id: string; name: string; type: string; required: boolean }>
   });
 
   const handleToggle = (path: string) => {

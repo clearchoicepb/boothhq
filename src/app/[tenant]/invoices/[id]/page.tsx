@@ -32,6 +32,8 @@ interface Payment {
   status: string
   processed_at: string
   created_at: string
+  reference_number: string | null
+  notes: string | null
 }
 
 interface Invoice {
@@ -604,7 +606,7 @@ export default function InvoiceDetailPage() {
                 />
               ) : (
                 <div className="h-16 flex items-center mb-4">
-                  <h2 className="text-2xl font-bold text-[#347dc4]">{tenant?.display_name || 'Company Name'}</h2>
+                  <h2 className="text-2xl font-bold text-[#347dc4]">{tenant?.name || 'Company Name'}</h2>
                 </div>
               )}
             </div>

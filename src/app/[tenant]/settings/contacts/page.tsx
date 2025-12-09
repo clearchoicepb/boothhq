@@ -35,7 +35,8 @@ export default function ContactsSettingsPage() {
     },
     autoCreateAccount: false,
     sendWelcomeEmail: true,
-    duplicateDetection: true
+    duplicateDetection: true,
+    customFields: [] as Array<{ id: string; name: string; type: string; required: boolean }>
   });
 
   const handleToggle = (path: string) => {
