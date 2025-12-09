@@ -6,7 +6,7 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('api:dashboard:drilldown')
 
 export type DrilldownType = 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
-export type DrilldownPeriod = 'week' | 'month' | 'year'
+export type DrilldownPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year'
 
 export interface EventOccurringRecord {
   id: string
@@ -116,29 +116,73 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'type parameter is required' }, { status: 400 })
     }
 
-    // Get date ranges
-    const now = new Date()
+    // Get date ranges using EST timezone (America/New_York) consistently
+    // This ensures dates match what users see regardless of server timezone
+    const EST_TIMEZONE = 'America/New_York'
 
-    // Week range (Monday to Sunday)
-    const dayOfWeek = now.getDay()
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - daysToMonday)
-    weekStart.setHours(0, 0, 0, 0)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-    const weekStartISO = weekStart.toISOString().split('T')[0]
-    const weekEndISO = weekEnd.toISOString().split('T')[0]
+    const getESTDateParts = (): { year: number; month: number; day: number; dayOfWeek: number } => {
+      const now = new Date()
+      const estString = now.toLocaleString('en-US', {
+        timeZone: EST_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+      })
+      // Parse "Mon, MM/DD/YYYY" or "MM/DD/YYYY" format
+      const dateMatch = estString.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+      const dayMatch = estString.match(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/)
+
+      const dayOfWeekMap: Record<string, number> = {
+        'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+      }
+
+      if (dateMatch) {
+        return {
+          month: parseInt(dateMatch[1]),
+          day: parseInt(dateMatch[2]),
+          year: parseInt(dateMatch[3]),
+          dayOfWeek: dayMatch ? dayOfWeekMap[dayMatch[1]] : now.getDay()
+        }
+      }
+      // Fallback
+      return {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        dayOfWeek: now.getDay()
+      }
+    }
+
+    const estParts = getESTDateParts()
+
+    // Helper to format date as YYYY-MM-DD
+    const formatDate = (year: number, month: number, day: number): string => {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    }
+
+    // Today range (EST date)
+    const todayISO = formatDate(estParts.year, estParts.month, estParts.day)
+
+    // Yesterday range (EST date)
+    const yesterdayDate = new Date(estParts.year, estParts.month - 1, estParts.day - 1)
+    const yesterdayISO = formatDate(yesterdayDate.getFullYear(), yesterdayDate.getMonth() + 1, yesterdayDate.getDate())
+
+    // Week range (Monday to Sunday) - calculate in EST
+    const daysToMonday = estParts.dayOfWeek === 0 ? 6 : estParts.dayOfWeek - 1
+    const weekStartDate = new Date(estParts.year, estParts.month - 1, estParts.day - daysToMonday)
+    const weekEndDate = new Date(estParts.year, estParts.month - 1, estParts.day - daysToMonday + 6)
+    const weekStartISO = formatDate(weekStartDate.getFullYear(), weekStartDate.getMonth() + 1, weekStartDate.getDate())
+    const weekEndISO = formatDate(weekEndDate.getFullYear(), weekEndDate.getMonth() + 1, weekEndDate.getDate())
 
     // Month range
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    const monthStartISO = monthStart.toISOString().split('T')[0]
-    const monthEndISO = monthEnd.toISOString().split('T')[0]
+    const monthStartISO = formatDate(estParts.year, estParts.month, 1)
+    const monthEnd = new Date(estParts.year, estParts.month, 0) // Last day of current month
+    const monthEndISO = formatDate(monthEnd.getFullYear(), monthEnd.getMonth() + 1, monthEnd.getDate())
 
     // Year range
-    const yearStartISO = `${now.getFullYear()}-01-01`
-    const yearEndISO = `${now.getFullYear()}-12-31`
+    const yearStartISO = `${estParts.year}-01-01`
+    const yearEndISO = `${estParts.year}-12-31`
 
     // Select date range based on period
     let startISO: string
@@ -146,6 +190,16 @@ export async function GET(request: NextRequest) {
     let periodLabel: string
 
     switch (period) {
+      case 'today':
+        startISO = todayISO
+        endISO = todayISO
+        periodLabel = 'Today'
+        break
+      case 'yesterday':
+        startISO = yesterdayISO
+        endISO = yesterdayISO
+        periodLabel = 'Yesterday'
+        break
       case 'week':
         startISO = weekStartISO
         endISO = weekEndISO

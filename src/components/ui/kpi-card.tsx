@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-export type TimePeriod = 'week' | 'month' | 'year' | 'all'
+export type TimePeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
 
 interface DropdownOption {
   label: string
@@ -357,12 +357,16 @@ export function KPISection({
 
 // Re-export commonly used period options
 export const periodOptions = [
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
   { label: 'This Week', value: 'week' },
   { label: 'This Month', value: 'month' },
   { label: 'This Year', value: 'year' }
 ]
 
 export const periodOptionsWithAll = [
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
   { label: 'This Week', value: 'week' },
   { label: 'This Month', value: 'month' },
   { label: 'This Year', value: 'year' },
