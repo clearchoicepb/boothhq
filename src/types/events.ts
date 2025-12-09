@@ -237,3 +237,87 @@ export interface AccountEvent {
 
 /** Filterable event for list views (extends Event with filter helpers) */
 export type FilterableEvent = Event
+
+// =============================================================================
+// Staff Types (for staff list component)
+// =============================================================================
+
+/** User data when joined with staff assignments */
+export interface StaffUser {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  role?: string
+}
+
+/** Staff role data */
+export interface StaffRole {
+  id: string
+  name: string
+  type: 'operations' | 'event_staff'
+  is_active?: boolean
+  sort_order?: number
+}
+
+/** Event date data when joined with staff assignments */
+export interface StaffAssignmentEventDate {
+  id: string
+  event_date: string
+  start_time?: string | null
+  end_time?: string | null
+}
+
+/**
+ * Staff assignment with joined data (users, event_dates, staff_roles)
+ * This is the shape returned by the event-staff API endpoint
+ */
+export interface StaffAssignmentWithJoins {
+  id: string
+  tenant_id?: string
+  event_id: string
+  user_id: string
+  event_date_id: string | null
+  staff_role_id: string | null
+  notes: string | null
+  start_time: string | null
+  end_time: string | null
+  created_at?: string
+  // Joined data
+  users?: StaffUser | null
+  event_dates?: StaffAssignmentEventDate | null
+  staff_roles?: StaffRole | null
+}
+
+// =============================================================================
+// Activity Types (for activity timeline component)
+// =============================================================================
+
+/** User data when joined with activities */
+export interface ActivityUser {
+  id?: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  full_name?: string | null
+}
+
+/** Activity type values */
+export type ActivityType = 'communication' | 'task' | 'invoice' | 'note' | 'attachment'
+
+/**
+ * Unified event activity type for the activity timeline
+ * This is the shape returned by the events/[id]/activity API endpoint
+ */
+export interface EventActivity {
+  id: string
+  activity_type: ActivityType
+  type: ActivityType
+  subtype: string
+  title: string
+  description?: string | null
+  created_at: string
+  date: string
+  users?: ActivityUser | null
+  metadata?: Record<string, unknown>
+}

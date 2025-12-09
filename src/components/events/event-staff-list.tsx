@@ -1,19 +1,27 @@
 import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User, Calendar, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
+import type { StaffAssignmentWithJoins, StaffUser, StaffRole, EventDate } from '@/types/events'
+
+/** Selected date/time for staff assignment form */
+interface SelectedDateTime {
+  dateId: string
+  startTime: string
+  endTime: string
+}
 
 interface EventStaffListProps {
-  staffAssignments: any[]
-  users: any[]
-  staffRoles: any[]
-  eventDates: any[]
+  staffAssignments: StaffAssignmentWithJoins[]
+  users: StaffUser[]
+  staffRoles: StaffRole[]
+  eventDates: EventDate[]
   loading: boolean
   isAddingStaff: boolean
   selectedUserId: string
   selectedStaffRoleId: string
   staffRole: string
   staffNotes: string
-  selectedDateTimes: any[]
+  selectedDateTimes: SelectedDateTime[]
   operationsTeamExpanded: boolean
   eventStaffExpanded: boolean
   onToggleOperationsTeam: () => void
@@ -22,7 +30,7 @@ interface EventStaffListProps {
   onRoleChange: (roleId: string) => void
   onStaffRoleChange: (role: string) => void
   onNotesChange: (notes: string) => void
-  onDateTimeToggle: (dateTime: any) => void
+  onDateTimeToggle: (dateTime: SelectedDateTime) => void
   onAddStaff: () => void
   onRemoveStaff: (staffId: string) => void
   onStartAdding: () => void

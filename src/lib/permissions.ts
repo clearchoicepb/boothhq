@@ -132,10 +132,10 @@ export function hasPermission(
 export function usePermissions() {
   const { data: session, status } = useSession()
   const { settings } = useSettings()
-  
+
   const userRole = session?.user?.role || 'user'
   const customRoles = settings?.roles || []
-  
+
   // If session is loading, return default permissions to avoid issues
   const isLoading = status === 'loading'
   
