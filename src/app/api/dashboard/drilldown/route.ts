@@ -119,8 +119,16 @@ export async function GET(request: NextRequest) {
     // Get date ranges
     const now = new Date()
 
-    // Today range
-    const todayISO = now.toISOString().split('T')[0]
+    // Helper to format date as YYYY-MM-DD in local time (not UTC)
+    const formatLocalDate = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    // Today range (local date)
+    const todayISO = formatLocalDate(now)
 
     // Week range (Monday to Sunday)
     const dayOfWeek = now.getDay()
@@ -130,14 +138,14 @@ export async function GET(request: NextRequest) {
     weekStart.setHours(0, 0, 0, 0)
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6)
-    const weekStartISO = weekStart.toISOString().split('T')[0]
-    const weekEndISO = weekEnd.toISOString().split('T')[0]
+    const weekStartISO = formatLocalDate(weekStart)
+    const weekEndISO = formatLocalDate(weekEnd)
 
     // Month range
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    const monthStartISO = monthStart.toISOString().split('T')[0]
-    const monthEndISO = monthEnd.toISOString().split('T')[0]
+    const monthStartISO = formatLocalDate(monthStart)
+    const monthEndISO = formatLocalDate(monthEnd)
 
     // Year range
     const yearStartISO = `${now.getFullYear()}-01-01`
