@@ -90,11 +90,14 @@ export async function GET(
         .eq('opportunity_id', event.opportunity_id)
         .eq('tenant_id', dataSourceTenantId)
 
-      packages = lineItems?.map(item => ({
-        id: item.id,
-        name: item.package?.name || 'Custom Item',
-        type: item.item_type
-      })) || []
+      packages = lineItems?.map(item => {
+        const pkg = item.package as { id: string; name: string; category: string } | null
+        return {
+          id: item.id,
+          name: pkg?.name || 'Custom Item',
+          type: item.item_type
+        }
+      }) || []
     }
 
     // Fetch custom items (backdrops, wraps, etc.)
@@ -174,20 +177,27 @@ export async function GET(
     }
 
     // Build logistics object
-    const staffArray = staffAssignments?.map(sa => ({
-      id: sa.id,
-      name: sa.users ? `${sa.users.first_name} ${sa.users.last_name}`.trim() : 'Unknown',
-      email: sa.users?.email,
-      role: sa.staff_roles?.name,
-      role_type: sa.staff_roles?.type,
-      notes: sa.notes,
-      is_event_day: !!sa.event_date_id
-    })) || []
+    const staffArray = staffAssignments?.map(sa => {
+      const user = sa.users as { first_name: string; last_name: string; email: string } | null
+      const staffRole = sa.staff_roles as { name: string; type: string } | null
+      return {
+        id: sa.id,
+        name: user ? `${user.first_name} ${user.last_name}`.trim() : 'Unknown',
+        email: user?.email,
+        role: staffRole?.name,
+        role_type: staffRole?.type,
+        notes: sa.notes,
+        is_event_day: !!sa.event_date_id
+      }
+    }) || []
 
     log.debug({ staffArray }, 'Transformed staff array')
 
+    // Cast account as single object (many-to-one relationship)
+    const account = event.account as { name: string } | null
+
     const logistics = {
-      client_name: event.account?.name,
+      client_name: account?.name,
       event_date: primaryEventDate?.event_date,
       load_in_time: event.load_in_time,
       load_in_notes: event.load_in_notes,
@@ -214,16 +224,19 @@ export async function GET(
       event_notes: event.description || primaryEventDate?.notes,
       packages,
       custom_items: customItems || [],
-      equipment: boothAssignments?.map(ba => ({
-        id: ba.id,
-        name: ba.booth?.booth_name,
-        type: ba.booth?.booth_type,
-        serial_number: ba.booth?.serial_number,
-        status: ba.status,
-        checked_out_at: ba.checked_out_at,
-        checked_in_at: ba.checked_in_at,
-        condition_notes: ba.condition_notes
-      })) || [],
+      equipment: boothAssignments?.map(ba => {
+        const booth = ba.booth as { booth_name: string; booth_type: string; serial_number: string } | null
+        return {
+          id: ba.id,
+          name: booth?.booth_name,
+          type: booth?.booth_type,
+          serial_number: booth?.serial_number,
+          status: ba.status,
+          checked_out_at: ba.checked_out_at,
+          checked_in_at: ba.checked_in_at,
+          condition_notes: ba.condition_notes
+        }
+      }) || [],
       staff: staffArray
     }
 

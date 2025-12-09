@@ -44,14 +44,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data to return clean tenant list
-    const tenants = users.map(user => ({
-      id: user.tenants.id,
-      name: user.tenants.name,
-      subdomain: user.tenants.subdomain,
-      plan: user.tenants.plan,
-      userId: user.id,
-      userRole: user.role
-    }))
+    const tenants = users.map(user => {
+      const tenant = user.tenants as { id: string; name: string; subdomain: string; plan: string; status: string }
+      return {
+        id: tenant.id,
+        name: tenant.name,
+        subdomain: tenant.subdomain,
+        plan: tenant.plan,
+        userId: user.id,
+        userRole: user.role
+      }
+    })
 
     return NextResponse.json({ tenants })
   } catch (error) {
