@@ -80,9 +80,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
     communications,
     loadingInvoices,
     loadingActivities,
-    fetchInvoices: refetchInvoices,
-    fetchCommunications,
-    fetchActivities: refetchActivities
+    fetchInvoices: refetchInvoices
   } = tabs
 
   const canManageEvents = hasPermission('events', 'edit')
@@ -462,7 +460,6 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
         staff={staff}
         tabs={tabs}
         references={references}
-        onEventRefresh={eventData.fetchEvent}
         onEventDatesRefresh={eventData.fetchEventDates}
       />
     </AccessGuard>
