@@ -13,6 +13,7 @@ import type { Event, EventDate } from '@/types/events'
 // ============================================================================
 
 interface ModalState {
+  // Create/Action modals
   isTaskModalOpen: boolean
   isDesignItemModalOpen: boolean
   isLogisticsModalOpen: boolean
@@ -22,6 +23,17 @@ interface ModalState {
   isStaffModalOpen: boolean
   isDateModalOpen: boolean
   isAttachmentModalOpen: boolean
+
+  // Communication modals (consolidated from page.tsx)
+  isLogCommunicationModalOpen: boolean
+  isEmailModalOpen: boolean
+  isSMSModalOpen: boolean
+  isGenerateAgreementModalOpen: boolean
+
+  // Detail view modals
+  isCommunicationDetailOpen: boolean
+  isActivityDetailOpen: boolean
+  isEventDateDetailOpen: boolean
 
   // Keys for forcing re-renders
   tasksKey: number
@@ -33,6 +45,19 @@ interface ModalState {
   staffKey: number
   datesKey: number
   attachmentsKey: number
+}
+
+// ============================================================================
+// Detail Modal State Interface (selected items for detail modals)
+// ============================================================================
+
+interface DetailModalState {
+  selectedCommunication: any | null
+  selectedActivity: any | null
+  selectedEventDate: EventDate | null
+  showSMSThread: boolean
+  activeEventDateTab: string
+  attachmentsRefreshTrigger: number
 }
 
 // ============================================================================
@@ -53,6 +78,31 @@ interface EditingState {
 }
 
 // ============================================================================
+// Modal Name Types
+// ============================================================================
+
+// All boolean modal properties (excludes refresh keys)
+type ModalBooleanKeys =
+  | 'isTaskModalOpen'
+  | 'isDesignItemModalOpen'
+  | 'isLogisticsModalOpen'
+  | 'isCommunicationModalOpen'
+  | 'isActivityModalOpen'
+  | 'isInvoiceModalOpen'
+  | 'isStaffModalOpen'
+  | 'isDateModalOpen'
+  | 'isAttachmentModalOpen'
+  | 'isLogCommunicationModalOpen'
+  | 'isEmailModalOpen'
+  | 'isSMSModalOpen'
+  | 'isGenerateAgreementModalOpen'
+  | 'isCommunicationDetailOpen'
+  | 'isActivityDetailOpen'
+  | 'isEventDateDetailOpen'
+
+type RefreshKeyTypes = 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey'
+
+// ============================================================================
 // Context Value Interface
 // ============================================================================
 
@@ -64,9 +114,24 @@ interface EventDetailContextValue {
 
   // Modal state
   modals: ModalState
-  openModal: (modalName: keyof Omit<ModalState, 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey'>) => void
-  closeModal: (modalName: keyof Omit<ModalState, 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey'>) => void
-  refreshData: (dataType: 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey') => void
+  openModal: (modalName: ModalBooleanKeys) => void
+  closeModal: (modalName: ModalBooleanKeys) => void
+  refreshData: (dataType: RefreshKeyTypes) => void
+
+  // Detail modal state (selected items)
+  detailModals: DetailModalState
+  setSelectedCommunication: (communication: any | null) => void
+  setSelectedActivity: (activity: any | null) => void
+  setSelectedEventDate: (eventDate: EventDate | null) => void
+  setShowSMSThread: (show: boolean) => void
+  toggleSMSThread: () => void
+  setActiveEventDateTab: (tab: string) => void
+  triggerAttachmentsRefresh: () => void
+
+  // Convenience methods for opening detail modals with data
+  openCommunicationDetail: (communication: any) => void
+  openActivityDetail: (activity: any) => void
+  openEventDateDetail: (eventDate: EventDate) => void
 
   // Editing state
   editing: EditingState
@@ -122,6 +187,7 @@ export function EventDetailProvider({
 
   // Modal state
   const [modals, setModals] = useState<ModalState>({
+    // Create/Action modals
     isTaskModalOpen: false,
     isDesignItemModalOpen: false,
     isLogisticsModalOpen: false,
@@ -131,6 +197,16 @@ export function EventDetailProvider({
     isStaffModalOpen: false,
     isDateModalOpen: false,
     isAttachmentModalOpen: false,
+    // Communication modals
+    isLogCommunicationModalOpen: false,
+    isEmailModalOpen: false,
+    isSMSModalOpen: false,
+    isGenerateAgreementModalOpen: false,
+    // Detail view modals
+    isCommunicationDetailOpen: false,
+    isActivityDetailOpen: false,
+    isEventDateDetailOpen: false,
+    // Refresh keys
     tasksKey: 0,
     designItemsKey: 0,
     logisticsKey: 0,
@@ -140,6 +216,16 @@ export function EventDetailProvider({
     staffKey: 0,
     datesKey: 0,
     attachmentsKey: 0
+  })
+
+  // Detail modal state (selected items for detail modals)
+  const [detailModals, setDetailModals] = useState<DetailModalState>({
+    selectedCommunication: null,
+    selectedActivity: null,
+    selectedEventDate: null,
+    showSMSThread: false,
+    activeEventDateTab: 'details',
+    attachmentsRefreshTrigger: 0
   })
 
   // Editing state
@@ -157,16 +243,61 @@ export function EventDetailProvider({
   })
 
   // Modal actions
-  const openModal = (modalName: keyof Omit<ModalState, 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey'>) => {
+  const openModal = (modalName: ModalBooleanKeys) => {
     setModals(prev => ({ ...prev, [modalName]: true }))
   }
 
-  const closeModal = (modalName: keyof Omit<ModalState, 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey'>) => {
+  const closeModal = (modalName: ModalBooleanKeys) => {
     setModals(prev => ({ ...prev, [modalName]: false }))
   }
 
-  const refreshData = (dataType: 'tasksKey' | 'designItemsKey' | 'logisticsKey' | 'communicationsKey' | 'activitiesKey' | 'invoicesKey' | 'staffKey' | 'datesKey' | 'attachmentsKey') => {
+  const refreshData = (dataType: RefreshKeyTypes) => {
     setModals(prev => ({ ...prev, [dataType]: prev[dataType] + 1 }))
+  }
+
+  // Detail modal state setters
+  const setSelectedCommunication = (communication: any | null) => {
+    setDetailModals(prev => ({ ...prev, selectedCommunication: communication }))
+  }
+
+  const setSelectedActivity = (activity: any | null) => {
+    setDetailModals(prev => ({ ...prev, selectedActivity: activity }))
+  }
+
+  const setSelectedEventDate = (eventDate: EventDate | null) => {
+    setDetailModals(prev => ({ ...prev, selectedEventDate: eventDate }))
+  }
+
+  const setShowSMSThread = (show: boolean) => {
+    setDetailModals(prev => ({ ...prev, showSMSThread: show }))
+  }
+
+  const toggleSMSThread = () => {
+    setDetailModals(prev => ({ ...prev, showSMSThread: !prev.showSMSThread }))
+  }
+
+  const setActiveEventDateTab = (tab: string) => {
+    setDetailModals(prev => ({ ...prev, activeEventDateTab: tab }))
+  }
+
+  const triggerAttachmentsRefresh = () => {
+    setDetailModals(prev => ({ ...prev, attachmentsRefreshTrigger: prev.attachmentsRefreshTrigger + 1 }))
+  }
+
+  // Convenience methods for opening detail modals with data
+  const openCommunicationDetail = (communication: any) => {
+    setDetailModals(prev => ({ ...prev, selectedCommunication: communication }))
+    setModals(prev => ({ ...prev, isCommunicationDetailOpen: true }))
+  }
+
+  const openActivityDetail = (activity: any) => {
+    setDetailModals(prev => ({ ...prev, selectedActivity: activity }))
+    setModals(prev => ({ ...prev, isActivityDetailOpen: true }))
+  }
+
+  const openEventDateDetail = (eventDate: EventDate) => {
+    setDetailModals(prev => ({ ...prev, selectedEventDate: eventDate }))
+    setModals(prev => ({ ...prev, isEventDateDetailOpen: true }))
   }
 
   // Account/Contact/Planner editing
@@ -287,6 +418,21 @@ export function EventDetailProvider({
     closeModal,
     refreshData,
 
+    // Detail modal state
+    detailModals,
+    setSelectedCommunication,
+    setSelectedActivity,
+    setSelectedEventDate,
+    setShowSMSThread,
+    toggleSMSThread,
+    setActiveEventDateTab,
+    triggerAttachmentsRefresh,
+
+    // Convenience methods for opening detail modals
+    openCommunicationDetail,
+    openActivityDetail,
+    openEventDateDetail,
+
     // Editing state
     editing,
     startEditAccountContact,
@@ -344,5 +490,5 @@ export function useEventDetail() {
 // Exports
 // ============================================================================
 
-export type { EventDetailContextValue, ModalState, EditingState }
+export type { EventDetailContextValue, ModalState, DetailModalState, EditingState, ModalBooleanKeys, RefreshKeyTypes }
 export type { Event, EventDate } from '@/types/events'
