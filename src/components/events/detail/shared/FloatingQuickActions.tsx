@@ -46,9 +46,15 @@ export function FloatingQuickActions({
   const [isExpanded, setIsExpanded] = useState(false)
   const { confirm } = useConfirmDialog()
 
+  // DEBUG: Check if component renders
+  console.log('[FAB DEBUG]', { canCreate, eventId, accountId, tenantSubdomain })
+
   if (!canCreate) {
+    console.log('[FAB DEBUG] Returning null - canCreate is false')
     return null // Don't show if user doesn't have permissions
   }
+
+  console.log('[FAB DEBUG] Rendering FAB button')
 
   const handleDuplicate = async () => {
     if (onDuplicateEvent) {

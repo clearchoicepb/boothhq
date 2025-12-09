@@ -136,17 +136,6 @@ export function usePermissions() {
   const userRole = session?.user?.role || 'user'
   const customRoles = settings?.roles || []
 
-  // DEBUG: Log permission resolution
-  console.log('[DEBUG usePermissions]', {
-    sessionStatus: status,
-    hasSession: !!session,
-    hasUser: !!session?.user,
-    rawRole: session?.user?.role,
-    resolvedRole: userRole,
-    roleType: typeof session?.user?.role,
-    customRolesCount: customRoles.length,
-  })
-
   // If session is loading, return default permissions to avoid issues
   const isLoading = status === 'loading'
   
