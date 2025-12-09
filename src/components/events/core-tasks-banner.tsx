@@ -7,6 +7,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
@@ -19,9 +20,22 @@ interface CoreTasksBannerProps {
 }
 
 export function CoreTasksBanner({ eventId, onViewTasks }: CoreTasksBannerProps) {
-  const [tasks, setTasks] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [isDismissed, setIsDismissed] = useState(false)
+
+  // Fetch core tasks using React Query
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ['event-core-tasks', eventId],
+    queryFn: async () => {
+      const response = await fetch(`/api/events/${eventId}/core-tasks`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch core tasks')
+      }
+      return response.json()
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,    // 5 minutes
+    enabled: !!eventId
+  })
 
   // Check localStorage for dismissal state
   useEffect(() => {
@@ -29,25 +43,6 @@ export function CoreTasksBanner({ eventId, onViewTasks }: CoreTasksBannerProps) 
     if (dismissedBanner === 'true') {
       setIsDismissed(true)
     }
-  }, [eventId])
-
-  // Fetch core tasks
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const response = await fetch(`/api/events/${eventId}/core-tasks`)
-        if (response.ok) {
-          const data = await response.json()
-          setTasks(data)
-        }
-      } catch (error) {
-        log.error({ error }, 'Error fetching core tasks')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchTasks()
   }, [eventId])
 
   const handleDismiss = () => {
@@ -60,7 +55,7 @@ export function CoreTasksBanner({ eventId, onViewTasks }: CoreTasksBannerProps) 
     setIsDismissed(false)
   }
 
-  if (loading) {
+  if (isLoading) {
     return null // Don't show while loading
   }
 
