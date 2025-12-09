@@ -59,15 +59,9 @@ export interface EventWithRelations extends EventType {
  * Now powered by React Query for better caching and performance
  *
  * @param eventId - The ID of the event to fetch
- * @param session - The user session object (now optional, React Query handles auth)
- * @param tenantSubdomain - The tenant subdomain for routing (now optional)
  * @returns Event data, loading state, and CRUD operations
  */
-export function useEventData(
-  eventId: string,
-  session?: any,
-  tenantSubdomain?: string
-) {
+export function useEventData(eventId: string) {
   // Use React Query hooks for data fetching
   const eventQuery = useEventDetail(eventId)
   const eventDatesQuery = useEventDates(eventId)

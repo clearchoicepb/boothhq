@@ -26,6 +26,17 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('EventDetailModals')
 
+/** Staff assignment request body for operations roles */
+interface OperationsStaffRequest {
+  staff_role_id: string
+  notes: string | null
+  start_time: null
+  end_time: null
+  event_id?: string
+  user_id?: string
+  event_date_id?: null
+}
+
 interface EventDetailModalsProps {
   // Staff management (from useEventStaff hook)
   staff: ReturnType<typeof useEventStaff>
@@ -193,17 +204,16 @@ export function EventDetailModals({
       if (selectedRole?.type === 'operations') {
         log.debug('Processing OPERATIONS role...')
 
-        const requestBody: any = {
+        const requestBody: OperationsStaffRequest = {
           staff_role_id: selectedStaffRoleId,
           notes: staffNotes || null,
           start_time: null,
-          end_time: null
-        }
-
-        if (!isEditing) {
-          requestBody.event_id = eventId
-          requestBody.user_id = selectedUserId
-          requestBody.event_date_id = null
+          end_time: null,
+          ...(isEditing ? {} : {
+            event_id: eventId,
+            user_id: selectedUserId,
+            event_date_id: null
+          })
         }
 
         log.debug({ requestBody }, 'Operations role request')
@@ -214,9 +224,10 @@ export function EventDetailModals({
             : await eventsService.createStaffAssignment(requestBody)
 
           log.debug({ responseData }, 'Operations role response')
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error({ error }, '[CLIENT-STAFF] Error')
-          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${error.message || 'Unknown error'}`)
+          const message = error instanceof Error ? error.message : 'Unknown error'
+          toast.error(`Failed to ${isEditing ? 'update' : 'add'} staff: ${message}`)
           return
         }
       } else {
@@ -239,12 +250,13 @@ export function EventDetailModals({
           try {
             const responseData = await eventsService.createStaffAssignment(requestBody)
             log.debug({ responseData }, 'Staff assignment created')
-          } catch (error: any) {
+          } catch (error: unknown) {
             log.error({ error }, '[CLIENT-STAFF] Error')
-            if (error.code === '23505' || error.message?.includes('already exists')) {
+            const err = error as { code?: string; message?: string }
+            if (err.code === '23505' || err.message?.includes('already exists')) {
               toast.error(`This staff member is already assigned to this event date. Please remove the existing assignment first if you want to make changes.`)
             } else {
-              toast.error(`Failed to add staff for date: ${error.message || 'Unknown error'}`)
+              toast.error(`Failed to add staff for date: ${err.message || 'Unknown error'}`)
             }
             return
           }

@@ -36,6 +36,7 @@ import { useEventDetail } from '@/contexts/EventDetailContext'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 import { createLogger } from '@/lib/logger'
 import { EventDetailModals } from './EventDetailModals'
+import type { EventActivity, StaffAssignmentWithJoins, SelectedDateTime } from '@/types/events'
 
 const log = createLogger('EventDetailContent')
 
@@ -55,7 +56,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   // Custom Hooks
   const references = useEventReferences(session, tenantSubdomain)
   const tabs = useEventTabs(eventId, session, tenant)
-  const staff = useEventStaff(eventId, session, tenant)
+  const staff = useEventStaff(eventId)
   const editing = useEventEditing()
 
   // Context
@@ -119,7 +120,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
     }
   }
 
-  const handleActivityClick = (activity: any) => {
+  const handleActivityClick = (activity: EventActivity) => {
     if (activity.type === 'communication') {
       context.openCommunicationDetail(activity.metadata)
     } else {
@@ -188,7 +189,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
     }
   }
 
-  const handleEditStaff = (staffMember: any) => {
+  const handleEditStaff = (staffMember: StaffAssignmentWithJoins) => {
     staff.setEditingStaffId(staffMember.id)
     staff.setSelectedUserId(staffMember.user_id)
     staff.setSelectedStaffRoleId(staffMember.staff_role_id || '')
@@ -196,10 +197,10 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
 
     if (staffMember.staff_roles?.type === 'event_staff') {
       const userRoleAssignments = staff.staffAssignments.filter(
-        s => s.user_id === staffMember.user_id && s.staff_role_id === staffMember.staff_role_id
+        (s: StaffAssignmentWithJoins) => s.user_id === staffMember.user_id && s.staff_role_id === staffMember.staff_role_id
       )
 
-      const dateTimes = userRoleAssignments.map(assignment => ({
+      const dateTimes = userRoleAssignments.map((assignment: StaffAssignmentWithJoins) => ({
         dateId: assignment.event_date_id,
         startTime: assignment.start_time || '',
         endTime: assignment.end_time || ''
@@ -427,14 +428,14 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                       onRoleChange={staff.setSelectedStaffRoleId}
                       onStaffRoleChange={staff.setStaffRole}
                       onNotesChange={staff.setStaffNotes}
-                      onDateTimeToggle={(dt) => {
+                      onDateTimeToggle={(dt: SelectedDateTime) => {
                         const exists = staff.selectedDateTimes.some(
-                          (selected: any) => selected.event_date_id === dt.event_date_id
+                          (selected: SelectedDateTime) => selected.dateId === dt.dateId
                         )
                         if (exists) {
                           staff.setSelectedDateTimes(
                             staff.selectedDateTimes.filter(
-                              (selected: any) => selected.event_date_id !== dt.event_date_id
+                              (selected: SelectedDateTime) => selected.dateId !== dt.dateId
                             )
                           )
                         } else {

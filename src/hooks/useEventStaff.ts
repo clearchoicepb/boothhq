@@ -11,15 +11,9 @@ const log = createLogger('hooks')
  * Now powered by React Query for automatic caching and performance
  *
  * @param eventId - The ID of the event
- * @param session - The user session object (now optional)
- * @param tenant - The tenant object (now optional)
  * @returns Staff state, data, and functions
  */
-export function useEventStaff(
-  eventId: string,
-  session?: any,
-  tenant?: any
-) {
+export function useEventStaff(eventId: string) {
   // Add staff form state
   const [isAddingStaff, setIsAddingStaff] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string>('')
