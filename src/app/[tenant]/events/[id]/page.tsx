@@ -55,18 +55,8 @@ interface EventDetailContentProps {
 function EventDetailContent({ eventData }: EventDetailContentProps) {
   const { data: session, status } = useSession()
   const { tenant, loading: tenantLoading } = useTenant()
-  const { hasPermission, userRole, isLoading: permissionsLoading } = usePermissions()
+  const { hasPermission } = usePermissions()
   const params = useParams()
-
-  // DEBUG: Permission investigation
-  console.log('[DEBUG] Permission check:', {
-    userRole,
-    sessionRole: session?.user?.role,
-    permissionsLoading,
-    sessionStatus: status,
-    hasEventsEdit: hasPermission('events', 'edit'),
-    hasEventsView: hasPermission('events', 'view'),
-  })
   const router = useRouter()
   const tenantSubdomain = params.tenant as string
   const eventId = params.id as string

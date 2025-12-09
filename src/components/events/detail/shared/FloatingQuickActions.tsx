@@ -46,15 +46,9 @@ export function FloatingQuickActions({
   const [isExpanded, setIsExpanded] = useState(false)
   const { confirm } = useConfirmDialog()
 
-  // DEBUG: Check if component renders
-  console.log('[FAB DEBUG]', { canCreate, eventId, accountId, tenantSubdomain })
-
   if (!canCreate) {
-    console.log('[FAB DEBUG] Returning null - canCreate is false')
     return null // Don't show if user doesn't have permissions
   }
-
-  console.log('[FAB DEBUG] Rendering FAB button')
 
   const handleDuplicate = async () => {
     if (onDuplicateEvent) {
@@ -135,8 +129,8 @@ export function FloatingQuickActions({
         />
       )}
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Action Button - positioned left of Report Issue button */}
+      <div className="fixed bottom-6 right-24 z-50">
         {/* Expanded Menu */}
         {isExpanded && (
           <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 min-w-[200px] animate-in slide-in-from-bottom-2 duration-200">
