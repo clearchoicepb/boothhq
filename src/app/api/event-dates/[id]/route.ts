@@ -52,7 +52,7 @@ export async function PUT(
   routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
-    log.debug('=== EVENT DATE UPDATE API START ===')
+    log.debug({}, '=== EVENT DATE UPDATE API START ===')
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
@@ -61,14 +61,14 @@ export async function PUT(
     const params = await routeContext.params
     const eventDateId = params.id
     const body = await request.json()
-    log.debug('Received body:', JSON.stringify(body, null, 2))
+    log.debug({ body }, 'Received body')
     
     // Sanitize UUID fields: convert empty strings to null
     const sanitizedBody = {
       ...body,
       location_id: body.location_id === '' ? null : body.location_id,
     }
-    log.debug('Sanitized body:', JSON.stringify(sanitizedBody, null, 2))
+    log.debug({ sanitizedBody }, 'Sanitized body')
 
     const { data, error } = await supabase
       .from('event_dates')
@@ -97,8 +97,8 @@ export async function PUT(
       }, { status: 500 })
     }
 
-    log.debug('Update successful')
-    log.debug('=== EVENT DATE UPDATE API END ===')
+    log.debug({}, 'Update successful')
+    log.debug({}, '=== EVENT DATE UPDATE API END ===')
     
     const response = NextResponse.json(data)
     // Disable caching to ensure fresh data

@@ -16,19 +16,19 @@ export async function PUT(
     const params = await routeContext.params
     const body = await request.json()
 
-    log.debug('Request params:', { invoiceId: params.id, lineItemId: params.lineItemId, tenantId: dataSourceTenantId })
-    log.debug('Request body:', body)
-    log.debug('Body keys:', Object.keys(body))
+    log.debug({ invoiceId: params.id, lineItemId: params.lineItemId, tenantId: dataSourceTenantId }, 'Request params')
+    log.debug({ body }, 'Request body')
+    log.debug({ keys: Object.keys(body) }, 'Body keys')
 
     // Support partial updates - only update fields that are provided
     const updateData: any = {}
 
     // If this is a sort_order-only update (drag/drop reorder)
     if (body.sort_order !== undefined && Object.keys(body).length === 1) {
-      log.debug('Detected sort_order-only update (drag/drop)')
+      log.debug({}, 'Detected sort_order-only update (drag/drop)')
       updateData.sort_order = body.sort_order
     } else {
-      log.debug('Full update detected')
+      log.debug({}, 'Full update detected')
       // Full update - all fields required
       updateData.item_type = body.item_type
       updateData.package_id = body.package_id || null
@@ -46,7 +46,7 @@ export async function PUT(
       }
     }
 
-    log.debug('Update data:', updateData)
+    log.debug({ updateData }, 'Update data')
 
     const { data, error } = await supabase
       .from('invoice_line_items')
@@ -62,7 +62,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update line item', details: error.message }, { status: 500 })
     }
 
-    log.debug('Successfully updated:', data)
+    log.debug({ data }, 'Successfully updated')
 
     // Only update invoice totals if this wasn't a sort_order-only update
     if (!(body.sort_order !== undefined && Object.keys(body).length === 1)) {
@@ -129,11 +129,11 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
     .eq('invoice_id', invoiceId)
     .eq('tenant_id', tenantId)
 
-  log.debug('Line items:', lineItems?.map(item => ({
+  log.debug({ lineItems: lineItems?.map(item => ({
     total_price: item.total_price,
     taxable: item.taxable,
     taxableType: typeof item.taxable
-  })))
+  })) }, 'Line items')
 
   const subtotal = lineItems?.reduce((sum: number, item: any) => sum + parseFloat(item.total_price), 0) || 0
 
@@ -141,14 +141,14 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
   const taxableSubtotal = lineItems?.reduce((sum: number, item: any) => {
     // Only exclude from tax if explicitly set to false
     if (item.taxable === false) {
-      log.debug('Excluding non-taxable item:', item.total_price)
+      log.debug({ totalPrice: item.total_price }, 'Excluding non-taxable item')
       return sum
     }
-    log.debug('Including taxable item:', item.total_price)
+    log.debug({ totalPrice: item.total_price }, 'Including taxable item')
     return sum + parseFloat(item.total_price)
   }, 0) || 0
 
-  log.debug('Subtotal:', subtotal, 'Taxable Subtotal:', taxableSubtotal)
+  log.debug({ subtotal, taxableSubtotal }, 'Subtotal and Taxable Subtotal')
 
   // Get current tax rate and paid amount
   const { data: invoice } = await supabase
@@ -164,7 +164,7 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
   const paidAmount = parseFloat(invoice?.paid_amount || 0)
   const balanceAmount = totalAmount - paidAmount  // Calculate balance considering payments
 
-  log.debug('Total:', totalAmount, 'Paid:', paidAmount, 'Balance:', balanceAmount)
+  log.debug({ totalAmount, paidAmount, balanceAmount }, 'Total, Paid, Balance')
 
   // Update invoice totals
   await supabase

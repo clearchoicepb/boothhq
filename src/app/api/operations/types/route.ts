@@ -134,7 +134,7 @@ async function seedDefaultTypesIfNeeded(
   supabase: any,
   dataSourceTenantId: string
 ): Promise<void> {
-  log.debug('seedDefaultTypesIfNeeded called with tenantId:', dataSourceTenantId)
+  log.debug({ dataSourceTenantId }, 'seedDefaultTypesIfNeeded called with tenantId')
 
   // Check if tenant already has operations types
   const { count, error: countError } = await supabase
@@ -142,7 +142,7 @@ async function seedDefaultTypesIfNeeded(
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', dataSourceTenantId)
 
-  log.debug('Count check result:', { count, countError })
+  log.debug({ count, countError }, 'Count check result')
 
   if (countError) {
     console.error('[Operations DEBUG] Error checking count - table may not exist:', {
@@ -155,11 +155,11 @@ async function seedDefaultTypesIfNeeded(
   }
 
   if (count && count > 0) {
-    log.debug('Tenant already has', count, 'types, skipping seed')
+    log.debug({ count }, 'Tenant already has types, skipping seed')
     return
   }
 
-  log.debug(`Seeding default types for tenant ${dataSourceTenantId}`)
+  log.debug({ dataSourceTenantId }, 'Seeding default types for tenant')
 
   // Insert all default types
   const typesToInsert = DEFAULT_OPERATIONS_TYPES.map(type => ({
@@ -168,8 +168,8 @@ async function seedDefaultTypesIfNeeded(
     is_active: true
   }))
 
-  log.debug('Attempting to insert', typesToInsert.length, 'default types')
-  log.debug('First type to insert:', JSON.stringify(typesToInsert[0], null, 2))
+  log.debug({ count: typesToInsert.length }, 'Attempting to insert default types')
+  log.debug({ type: typesToInsert[0] }, 'First type to insert')
 
   const { data: insertedData, error } = await supabase
     .from('operations_item_types')
@@ -186,33 +186,33 @@ async function seedDefaultTypesIfNeeded(
     })
     // Don't throw - let the request continue even if seeding fails
   } else {
-    log.debug(`Successfully seeded ${typesToInsert.length} default types`)
-    log.debug('Inserted data count:', insertedData?.length)
+    log.debug({ count: typesToInsert.length }, 'Successfully seeded default types')
+    log.debug({ count: insertedData?.length }, 'Inserted data count')
   }
 }
 
 // GET - Fetch all operations types for tenant
 export async function GET() {
-  log.debug('GET /api/operations/types called')
+  log.debug({}, 'GET /api/operations/types called')
 
   const context = await getTenantContext()
   if (context instanceof NextResponse) {
-    log.debug('getTenantContext returned error response')
+    log.debug({}, 'getTenantContext returned error response')
     return context
   }
 
   const { supabase, dataSourceTenantId, tenantId } = context
-  log.debug('Tenant context:', {
+  log.debug({
     tenantId,
     dataSourceTenantId,
     supabaseExists: !!supabase
-  })
+  }, 'Tenant context')
 
   try {
     // Seed default types if this is first access
     await seedDefaultTypesIfNeeded(supabase, dataSourceTenantId)
 
-    log.debug('Fetching all types for tenant')
+    log.debug({}, 'Fetching all types for tenant')
 
     // Fetch all types for tenant
     const { data, error } = await supabase
@@ -221,14 +221,14 @@ export async function GET() {
       .eq('tenant_id', dataSourceTenantId)
       .order('display_order')
 
-    log.debug('Fetch result:', {
+    log.debug({
       dataCount: data?.length,
       error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null
-    })
+    }, 'Fetch result')
 
     if (error) throw error
 
-    log.debug('Returning', data?.length || 0, 'types')
+    log.debug({ count: data?.length || 0 }, 'Returning types')
     return NextResponse.json({ types: data || [] })
   } catch (error: any) {
     console.error('[Operations DEBUG] GET Error:', {
@@ -244,24 +244,24 @@ export async function GET() {
 
 // POST - Create new operations type
 export async function POST(request: Request) {
-  log.debug('POST /api/operations/types called')
+  log.debug({}, 'POST /api/operations/types called')
 
   const context = await getTenantContext()
   if (context instanceof NextResponse) {
-    log.debug('getTenantContext returned error response')
+    log.debug({}, 'getTenantContext returned error response')
     return context
   }
 
   const { supabase, dataSourceTenantId, tenantId } = context
-  log.debug('POST Tenant context:', {
+  log.debug({
     tenantId,
     dataSourceTenantId,
     supabaseExists: !!supabase
-  })
+  }, 'POST Tenant context')
 
   try {
     const body = await request.json()
-    log.debug('POST body received:', JSON.stringify(body, null, 2))
+    log.debug({ body }, 'POST body received')
 
     const insertData = {
       name: body.name,
@@ -275,7 +275,7 @@ export async function POST(request: Request) {
       display_order: body.display_order ?? 0,
       tenant_id: dataSourceTenantId
     }
-    log.debug('Insert data prepared:', JSON.stringify(insertData, null, 2))
+    log.debug({ insertData }, 'Insert data prepared')
 
     // Use direct supabase insert (matches design API pattern)
     const { data, error } = await supabase
@@ -284,14 +284,14 @@ export async function POST(request: Request) {
       .select()
       .single()
 
-    log.debug('POST result:', {
+    log.debug({
       dataExists: !!data,
       error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null
-    })
+    }, 'POST result')
 
     if (error) throw error
 
-    log.debug('Successfully created type:', data?.id)
+    log.debug({ id: data?.id }, 'Successfully created type')
     return NextResponse.json({ type: data })
   } catch (error: any) {
     console.error('[Operations DEBUG] POST Error:', {

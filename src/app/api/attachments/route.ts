@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const entityType = searchParams.get('entity_type')
     const entityId = searchParams.get('entity_id')
 
-    log.debug('GET request:', { entityType, entityId, dataSourceTenantId })
+    log.debug({ entityType, entityId, dataSourceTenantId }, 'GET request')
 
     if (!entityType || !entityId) {
       return NextResponse.json(
@@ -39,10 +39,7 @@ export async function GET(request: NextRequest) {
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
 
-    log.debug('Attachments query result:', {
-      count: attachments?.length || 0,
-      error: attachmentsError
-    })
+    log.debug({ count: attachments?.length || 0, error: attachmentsError }, 'Attachments query result')
 
     if (attachmentsError) {
       log.error({ attachmentsError }, '[attachments/route.ts] Query failed')
@@ -72,8 +69,8 @@ export async function GET(request: NextRequest) {
       return file
     })
 
-    log.debug('Total files returned:', filesWithMetadata.length)
-    log.debug('Contract files:', filesWithMetadata.filter(f => f.metadata?.is_contract).length)
+    log.debug({ count: filesWithMetadata.length }, 'Total files returned')
+    log.debug({ count: filesWithMetadata.filter(f => f.metadata?.is_contract).length }, 'Contract files')
 
     return NextResponse.json(filesWithMetadata)
   } catch (error) {

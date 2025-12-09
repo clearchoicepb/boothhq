@@ -60,7 +60,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    log.debug('Updating payment:', id)
+    log.debug({ id }, 'Updating payment')
 
     // Get the existing payment to check the old amount
     const { data: existingPayment, error: fetchError } = await supabase
@@ -139,7 +139,7 @@ export async function DELETE(
     const { id } = await params
     const body = await request.json()
 
-    log.debug('Deleting payment:', id)
+    log.debug({ id }, 'Deleting payment')
 
     // Get the payment before deleting to know which invoice to update
     const { data: payment, error: fetchError } = await supabase
@@ -252,6 +252,6 @@ async function recalculateInvoiceFromPayments(
   if (updateError) {
     log.error({ updateError }, 'Error updating invoice after payment change')
   } else {
-    log.debug(`Invoice ${invoiceId} recalculated: paid=${totalPaid}, balance=${balanceAmount}, status=${newStatus}`)
+    log.debug({ invoiceId, totalPaid, balanceAmount, newStatus }, 'Invoice recalculated')
   }
 }
