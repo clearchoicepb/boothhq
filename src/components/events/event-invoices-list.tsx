@@ -3,9 +3,10 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from './detail/shared/EmptyState'
 import { SkeletonTable } from './detail/shared/SkeletonLoader'
+import type { Invoice } from './invoices/types'
 
 interface EventInvoicesListProps {
-  invoices: any[]
+  invoices: Invoice[]
   loading: boolean
   eventId: string
   accountId: string | null

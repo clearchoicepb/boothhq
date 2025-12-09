@@ -4,12 +4,12 @@ import { useState } from 'react'
 import { EventTimelineCard } from './event-timeline-card'
 import { EventPreviewModal } from './event-preview-modal'
 import { getDaysUntil } from '@/lib/utils/date-utils'
-import type { Event, EventDate } from '@/types/events'
+import type { Event, EventDate, CoreTask } from '@/types/events'
 
 interface EventTimelineViewProps {
   events: Event[]
   tenantSubdomain: string
-  coreTasks: any[]
+  coreTasks: CoreTask[]
 }
 
 export function EventTimelineView({

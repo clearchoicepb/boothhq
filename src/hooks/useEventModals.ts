@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { EventDate } from './useEventData'
+import type { Communication, EventActivity } from '@/types/events'
 
 /**
  * Custom hook for centralized modal state management
@@ -18,10 +19,10 @@ export function useEventModals() {
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false)
 
   // Detail modals with selected items
-  const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
+  const [selectedCommunication, setSelectedCommunication] = useState<Communication | null>(null)
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
 
-  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [selectedActivity, setSelectedActivity] = useState<EventActivity | null>(null)
   const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
 
   const [selectedEventDate, setSelectedEventDate] = useState<EventDate | null>(null)
@@ -73,7 +74,7 @@ export function useEventModals() {
   /**
    * Communication Detail Modal Controls
    */
-  const openCommunicationDetail = useCallback((communication: any) => {
+  const openCommunicationDetail = useCallback((communication: Communication) => {
     setSelectedCommunication(communication)
     setIsCommunicationDetailOpen(true)
   }, [])
@@ -86,7 +87,7 @@ export function useEventModals() {
   /**
    * Activity Detail Modal Controls
    */
-  const openActivityDetail = useCallback((activity: any) => {
+  const openActivityDetail = useCallback((activity: EventActivity) => {
     setSelectedActivity(activity)
     setIsActivityDetailOpen(true)
   }, [])

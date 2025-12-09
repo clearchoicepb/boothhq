@@ -10,6 +10,7 @@ import { usePermissions } from '@/lib/permissions'
 import { eventsService } from '@/lib/api/services/eventsService'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
+import type { EventInsert } from '@/types/events'
 
 const log = createLogger('new')
 
@@ -21,7 +22,7 @@ export default function NewEventPage() {
   const params = useParams()
   const tenantSubdomain = params.tenant as string
 
-  const handleSave = async (formData: any) => {
+  const handleSave = async (formData: EventInsert) => {
     try {
       const data = await eventsService.create(formData)
       const eventId = data.id

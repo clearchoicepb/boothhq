@@ -73,7 +73,7 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
       log.debug('Number of files:', data?.length || 0)
       
       // Log contract files specifically
-      const contractFiles = data?.filter((f: any) => f.metadata?.is_contract)
+      const contractFiles = data?.filter((f: FileAttachment) => f.metadata?.is_contract)
       log.debug('Contract files:', contractFiles)
       
       setFiles(data)
