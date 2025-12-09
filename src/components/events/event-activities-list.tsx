@@ -2,11 +2,12 @@ import { Clock, User } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { EmptyState } from './detail/shared/EmptyState'
 import { SkeletonList } from './detail/shared/SkeletonLoader'
+import type { EventActivity } from '@/types/events'
 
 interface EventActivitiesListProps {
-  activities: any[]
+  activities: EventActivity[]
   loading: boolean
-  onActivityClick: (activity: any) => void
+  onActivityClick: (activity: EventActivity) => void
 }
 
 /**

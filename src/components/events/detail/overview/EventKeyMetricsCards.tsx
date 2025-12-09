@@ -11,7 +11,8 @@ import { Calendar, DollarSign } from 'lucide-react'
 import { formatDate, getDaysUntil } from '@/lib/utils/date-utils'
 import { PaymentStatusBadge } from '../../payment-status-badge'
 import { EventStatusBadge } from '../../event-status-badge'
-import type { Event, EventDate } from '@/types/events'
+import { getNextEventDate } from '@/lib/utils/event-utils'
+import type { Event } from '@/types/events'
 
 interface PaymentStatusOption {
   id: string
@@ -29,37 +30,6 @@ interface EventKeyMetricsCardsProps {
   isEditingStatus?: boolean
   onStatusChange?: (status: string) => void
   canEdit: boolean
-}
-
-/**
- * Get the next upcoming event date from a list of event dates.
- * Returns the earliest future/today date, or the most recent past date if all are past.
- */
-function getNextEventDate(eventDates: EventDate[]): EventDate | null {
-  if (!eventDates || eventDates.length === 0) return null
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // Sort dates chronologically
-  const sortedDates = [...eventDates].sort((a, b) => {
-    const dateA = new Date(a.event_date)
-    const dateB = new Date(b.event_date)
-    return dateA.getTime() - dateB.getTime()
-  })
-
-  // Find the first future or today date
-  const nextDate = sortedDates.find(d => {
-    const eventDate = new Date(d.event_date)
-    eventDate.setHours(0, 0, 0, 0)
-    return eventDate >= today
-  })
-
-  // If found a future/today date, return it
-  if (nextDate) return nextDate
-
-  // All dates are in the past, return the most recent one (last in sorted array)
-  return sortedDates[sortedDates.length - 1]
 }
 
 export function EventKeyMetricsCards({

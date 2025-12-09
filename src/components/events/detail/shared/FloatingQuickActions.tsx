@@ -16,6 +16,7 @@ import { useState } from 'react'
 import { Copy, DollarSign, FileText, Zap, X, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 
@@ -43,6 +44,7 @@ export function FloatingQuickActions({
   onTriggerWorkflows
 }: FloatingQuickActionsProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const { confirm } = useConfirmDialog()
 
   if (!canCreate) {
     return null // Don't show if user doesn't have permissions
@@ -53,7 +55,14 @@ export function FloatingQuickActions({
       onDuplicateEvent()
     } else {
       // Default duplicate logic
-      if (confirm('Create a duplicate of this event?')) {
+      const confirmed = await confirm({
+        title: 'Duplicate Event',
+        message: 'Create a duplicate of this event? This will copy all event details to a new event.',
+        confirmText: 'Duplicate',
+        variant: 'info'
+      })
+
+      if (confirmed) {
         try {
           const response = await fetch(`/api/events/${eventId}/duplicate`, {
             method: 'POST',
@@ -76,7 +85,14 @@ export function FloatingQuickActions({
   }
 
   const handleTriggerWorkflows = async () => {
-    if (confirm('Manually trigger workflows for this event? This will create tasks and design items based on the event type.')) {
+    const confirmed = await confirm({
+      title: 'Trigger Workflows',
+      message: 'Manually trigger workflows for this event? This will create tasks and design items based on the event type.',
+      confirmText: 'Trigger',
+      variant: 'info'
+    })
+
+    if (confirmed) {
       try {
         const response = await fetch(`/api/events/${eventId}/trigger-workflows`, {
           method: 'POST',
@@ -87,9 +103,9 @@ export function FloatingQuickActions({
 
         if (response.ok) {
           if (result.stats.workflowsExecuted === 0) {
-            toast('ℹ️ Workflows have already been executed for this event.')
+            toast('Workflows have already been executed for this event.')
           } else {
-            toast.success('✅ Success! Created ${result.stats.tasksCreated} tasks and ${result.stats.designItemsCreated} design items.')
+            toast.success(`Success! Created ${result.stats.tasksCreated} tasks and ${result.stats.designItemsCreated} design items.`)
             window.location.reload() // Refresh to show new tasks
           }
         } else {
@@ -97,7 +113,7 @@ export function FloatingQuickActions({
         }
       } catch (error) {
         log.error({ error }, 'Error triggering workflows')
-        toast.error('❌ Failed to trigger workflows')
+        toast.error('Failed to trigger workflows')
       }
     }
     setIsExpanded(false)
