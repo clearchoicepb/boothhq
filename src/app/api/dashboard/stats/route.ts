@@ -41,40 +41,69 @@ export async function GET(_request: NextRequest) {
 
     const { supabase, dataSourceTenantId } = context
 
-    // Get date ranges
-    const now = new Date()
+    // Get date ranges using EST timezone (America/New_York) consistently
+    // This ensures dates match what users see regardless of server timezone
+    const EST_TIMEZONE = 'America/New_York'
 
-    // Helper to format date as YYYY-MM-DD in local time (not UTC)
-    const formatLocalDate = (date: Date): string => {
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
+    const getESTDateParts = (): { year: number; month: number; day: number; dayOfWeek: number } => {
+      const now = new Date()
+      const estString = now.toLocaleString('en-US', {
+        timeZone: EST_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+      })
+      // Parse "Mon, MM/DD/YYYY" or "MM/DD/YYYY" format
+      const dateMatch = estString.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+      const dayMatch = estString.match(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/)
+
+      const dayOfWeekMap: Record<string, number> = {
+        'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+      }
+
+      if (dateMatch) {
+        return {
+          month: parseInt(dateMatch[1]),
+          day: parseInt(dateMatch[2]),
+          year: parseInt(dateMatch[3]),
+          dayOfWeek: dayMatch ? dayOfWeekMap[dayMatch[1]] : now.getDay()
+        }
+      }
+      // Fallback
+      return {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        dayOfWeek: now.getDay()
+      }
     }
 
-    // Today range (local date)
-    const todayISO = formatLocalDate(now)
+    const estParts = getESTDateParts()
 
-    // Week range (Monday to Sunday)
-    const dayOfWeek = now.getDay()
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - daysToMonday)
-    weekStart.setHours(0, 0, 0, 0)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-    const weekStartISO = formatLocalDate(weekStart)
-    const weekEndISO = formatLocalDate(weekEnd)
+    // Helper to format date as YYYY-MM-DD
+    const formatDate = (year: number, month: number, day: number): string => {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    }
+
+    // Today range (EST date)
+    const todayISO = formatDate(estParts.year, estParts.month, estParts.day)
+
+    // Week range (Monday to Sunday) - calculate in EST
+    const daysToMonday = estParts.dayOfWeek === 0 ? 6 : estParts.dayOfWeek - 1
+    const weekStartDate = new Date(estParts.year, estParts.month - 1, estParts.day - daysToMonday)
+    const weekEndDate = new Date(estParts.year, estParts.month - 1, estParts.day - daysToMonday + 6)
+    const weekStartISO = formatDate(weekStartDate.getFullYear(), weekStartDate.getMonth() + 1, weekStartDate.getDate())
+    const weekEndISO = formatDate(weekEndDate.getFullYear(), weekEndDate.getMonth() + 1, weekEndDate.getDate())
 
     // Month range
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    const monthStartISO = formatLocalDate(monthStart)
-    const monthEndISO = formatLocalDate(monthEnd)
+    const monthStartISO = formatDate(estParts.year, estParts.month, 1)
+    const monthEnd = new Date(estParts.year, estParts.month, 0) // Last day of current month
+    const monthEndISO = formatDate(monthEnd.getFullYear(), monthEnd.getMonth() + 1, monthEnd.getDate())
 
     // Year range
-    const yearStartISO = `${now.getFullYear()}-01-01`
-    const yearEndISO = `${now.getFullYear()}-12-31`
+    const yearStartISO = `${estParts.year}-01-01`
+    const yearEndISO = `${estParts.year}-12-31`
 
     // =====================================================
     // EVENTS OCCURRING - Count event_dates with linked events
