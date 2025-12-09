@@ -308,14 +308,21 @@ export interface Database {
           account_id: string | null
           contact_id: string | null
           opportunity_id: string | null
+          primary_contact_id: string | null
+          event_planner_id: string | null
           title: string
           description: string | null
           event_type: string
+          event_category_id: string | null
+          event_type_id: string | null
           start_date: string
           end_date: string | null
           location: string | null
           location_id: string | null
           status: string
+          payment_status: string | null
+          event_value: string | null
+          guest_count: number | null
           date_type: string | null
           mailing_address_line1: string | null
           mailing_address_line2: string | null
@@ -333,14 +340,21 @@ export interface Database {
           account_id?: string | null
           contact_id?: string | null
           opportunity_id?: string | null
+          primary_contact_id?: string | null
+          event_planner_id?: string | null
           title: string
           description?: string | null
           event_type: string
+          event_category_id?: string | null
+          event_type_id?: string | null
           start_date: string
           end_date?: string | null
           location?: string | null
           location_id?: string | null
           status?: string
+          payment_status?: string | null
+          event_value?: string | null
+          guest_count?: number | null
           date_type?: string | null
           mailing_address_line1?: string | null
           mailing_address_line2?: string | null
@@ -358,14 +372,21 @@ export interface Database {
           account_id?: string | null
           contact_id?: string | null
           opportunity_id?: string | null
+          primary_contact_id?: string | null
+          event_planner_id?: string | null
           title?: string
           description?: string | null
           event_type?: string
+          event_category_id?: string | null
+          event_type_id?: string | null
           start_date?: string
           end_date?: string | null
           location?: string | null
           location_id?: string | null
           status?: string
+          payment_status?: string | null
+          event_value?: string | null
+          guest_count?: number | null
           date_type?: string | null
           mailing_address_line1?: string | null
           mailing_address_line2?: string | null

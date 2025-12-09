@@ -42,8 +42,6 @@ interface EventDetailModalsProps {
   tabs: ReturnType<typeof useEventTabs>
   // Reference data
   references: ReturnType<typeof useEventReferences>
-  // Callback for refreshing event data
-  onEventRefresh: () => Promise<void>
   // Callback for refreshing event dates
   onEventDatesRefresh: () => Promise<void>
 }
@@ -52,12 +50,11 @@ export function EventDetailModals({
   staff,
   tabs,
   references,
-  onEventRefresh,
   onEventDatesRefresh
 }: EventDetailModalsProps) {
   const params = useParams()
   const eventId = params.id as string
-  const { data: session } = useSession()
+  useSession() // Auth check only, session data not used
 
   // Get context for modal state and editing state
   const context = useEventDetail()
@@ -170,7 +167,7 @@ export function EventDetailModals({
       return
     }
 
-    const selectedRole = staffRoles.find(r => r.id === selectedStaffRoleId)
+    const selectedRole = staffRoles.find((r: { id: string; type?: string }) => r.id === selectedStaffRoleId)
     log.debug({ selectedRole }, 'Staff role selected')
 
     if (selectedRole?.type === 'event_staff' && selectedDateTimes.length === 0) {
@@ -186,7 +183,7 @@ export function EventDetailModals({
       if (isEditing && selectedRole?.type === 'event_staff') {
         log.debug('Deleting existing event_staff assignments...')
         const existingAssignments = staffAssignments.filter(
-          s => s.user_id === selectedUserId && s.staff_role_id === selectedStaffRoleId
+          (s: { id: string; user_id: string; staff_role_id: string | null }) => s.user_id === selectedUserId && s.staff_role_id === selectedStaffRoleId
         )
 
         for (const assignment of existingAssignments) {
