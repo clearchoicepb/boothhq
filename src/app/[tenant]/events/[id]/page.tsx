@@ -23,11 +23,10 @@ import { EventDetailContent } from './components/EventDetailContent'
 export default function EventDetailPage() {
   const params = useParams()
   const eventId = params.id as string
-  const tenantSubdomain = params.tenant as string
-  const { data: session, status } = useSession()
+  const { status } = useSession()
 
   // Fetch core event data for context provider
-  const eventData = useEventData(eventId, session, tenantSubdomain)
+  const eventData = useEventData(eventId)
   const { event, eventDates = [], loading } = eventData || {}
 
   // Show loading state while session or data is loading

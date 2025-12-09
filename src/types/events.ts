@@ -321,3 +321,42 @@ export interface EventActivity {
   users?: ActivityUser | null
   metadata?: Record<string, unknown>
 }
+
+// =============================================================================
+// Communication Types
+// =============================================================================
+
+/** Communication type values */
+export type CommunicationType = 'email' | 'sms' | 'phone' | 'in_person'
+
+/** Communication direction */
+export type CommunicationDirection = 'inbound' | 'outbound'
+
+/**
+ * Communication record for the communications list and detail modal
+ */
+export interface Communication {
+  id: string
+  communication_type: CommunicationType
+  direction: CommunicationDirection
+  communication_date: string
+  subject?: string | null
+  notes?: string | null
+  created_at: string
+  created_by_name?: string | null
+  // Additional fields that might be present
+  event_id?: string | null
+  account_id?: string | null
+  contact_id?: string | null
+}
+
+// =============================================================================
+// Staff Assignment Form Types
+// =============================================================================
+
+/** Selected date/time for staff assignment form */
+export interface SelectedDateTime {
+  dateId: string
+  startTime: string
+  endTime: string
+}

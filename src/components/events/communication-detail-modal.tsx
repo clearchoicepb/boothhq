@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { linkifyText } from "@/lib/linkify"
+import type { Communication } from "@/types/events"
 
 interface CommunicationDetailModalProps {
-  communication: any | null
+  communication: Communication | null
   isOpen: boolean
   onClose: () => void
 }

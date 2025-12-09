@@ -1,14 +1,7 @@
 import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User, Calendar, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
-import type { StaffAssignmentWithJoins, StaffUser, StaffRole, EventDate } from '@/types/events'
-
-/** Selected date/time for staff assignment form */
-interface SelectedDateTime {
-  dateId: string
-  startTime: string
-  endTime: string
-}
+import type { StaffAssignmentWithJoins, StaffUser, StaffRole, EventDate, SelectedDateTime } from '@/types/events'
 
 interface EventStaffListProps {
   staffAssignments: StaffAssignmentWithJoins[]

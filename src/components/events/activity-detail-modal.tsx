@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button"
 import { ListTodo, FileText, Paperclip } from "lucide-react"
 import { Modal } from "@/components/ui/modal"
+import type { EventActivity } from "@/types/events"
 
 interface ActivityDetailModalProps {
-  activity: any | null
+  activity: EventActivity | null
   isOpen: boolean
   onClose: () => void
 }
