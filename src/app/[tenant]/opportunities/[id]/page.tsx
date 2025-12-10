@@ -64,6 +64,10 @@ interface Opportunity {
   event_dates?: EventDate[]
   created_at: string
   updated_at: string
+  // Optional joined relations for phone lookup
+  contacts?: { phone?: string | null } | null
+  leads?: { phone?: string | null } | null
+  accounts?: { phone?: string | null } | null
 }
 
 export default function OpportunityDetailPage() {
@@ -892,7 +896,11 @@ export default function OpportunityDetailPage() {
                 setPendingCloseStage(stage)
                 setShowCloseModal(true)
               }}
-              getOwnerDisplayName={getOwnerDisplayName}
+              getOwnerDisplayName={(ownerId, users) => {
+                // Convert between TenantUser types
+                const user = users.find(u => u.id === ownerId)
+                return user?.full_name || 'Unassigned'
+              }}
             />
           </TabsContent>
 
@@ -967,14 +975,14 @@ export default function OpportunityDetailPage() {
               entityId={opportunityId}
               communications={communications}
               showSMSThread={showSMSThread}
-              contactId={opportunity?.contact_id}
-              accountId={opportunity?.account_id}
-              leadId={opportunity?.lead_id}
+              contactId={opportunity?.contact_id ?? undefined}
+              accountId={opportunity?.account_id ?? undefined}
+              leadId={opportunity?.lead_id ?? undefined}
               opportunityId={opportunityId}
               contactPhone={
-                opportunity?.contacts?.phone ||
+                (opportunity?.contacts?.phone ||
                 opportunity?.leads?.phone ||
-                opportunity?.accounts?.phone
+                opportunity?.accounts?.phone) ?? undefined
               }
               onToggleSMSThread={() => setShowSMSThread(!showSMSThread)}
               onCreateEmail={() => setIsEmailModalOpen(true)}
