@@ -18,6 +18,7 @@ import { EventDescriptionCard } from '../../event-description-card'
 import { EventTypeBadge } from '../../event-type-badge'
 import { NotesSection } from '@/components/notes-section'
 import type { Event, EventDate, StaffAssignmentWithJoins } from '@/types/events'
+import type { EventWithRelations } from '@/hooks/useEventData'
 
 interface PaymentStatusOption {
   id: string
@@ -181,7 +182,7 @@ export function EventOverviewTab({
         <div className="lg:col-span-2 space-y-6">
           {/* Account and Contact */}
           <EventAccountContactCard
-            event={event}
+            event={event as unknown as EventWithRelations}
             isEditing={isEditingAccountContact}
             editAccountId={editAccountId}
             editContactId={editContactId}
@@ -242,12 +243,12 @@ export function EventOverviewTab({
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h3>
             <div className="space-y-3">
-              {(event.event_category || event.event_type) && (
+              {(event.event_category || event.event_types) && (
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-2">Category & Type</label>
                   <EventTypeBadge
                     category={event.event_category}
-                    type={event.event_type}
+                    type={event.event_types}
                   />
                 </div>
               )}
@@ -299,8 +300,8 @@ export function EventOverviewTab({
               <div>
                 <p className="text-sm font-medium text-gray-900">Last Updated</p>
                 <p className="text-xs text-gray-500">
-                  {new Date(event.updated_at).toLocaleDateString()} at{' '}
-                  {new Date(event.updated_at).toLocaleTimeString()}
+                  {event.updated_at ? new Date(event.updated_at).toLocaleDateString() : 'N/A'} at{' '}
+                  {event.updated_at ? new Date(event.updated_at).toLocaleTimeString() : 'N/A'}
                 </p>
               </div>
             </div>

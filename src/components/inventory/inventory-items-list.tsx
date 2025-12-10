@@ -33,8 +33,9 @@ export function InventoryItemsList() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isBulkCheckoutModalOpen, setIsBulkCheckoutModalOpen] = useState(false)
 
-  // Data hooks
-  const { data: items = [], isLoading } = useInventoryItemsData()
+  // Data hooks - extract the data array from the response
+  const { data: itemsResponse, isLoading } = useInventoryItemsData()
+  const items = itemsResponse?.data ?? []
   const { data: categories = [] } = useItemCategoriesData()
   const addItem = useAddInventoryItem()
   const updateItem = useUpdateInventoryItem()

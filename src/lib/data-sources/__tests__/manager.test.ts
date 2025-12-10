@@ -19,9 +19,10 @@ import crypto from 'crypto';
  * Helper type to access private methods for testing
  * In production, these methods are private for security
  */
-type DataSourceManagerWithPrivate = DataSourceManager & {
+interface DataSourceManagerWithPrivate {
   decryptKey: (encryptedKey: string) => string;
-};
+  encryptKey: (plainKey: string) => string;
+}
 
 describe('DataSourceManager - Encryption/Decryption', () => {
   let manager: DataSourceManager;
@@ -189,8 +190,8 @@ describe('DataSourceManager - Encryption/Decryption', () => {
     /**
      * Helper to access private decryptKey method for testing
      */
-    const decryptKey = (encrypted: string): string => {
-      return (manager as DataSourceManagerWithPrivate).decryptKey(encrypted);
+    const decryptKey = (mgr: DataSourceManager, encrypted: string): string => {
+      return (mgr as unknown as DataSourceManagerWithPrivate).decryptKey(encrypted);
     };
 
     /**
@@ -204,7 +205,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
       const encrypted = manager.encryptKey(plainText);
 
       // Decrypt
-      const decrypted = decryptKey(encrypted);
+      const decrypted = decryptKey(manager, encrypted);
 
       // Should match original
       expect(decrypted).toBe(plainText);
@@ -227,7 +228,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
         const encrypted = manager.encryptKey(originalText);
 
         // Decrypt
-        const decrypted = decryptKey(encrypted);
+        const decrypted = decryptKey(manager, encrypted);
 
         // Verify round-trip
         expect(decrypted).toBe(originalText);
@@ -250,7 +251,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
 
       // Attempt to decrypt with different key should fail
       expect(() => {
-        decryptKey(encrypted);
+        decryptKey(manager, encrypted);
       }).toThrow();
 
       // Restore original key
@@ -264,17 +265,17 @@ describe('DataSourceManager - Encryption/Decryption', () => {
     it('should throw error when encrypted data has invalid format', () => {
       // Missing colons
       expect(() => {
-        decryptKey('invalid-format-no-colons');
+        decryptKey(manager, 'invalid-format-no-colons');
       }).toThrow('Invalid encrypted key format');
 
       // Too few parts
       expect(() => {
-        decryptKey('only:two-parts');
+        decryptKey(manager, 'only:two-parts');
       }).toThrow('Invalid encrypted key format');
 
       // Too many parts
       expect(() => {
-        decryptKey('one:two:three:four');
+        decryptKey(manager, 'one:two:three:four');
       }).toThrow('Invalid encrypted key format');
     });
 
@@ -284,19 +285,19 @@ describe('DataSourceManager - Encryption/Decryption', () => {
      */
     it('should throw error when encrypted data has empty parts', () => {
       expect(() => {
-        decryptKey('::');
+        decryptKey(manager, '::');
       }).toThrow('Invalid encrypted key format. Missing required components');
 
       expect(() => {
-        decryptKey(':authTag:encrypted');
+        decryptKey(manager, ':authTag:encrypted');
       }).toThrow('Invalid encrypted key format. Missing required components');
 
       expect(() => {
-        decryptKey('iv::encrypted');
+        decryptKey(manager, 'iv::encrypted');
       }).toThrow('Invalid encrypted key format. Missing required components');
 
       expect(() => {
-        decryptKey('iv:authTag:');
+        decryptKey(manager, 'iv:authTag:');
       }).toThrow('Invalid encrypted key format. Missing required components');
     });
 
@@ -306,7 +307,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
      */
     it('should throw error when encrypted data has invalid base64', () => {
       expect(() => {
-        decryptKey('not-base64!:not-base64!:not-base64!');
+        decryptKey(manager, 'not-base64!:not-base64!:not-base64!');
       }).toThrow();
     });
 
@@ -324,7 +325,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
       const invalidEncrypted = `${shortIv}:${parts[1]}:${parts[2]}`;
 
       expect(() => {
-        decryptKey(invalidEncrypted);
+        decryptKey(manager, invalidEncrypted);
       }).toThrow('Invalid IV length');
     });
 
@@ -342,7 +343,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
       const invalidEncrypted = `${parts[0]}:${shortAuthTag}:${parts[2]}`;
 
       expect(() => {
-        decryptKey(invalidEncrypted);
+        decryptKey(manager, invalidEncrypted);
       }).toThrow('Invalid auth tag length');
     });
 
@@ -362,7 +363,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
 
       // Decryption should fail due to authentication failure
       expect(() => {
-        decryptKey(tamperedEncrypted);
+        decryptKey(manager, tamperedEncrypted);
       }).toThrow(/Authentication failed|tampered/i);
     });
 
@@ -376,7 +377,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
       delete process.env.ENCRYPTION_KEY;
 
       expect(() => {
-        decryptKey(encrypted);
+        decryptKey(manager, encrypted);
       }).toThrow('ENCRYPTION_KEY environment variable is not set');
 
       // Restore key
@@ -389,7 +390,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
      */
     it('should throw error when input is empty', () => {
       expect(() => {
-        decryptKey('');
+        decryptKey(manager, '');
       }).toThrow('Invalid input: encryptedKey must be a non-empty string');
     });
 
@@ -400,12 +401,12 @@ describe('DataSourceManager - Encryption/Decryption', () => {
     it('should throw error when input is not a string', () => {
       expect(() => {
         // @ts-expect-error Testing invalid input type
-        decryptKey(null);
+        decryptKey(manager, null);
       }).toThrow('Invalid input: encryptedKey must be a non-empty string');
 
       expect(() => {
         // @ts-expect-error Testing invalid input type
-        decryptKey(undefined);
+        decryptKey(manager, undefined);
       }).toThrow('Invalid input: encryptedKey must be a non-empty string');
     });
   });
@@ -460,6 +461,13 @@ describe('DataSourceManager - Encryption/Decryption', () => {
 
   describe('Integration Tests', () => {
     /**
+     * Helper to access private decryptKey method for testing
+     */
+    const decryptKeyIntegration = (mgr: DataSourceManager, encrypted: string): string => {
+      return (mgr as unknown as DataSourceManagerWithPrivate).decryptKey(encrypted);
+    };
+
+    /**
      * Test 22: Real-world scenario - API key encryption
      * Simulates encrypting and storing a Supabase API key
      */
@@ -474,7 +482,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
       expect(encrypted).toMatch(/^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/);
 
       // Decrypt and verify
-      const decrypted = (manager as DataSourceManagerWithPrivate).decryptKey(encrypted);
+      const decrypted = decryptKeyIntegration(manager, encrypted);
       expect(decrypted).toBe(mockSupabaseKey);
     });
 
@@ -499,7 +507,7 @@ describe('DataSourceManager - Encryption/Decryption', () => {
       const encrypted = manager.encryptKey(plainText);
       const startDecrypt = Date.now();
       for (let i = 0; i < iterations; i++) {
-        (manager as DataSourceManagerWithPrivate).decryptKey(encrypted);
+        decryptKeyIntegration(manager, encrypted);
       }
       const decryptTime = Date.now() - startDecrypt;
 

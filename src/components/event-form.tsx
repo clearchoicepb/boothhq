@@ -146,7 +146,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
-        log.debug('Updating event via API with data:', updateData)
+        log.debug({ updateData }, 'Updating event via API with data')
 
         const response = await fetch(`/api/events/${event.id}`, {
           method: 'PUT',
@@ -167,7 +167,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           start_date: new Date(formData.start_date).toISOString(),
           end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
         }
-        log.debug('Creating event via API with data:', insertData)
+        log.debug({ insertData }, 'Creating event via API with data')
 
         const response = await fetch('/api/events', {
           method: 'POST',
@@ -184,7 +184,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         result = responseData.event || responseData
       }
 
-      log.debug('Event saved successfully via API:', result)
+      log.debug({ result }, 'Event saved successfully via API')
       onSubmit(result)
     } catch (error: any) {
       log.error({ error }, '[EventForm] Error saving event')
@@ -330,7 +330,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
             <LocationSelect
               value={locationId}
               onChange={(locId, location) => {
-                log.debug('Location changed:', { locId, location })
+                log.debug({ locId, locationName: location?.name }, 'Location changed')
                 setLocationId(locId)
                 handleInputChange('location_id', locId)
                 // Also set location name in the old field for backward compatibility
@@ -349,7 +349,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           {/* Account */}
           <div>
             <AccountSelect
-              value={formData.account_id}
+              value={formData.account_id ?? null}
               onChange={(accountId) => {
                 handleInputChange('account_id', accountId)
                 // Clear contact if account changes
@@ -365,7 +365,7 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
           {/* Contact */}
           <div>
             <ContactSelect
-              value={formData.contact_id}
+              value={formData.contact_id ?? null}
               onChange={(contactId) => handleInputChange('contact_id', contactId)}
               accountId={formData.account_id}
               label="Contact"

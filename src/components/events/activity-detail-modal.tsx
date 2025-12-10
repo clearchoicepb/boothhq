@@ -56,7 +56,7 @@ export function ActivityDetailModal({
           )}
 
           {/* Task-specific fields */}
-          {activity.type === 'task' && activity.metadata && (
+          {activity.type === 'task' && activity.metadata ? (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -67,7 +67,7 @@ export function ActivityDetailModal({
                     activity.metadata.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {activity.metadata.status}
+                    {String(activity.metadata.status ?? '')}
                   </span>
                 </div>
                 <div>
@@ -78,38 +78,38 @@ export function ActivityDetailModal({
                     activity.metadata.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {activity.metadata.priority}
+                    {String(activity.metadata.priority ?? '')}
                   </span>
                 </div>
               </div>
-              {activity.metadata.due_date && (
+              {activity.metadata.due_date ? (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-500">Due Date</label>
                   <p className="text-sm text-gray-900">
-                    {new Date(activity.metadata.due_date).toLocaleString()}
+                    {new Date(String(activity.metadata.due_date)).toLocaleString()}
                   </p>
                 </div>
-              )}
+              ) : null}
             </>
-          )}
+          ) : null}
 
           {/* Attachment-specific fields */}
-          {activity.type === 'attachment' && activity.metadata && (
+          {activity.type === 'attachment' && activity.metadata ? (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-500">File Name</label>
-              <p className="font-mono text-sm text-gray-900">{activity.metadata.file_name}</p>
+              <p className="font-mono text-sm text-gray-900">{String(activity.metadata.file_name ?? '')}</p>
             </div>
-          )}
+          ) : null}
 
           {/* Note-specific fields */}
-          {activity.type === 'note' && activity.metadata && activity.metadata.content && (
+          {activity.type === 'note' && activity.metadata && activity.metadata.content ? (
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-500">Full Note</label>
               <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
-                <p className="whitespace-pre-wrap text-sm text-gray-900">{activity.metadata.content}</p>
+                <p className="whitespace-pre-wrap text-sm text-gray-900">{String(activity.metadata.content)}</p>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="mt-6 flex justify-end">

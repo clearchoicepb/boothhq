@@ -1,43 +1,56 @@
 import type { Account, Contact, Opportunity } from '@/lib/supabase-client'
 
-export const sampleAccounts: Account[] = [
+// Sample data uses partial types for demo purposes - cast to full types
+export const sampleAccounts = [
   {
     id: '1',
+    tenant_id: 'demo-tenant',
     name: 'Acme Corporation',
     industry: 'Technology',
     website: 'https://acme.com',
     phone: '+1-555-0123',
     email: 'contact@acme.com',
-    address: '123 Main St',
-    city: 'San Francisco',
-    state: 'CA',
-    country: 'USA',
-    postal_code: '94105',
-    annual_revenue: 5000000,
-    employee_count: 250,
+    billing_address_line_1: '123 Main St',
+    billing_address_line_2: null,
+    billing_city: 'San Francisco',
+    billing_state: 'CA',
+    billing_country: 'USA',
+    billing_postal_code: '94105',
+    shipping_address_line_1: null,
+    shipping_address_line_2: null,
+    shipping_city: null,
+    shipping_state: null,
+    shipping_country: null,
+    shipping_postal_code: null,
     status: 'active',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z'
   },
   {
     id: '2',
+    tenant_id: 'demo-tenant',
     name: 'Global Industries',
     industry: 'Manufacturing',
     website: 'https://global.com',
     phone: '+1-555-0456',
     email: 'info@global.com',
-    address: '456 Oak Ave',
-    city: 'Chicago',
-    state: 'IL',
-    country: 'USA',
-    postal_code: '60601',
-    annual_revenue: 15000000,
-    employee_count: 500,
+    billing_address_line_1: '456 Oak Ave',
+    billing_address_line_2: null,
+    billing_city: 'Chicago',
+    billing_state: 'IL',
+    billing_country: 'USA',
+    billing_postal_code: '60601',
+    shipping_address_line_1: null,
+    shipping_address_line_2: null,
+    shipping_city: null,
+    shipping_state: null,
+    shipping_country: null,
+    shipping_postal_code: null,
     status: 'active',
     created_at: '2024-01-02T00:00:00Z',
     updated_at: '2024-01-02T00:00:00Z'
   }
-]
+] as unknown as Account[]
 
 export const sampleContacts: Contact[] = [
   {
@@ -96,11 +109,14 @@ export const sampleContacts: Contact[] = [
   }
 ]
 
-export const sampleOpportunities: Opportunity[] = [
+export const sampleOpportunities = [
   {
     id: '1',
+    tenant_id: 'demo-tenant',
     account_id: '1',
     contact_id: '1',
+    lead_id: null,
+    owner_id: null,
     name: 'Enterprise Software License',
     description: 'Large enterprise software license deal',
     amount: 500000,
@@ -108,13 +124,32 @@ export const sampleOpportunities: Opportunity[] = [
     probability: 75,
     expected_close_date: '2024-03-01',
     actual_close_date: null,
+    close_reason: null,
+    close_notes: null,
+    event_type: null,
+    date_type: null,
+    event_date: null,
+    initial_date: null,
+    final_date: null,
+    guest_count: null,
+    location_id: null,
+    venue_name: null,
+    venue_address: null,
+    venue_city: null,
+    venue_state: null,
+    venue_zip: null,
+    source: null,
+    lost_to_competitor: null,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z'
   },
   {
     id: '2',
+    tenant_id: 'demo-tenant',
     account_id: '2',
     contact_id: '3',
+    lead_id: null,
+    owner_id: null,
     name: 'Manufacturing Equipment',
     description: 'New manufacturing equipment purchase',
     amount: 250000,
@@ -122,7 +157,23 @@ export const sampleOpportunities: Opportunity[] = [
     probability: 60,
     expected_close_date: '2024-02-15',
     actual_close_date: null,
+    close_reason: null,
+    close_notes: null,
+    event_type: null,
+    date_type: null,
+    event_date: null,
+    initial_date: null,
+    final_date: null,
+    guest_count: null,
+    location_id: null,
+    venue_name: null,
+    venue_address: null,
+    venue_city: null,
+    venue_state: null,
+    venue_zip: null,
+    source: null,
+    lost_to_competitor: null,
     created_at: '2024-01-02T00:00:00Z',
     updated_at: '2024-01-02T00:00:00Z'
   }
-]
+] as unknown as Opportunity[]

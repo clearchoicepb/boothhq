@@ -91,7 +91,9 @@ export async function GET(
         .eq('tenant_id', dataSourceTenantId)
 
       packages = lineItems?.map(item => {
-        const pkg = item.package as { id: string; name: string; category: string } | null
+        // Handle Supabase join result - can be array or object depending on DB types
+        const pkgData = item.package as unknown
+        const pkg = Array.isArray(pkgData) ? pkgData[0] : pkgData as { id: string; name: string; category: string } | null
         return {
           id: item.id,
           name: pkg?.name || 'Custom Item',
@@ -157,7 +159,21 @@ export async function GET(
     }
 
     // Build location object - prefer event_dates location, fall back to old TEXT field
-    let locationData = primaryEventDate?.location
+    // Handle Supabase join result - can be array or object
+    const eventDateLocation = primaryEventDate?.location as unknown
+    let locationData: {
+      name: string | null
+      address_line1: string | null
+      address_line2: string | null
+      city: string | null
+      state: string | null
+      postal_code: string | null
+      country: string | null
+      contact_name: string | null
+      contact_phone: string | null
+      contact_email: string | null
+      notes: string | null
+    } | null = Array.isArray(eventDateLocation) ? eventDateLocation[0] : eventDateLocation as typeof locationData
 
     // If no location from event_dates and we have old TEXT location, create a simple object
     if (!locationData && event.location) {
@@ -178,8 +194,11 @@ export async function GET(
 
     // Build logistics object
     const staffArray = staffAssignments?.map(sa => {
-      const user = sa.users as { first_name: string; last_name: string; email: string } | null
-      const staffRole = sa.staff_roles as { name: string; type: string } | null
+      // Handle Supabase join result - can be array or object
+      const usersData = sa.users as unknown
+      const user = Array.isArray(usersData) ? usersData[0] : usersData as { first_name: string; last_name: string; email: string } | null
+      const rolesData = sa.staff_roles as unknown
+      const staffRole = Array.isArray(rolesData) ? rolesData[0] : rolesData as { name: string; type: string } | null
       return {
         id: sa.id,
         name: user ? `${user.first_name} ${user.last_name}`.trim() : 'Unknown',
@@ -194,7 +213,9 @@ export async function GET(
     log.debug({ staffArray }, 'Transformed staff array')
 
     // Cast account as single object (many-to-one relationship)
-    const account = event.account as { name: string } | null
+    // Handle Supabase join result - can be array or object
+    const accountData = event.account as unknown
+    const account = Array.isArray(accountData) ? accountData[0] : accountData as { name: string } | null
 
     const logistics = {
       client_name: account?.name,
@@ -225,7 +246,9 @@ export async function GET(
       packages,
       custom_items: customItems || [],
       equipment: boothAssignments?.map(ba => {
-        const booth = ba.booth as { booth_name: string; booth_type: string; serial_number: string } | null
+        // Handle Supabase join result - can be array or object
+        const boothData = ba.booth as unknown
+        const booth = Array.isArray(boothData) ? boothData[0] : boothData as { booth_name: string; booth_type: string; serial_number: string } | null
         return {
           id: ba.id,
           name: booth?.booth_name,

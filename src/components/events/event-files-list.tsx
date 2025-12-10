@@ -43,7 +43,7 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null)
 
   const fetchFiles = async () => {
-    log.debug('Fetching files for event:', eventId)
+    log.debug({ eventId }, 'Fetching files for event')
     
     try {
       setLoading(true)
@@ -55,12 +55,12 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
       })
 
       const url = `/api/attachments?${params}`
-      log.debug('Fetching from:', url)
+      log.debug({ url }, 'Fetching from')
 
       const response = await fetch(url)
 
-      log.debug('Response status:', response.status)
-      log.debug('Response ok:', response.ok)
+      log.debug({ status: response.status }, 'Response status')
+      log.debug({ ok: response.ok }, 'Response ok')
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -100,12 +100,12 @@ export function EventFilesList({ eventId, refreshTrigger = 0 }: EventFilesListPr
   }
 
   const handleDownload = async (fileId: string, fileName: string) => {
-    log.debug('Downloading file:', fileId, fileName)
+    log.debug({ fileId, fileName }, 'Downloading file')
     
     try {
       const response = await fetch(`/api/attachments/${fileId}`)
 
-      log.debug('Download response:', response.status)
+      log.debug({ status: response.status }, 'Download response')
 
       if (!response.ok) {
         throw new Error('Failed to get download URL')

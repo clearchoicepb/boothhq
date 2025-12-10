@@ -164,11 +164,13 @@ export async function POST(request: NextRequest) {
     }
     // Check departments array first, then fall back to legacy singular department
     if (!taskDepartment) {
-      const userDepartments = session.user.departments as string[] | undefined
+      // Extended user properties from NextAuth session
+      const extendedUser = session.user as typeof session.user & { departments?: string[]; department?: string }
+      const userDepartments = extendedUser.departments
       if (userDepartments && Array.isArray(userDepartments) && userDepartments.length > 0) {
         taskDepartment = userDepartments[0] // Use first department as default
-      } else if (session.user.department) {
-        taskDepartment = session.user.department as string
+      } else if (extendedUser.department) {
+        taskDepartment = extendedUser.department
       }
     }
 

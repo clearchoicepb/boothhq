@@ -86,8 +86,8 @@ export function GenerateEventAgreementModal({
       }
 
       log.debug('Making POST request to /api/contracts')
-      log.debug('Request body:', requestBody)
-      log.debug('Full URL:', `${window.location.origin}/api/contracts`)
+      log.debug({ requestBody }, 'Request body')
+      log.debug({ url: `${window.location.origin}/api/contracts` }, 'Full URL')
 
       // Create contract with e-signature capability
       const response = await fetch('/api/contracts', {
@@ -96,8 +96,8 @@ export function GenerateEventAgreementModal({
         body: JSON.stringify(requestBody)
       })
 
-      log.debug('Response status:', response.status)
-      log.debug('Response ok:', response.ok)
+      log.debug({ status: response.status }, 'Response status')
+      log.debug({ ok: response.ok }, 'Response ok')
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -176,7 +176,7 @@ export function GenerateEventAgreementModal({
 
   const handleSendEmail = async () => {
     // TODO: Implement email sending
-    toast.info('Email sending coming soon! For now, copy and share the link.')
+    toast('Email sending coming soon! For now, copy and share the link.')
   }
 
   const handleClose = () => {

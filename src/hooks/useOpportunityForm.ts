@@ -28,6 +28,17 @@ interface EventTypeOption {
   name: string
   slug: string
   event_category_id: string
+  is_active?: boolean
+}
+
+// Form-specific event date interface (id is optional for new dates)
+interface FormEventDate {
+  id?: string
+  event_date: string
+  start_time: string
+  end_time: string
+  location_id: string
+  notes: string
 }
 
 interface StageOption {
@@ -69,7 +80,7 @@ export function useOpportunityForm({
     date_type: 'single_day'
   })
 
-  const [eventDates, setEventDates] = useState<EventDate[]>([
+  const [eventDates, setEventDates] = useState<FormEventDate[]>([
     { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }
   ])
 
@@ -95,7 +106,7 @@ export function useOpportunityForm({
           const eventTypesData = await eventTypesRes.json()
           // API returns { eventTypes: [...] }
           const types = eventTypesData.eventTypes || []
-          setEventTypes(types.filter((t: EventTypeOption) => t.is_active !== false))
+          setEventTypes(types.filter((t: EventTypeOption) => (t.is_active ?? true) !== false))
         }
 
         if (stagesRes.ok) {
@@ -134,7 +145,7 @@ export function useOpportunityForm({
   }
 
   const addEventDate = () => {
-    setEventDates(prev => [...prev, { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }])
+    setEventDates((prev: FormEventDate[]) => [...prev, { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }])
     if (errors.event_dates) {
       setErrors(prev => ({ ...prev, event_dates: '' }))
     }

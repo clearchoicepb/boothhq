@@ -4,12 +4,21 @@
  */
 
 import { useEffect } from 'react'
-import type { EventDate } from '@/types/events'
+
+// Form-specific event date interface (id is optional for new dates)
+interface FormEventDate {
+  id?: string
+  event_date: string
+  start_time: string
+  end_time: string
+  location_id: string
+  notes: string
+}
 
 interface UseOpportunityFormInitializerProps {
   opportunity?: any
   setFormData: (data: any) => void
-  setEventDates: (dates: EventDate[]) => void
+  setEventDates: (dates: FormEventDate[]) => void
   setSharedLocationId: (locationId: string) => void
 }
 
@@ -84,7 +93,7 @@ export function useOpportunityFormInitializer({
       setEventDates(eventDates)
 
       // Set shared location if all dates have the same location
-      const locations = eventDates.map(d => d.location_id).filter(l => l)
+      const locations = eventDates.map((d: FormEventDate) => d.location_id).filter((l: string) => l)
       const uniqueLocations = new Set(locations)
       if (uniqueLocations.size === 1 && locations.length > 0) {
         setSharedLocationId(locations[0])

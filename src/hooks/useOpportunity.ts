@@ -37,6 +37,10 @@ export interface Opportunity {
   event_dates?: EventDate[]
   created_at: string
   updated_at: string
+  // Optional joined relations for phone lookup
+  contacts?: { phone?: string | null } | null
+  leads?: { phone?: string | null } | null
+  accounts?: { phone?: string | null } | null
 }
 
 async function fetchOpportunity(opportunityId: string): Promise<Opportunity> {
