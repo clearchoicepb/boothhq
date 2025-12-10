@@ -120,7 +120,6 @@ export const contactFormConfig: FormConfig<Contact> = {
     }
   ],
   defaultValues: {
-    status: 'active',
-    tenant_id: ''
+    status: 'active'
   }
 }

@@ -328,7 +328,7 @@ export function MyTasksDashboard() {
                         </button>
                       )}
 
-                      {task.auto_created && (
+                      {(task as any).auto_created && (
                         <span className="flex items-center text-purple-600">
                           <AlertCircle className="h-4 w-4 mr-1" />
                           Auto-created
