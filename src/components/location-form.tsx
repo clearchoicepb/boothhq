@@ -131,7 +131,7 @@ export function LocationForm({
 
     setIsLoading(true)
     try {
-      log.debug('Submitting location data:', formData)
+      log.debug({ formData }, 'Submitting location data')
       await onSave(formData)
       log.debug('onSave completed successfully')
       onClose()

@@ -7,7 +7,7 @@ interface InvoiceDetailsProps {
   savingField: string | null
   canEdit: boolean
   onStartEdit: (field: string) => void
-  onSaveField: (invoiceId: string, field: string, value: string) => void
+  onSaveField: (invoiceId: string, field: string, value: string) => void | Promise<void>
   onCancelEdit: () => void
 }
 
@@ -39,7 +39,7 @@ export function InvoiceDetails({
           isLoading={savingField === `${invoice.id}-issue_date`}
           canEdit={canEdit}
           onStartEdit={() => onStartEdit(`${invoice.id}-issue_date`)}
-          onSave={(value) => onSaveField(invoice.id, 'issue_date', value)}
+          onSave={async (value) => { await onSaveField(invoice.id, 'issue_date', value) }}
           onCancel={onCancelEdit}
         />
         <div className="space-y-1">
@@ -54,7 +54,7 @@ export function InvoiceDetails({
           isLoading={savingField === `${invoice.id}-purchase_order`}
           canEdit={canEdit}
           onStartEdit={() => onStartEdit(`${invoice.id}-purchase_order`)}
-          onSave={(value) => onSaveField(invoice.id, 'purchase_order', value)}
+          onSave={async (value) => { await onSaveField(invoice.id, 'purchase_order', value) }}
           onCancel={onCancelEdit}
         />
       </div>

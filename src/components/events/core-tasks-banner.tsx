@@ -59,7 +59,7 @@ export function CoreTasksBanner({ eventId, onViewTasks }: CoreTasksBannerProps) 
     return null // Don't show while loading
   }
 
-  const completedTasks = tasks.filter(t => t.is_completed).length
+  const completedTasks = tasks.filter((t: any) => t.is_completed).length
   const totalTasks = tasks.length
   const incompleteTasks = totalTasks - completedTasks
   const allComplete = incompleteTasks === 0

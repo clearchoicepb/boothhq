@@ -89,7 +89,7 @@ export function EventInvoicesList({
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${parseFloat(invoice.total_amount || 0).toLocaleString()}
+                      ${parseFloat(String(invoice.total_amount || 0)).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}

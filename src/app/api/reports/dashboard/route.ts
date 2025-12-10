@@ -246,8 +246,8 @@ export async function GET(request: NextRequest) {
       .gte('end_date', previousStartDate.toISOString())
 
     // Count event days
-    const totalScheduledEvents = countEventDays(currentEvents, startDate, endDate)
-    const prevScheduledEvents = countEventDays(previousEvents, previousStartDate, previousEndDate)
+    const totalScheduledEvents = countEventDays(currentEvents || [], startDate, endDate)
+    const prevScheduledEvents = countEventDays(previousEvents || [], previousStartDate, previousEndDate)
     const scheduledEventsChange = prevScheduledEvents > 0 ? ((totalScheduledEvents - prevScheduledEvents) / prevScheduledEvents) * 100 : 0
 
     // Get revenue and payments by month (last 6 months for chart)
@@ -318,7 +318,7 @@ export async function GET(request: NextRequest) {
         .gte('end_date', monthStart.toISOString())
 
       const booked = monthWonOpps?.length || 0
-      const scheduled = countEventDays(monthEvents, monthStart, monthEnd)
+      const scheduled = countEventDays(monthEvents || [], monthStart, monthEnd)
 
       eventsByMonth.push({
         month: monthStart.toLocaleDateString('en-US', { month: 'short' }),

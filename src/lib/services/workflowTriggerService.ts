@@ -153,11 +153,7 @@ class WorkflowTriggerService {
   async onTaskStatusChanged(options: TaskStatusChangedOptions): Promise<WorkflowExecutionResult[]> {
     const { task, previousStatus, tenantId, dataSourceTenantId, supabase, userId } = options
 
-    log.debug('onTaskStatusChanged called:', {
-      taskId: task.id,
-      from: previousStatus,
-      to: task.status,
-    })
+    log.debug({ taskId: task.id, from: previousStatus, to: task.status }, 'onTaskStatusChanged called')
 
     // Don't trigger if status didn't actually change
     if (previousStatus === task.status) {
@@ -233,10 +229,7 @@ class WorkflowTriggerService {
   async onEventDateApproaching(options: EventDateApproachingOptions): Promise<WorkflowExecutionResult[]> {
     const { event, daysUntilEvent, tenantId, dataSourceTenantId, supabase, userId } = options
 
-    log.debug('onEventDateApproaching called:', {
-      eventId: event.id,
-      daysUntilEvent,
-    })
+    log.debug({ eventId: event.id, daysUntilEvent }, 'onEventDateApproaching called')
 
     try {
       // Find matching workflows where days_before matches

@@ -11,7 +11,7 @@ export type { EventDate }
 /**
  * Event with related data (account, contact, opportunity names, category, type, payment status)
  */
-export interface EventWithRelations extends EventType {
+export interface EventWithRelations extends Omit<EventType, 'event_type'> {
   account_name: string | null
   contact_name: string | null // Legacy field
   opportunity_name: string | null

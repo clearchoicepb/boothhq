@@ -10,9 +10,18 @@ interface ModalProps {
   title: string
   children?: React.ReactNode
   className?: string
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
 }
 
-export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+const sizeClasses = {
+  sm: 'sm:max-w-md',
+  md: 'sm:max-w-lg',
+  lg: 'sm:max-w-2xl',
+  xl: 'sm:max-w-4xl',
+  full: 'sm:max-w-6xl',
+}
+
+export function Modal({ isOpen, onClose, title, children, className, size = 'full' }: ModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -40,7 +49,8 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <div className="fixed inset-0 bg-black/10 transition-opacity" onClick={onClose} />
         <div className={cn(
-          "relative transform overflow-hidden rounded-lg bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-6xl",
+          "relative transform overflow-hidden rounded-lg bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full",
+          sizeClasses[size],
           className
         )}>
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

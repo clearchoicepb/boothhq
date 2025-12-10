@@ -31,12 +31,12 @@ export function EventPreviewModal({
   // Debug: Log what date we're supposed to show
   useEffect(() => {
     if (isOpen) {
-      log.debug('Opening with:', {
+      log.debug({
         eventId,
         selectedEventDate,
         hasSelectedDate: !!selectedEventDate,
         selectedDateValue: selectedEventDate?.event_date
-      })
+      }, 'Opening with')
     }
   }, [isOpen, eventId, selectedEventDate])
 

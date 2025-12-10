@@ -70,7 +70,7 @@ export async function GET() {
       .reduce((sum, d: any) => sum + (d.count || 0), 0);
 
     results.summary = {
-      totalRecords,
+      totalRecords: totalRecords as number,
       tablesWithData: Object.entries(results.data)
         .filter(([_, d]: any) => !d.error && d.count > 0)
         .map(([table]) => table),

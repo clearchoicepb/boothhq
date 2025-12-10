@@ -87,18 +87,17 @@ export function useEventsFilters({
   currentUserId
 }: UseEventsFiltersParams): UseEventsFiltersReturn {
   // Filter state
-  const [filters, setFilters] = useState<FilterState>(
-    initialFilters || {
-      searchTerm: '',
-      dateRangeFilter: 'upcoming',
-      customDaysFilter: null,
-      statusFilter: 'all',
-      taskFilter: 'all',
-      taskDateRangeFilter: 14,
-      selectedTaskIds: [],
-      assignedToFilter: 'all'
-    }
-  )
+  const [filters, setFilters] = useState<FilterState>({
+    searchTerm: '',
+    dateRangeFilter: 'upcoming',
+    customDaysFilter: null,
+    statusFilter: 'all',
+    taskFilter: 'all',
+    taskDateRangeFilter: 14,
+    selectedTaskIds: [],
+    assignedToFilter: 'all',
+    ...initialFilters
+  })
 
   // Sort state
   const [sortBy, setSortBy] = useState<SortOption>(initialSortBy)

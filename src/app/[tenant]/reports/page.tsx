@@ -182,8 +182,8 @@ export default function ReportsPage() {
       const usersResponse = await fetch(`/api/users?id=in.(${userIds.join(',')})`)
       const users = usersResponse.ok ? await usersResponse.json() : []
 
-      const userMap = new Map(users.map((u: any) => [u.id, `${u.first_name} ${u.last_name}`]))
-      const accountOwnerMap = new Map(accounts.map((a: any) => [a.id, a.assigned_to]))
+      const userMap = new Map<string, string>(users.map((u: any) => [u.id, `${u.first_name} ${u.last_name}`]))
+      const accountOwnerMap = new Map<string, string>(accounts.map((a: any) => [a.id, a.assigned_to]))
 
       // Calculate owner performance
       const ownerMap = new Map<string, { deals_won: number; total_revenue: number }>()

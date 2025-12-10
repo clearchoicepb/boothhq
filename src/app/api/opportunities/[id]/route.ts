@@ -100,7 +100,7 @@ export async function PUT(
         if (settings.autoCalculateProbability === true || settings.autoCalculateProbability === 'true') {
           // Get stages array - it's already an array in the settings!
           const stages = settings.stages || []
-          const stageConfig = stages.find(s => s.id === filteredData.stage)
+          const stageConfig = stages.find((s: any) => s.id === filteredData.stage)
 
           if (stageConfig) {
             // Handle both number and string probabilities

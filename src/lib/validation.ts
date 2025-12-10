@@ -104,8 +104,8 @@ export function sanitizeInput(input: string): string {
 
 // Sanitize object inputs
 export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
-  const sanitized = { ...obj }
-  
+  const sanitized: Record<string, any> = { ...obj }
+
   for (const [key, value] of Object.entries(sanitized)) {
     if (typeof value === 'string') {
       sanitized[key] = sanitizeInput(value)
@@ -113,6 +113,6 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
       sanitized[key] = sanitizeObject(value)
     }
   }
-  
-  return sanitized
+
+  return sanitized as T
 }

@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
             let recipients: string[] = []
 
             // Cast inventory_item as single object (many-to-one relationship)
-            const inventoryItem = notification.inventory_item as { id: string; item_name: string; assigned_to_id: string | null; assigned_to_type: string | null } | null
+            const inventoryItem = notification.inventory_item as unknown as { id: string; item_name: string; assigned_to_id: string | null; assigned_to_type: string | null } | null
 
             // Try to get email from assigned user
             if (inventoryItem?.assigned_to_id &&
