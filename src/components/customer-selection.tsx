@@ -40,7 +40,7 @@ interface CustomerSelectionProps {
 
 export function CustomerSelection({ isOpen, onClose, onCustomerSelected, preSelectedAccountId }: CustomerSelectionProps) {
   const [step, setStep] = useState<'select' | 'new-lead' | 'new-account' | 'new-contact'>('select')
-  const [customerType, setCustomerType] = useState<'new-lead' | 'existing-lead' | 'existing-account'>('new-lead')
+  const [customerType, setCustomerType] = useState<'new-lead' | 'existing-lead' | 'new-account' | 'existing-account'>('new-lead')
   const [leads, setLeads] = useState<Customer[]>([])
   const [accounts, setAccounts] = useState<Customer[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])

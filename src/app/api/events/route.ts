@@ -140,20 +140,22 @@ export async function GET(request: NextRequest) {
         }
 
         if (!staffError && staffData) {
-          const uniqueUserIds = [...new Set(staffData.map(a => a.user_id))]
-          log.debug({ 
-            totalAssignments: staffData.length, 
-            uniqueUserCount: uniqueUserIds.length 
-          }, 'Staff assignments fetched')
-          
-          staffData.forEach(assignment => {
-            if (!staffAssignmentsByEvent[assignment.event_id]) {
-              staffAssignmentsByEvent[assignment.event_id] = []
-            }
-            staffAssignmentsByEvent[assignment.event_id].push(assignment)
-          })
-        } else if (staffData?.length === 0) {
-          log.debug({}, 'No staff assignments found in database')
+          if (staffData.length > 0) {
+            const uniqueUserIds = [...new Set(staffData.map(a => a.user_id))]
+            log.debug({
+              totalAssignments: staffData.length,
+              uniqueUserCount: uniqueUserIds.length
+            }, 'Staff assignments fetched')
+
+            staffData.forEach(assignment => {
+              if (!staffAssignmentsByEvent[assignment.event_id]) {
+                staffAssignmentsByEvent[assignment.event_id] = []
+              }
+              staffAssignmentsByEvent[assignment.event_id].push(assignment)
+            })
+          } else {
+            log.debug({}, 'No staff assignments found in database')
+          }
         }
       } catch (staffErr) {
         log.warn({ error: staffErr }, 'Could not fetch staff assignments')
