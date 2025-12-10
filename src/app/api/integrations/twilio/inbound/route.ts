@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
 
     // STEP 2: Get Tenant Database client
     log.debug('Connecting to tenant database')
-    const tenantSupabase = await getTenantClient(tenantId)
+    // tenantId is guaranteed to be non-null here (we return early if not matched)
+    const tenantSupabase = await getTenantClient(tenantId!)
 
     // STEP 3: Try to find matching contact, lead, or account in TENANT DB
     log.debug('Looking for contact/lead/account by phone number')

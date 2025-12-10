@@ -60,7 +60,7 @@ export function EventInformationCard({
               <select
                 id="payment-status"
                 name="payment-status"
-                value={event.payment_status || ''}
+                value={event.payment_status?.name || ''}
                 onChange={(e) => onUpdatePaymentStatus(e.target.value)}
                 className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
               >
@@ -82,8 +82,8 @@ export function EventInformationCard({
           ) : (
             <div className="flex items-center gap-2">
               <PaymentStatusBadge
-                status={event.payment_status}
-                color={paymentStatusOptions.find(opt => opt.status_name === event.payment_status)?.status_color}
+                status={event.payment_status?.name}
+                color={event.payment_status?.color}
               />
               {canManageEvents && (
                 <button

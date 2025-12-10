@@ -1,5 +1,5 @@
 interface EventStatusBadgeProps {
-  status: string
+  status: string | undefined
   size?: 'sm' | 'md' | 'lg'
 }
 
@@ -9,7 +9,7 @@ const sizeClasses = {
   lg: 'px-3 py-1 text-sm',
 }
 
-function getStatusColor(status: string): string {
+function getStatusColor(status: string | undefined): string {
   switch (status) {
     case 'scheduled':
       return 'bg-blue-100 text-blue-800'
@@ -26,10 +26,10 @@ function getStatusColor(status: string): string {
 
 export function EventStatusBadge({ status, size = 'md' }: EventStatusBadgeProps) {
   return (
-    <span 
+    <span
       className={`inline-flex items-center rounded-full font-medium ${sizeClasses[size]} ${getStatusColor(status)}`}
     >
-      {status}
+      {status || 'Unknown'}
     </span>
   )
 }

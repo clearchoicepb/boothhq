@@ -143,8 +143,9 @@ export function EventDesignItems({ eventId, eventDate, tenant }: EventDesignItem
     return statusConfig?.is_completed || false
   }
 
-  const getUrgencyColor = (daysUntil: number, status: string) => {
+  const getUrgencyColor = (daysUntil: number | null, status: string) => {
     if (isCompletedStatus(status)) return 'green'
+    if (daysUntil === null) return 'gray' // No deadline set
     if (daysUntil < 0) return 'red'
     if (daysUntil <= 3) return 'red'
     if (daysUntil <= 7) return 'orange'

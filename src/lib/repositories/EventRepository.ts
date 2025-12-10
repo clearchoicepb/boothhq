@@ -187,7 +187,7 @@ export class EventRepository extends GenericRepository<Event> {
   async updateEvent(id: string, data: Partial<Event>, tenantId: string): Promise<Event> {
     // Optionally fetch existing event for context-aware validation
     // (e.g., validating end_date against existing start_date)
-    let existingEvent: Event | undefined;
+    let existingEvent: Event | null = null;
     try {
       existingEvent = await this.findById(id, tenantId);
     } catch (error) {

@@ -11,6 +11,7 @@
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { EventValidator, eventValidator } from '@/lib/validators/EventValidator';
+import type { Event } from '@/lib/supabase-client';
 
 describe('EventValidator', () => {
   describe('validateCreate', () => {
@@ -254,6 +255,7 @@ describe('EventValidator', () => {
   });
 
   describe('validateUpdate', () => {
+    // Mock event for testing - cast to Event to satisfy type requirements
     const existingEvent = {
       id: '123',
       title: 'Existing Event',
@@ -264,7 +266,29 @@ describe('EventValidator', () => {
       tenant_id: 'tenant-1',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    };
+      account_id: null,
+      contact_id: null,
+      opportunity_id: null,
+      primary_contact_id: null,
+      event_planner_id: null,
+      event_category_id: null,
+      event_type_id: null,
+      payment_status: null,
+      description: null,
+      location: null,
+      guest_count: null,
+      notes: null,
+      is_recurring: false,
+      recurrence_pattern: null,
+      parent_event_id: null,
+      created_by: null,
+      updated_by: null,
+      event_value: null,
+      next_date: null,
+      archived: false,
+      archived_at: null,
+      archived_by: null,
+    } as Event;
 
     it('should validate a valid event update', () => {
       const data = {

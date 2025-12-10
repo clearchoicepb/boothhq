@@ -130,7 +130,7 @@ export class EventValidator {
    */
   validateUpdate(
     data: Partial<Event>,
-    existingEvent?: Event
+    existingEvent?: Event | null
   ): ValidationResult {
     const errors: string[] = [];
 
@@ -160,23 +160,24 @@ export class EventValidator {
 
     // Date validations
     // If both dates are being updated, validate them together
-    if (data.start_date !== undefined && data.end_date !== undefined) {
+    if (data.start_date !== undefined && data.start_date !== null &&
+        data.end_date !== undefined && data.end_date !== null) {
       const dateErrors = this.validateDateRange(data.start_date, data.end_date);
       errors.push(...dateErrors);
     }
     // If only start_date is being updated, validate against existing end_date
-    else if (data.start_date !== undefined && existingEvent?.end_date) {
+    else if (data.start_date !== undefined && data.start_date !== null && existingEvent?.end_date) {
       const dateErrors = this.validateDateRange(data.start_date, existingEvent.end_date);
       errors.push(...dateErrors);
     }
     // If only end_date is being updated, validate against existing start_date
-    else if (data.end_date !== undefined && existingEvent?.start_date) {
+    else if (data.end_date !== undefined && data.end_date !== null && existingEvent?.start_date) {
       const dateErrors = this.validateDateRange(existingEvent.start_date, data.end_date);
       errors.push(...dateErrors);
     }
 
     // Validate start date is not in the past (if being updated and config disallows it)
-    if (data.start_date !== undefined && !this.config.allowPastDates) {
+    if (data.start_date !== undefined && data.start_date !== null && !this.config.allowPastDates) {
       const pastDateErrors = this.validateNotPastDate(data.start_date, 'Start date');
       errors.push(...pastDateErrors);
     }
