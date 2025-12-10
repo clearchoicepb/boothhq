@@ -488,7 +488,7 @@ export function WeekendPrepDashboard() {
                           </Link>
                           {(() => {
                             const statusInfo = getStatusDisplayInfo(event.event_status || 'needs_prep')
-                            const Icon = event.event_status === 'needs_gear_assigned' ? AlertTriangle :
+                            const Icon = (event.event_status as string) === 'needs_gear_assigned' ? AlertTriangle :
                                        event.event_status === 'needs_prep' ? AlertTriangle :
                                        event.event_status === 'ready_for_pickup' ? CheckCircle :
                                        event.event_status === 'in_transit' ? Truck :

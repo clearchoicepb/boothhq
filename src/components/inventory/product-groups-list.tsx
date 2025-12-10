@@ -161,7 +161,7 @@ export function ProductGroupsList() {
     assignedToType: string,
     assignedToId: string
   ) => {
-    log.debug('Updating group:', groupId, 'to:', assignedToType, assignedToId)
+    log.debug({ groupId, assignedToType, assignedToId }, 'Updating group')
 
     try {
       await updateGroup.mutateAsync({
