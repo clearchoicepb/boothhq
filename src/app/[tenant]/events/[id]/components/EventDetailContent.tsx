@@ -35,7 +35,8 @@ import { useEventDetail } from '@/contexts/EventDetailContext'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 import { createLogger } from '@/lib/logger'
 import { EventDetailModals } from './EventDetailModals'
-import type { EventActivity, StaffAssignmentWithJoins, SelectedDateTime } from '@/types/events'
+import type { EventActivity, StaffAssignmentWithJoins, SelectedDateTime, Event } from '@/types/events'
+import type { Communication as CommunicationsTabCommunication } from '@/components/shared/CommunicationsTab'
 
 const log = createLogger('EventDetailContent')
 
@@ -53,8 +54,8 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   const eventId = params.id as string
 
   // Custom Hooks
-  const references = useEventReferences(session, tenantSubdomain)
-  const tabs = useEventTabs(eventId, session, tenant)
+  const references = useEventReferences(tenantSubdomain)
+  const tabs = useEventTabs(eventId)
   const staff = useEventStaff(eventId)
 
   // Context
@@ -67,6 +68,18 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
 
   // Get the next upcoming event date
   const nextEventDate = useMemo(() => getNextEventDate(eventDates), [eventDates])
+
+  // Convert EventWithRelations to Event type for components that expect it
+  const eventForComponents = useMemo((): Event | null => {
+    if (!event) return null
+    return {
+      ...event,
+      // Convert joined objects to string values for Event type
+      event_type: typeof event.event_type === 'object' ? event.event_type?.name || '' : event.event_type || '',
+      // Pass through event_dates for components
+      event_dates: eventDates,
+    } as Event
+  }, [event, eventDates])
 
   // Destructure for easier access - Context
   const { modals: contextModals, detailModals, editing: contextEditing } = context
@@ -117,8 +130,8 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   }
 
   const handleActivityClick = (activity: EventActivity) => {
-    if (activity.type === 'communication') {
-      context.openCommunicationDetail(activity.metadata)
+    if (activity.type === 'communication' && activity.metadata) {
+      context.openCommunicationDetail(activity.metadata as unknown as Parameters<typeof context.openCommunicationDetail>[0])
     } else {
       context.openActivityDetail(activity)
     }
@@ -196,11 +209,13 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
         (s: StaffAssignmentWithJoins) => s.user_id === staffMember.user_id && s.staff_role_id === staffMember.staff_role_id
       )
 
-      const dateTimes = userRoleAssignments.map((assignment: StaffAssignmentWithJoins) => ({
-        dateId: assignment.event_date_id,
-        startTime: assignment.start_time || '',
-        endTime: assignment.end_time || ''
-      }))
+      const dateTimes = userRoleAssignments
+        .filter((assignment: StaffAssignmentWithJoins) => assignment.event_date_id !== null)
+        .map((assignment: StaffAssignmentWithJoins) => ({
+          dateId: assignment.event_date_id as string,
+          startTime: assignment.start_time || '',
+          endTime: assignment.end_time || ''
+        }))
 
       staff.setSelectedDateTimes(dateTimes)
     } else {
@@ -254,7 +269,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
           />
 
           {/* Sticky Event Context Bar */}
-          <StickyEventContext event={event} />
+          <StickyEventContext event={eventForComponents!} />
 
           {/* Core Tasks Banner */}
           <CoreTasksBanner
@@ -273,7 +288,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
               {/* Overview Tab */}
               <TabsContent value="overview" className="mt-0">
                 <EventOverviewTab
-                  event={event}
+                  event={eventForComponents!}
                   eventDates={eventDates}
                   paymentStatusOptions={paymentStatusOptions}
                   tenantSubdomain={tenantSubdomain}
@@ -373,18 +388,17 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                 <CommunicationsTab
                   entityType="event"
                   entityId={eventId}
-                  communications={communications}
+                  communications={communications as CommunicationsTabCommunication[]}
                   showSMSThread={detailModals.showSMSThread}
-                  contactId={event?.contact_id}
-                  accountId={event?.account_id}
+                  contactId={event?.contact_id ?? undefined}
+                  accountId={event?.account_id ?? undefined}
                   contactPhone={
-                    event?.contacts?.phone ||
-                    event?.accounts?.phone
+                    event?.primary_contact?.phone ?? undefined
                   }
                   onToggleSMSThread={context.toggleSMSThread}
                   onCreateEmail={() => context.openModal('isEmailModalOpen')}
                   onLogCommunication={() => context.openModal('isLogCommunicationModalOpen')}
-                  onCommunicationClick={(comm) => context.openCommunicationDetail(comm)}
+                  onCommunicationClick={(comm) => context.openCommunicationDetail(comm as unknown as Parameters<typeof context.openCommunicationDetail>[0])}
                 />
               </TabsContent>
 
@@ -460,7 +474,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
         staff={staff}
         tabs={tabs}
         references={references}
-        onEventDatesRefresh={eventData.fetchEventDates}
+        onEventDatesRefresh={async () => { await eventData.fetchEventDates() }}
       />
     </AccessGuard>
   )
