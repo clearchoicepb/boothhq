@@ -10,6 +10,7 @@ export interface FieldConfig {
   section?: string // Group fields into sections
   conditional?: ConditionalRule
   managerField?: string // For 'departmentWithManager' type: field name for manager array
+  helpText?: string // Optional help text displayed below the field
 }
 
 export interface SelectOption {

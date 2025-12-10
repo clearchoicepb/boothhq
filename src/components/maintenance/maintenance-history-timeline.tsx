@@ -53,7 +53,7 @@ export function MaintenanceHistoryTimeline({ records }: MaintenanceHistoryTimeli
 
               {/* Records */}
               <div className="space-y-4">
-                {dateRecords.map((record, recordIndex) => (
+                {dateRecords.map((record: any, recordIndex: number) => (
                   <div key={record.id} className="relative">
                     {/* Timeline dot */}
                     <div className="absolute -left-5 top-4 w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow" />

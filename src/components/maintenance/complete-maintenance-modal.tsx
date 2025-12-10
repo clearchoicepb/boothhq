@@ -45,14 +45,13 @@ export function CompleteMaintenanceModal({
     setSaving(true)
 
     try {
-      await maintenanceService.completeMaintenance({
-        inventoryItemId: item.id,
-        maintenanceDate: formData.maintenanceDate,
-        performedBy: formData.performedBy || undefined,
-        notes: formData.notes || undefined,
-        maintenanceIntervalDays: formData.customInterval,
-        createTask: formData.createTask
-      })
+      await maintenanceService.completeMaintenance(item.id, {
+        maintenance_date: formData.maintenanceDate,
+        performed_by: formData.performedBy || undefined,
+        notes: formData.notes || '',
+        maintenance_interval_days: formData.customInterval,
+        create_task: formData.createTask
+      } as any)
 
       onSuccess()
     } catch (err: any) {

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     let outOfStockCount = 0
 
     consumables?.forEach(consumable => {
-      const category = consumable.category as { id: string; name: string; low_stock_threshold: number } | null
+      const category = consumable.category as unknown as { id: string; name: string; low_stock_threshold: number } | null
       const threshold = category?.low_stock_threshold || 0
       if (consumable.current_quantity === 0) {
         outOfStockCount++

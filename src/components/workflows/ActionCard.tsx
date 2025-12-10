@@ -97,7 +97,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       // Fetch design item types
       log.debug('Fetching design item types...')
       const designTypesRes = await fetch('/api/design/types')
-      log.debug('Design types response status:', designTypesRes.status)
+      log.debug({ status: designTypesRes.status }, 'Design types response status')
 
       if (designTypesRes.ok) {
         const designTypesData = await designTypesRes.json()

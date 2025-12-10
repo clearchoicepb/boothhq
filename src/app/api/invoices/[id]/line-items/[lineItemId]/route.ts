@@ -129,7 +129,7 @@ async function updateInvoiceTotals(supabase: any, invoiceId: string, tenantId: s
     .eq('invoice_id', invoiceId)
     .eq('tenant_id', tenantId)
 
-  log.debug({ lineItems: lineItems?.map(item => ({
+  log.debug({ lineItems: lineItems?.map((item: any) => ({
     total_price: item.total_price,
     taxable: item.taxable,
     taxableType: typeof item.taxable

@@ -256,7 +256,8 @@ export function evaluateConditions(
   // All conditions must pass (AND logic)
   const passed = results.every((result) => result.passed)
 
-  log.debug(`Evaluated ${conditions.length} conditions:`, {
+  log.debug({
+    conditionCount: conditions.length,
     passed,
     results: results.map((r) => ({
       field: r.condition.field,

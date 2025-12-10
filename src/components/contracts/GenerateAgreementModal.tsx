@@ -133,7 +133,7 @@ export function GenerateAgreementModal({
 
   const handleSendEmail = async () => {
     // TODO: Implement email sending
-    toast.info('Email sending coming soon! For now, copy and share the link.')
+    toast('Email sending coming soon! For now, copy and share the link.')
   }
 
   const handleClose = () => {

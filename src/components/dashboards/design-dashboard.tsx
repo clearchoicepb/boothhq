@@ -176,9 +176,9 @@ export function DesignDashboard() {
         if (selectedStatus) urlParams.append('status', selectedStatus)
         if (urlParams.toString()) url += `?${urlParams.toString()}`
 
-        log.debug('Fetching:', url)
+        log.debug({ url }, 'Fetching')
         const res = await fetch(url)
-        log.debug('Response status:', res.status)
+        log.debug({ status: res.status }, 'Response status')
 
         if (!res.ok) {
           throw new Error(`API returned ${res.status}`)

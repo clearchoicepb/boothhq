@@ -185,11 +185,27 @@ function calculateStats(tasks: TaskWithRelations[]) {
   let completed_last_7_days = 0
   let total_pending = 0
   let total_in_progress = 0
+  let total_completed = 0
+  let total_cancelled = 0
+  const by_priority = { low: 0, medium: 0, high: 0, urgent: 0 }
+  const assigneeCounts: Record<string, number> = {}
 
   tasks.forEach((task) => {
     // Count by status
     if (task.status === 'pending') total_pending++
     if (task.status === 'in_progress') total_in_progress++
+    if (task.status === 'completed') total_completed++
+    if (task.status === 'cancelled') total_cancelled++
+
+    // Count by priority
+    if (task.priority && by_priority.hasOwnProperty(task.priority)) {
+      by_priority[task.priority as keyof typeof by_priority]++
+    }
+
+    // Count by assignee
+    if (task.assigned_to) {
+      assigneeCounts[task.assigned_to] = (assigneeCounts[task.assigned_to] || 0) + 1
+    }
 
     // Count completed in last 7 days
     if (task.status === 'completed' && task.completed_at) {
@@ -228,5 +244,13 @@ function calculateStats(tasks: TaskWithRelations[]) {
     completed_last_7_days,
     pending: total_pending,
     in_progress: total_in_progress,
+    completed: total_completed,
+    cancelled: total_cancelled,
+    by_priority,
+    by_assignee: Object.entries(assigneeCounts).map(([user_id, count]) => ({
+      user_id,
+      user_name: '', // Name populated by frontend from user data
+      count,
+    })),
   }
 }

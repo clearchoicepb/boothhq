@@ -56,7 +56,7 @@ export class ConsumableAutomation {
       // Create notifications for low stock items
       for (const consumable of consumables) {
         // Cast category as single object (many-to-one relationship)
-        const category = consumable.category as { id: string; name: string; low_stock_threshold: number; estimated_consumption_per_event: number | null } | null
+        const category = consumable.category as unknown as { id: string; name: string; low_stock_threshold: number; estimated_consumption_per_event: number | null } | null
         const threshold = category?.low_stock_threshold || 0
         const isLowStock = consumable.current_quantity <= threshold
 
@@ -156,7 +156,7 @@ export class ConsumableAutomation {
         if (consumablesWithNotifications.has(consumable.id)) continue
 
         // Cast category as single object (many-to-one relationship)
-        const category = consumable.category as { id: string; name: string } | null
+        const category = consumable.category as unknown as { id: string; name: string } | null
 
         try {
           const { data: notification, error: notificationError } = await supabase

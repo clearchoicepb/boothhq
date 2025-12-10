@@ -43,6 +43,7 @@ interface Invoice {
   account_id: string | null
   contact_id: string | null
   event_id: string | null
+  event_date?: string | null  // From joined event data
   issue_date: string
   due_date: string
   status: string

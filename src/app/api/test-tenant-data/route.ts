@@ -65,12 +65,12 @@ export async function GET() {
     }
 
     // Summary
-    const totalRecords = Object.values(results.data)
+    const totalRecords: number = Object.values(results.data)
       .filter((d: any) => !d.error)
-      .reduce((sum, d: any) => sum + (d.count || 0), 0);
+      .reduce((sum: number, d: any) => sum + (d.count || 0), 0);
 
     results.summary = {
-      totalRecords,
+      totalRecords: totalRecords as number,
       tablesWithData: Object.entries(results.data)
         .filter(([_, d]: any) => !d.error && d.count > 0)
         .map(([table]) => table),

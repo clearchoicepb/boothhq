@@ -194,8 +194,8 @@ export class GenericRepository<T = any> {
         throw new Error(`Failed to find ${this.entity} records: ${error.message}`)
       }
 
-      return this.config.transformResponse ?
-        this.config.transformResponse(data) : data
+      return (this.config.transformResponse ?
+        this.config.transformResponse(data) : data) as T[]
     } catch (error) {
       log.error({ error }, 'Error finding ${this.entity} records')
       throw error
@@ -316,8 +316,8 @@ export class GenericRepository<T = any> {
         throw new Error(`Failed to search ${this.entity}: ${error.message}`)
       }
 
-      return this.config.transformResponse ?
-        this.config.transformResponse(data) : data
+      return (this.config.transformResponse ?
+        this.config.transformResponse(data) : data) as T[]
     } catch (error) {
       log.error({ error }, 'Error searching ${this.entity}')
       throw error

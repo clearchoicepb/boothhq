@@ -556,7 +556,7 @@ const executeSendEmailAction: ActionExecutor = async (
 
     // TODO: Integrate with actual email service
     // For now, just log the email details and mark as success
-    log.debug('send_email:', {
+    log.debug({
       to: recipientEmail,
       toName: recipientName,
       templateId,

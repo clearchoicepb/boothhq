@@ -41,6 +41,7 @@ interface Invoice {
   invoice_number: string
   issue_date: string
   due_date: string
+  event_date?: string | null  // From joined event data
   status: string
   subtotal: number
   tax_amount: number
