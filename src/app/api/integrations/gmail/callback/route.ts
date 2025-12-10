@@ -1,5 +1,5 @@
-import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerSupabaseClient, getTenantDatabaseClient } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('api:integrations')
@@ -25,8 +25,11 @@ export async function GET(request: NextRequest) {
     // Parse state to get user info
     const { userId, tenantId } = JSON.parse(state)
 
+    // Get app database client to lookup tenant subdomain
+    const appSupabase = createServerSupabaseClient()
+
     // Get tenant subdomain for redirect
-    const { data: tenant } = await supabase
+    const { data: tenant } = await appSupabase
       .from('tenants')
       .select('subdomain')
       .eq('id', tenantId)
@@ -78,11 +81,14 @@ export async function GET(request: NextRequest) {
 
     const userInfo = await userInfoResponse.json()
 
-    // Store tokens in database (supabase already created above)
+    // Store tokens in tenant database
     const expiryDate = new Date()
     expiryDate.setSeconds(expiryDate.getSeconds() + tokens.expires_in)
 
-    const { error: dbError } = await supabase
+    // Get tenant database client to store integration data
+    const tenantSupabase = await getTenantDatabaseClient(tenantId)
+
+    const { error: dbError } = await tenantSupabase
       .from('user_integrations')
       .upsert({
         user_id: userId,

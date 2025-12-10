@@ -11,12 +11,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
+
     // Query Tenant DB for user
-    const { } = await import('@/lib/supabase-client')
     const { data: user, error } = await supabase
       .from('users')
       .select('*')

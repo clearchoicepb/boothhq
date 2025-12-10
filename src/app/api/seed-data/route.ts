@@ -168,7 +168,7 @@ export async function POST(request: Request) {
       const isCompany = !!companyName
 
       leadsData.push({
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         lead_type: isCompany ? 'company' : 'personal',
         first_name: firstName,
         last_name: lastName,
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
       const zipCode = String(Math.floor(Math.random() * 90000 + 10000))
 
       accountsData.push({
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         name: isCompany ? random(companyNames) : `${random(firstNames)} ${random(lastNames)}`,
         account_type: isCompany ? 'company' : 'individual',
         industry: random(industries),
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
       const zipCode = String(Math.floor(Math.random() * 90000 + 10000))
 
       contactsData.push({
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         account_id: linkedAccount?.id || null,
         first_name: firstName,
         last_name: lastName,
@@ -314,7 +314,7 @@ export async function POST(request: Request) {
       const eventStartDate = expectedCloseDate
 
       const oppData: any = {
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         account_id: account.id,
         contact_id: contact?.id || null,
         name: `${account.name} - ${random(['Annual Event', 'Corporate Meeting', 'Wedding', 'Holiday Party', 'Conference', 'Trade Show', 'Gala', 'Fundraiser'])}`,
@@ -365,7 +365,7 @@ export async function POST(request: Request) {
       else status = random(['scheduled', 'confirmed', 'confirmed', 'confirmed'])
 
       const eventData: any = {
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         opportunity_id: opp.id,
         account_id: opp.account_id,
         contact_id: opp.contact_id,
@@ -414,7 +414,7 @@ export async function POST(request: Request) {
       const totalAmount = subtotal + taxAmount
 
       const invoiceData: any = {
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         event_id: event.id,
         opportunity_id: event.opportunity_id,
         account_id: event.account_id,
@@ -464,7 +464,7 @@ export async function POST(request: Request) {
       const totalAmount = subtotal + taxAmount
 
       quotesData.push({
-        tenant_id: tenantId,
+        tenant_id: dataSourceTenantId,
         opportunity_id: opp.id,
         account_id: opp.account_id,
         contact_id: opp.contact_id,
