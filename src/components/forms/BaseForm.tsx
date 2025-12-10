@@ -150,10 +150,10 @@ export function BaseForm<T extends Record<string, any>>({
   }, [config.fields, state.data, validateField, shouldShowField])
 
   const handleFieldChange = useCallback((fieldName: string, value: any) => {
-    log.debug('Field changed:', fieldName, 'to:', value)
+    log.debug({ fieldName, value }, 'Field changed')
 
     setState(prev => {
-      const newData = { ...prev.data, [fieldName]: value }
+      const newData: Record<string, any> = { ...prev.data, [fieldName]: value }
 
       // If this is a "type" field (e.g., assigned_to_type), clear the corresponding ID field
       if (fieldName.endsWith('_type')) {
@@ -161,15 +161,15 @@ export function BaseForm<T extends Record<string, any>>({
         // Check if there's a corresponding ID field in the config
         const hasIdField = config.fields.some(f => f.name === idFieldName)
         if (hasIdField) {
-          log.debug('Clearing', idFieldName, 'because', fieldName, 'changed')
+          log.debug({ idFieldName, fieldName }, 'Clearing ID field because type changed')
           newData[idFieldName] = null // Clear the ID when type changes
         }
       }
 
-      log.debug('New form data:', newData)
+      log.debug({ formData: newData }, 'New form data')
       return {
         ...prev,
-        data: newData,
+        data: newData as Partial<T>,
         errors: { ...prev.errors, [fieldName]: '' } // Clear error when user types
       }
     })
@@ -202,8 +202,8 @@ export function BaseForm<T extends Record<string, any>>({
         return acc
       }, {} as Record<string, any>)
 
-      log.debug('Submitting filtered data:', filteredData)
-      log.debug('Original data:', state.data)
+      log.debug({ filteredData }, 'Submitting filtered data')
+      log.debug({ originalData: state.data }, 'Original data')
 
       await onSubmit(filteredData as T)
       onClose()
@@ -410,9 +410,9 @@ export function BaseForm<T extends Record<string, any>>({
           )
 
         case 'multiSelect':
-          const multiOptions = field.options || []
-          const selectedValues = Array.isArray(value) ? value : []
-          
+          const multiOptions = (Array.isArray(field.options) ? field.options : []) as SelectOption[]
+          const selectedValues: string[] = Array.isArray(value) ? value : []
+
           return (
             <div className="space-y-2" role="group" aria-label={field.label}>
               {multiOptions.map((option: SelectOption) => (
@@ -424,7 +424,7 @@ export function BaseForm<T extends Record<string, any>>({
                     onChange={(e) => {
                       const newValues = e.target.checked
                         ? [...selectedValues, option.value]
-                        : selectedValues.filter(v => v !== option.value)
+                        : selectedValues.filter((v: string) => v !== option.value)
                       handleFieldChange(field.name, newValues)
                     }}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -439,13 +439,13 @@ export function BaseForm<T extends Record<string, any>>({
           )
 
         case 'departmentWithManager':
-          const deptOptions = field.options || []
-          const selectedDepts = Array.isArray(value) ? value : []
+          const deptOptions = (Array.isArray(field.options) ? field.options : []) as SelectOption[]
+          const selectedDepts: string[] = Array.isArray(value) ? value : []
           const managerFieldName = field.managerField || 'manager_of_departments'
-          const managerDepts = Array.isArray(state.data[managerFieldName]) 
-            ? state.data[managerFieldName] 
+          const managerDepts: string[] = Array.isArray(state.data[managerFieldName])
+            ? state.data[managerFieldName] as string[]
             : []
-          
+
           return (
             <div className="border border-gray-200 rounded-lg overflow-hidden" role="group" aria-label={field.label}>
               {/* Header Row */}
@@ -453,13 +453,13 @@ export function BaseForm<T extends Record<string, any>>({
                 <div className="text-sm font-semibold text-gray-700">Department</div>
                 <div className="text-sm font-semibold text-gray-700 text-center">Manager</div>
               </div>
-              
+
               {/* Department Rows */}
               <div className="divide-y divide-gray-200">
                 {deptOptions.map((option: SelectOption) => {
                   const isDeptSelected = selectedDepts.includes(option.value)
                   const isManager = managerDepts.includes(option.value)
-                  
+
                   return (
                     <div key={option.value} className="grid grid-cols-2 gap-4 px-4 py-3 hover:bg-gray-50">
                       {/* Department Checkbox */}
@@ -471,9 +471,9 @@ export function BaseForm<T extends Record<string, any>>({
                           onChange={(e) => {
                             const newDepts = e.target.checked
                               ? [...selectedDepts, option.value]
-                              : selectedDepts.filter(v => v !== option.value)
+                              : selectedDepts.filter((v: string) => v !== option.value)
                             handleFieldChange(field.name, newDepts)
-                            
+
                             // If unchecking department, also remove from manager
                             if (!e.target.checked && isManager) {
                               const newManagers = managerDepts.filter((v: string) => v !== option.value)
@@ -487,7 +487,7 @@ export function BaseForm<T extends Record<string, any>>({
                           {option.label}
                         </label>
                       </div>
-                      
+
                       {/* Manager Checkbox */}
                       <div className="flex items-center justify-center">
                         <input
@@ -604,7 +604,7 @@ export function BaseForm<T extends Record<string, any>>({
             <PhotoUpload
               currentPhotoUrl={state.data.avatar_url || state.data.photo_url}
               onPhotoChange={(photoUrl) => handleFieldChange('avatar_url', photoUrl)}
-              entityType={config.entity}
+              entityType={config.entity as 'account' | 'contact'}
               entityName={state.data.name || state.data.first_name || config.entity}
             />
           </div>

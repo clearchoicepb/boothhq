@@ -14,10 +14,27 @@ import toast from 'react-hot-toast'
 import { DuplicateContactWarning } from '@/components/duplicate-contact-warning'
 import { useParams } from 'next/navigation'
 // Remove the db import - we'll use API routes instead
-import type { Contact, ContactInsert, ContactUpdate, Account } from '@/lib/supabase-client'
+import type { Contact, Account } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('components')
+
+// Local form data type - maps to ContactInsert but with UI-friendly field names
+interface ContactFormData {
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  job_title: string
+  department: string
+  account_id: string | null
+  address: string
+  city: string
+  state: string
+  postal_code: string
+  status: string
+  avatar_url: string | null
+}
 
 interface ContactFormProps {
   contact?: Contact
@@ -31,8 +48,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
   const params = useParams()
   const tenantSubdomain = params.tenant as string
   
-  const [formData, setFormData] = useState<ContactInsert>({
-    tenant_id: '',
+  const [formData, setFormData] = useState<ContactFormData>({
     first_name: '',
     last_name: '',
     email: '',
@@ -40,11 +56,10 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
     job_title: '',
     department: '',
     account_id: null,
-    address_line_1: '',
-    address_line_2: '',
+    address: '',
     city: '',
     state: '',
-    zip_code: '',
+    postal_code: '',
     status: 'active',
     avatar_url: null
   })
@@ -74,7 +89,6 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
   useEffect(() => {
     if (contact) {
       setFormData({
-        tenant_id: contact.tenant_id,
         first_name: contact.first_name,
         last_name: contact.last_name,
         email: contact.email || '',
@@ -82,13 +96,12 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
         job_title: contact.job_title || '',
         department: contact.department || '',
         account_id: contact.account_id,
-        address_line_1: contact.address_line_1 || '',
-        address_line_2: contact.address_line_2 || '',
+        address: contact.address || '',
         city: contact.city || '',
         state: contact.state || '',
-        zip_code: contact.zip_code || '',
+        postal_code: contact.postal_code || '',
         status: contact.status,
-        avatar_url: contact.avatar_url
+        avatar_url: null
       })
       
       // NEW: Load account relationships if editing
@@ -136,7 +149,6 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
       }
     } else {
       setFormData({
-        tenant_id: '',
         first_name: '',
         last_name: '',
         email: '',
@@ -144,11 +156,10 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
         job_title: '',
         department: '',
         account_id: preSelectedAccountId || null,
-        address_line_1: '',
-        address_line_2: '',
+        address: '',
         city: '',
         state: '',
-        zip_code: '',
+        postal_code: '',
         status: 'active',
         avatar_url: null
       })
@@ -284,7 +295,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
     }
   }
 
-  const handleChange = (field: keyof ContactInsert, value: string | null) => {
+  const handleChange = (field: keyof ContactFormData, value: string | null) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -400,20 +411,11 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Address Line 1
+                  Street Address
                 </label>
                 <Input
-                  value={formData.address_line_1 || ''}
-                  onChange={(e) => handleChange('address_line_1', e.target.value || null)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Address Line 2
-                </label>
-                <Input
-                  value={formData.address_line_2 || ''}
-                  onChange={(e) => handleChange('address_line_2', e.target.value || null)}
+                  value={formData.address || ''}
+                  onChange={(e) => handleChange('address', e.target.value || null)}
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -437,11 +439,11 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Zip Code
+                    Postal Code
                   </label>
                   <Input
-                    value={formData.zip_code || ''}
-                    onChange={(e) => handleChange('zip_code', e.target.value || null)}
+                    value={formData.postal_code || ''}
+                    onChange={(e) => handleChange('postal_code', e.target.value || null)}
                   />
                 </div>
               </div>
@@ -508,7 +510,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
                         {accounts.map((account) => (
                           <option key={account.id} value={account.id}>
                             {account.name}
-                            {account.account_type && ` (${account.account_type})`}
+                            {account.industry && ` (${account.industry})`}
                           </option>
                         ))}
                       </select>

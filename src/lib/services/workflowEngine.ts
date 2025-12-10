@@ -177,14 +177,14 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 
   try {
     // Debug: Log action data
-    log.debug('create_design_item action:', {
+    log.debug({
       action_id: action.id,
       design_item_type_id: action.design_item_type_id,
       assigned_to_user_id: action.assigned_to_user_id,
       workflow_id: action.workflow_id,
       has_assigned_to_user: !!action.assigned_to_user,
       action_keys: Object.keys(action),
-    })
+    }, 'create_design_item action')
     
     // Validate required fields
     if (!action.design_item_type_id) {
@@ -211,15 +211,13 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     const event = context.triggerEntity.data
     const eventDate = event.start_date || event.event_date
 
-    log.debug('🔍 Design Item Date Debug:', {
+    log.debug({
       event_id: event.id,
       start_date: event.start_date,
       start_date_type: typeof event.start_date,
       event_date: event.event_date,
-      event_date_type: typeof event.event_date,
       eventDate_selected: eventDate,
-      eventDate_type: typeof eventDate
-    })
+    }, 'Design Item Date Debug')
 
     if (!eventDate) {
       throw new Error('Event date is required for design item timeline calculations')
@@ -237,12 +235,11 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       eventDateObj = new Date(eventDate)
     }
 
-    log.debug('✅ Parsed event date:', {
+    log.debug({
       input: eventDate,
       parsed: eventDateObj.toISOString(),
       isValid: !isNaN(eventDateObj.getTime()),
-      timestamp: eventDateObj.getTime()
-    })
+    }, 'Parsed event date')
 
     // Calculate deadlines working backwards from event date
     // Timeline: Event Date <- Shipping <- Production <- Design <- Approval Buffer
@@ -286,7 +283,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       workflow_id: action.workflow_id,
     }
     
-    log.debug('Inserting design item:', insertData)
+    log.debug({ insertData }, 'Inserting design item')
     
     const { data: designItem, error: designItemError } = await supabase
       .from('event_design_items')
@@ -370,12 +367,12 @@ const executeCreateOpsItemAction: ActionExecutor = async (
 
   try {
     // Debug: Log action data
-    log.debug('create_ops_item action:', {
+    log.debug({
       action_id: action.id,
       operations_item_type_id: action.operations_item_type_id,
       assigned_to_user_id: action.assigned_to_user_id,
       workflow_id: action.workflow_id,
-    })
+    }, 'create_ops_item action')
 
     // Validate required fields
     if (!action.operations_item_type_id) {
@@ -398,13 +395,13 @@ const executeCreateOpsItemAction: ActionExecutor = async (
     const event = context.triggerEntity.data
     const eventDate = event.start_date || event.event_date
 
-    log.debug('🔍 Ops Item Date Debug:', {
+    log.debug({
       event_id: event.id,
       start_date: event.start_date,
       event_date: event.event_date,
       eventDate_selected: eventDate,
       due_date_days: opsItemType.due_date_days,
-    })
+    }, 'Ops Item Date Debug')
 
     if (!eventDate) {
       throw new Error('Event date is required for operations item timeline calculations')
@@ -442,7 +439,7 @@ const executeCreateOpsItemAction: ActionExecutor = async (
       workflow_id: action.workflow_id,
     }
 
-    log.debug('Inserting operations item:', insertData)
+    log.debug({ insertData }, 'Inserting operations item')
 
     const { data: opsItem, error: opsItemError } = await supabase
       .from('event_operations_items')
@@ -528,12 +525,12 @@ const executeAssignEventRoleAction: ActionExecutor = async (
 
   try {
     // Debug: Log action data
-    log.debug('assign_event_role action:', {
+    log.debug({
       action_id: action.id,
       staff_role_id: action.staff_role_id,
       assigned_to_user_id: action.assigned_to_user_id,
       workflow_id: action.workflow_id,
-    })
+    }, 'assign_event_role action')
 
     // Validate required fields
     if (!action.staff_role_id) {
@@ -577,7 +574,7 @@ const executeAssignEventRoleAction: ActionExecutor = async (
       // Note: role field is deprecated, using staff_role_id instead
     }
 
-    log.debug('Creating event staff assignment:', insertData)
+    log.debug({ insertData }, 'Creating event staff assignment')
 
     const { data: assignment, error: assignmentError } = await supabase
       .from('event_staff_assignments')
@@ -609,16 +606,27 @@ const executeAssignEventRoleAction: ActionExecutor = async (
  * Maps action types to their executor functions
  * Add new action types here for extensibility
  */
+// Placeholder executor for unimplemented action types
+const executeNotImplementedAction: ActionExecutor = async (action, context, supabase, dataSourceTenantId) => {
+  return {
+    success: false,
+    actionId: action.id,
+    actionType: action.action_type as WorkflowActionType,
+    error: {
+      message: `Action type "${action.action_type}" is not yet implemented`,
+    },
+  }
+}
+
 const ACTION_EXECUTORS: Record<WorkflowActionType, ActionExecutor> = {
   create_task: executeCreateTaskAction,
   create_design_item: executeCreateDesignItemAction,
   create_ops_item: executeCreateOpsItemAction,
   assign_event_role: executeAssignEventRoleAction,
-  // Future action types go here:
-  // send_email: executeSendEmailAction,
-  // send_notification: executeSendNotificationAction,
-  // update_field: executeUpdateFieldAction,
-  // call_webhook: executeCallWebhookAction,
+  // Placeholder for future action types
+  send_email: executeNotImplementedAction,
+  send_notification: executeNotImplementedAction,
+  assign_task: executeNotImplementedAction,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -696,7 +704,7 @@ class WorkflowEngine {
       }
 
       if (!workflows || workflows.length === 0) {
-        log.debug('No active workflows found for event type:', eventTypeId)
+        log.debug({ eventTypeId }, 'No active workflows found for event type')
         return []
       }
 
@@ -714,13 +722,13 @@ class WorkflowEngine {
         return []
       }
 
-      log.debug('📅 Event data fetched:', {
+      log.debug({
         id: event.id,
         start_date: event.start_date,
         start_date_type: typeof event.start_date,
         event_date: event.event_date,
         all_keys: Object.keys(event)
-      })
+      }, 'Event data fetched')
 
       // Filter out workflows that have already been executed (duplicate prevention)
       const workflowsToExecute = workflows.filter((workflow) => {
@@ -829,7 +837,8 @@ class WorkflowEngine {
 
       conditionResult = evaluateConditions(conditions, evaluationContext)
 
-      log.debug(`Condition evaluation for workflow ${workflow.name}:`, {
+      log.debug({
+        workflowName: workflow.name,
         conditionsCount: conditions.length,
         passed: conditionResult.passed,
         results: conditionResult.results.map((r) => ({
@@ -837,7 +846,7 @@ class WorkflowEngine {
           operator: r.condition.operator,
           passed: r.passed,
         })),
-      })
+      }, 'Condition evaluation for workflow')
 
       // If conditions failed, skip this workflow
       if (!conditionResult.passed) {
@@ -868,6 +877,7 @@ class WorkflowEngine {
           createdTaskIds: [],
           createdDesignItemIds: [],
           createdOpsItemIds: [],
+          createdAssignmentIds: [],
           actionResults: [],
           conditionResult,
         }
