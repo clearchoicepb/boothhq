@@ -35,51 +35,17 @@ export default function RolesSettingsPage() {
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        setLoading(true)
-        // For now, we'll use a mock API endpoint
-        // In a real implementation, this would be /api/roles
-        const response = await fetch('/api/roles')
-        if (response.ok) {
-          const data = await response.json()
-          setRoles(data)
-        } else {
-          // Mock data for demonstration
-          setRoles([
-            {
-              id: '1',
-              name: 'Administrator',
-              description: 'Full access to all features and settings',
-              permissions: ['contacts', 'accounts', 'leads', 'opportunities', 'events', 'invoices', 'payments', 'inventory', 'users', 'settings', 'reports'],
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            {
-              id: '2',
-              name: 'Manager',
-              description: 'Can manage most features but limited settings access',
-              permissions: ['contacts', 'accounts', 'leads', 'opportunities', 'events', 'invoices', 'payments', 'inventory'],
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            {
-              id: '3',
-              name: 'Sales Representative',
-              description: 'Access to leads, contacts, and opportunities',
-              permissions: ['leads', 'contacts', 'accounts', 'opportunities'],
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ])
-        }
-      } catch (error) {
-        log.error({ error }, 'Error fetching roles')
-        // Use mock data on error
+  const fetchRoles = async () => {
+    try {
+      setLoading(true)
+      // For now, we'll use a mock API endpoint
+      // In a real implementation, this would be /api/roles
+      const response = await fetch('/api/roles')
+      if (response.ok) {
+        const data = await response.json()
+        setRoles(data)
+      } else {
+        // Mock data for demonstration
         setRoles([
           {
             id: '1',
@@ -89,13 +55,47 @@ export default function RolesSettingsPage() {
             is_active: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
+          },
+          {
+            id: '2',
+            name: 'Manager',
+            description: 'Can manage most features but limited settings access',
+            permissions: ['contacts', 'accounts', 'leads', 'opportunities', 'events', 'invoices', 'payments', 'inventory'],
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: '3',
+            name: 'Sales Representative',
+            description: 'Access to leads, contacts, and opportunities',
+            permissions: ['leads', 'contacts', 'accounts', 'opportunities'],
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
         ])
-      } finally {
-        setLoading(false)
       }
+    } catch (error) {
+      log.error({ error }, 'Error fetching roles')
+      // Use mock data on error
+      setRoles([
+        {
+          id: '1',
+          name: 'Administrator',
+          description: 'Full access to all features and settings',
+          permissions: ['contacts', 'accounts', 'leads', 'opportunities', 'events', 'invoices', 'payments', 'inventory', 'users', 'settings', 'reports'],
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ])
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchRoles()
   }, [])
 
