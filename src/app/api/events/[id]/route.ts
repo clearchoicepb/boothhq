@@ -187,8 +187,8 @@ export async function PUT(
       log.info({ oldEventTypeId, newEventTypeId }, 'Event type changed, triggering workflows')
       
       try {
-        const { default: workflowEngine } = await import('@/lib/services/workflowEngine')
-        
+        const { workflowEngine } = await import('@/lib/services/workflowEngine')
+
         const workflowResults = await workflowEngine.executeWorkflowsForEvent({
           eventId: eventId,
           eventTypeId: newEventTypeId,
@@ -199,8 +199,8 @@ export async function PUT(
         })
         
         if (workflowResults.length > 0) {
-          const totalTasks = workflowResults.reduce((sum, result) => sum + result.createdTaskIds.length, 0)
-          const totalDesignItems = workflowResults.reduce((sum, result) => sum + result.createdDesignItemIds.length, 0)
+          const totalTasks = workflowResults.reduce((sum: number, result: { createdTaskIds: string[] }) => sum + result.createdTaskIds.length, 0)
+          const totalDesignItems = workflowResults.reduce((sum: number, result: { createdDesignItemIds: string[] }) => sum + result.createdDesignItemIds.length, 0)
           log.info({ 
             workflowCount: workflowResults.length, 
             taskCount: totalTasks, 

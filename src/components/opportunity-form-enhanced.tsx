@@ -328,7 +328,7 @@ export function OpportunityFormEnhanced({
                   </label>
                   <Input
                     type="time"
-                    value={date.start_time}
+                    value={date.start_time ?? ''}
                     onChange={(e) => form.handleEventDateChange(index, 'start_time', e.target.value)}
                     className={form.errors[`start_time_${index}`] ? 'border-red-500' : ''}
                   />
@@ -343,7 +343,7 @@ export function OpportunityFormEnhanced({
                   </label>
                   <Input
                     type="time"
-                    value={date.end_time}
+                    value={date.end_time ?? ''}
                     onChange={(e) => form.handleEventDateChange(index, 'end_time', e.target.value)}
                     className={form.errors[`end_time_${index}`] ? 'border-red-500' : ''}
                   />
@@ -418,7 +418,7 @@ export function OpportunityFormEnhanced({
   )
 
   // Return modal or direct form content based on props
-  if (isOpen !== undefined) {
+  if (isOpen !== undefined && onClose) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title={opportunity ? "Edit Opportunity" : "Create New Opportunity"}>
         {formContent}

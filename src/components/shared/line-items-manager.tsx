@@ -46,7 +46,7 @@ interface AddOn {
 
 interface LineItem {
   id: string
-  item_type: 'package' | 'add_on' | 'custom'
+  item_type: 'package' | 'add_on' | 'custom' | 'discount'
   package_id: string | null
   add_on_id: string | null
   name: string
