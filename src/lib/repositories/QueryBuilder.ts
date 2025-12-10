@@ -133,7 +133,8 @@ export class QueryBuilder {
    */
   async execute(): Promise<any[]> {
     try {
-      let query = this.supabase.from(this.table)
+      // Use any type for query since Supabase's PostgrestFilterBuilder chain types are complex
+      let query: any = this.supabase.from(this.table)
 
       // Build select clause
       if (this.options.select) {
@@ -203,7 +204,8 @@ export class QueryBuilder {
    */
   async count(): Promise<number> {
     try {
-      let query = this.supabase
+      // Use any type for query since Supabase's PostgrestFilterBuilder chain types are complex
+      let query: any = this.supabase
         .from(this.table)
         .select('*', { count: 'exact', head: true })
 

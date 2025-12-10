@@ -426,8 +426,8 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(70, 70, 70)
 
-      const notesLines = doc.splitTextToSize(invoice.notes, columnWidth)
-      const termsLines = doc.splitTextToSize(invoice.terms, columnWidth)
+      const notesLines = doc.splitTextToSize(invoice.notes || '', columnWidth)
+      const termsLines = doc.splitTextToSize(invoice.terms || '', columnWidth)
 
       doc.text(notesLines, margin, yPos)
       doc.text(termsLines, margin + columnWidth + 10, yPos)
@@ -442,7 +442,7 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(70, 70, 70)
-      const notesLines = doc.splitTextToSize(invoice.notes, contentWidth)
+      const notesLines = doc.splitTextToSize(invoice.notes || '', contentWidth)
       doc.text(notesLines, margin, yPos)
     } else if (hasTerms) {
       // Terms only (full width)
@@ -455,7 +455,7 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(70, 70, 70)
-      const termsLines = doc.splitTextToSize(invoice.terms, contentWidth)
+      const termsLines = doc.splitTextToSize(invoice.terms || '', contentWidth)
       doc.text(termsLines, margin, yPos)
     }
   }
@@ -815,8 +815,8 @@ export const generateQuotePDF = async (data: QuotePDFData): Promise<Buffer> => {
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(70, 70, 70)
 
-      const notesLines = doc.splitTextToSize(quote.notes, columnWidth)
-      const termsLines = doc.splitTextToSize(quote.terms, columnWidth)
+      const notesLines = doc.splitTextToSize(quote.notes || '', columnWidth)
+      const termsLines = doc.splitTextToSize(quote.terms || '', columnWidth)
 
       doc.text(notesLines, margin, yPos)
       doc.text(termsLines, margin + columnWidth + 10, yPos)
@@ -831,7 +831,7 @@ export const generateQuotePDF = async (data: QuotePDFData): Promise<Buffer> => {
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(70, 70, 70)
-      const notesLines = doc.splitTextToSize(quote.notes, contentWidth)
+      const notesLines = doc.splitTextToSize(quote.notes || '', contentWidth)
       doc.text(notesLines, margin, yPos)
     } else if (hasTerms) {
       // Terms only (full width)
@@ -844,7 +844,7 @@ export const generateQuotePDF = async (data: QuotePDFData): Promise<Buffer> => {
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(70, 70, 70)
-      const termsLines = doc.splitTextToSize(quote.terms, contentWidth)
+      const termsLines = doc.splitTextToSize(quote.terms || '', contentWidth)
       doc.text(termsLines, margin, yPos)
     }
   }
