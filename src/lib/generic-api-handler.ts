@@ -253,7 +253,7 @@ export class GenericApiHandler {
   private applyFilters(query: any, filters: FilterOptions) {
     // Search filter
     if (filters.search && this.config.searchFields.length > 0) {
-      const searchConditions = this.config.searchFields.map(field => 
+      const searchConditions = this.config.searchFields.map((field: string) => 
         `${field}.ilike.%${filters.search}%`
       ).join(',')
       query = query.or(searchConditions)

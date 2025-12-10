@@ -203,7 +203,7 @@ export class QuickBooksService {
         total_amount: invoice.total_amount,
         balance: invoice.balance_amount,
         status: invoice.status,
-        line_items: invoice.invoice_line_items.map(item => ({
+        line_items: invoice.invoice_line_items.map((item: any) => ({
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
