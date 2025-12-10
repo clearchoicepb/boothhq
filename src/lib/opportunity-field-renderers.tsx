@@ -9,20 +9,23 @@ import type { TenantUser } from '@/lib/users'
  * Used across Table, Pipeline, and Mobile views
  */
 
+// Minimal interface compatible with both Opportunity and OpportunityWithRelations
+// Only includes fields actually used by the renderers
 interface Opportunity {
   id: string
   name: string
-  event_dates?: Array<{ event_date: string; location_id?: string }>
-  event_date?: string
-  contact_name?: string
-  lead_name?: string
-  owner_id?: string
-  stage: string
-  probability?: number
-  amount?: number
-  expected_close_date?: string
-  event_type?: string
-  date_type?: string
+  event_dates?: Array<{ event_date: string; location_id?: string | null }> | null
+  event_date?: string | null
+  contact_name?: string | null
+  lead_name?: string | null
+  owner_id?: string | null
+  stage?: string | null
+  probability?: number | null
+  amount?: number | null
+  expected_close_date?: string | null
+  event_type?: string | null
+  date_type?: string | null
+  created_at?: string | null
 }
 
 interface StageConfig {

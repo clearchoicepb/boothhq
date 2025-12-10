@@ -3,24 +3,10 @@
 import { useState, useEffect } from 'react'
 import { SearchableSelect, SearchableOption } from '@/components/ui/searchable-select'
 import { LocationForm } from '@/components/location-form'
+import { Location } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('components')
-
-interface Location {
-  id: string
-  name: string
-  address_line1?: string
-  address_line2?: string
-  city?: string
-  state?: string
-  postal_code?: string
-  country?: string
-  contact_name?: string
-  contact_phone?: string
-  contact_email?: string
-  notes?: string
-}
 
 interface LocationSelectProps {
   value: string | null
@@ -69,10 +55,9 @@ export function LocationSelect({
   }, [])
 
   const handleLocationCreated = (location: Location) => {
-    log.debug('Location created successfully:', location)
-    log.debug('Adding location to list and calling onChange with ID:', location.id)
+    log.debug({ locationId: location.id }, 'Location created successfully')
     setLocations(prev => [location, ...prev])
-    log.debug('Calling onChange with:', { id: location.id, location })
+    log.debug({ id: location.id }, 'Calling onChange')
     onChange(location.id, location)
     setIsFormOpen(false)
     setEditingLocation(null)
@@ -146,10 +131,10 @@ export function LocationSelect({
           isOpen={isFormOpen}
           onClose={() => { setIsFormOpen(false); setEditingLocation(null); }}
           onSave={async (locationData) => {
-            log.debug('onSave called with data:', locationData)
+            log.debug({ hasData: !!locationData }, 'onSave called')
             const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations'
             const method = editingLocation ? 'PUT' : 'POST'
-            log.debug('Making API request:', { url, method })
+            log.debug({ url, method }, 'Making API request')
 
             const response = await fetch(url, {
               method,
@@ -157,16 +142,16 @@ export function LocationSelect({
               body: JSON.stringify(locationData)
             })
 
-            log.debug('API response status:', response.status)
+            log.debug({ status: response.status }, 'API response')
 
             if (!response.ok) {
               const errorData = await response.json()
-              log.error({ errorData }, '[LocationSelect] API error')
+              log.error({ errorData }, 'LocationSelect API error')
               throw new Error(`Failed to save location: ${errorData.details || errorData.error}`)
             }
 
             const location = await response.json()
-            log.debug('Location saved successfully:', location)
+            log.debug({ locationId: location.id }, 'Location saved successfully')
 
             if (editingLocation) {
               handleLocationUpdated(location)

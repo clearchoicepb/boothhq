@@ -11,7 +11,7 @@ import { LocationSelector } from '@/components/location-selector'
 import { EventCategoryTypeSelector } from '@/components/forms/event-category-type-selector'
 import { ContactForm } from '@/components/contact-form'
 import { Calendar, DollarSign, FileText, MapPin, Plus, X, Clock } from 'lucide-react'
-import { Event as EventType, EventDate as EventDateType } from '@/lib/supabase-client'
+// EventWithDates interface is defined locally to avoid import issues
 import { toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
@@ -23,6 +23,7 @@ interface Account {
   name: string
   email?: string
   phone?: string
+  account_type?: string
 }
 
 interface Contact {
@@ -32,12 +33,44 @@ interface Contact {
   email?: string
   phone?: string
   account_id: string
+  job_title?: string
+  company?: string
 }
 
 interface Opportunity {
   id: string
   name: string
   account_id: string | null
+  stage?: string
+  estimated_value?: number
+}
+
+interface EventWithDates {
+  id: string
+  tenant_id: string
+  account_id: string | null
+  contact_id: string | null
+  opportunity_id: string | null
+  primary_contact_id: string | null
+  event_planner_id: string | null
+  title: string
+  description: string | null
+  event_type: string | null
+  event_category_id: string | null
+  event_type_id: string | null
+  status: string
+  date_type: string | null
+  start_date: string
+  end_date: string | null
+  event_dates?: Array<{
+    id: string
+    event_date: string
+    start_time: string | null
+    end_time: string | null
+    location_id: string | null
+    notes: string | null
+  }>
+  [key: string]: unknown
 }
 
 
@@ -58,7 +91,7 @@ interface EventFormEnhancedProps {
   account?: Account
   contact?: Contact
   opportunityId?: string
-  event?: EventType | null
+  event?: EventWithDates | null
   title?: string
 }
 
@@ -104,6 +137,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         status: event.status || 'scheduled',
         date_type: event.date_type || 'single_day',
         converted_from_opportunity_id: opportunityId || '',
+        opportunity_id: event.opportunity_id || opportunityId || '',
         account_id: event.account_id || '',
         contact_id: event.contact_id || '', // Keep for backward compatibility
         primary_contact_id: event.primary_contact_id || event.contact_id || '', // NEW: Load primary contact
@@ -141,8 +175,11 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         status: 'scheduled',
         date_type: 'single_day',
         converted_from_opportunity_id: opportunityId || '',
+        opportunity_id: opportunityId || '',
         account_id: account?.id || '',
-        contact_id: contact?.id || ''
+        contact_id: contact?.id || '',
+        primary_contact_id: contact?.id || '',
+        event_planner_id: ''
       })
       
       // Initialize with one empty date for new events
@@ -294,9 +331,18 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     }
   }
 
-  const handleContactCreated = async (newContact: Contact) => {
-    // Add the new contact to the list
-    setContacts(prev => [...prev, newContact])
+  const handleContactCreated = (newContact: { id: string; first_name: string; last_name: string; [key: string]: unknown }) => {
+    // Add the new contact to the list (cast to our local Contact type)
+    setContacts(prev => [...prev, {
+      id: newContact.id,
+      first_name: newContact.first_name,
+      last_name: newContact.last_name,
+      email: newContact.email as string | undefined,
+      phone: newContact.phone as string | undefined,
+      account_id: (newContact.account_id as string) || '',
+      job_title: newContact.job_title as string | undefined,
+      company: newContact.company as string | undefined
+    }])
     // Set it as the event planner
     handleInputChange('event_planner_id', newContact.id)
     // Close the form
