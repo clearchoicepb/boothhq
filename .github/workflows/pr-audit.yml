@@ -1,0 +1,60 @@
+name: PR Code Audit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  audit-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Claude Code PR Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 20"
+          prompt: |
+            Review this PR. DO NOT make any changes.
+
+            Check for:
+            1. TypeScript errors (run: npx tsc --noEmit)
+            2. Lint issues (run: npm run lint)
+            3. New 'any' types introduced
+            4. Console.log statements to remove
+            5. Missing error handling
+            6. Database column name issues (department vs departments)
+
+            Response Format:
+
+            ### ✅ Looks Good
+            [Well done items]
+
+            ### ⚠️ Suggestions
+            [Non-blocking suggestions]
+
+            ### 🚨 Issues to Address
+            [Blocking issues]
+
+            Be concise. Focus only on changed files.
