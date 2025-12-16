@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { DollarSign, Calendar, ChevronDown, FileText, AlertCircle, AlertTriangle } from 'lucide-react'
 import { WeeklyForecastChart } from './WeeklyForecastChart'
@@ -28,6 +30,7 @@ interface ForecastData {
 }
 
 export function IncomingPaymentsForecast() {
+  const { tenant: tenantSubdomain } = useParams()
   const [data, setData] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -301,9 +304,12 @@ export function IncomingPaymentsForecast() {
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[#347dc4]">
+                          <Link
+                            href={`/${tenantSubdomain}/invoices/${invoice.id}`}
+                            className="text-sm font-medium text-[#347dc4] hover:underline"
+                          >
                             {invoice.invoice_number}
-                          </span>
+                          </Link>
                           {invoice.is_overdue && (
                             <span className="text-xs text-red-600 font-medium">(Overdue)</span>
                           )}

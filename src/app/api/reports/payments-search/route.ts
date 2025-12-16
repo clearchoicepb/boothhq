@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
       const invoice = invoiceMap.get(payment.invoice_id)
       return {
         id: payment.id,
+        invoice_id: payment.invoice_id,
         payment_date: payment.payment_date,
         invoice_number: invoice?.invoice_number || 'Unknown',
         account_name: invoice?.account_id ? (accountMap.get(invoice.account_id) || 'Unknown') : 'Unknown',

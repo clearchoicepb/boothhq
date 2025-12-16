@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { Search, Download, DollarSign, FileText, Calendar, ChevronDown } from 'lucide-react'
 
@@ -8,6 +10,7 @@ type PresetRange = 'today' | 'this_week' | 'this_month' | 'this_quarter' | 'this
 
 interface Payment {
   id: string
+  invoice_id: string
   payment_date: string
   invoice_number: string
   account_name: string
@@ -37,6 +40,7 @@ const presetOptions: { value: PresetRange; label: string }[] = [
 ]
 
 export function PaymentSearch() {
+  const { tenant: tenantSubdomain } = useParams()
   const [preset, setPreset] = useState<PresetRange>('this_month')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -286,7 +290,12 @@ export function PaymentSearch() {
                       <span className="text-sm text-gray-900">{formatDate(payment.payment_date)}</span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-[#347dc4]">{payment.invoice_number}</span>
+                      <Link
+                        href={`/${tenantSubdomain}/invoices/${payment.invoice_id}`}
+                        className="text-sm font-medium text-[#347dc4] hover:underline"
+                      >
+                        {payment.invoice_number}
+                      </Link>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span className="text-sm text-gray-900">{payment.account_name}</span>
