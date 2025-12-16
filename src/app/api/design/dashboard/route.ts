@@ -32,16 +32,7 @@ export async function GET(request: Request) {
         template:task_templates(id, name, task_type, days_before_event, urgent_threshold_days, missed_deadline_days),
         assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, avatar_url, department),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name),
-        approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name),
-        event:events!inner(
-          id,
-          title,
-          event_name,
-          start_date,
-          event_date,
-          event_dates(event_date),
-          account:accounts(id, name)
-        )
+        approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name)
       `)
       .eq('tenant_id', dataSourceTenantId)
       .eq('task_type', 'design')
@@ -60,6 +51,30 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
+    // Fetch event data for tasks linked to events (polymorphic relationship)
+    const eventTasks = (designTasks || []).filter(t => t.entity_type === 'event' && t.entity_id)
+    const eventIds = [...new Set(eventTasks.map(t => t.entity_id))]
+
+    let eventsMap: Record<string, any> = {}
+    if (eventIds.length > 0) {
+      const { data: events } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          event_name,
+          start_date,
+          event_date,
+          event_dates(event_date),
+          account:accounts(id, name)
+        `)
+        .in('id', eventIds)
+
+      if (events) {
+        eventsMap = Object.fromEntries(events.map(e => [e.id, e]))
+      }
+    }
+
     // Helper function to check if a status represents completion
     const isCompletedStatus = (statusSlug: string) => COMPLETION_STATUSES.includes(statusSlug)
 
@@ -68,8 +83,11 @@ export async function GET(request: Request) {
     today.setHours(0, 0, 0, 0)
 
     const items = (designTasks || []).map(task => {
+      // Attach event data from map
+      const event = task.entity_type === 'event' && task.entity_id ? eventsMap[task.entity_id] || null : null
+
       // Get earliest event date
-      const eventDate = task.event?.event_dates?.[0]?.event_date || task.event?.start_date || task.event?.event_date
+      const eventDate = event?.event_dates?.[0]?.event_date || event?.start_date || event?.event_date
 
       // Use design_deadline if no event date available
       const deadlineDate = task.design_deadline || task.due_date
@@ -77,6 +95,7 @@ export async function GET(request: Request) {
       if (!eventDate && !deadlineDate) {
         return {
           ...task,
+          event,
           calculated_status: 'pending',
           // Map fields for backwards compatibility with frontend
           item_name: task.title,
@@ -119,6 +138,7 @@ export async function GET(request: Request) {
 
       return {
         ...task,
+        event,
         calculated_status,
         days_until_event: daysUntilEvent,
         // Map fields for backwards compatibility with frontend
@@ -161,7 +181,7 @@ export async function GET(request: Request) {
     )
 
     // Recent completions (last 7 days)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 24 * 1000)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     const recentCompletions = completed.filter(item => {
       const completedAt = item.completed_at ? new Date(item.completed_at) : null
       return completedAt && completedAt >= sevenDaysAgo
