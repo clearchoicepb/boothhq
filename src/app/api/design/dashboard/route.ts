@@ -82,72 +82,75 @@ export async function GET(request: Request) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const items = (designTasks || []).map(task => {
-      // Attach event data from map
-      const event = task.entity_type === 'event' && task.entity_id ? eventsMap[task.entity_id] || null : null
+    const items = (designTasks || [])
+      .map(task => {
+        // Attach event data from map
+        const event = task.entity_type === 'event' && task.entity_id ? eventsMap[task.entity_id] || null : null
 
-      // Get earliest event date
-      const eventDate = event?.event_dates?.[0]?.event_date || event?.start_date || event?.event_date
+        // Get earliest event date
+        const eventDate = event?.event_dates?.[0]?.event_date || event?.start_date || event?.event_date
 
-      // Use design_deadline if no event date available
-      const deadlineDate = task.design_deadline || task.due_date
+        // Use design_deadline if no event date available
+        const deadlineDate = task.design_deadline || task.due_date
 
-      if (!eventDate && !deadlineDate) {
+        if (!eventDate && !deadlineDate) {
+          return {
+            ...task,
+            event,
+            calculated_status: 'pending',
+            // Map fields for backwards compatibility with frontend
+            item_name: task.title,
+            assigned_designer: task.assigned_user,
+            assigned_designer_id: task.assigned_to,
+            design_item_type: task.template
+          }
+        }
+
+        // Calculate days until event or deadline
+        let daysUntilEvent: number
+        if (eventDate) {
+          const eventDateTime = new Date(eventDate)
+          eventDateTime.setHours(0, 0, 0, 0)
+          daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        } else {
+          const deadlineDateTime = new Date(deadlineDate!)
+          deadlineDateTime.setHours(0, 0, 0, 0)
+          daysUntilEvent = Math.ceil((deadlineDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        }
+
+        // Use template thresholds if available, otherwise use defaults
+        const template = task.template
+        const dueDateDays = template?.due_date_days || 21
+        const urgentThresholdDays = template?.urgent_threshold_days || 14
+        const missedDeadlineDays = template?.missed_deadline_days || 13
+
+        // Calculate status based on days until event
+        let calculated_status = 'on_time'
+
+        if (isCompletedStatus(task.status)) {
+          calculated_status = 'completed'
+        } else if (daysUntilEvent <= missedDeadlineDays) {
+          calculated_status = 'missed_deadline'
+        } else if (daysUntilEvent <= urgentThresholdDays) {
+          calculated_status = 'urgent'
+        } else if (daysUntilEvent <= dueDateDays) {
+          calculated_status = 'due_soon'
+        }
+
         return {
           ...task,
           event,
-          calculated_status: 'pending',
+          calculated_status,
+          days_until_event: daysUntilEvent,
           // Map fields for backwards compatibility with frontend
           item_name: task.title,
           assigned_designer: task.assigned_user,
           assigned_designer_id: task.assigned_to,
           design_item_type: task.template
         }
-      }
-
-      // Calculate days until event or deadline
-      let daysUntilEvent: number
-      if (eventDate) {
-        const eventDateTime = new Date(eventDate)
-        eventDateTime.setHours(0, 0, 0, 0)
-        daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      } else {
-        const deadlineDateTime = new Date(deadlineDate!)
-        deadlineDateTime.setHours(0, 0, 0, 0)
-        daysUntilEvent = Math.ceil((deadlineDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      }
-
-      // Use template thresholds if available, otherwise use defaults
-      const template = task.template
-      const dueDateDays = template?.due_date_days || 21
-      const urgentThresholdDays = template?.urgent_threshold_days || 14
-      const missedDeadlineDays = template?.missed_deadline_days || 13
-
-      // Calculate status based on days until event
-      let calculated_status = 'on_time'
-
-      if (isCompletedStatus(task.status)) {
-        calculated_status = 'completed'
-      } else if (daysUntilEvent <= missedDeadlineDays) {
-        calculated_status = 'missed_deadline'
-      } else if (daysUntilEvent <= urgentThresholdDays) {
-        calculated_status = 'urgent'
-      } else if (daysUntilEvent <= dueDateDays) {
-        calculated_status = 'due_soon'
-      }
-
-      return {
-        ...task,
-        event,
-        calculated_status,
-        days_until_event: daysUntilEvent,
-        // Map fields for backwards compatibility with frontend
-        item_name: task.title,
-        assigned_designer: task.assigned_user,
-        assigned_designer_id: task.assigned_to,
-        design_item_type: task.template
-      }
-    })
+      })
+      // Filter out items without valid event data (frontend requires event.id)
+      .filter(item => item.event !== null)
 
     // Categorize items based on new status logic
     const missedDeadline = items.filter(item =>
