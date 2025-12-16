@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
-import { DollarSign, Calendar, ChevronDown, FileText, AlertCircle } from 'lucide-react'
+import { DollarSign, Calendar, ChevronDown, FileText, AlertCircle, AlertTriangle } from 'lucide-react'
 
 interface ForecastInvoice {
   id: string
@@ -13,13 +13,17 @@ interface ForecastInvoice {
   payments_received: number
   balance: number
   status: string
+  is_overdue: boolean
 }
 
 interface ForecastData {
   invoices: ForecastInvoice[]
   totalExpected: number
   totalBalance: number
+  overdueCount: number
+  overdueBalance: number
   monthLabel: string
+  isCurrentMonth: boolean
 }
 
 export function IncomingPaymentsForecast() {
@@ -115,7 +119,11 @@ export function IncomingPaymentsForecast() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Incoming Payments Forecast</h3>
-              <p className="text-sm text-gray-500">Expected payments based on invoice due dates</p>
+              <p className="text-sm text-gray-500">
+                {data?.isCurrentMonth
+                  ? 'Invoices due this month plus any overdue balances'
+                  : 'Expected payments based on invoice due dates'}
+              </p>
             </div>
           </div>
 
@@ -158,13 +166,13 @@ export function IncomingPaymentsForecast() {
 
       {/* KPI Summary */}
       <div className="p-6 border-b border-gray-200 bg-gray-50">
-        <KPICardGrid columns={2}>
+        <KPICardGrid columns={data?.isCurrentMonth && data?.overdueCount > 0 ? 3 : 2}>
           <KPICard
             label="Total Expected"
             value={loading ? '...' : formatCurrency(data?.totalExpected || 0)}
             icon={<FileText />}
             loading={loading}
-            subtitle={`${data?.invoices.length || 0} invoices due`}
+            subtitle={`${data?.invoices.length || 0} invoices`}
             size="compact"
           />
           <KPICard
@@ -175,6 +183,17 @@ export function IncomingPaymentsForecast() {
             subtitle="Remaining to collect"
             size="compact"
           />
+          {data?.isCurrentMonth && data?.overdueCount > 0 && (
+            <KPICard
+              label="Overdue"
+              value={loading ? '...' : formatCurrency(data?.overdueBalance || 0)}
+              icon={<AlertTriangle />}
+              loading={loading}
+              subtitle={`${data?.overdueCount} overdue invoice${data?.overdueCount > 1 ? 's' : ''}`}
+              size="compact"
+              className="border-red-200 bg-red-50"
+            />
+          )}
         </KPICardGrid>
       </div>
 
@@ -220,11 +239,19 @@ export function IncomingPaymentsForecast() {
                 {data?.invoices.map((invoice) => {
                   const dueDateStatus = getDueDateStatus(invoice.due_date)
                   return (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
+                    <tr
+                      key={invoice.id}
+                      className={`hover:bg-gray-50 ${invoice.is_overdue ? 'bg-red-50' : ''}`}
+                    >
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-[#347dc4]">
-                          {invoice.invoice_number}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-[#347dc4]">
+                            {invoice.invoice_number}
+                          </span>
+                          {invoice.is_overdue && (
+                            <span className="text-xs text-red-600 font-medium">(Overdue)</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">{invoice.account_name}</span>
@@ -241,7 +268,9 @@ export function IncomingPaymentsForecast() {
                         <span className="text-sm text-green-600">{formatCurrency(invoice.payments_received)}</span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right">
-                        <span className="text-sm font-semibold text-gray-900">{formatCurrency(invoice.balance)}</span>
+                        <span className={`text-sm font-semibold ${invoice.is_overdue ? 'text-red-600' : 'text-gray-900'}`}>
+                          {formatCurrency(invoice.balance)}
+                        </span>
                       </td>
                     </tr>
                   )

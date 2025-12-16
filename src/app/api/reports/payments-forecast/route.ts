@@ -21,22 +21,54 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0)
     const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
 
-    // Fetch invoices with due_date in the selected month
-    const { data: invoices, error: invoicesError } = await supabase
-      .from('invoices')
-      .select(`
-        id,
-        invoice_number,
-        account_id,
-        due_date,
-        total_amount,
-        status,
-        created_at
-      `)
-      .eq('tenant_id', dataSourceTenantId)
-      .gte('due_date', monthStart.toISOString())
-      .lte('due_date', monthEnd.toISOString())
-      .order('due_date', { ascending: true })
+    // Check if we're viewing the current month (to include overdue invoices)
+    const isCurrentMonth = month === (now.getMonth() + 1) && year === now.getFullYear()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let invoices: any[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let invoicesError: any = null
+
+    if (isCurrentMonth) {
+      // For current month: fetch invoices due in this month OR overdue (due before this month)
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          id,
+          invoice_number,
+          account_id,
+          due_date,
+          total_amount,
+          status,
+          created_at
+        `)
+        .eq('tenant_id', dataSourceTenantId)
+        .lte('due_date', monthEnd.toISOString()) // Due on or before end of current month
+        .order('due_date', { ascending: true })
+
+      invoices = data || []
+      invoicesError = error
+    } else {
+      // For future months: only fetch invoices due in that specific month
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          id,
+          invoice_number,
+          account_id,
+          due_date,
+          total_amount,
+          status,
+          created_at
+        `)
+        .eq('tenant_id', dataSourceTenantId)
+        .gte('due_date', monthStart.toISOString())
+        .lte('due_date', monthEnd.toISOString())
+        .order('due_date', { ascending: true })
+
+      invoices = data || []
+      invoicesError = error
+    }
 
     if (invoicesError) {
       log.error({ invoicesError }, 'Error fetching invoices')
@@ -83,6 +115,8 @@ export async function GET(request: NextRequest) {
     const invoicesWithBalance = invoices.map(invoice => {
       const paymentsReceived = paymentsByInvoice.get(invoice.id) || 0
       const balance = (invoice.total_amount || 0) - paymentsReceived
+      const dueDate = new Date(invoice.due_date)
+      const isOverdue = dueDate < monthStart // Due before the start of selected month
 
       return {
         id: invoice.id,
@@ -92,18 +126,26 @@ export async function GET(request: NextRequest) {
         total_amount: invoice.total_amount || 0,
         payments_received: paymentsReceived,
         balance: balance,
-        status: invoice.status
+        status: invoice.status,
+        is_overdue: isOverdue
       }
     }).filter(inv => inv.balance > 0) // Only show invoices with outstanding balance
 
     const totalExpected = invoicesWithBalance.reduce((sum, inv) => sum + inv.total_amount, 0)
     const totalBalance = invoicesWithBalance.reduce((sum, inv) => sum + inv.balance, 0)
 
+    // Calculate overdue totals separately
+    const overdueInvoices = invoicesWithBalance.filter(inv => inv.is_overdue)
+    const overdueBalance = overdueInvoices.reduce((sum, inv) => sum + inv.balance, 0)
+
     return NextResponse.json({
       invoices: invoicesWithBalance,
       totalExpected: Math.round(totalExpected * 100) / 100,
       totalBalance: Math.round(totalBalance * 100) / 100,
-      monthLabel: monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      overdueCount: overdueInvoices.length,
+      overdueBalance: Math.round(overdueBalance * 100) / 100,
+      monthLabel: monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      isCurrentMonth
     })
   } catch (error) {
     log.error({ error }, 'Error in payments forecast')
