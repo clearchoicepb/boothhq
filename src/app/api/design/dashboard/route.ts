@@ -55,9 +55,11 @@ export async function GET(request: Request) {
     const eventTasks = (designTasks || []).filter(t => t.entity_type === 'event' && t.entity_id)
     const eventIds = [...new Set(eventTasks.map(t => t.entity_id))]
 
+    log.debug({ eventIds, taskCount: designTasks?.length, eventTaskCount: eventTasks.length }, 'Fetching events for design tasks')
+
     let eventsMap: Record<string, any> = {}
     if (eventIds.length > 0) {
-      const { data: events } = await supabase
+      const { data: events, error: eventsError } = await supabase
         .from('events')
         .select(`
           id,
@@ -68,7 +70,14 @@ export async function GET(request: Request) {
           event_dates(event_date),
           account:accounts(id, name)
         `)
+        .eq('tenant_id', dataSourceTenantId)
         .in('id', eventIds)
+
+      if (eventsError) {
+        log.error({ eventsError }, 'Error fetching events for design dashboard')
+      }
+
+      log.debug({ eventsFound: events?.length || 0 }, 'Events query result')
 
       if (events) {
         eventsMap = Object.fromEntries(events.map(e => [e.id, e]))
