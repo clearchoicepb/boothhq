@@ -1,14 +1,21 @@
 /**
  * Task Type Definitions
  *
- * Comprehensive type system for the task management feature.
+ * Comprehensive type system for the unified task management feature.
+ * Supports all task types: general, design, operations, sales, admin, project, misc
+ *
  * Follows the same pattern as Events module for consistency.
  */
 
 import type { DepartmentId, DepartmentRole } from '@/lib/departments'
 
 /**
- * Base Task type - matches database schema
+ * Unified task type - categorizes tasks
+ */
+export type UnifiedTaskType = 'general' | 'design' | 'operations' | 'sales' | 'admin' | 'project' | 'misc'
+
+/**
+ * Base Task type - matches database schema (unified model)
  */
 export interface Task {
   id: string
@@ -28,7 +35,40 @@ export interface Task {
   created_at: string
   updated_at: string
   department: DepartmentId | null
-  task_type: string | null // References DepartmentTaskType.id
+  task_type: UnifiedTaskType | string | null // 'general', 'design', 'operations', etc.
+  task_template_id: string | null // Reference to task template
+
+  // Design-specific fields (populated when task_type = 'design')
+  quantity: number | null
+  revision_count: number | null
+  design_file_urls: string[] | null
+  proof_file_urls: string[] | null
+  final_file_urls: string[] | null
+  client_notes: string | null
+  internal_notes: string | null
+  design_deadline: string | null
+  design_start_date: string | null
+  product_id: string | null
+
+  // Approval workflow fields
+  requires_approval: boolean
+  approved_by: string | null
+  approval_notes: string | null
+  submitted_for_approval_at: string | null
+  approved_at: string | null
+
+  // Timeline tracking
+  assigned_at: string | null
+  started_at: string | null
+
+  // Workflow tracking
+  auto_created: boolean | null
+  workflow_id: string | null
+  workflow_execution_id: string | null
+
+  // Migration tracking
+  migrated_from_table: string | null
+  migrated_from_id: string | null
 }
 
 /**
@@ -61,9 +101,17 @@ export interface TaskWithRelations extends Task {
 }
 
 /**
- * Task status enum
+ * Task status enum (unified model)
+ * Includes design workflow statuses: awaiting_approval, needs_revision, approved
  */
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+export type TaskStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'awaiting_approval'
+  | 'needs_revision'
+  | 'approved'
+  | 'completed'
+  | 'cancelled'
 
 /**
  * Task priority enum
@@ -71,7 +119,7 @@ export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 /**
- * Task insert type for creating new tasks
+ * Task insert type for creating new tasks (unified model)
  */
 export interface TaskInsert {
   title: string
@@ -85,11 +133,21 @@ export interface TaskInsert {
   priority?: TaskPriority
   dueDate?: string | null
   department?: DepartmentId | null
-  taskType?: string | null
+  taskType?: UnifiedTaskType | string | null
+  taskTemplateId?: string | null
+
+  // Design-specific fields
+  quantity?: number
+  requiresApproval?: boolean
+  designDeadline?: string | null
+  designStartDate?: string | null
+  productId?: string | null
+  clientNotes?: string | null
+  internalNotes?: string | null
 }
 
 /**
- * Task update type for partial updates
+ * Task update type for partial updates (unified model)
  */
 export interface TaskUpdate {
   title?: string
@@ -104,7 +162,30 @@ export interface TaskUpdate {
   due_date?: string | null
   completed_at?: string | null
   department?: DepartmentId | null
-  task_type?: string | null
+  task_type?: UnifiedTaskType | string | null
+
+  // Design-specific updates
+  quantity?: number
+  revision_count?: number
+  design_file_urls?: string[]
+  proof_file_urls?: string[]
+  final_file_urls?: string[]
+  client_notes?: string | null
+  internal_notes?: string | null
+  design_deadline?: string | null
+  design_start_date?: string | null
+  product_id?: string | null
+
+  // Approval workflow
+  requires_approval?: boolean
+  approval_notes?: string | null
+  submitted_for_approval_at?: string | null
+  approved_at?: string | null
+  approved_by?: string | null
+
+  // Timeline
+  assigned_at?: string | null
+  started_at?: string | null
 }
 
 /**
@@ -193,21 +274,52 @@ export interface TaskWithUrgency extends TaskWithRelations {
 }
 
 /**
- * Task template for auto-creation
+ * Task template for auto-creation (unified model)
  */
 export interface TaskTemplate {
   id: string
   tenant_id: string
-  department: DepartmentId
-  task_type: string
-  title_template: string
-  description_template: string | null
+  name: string
+  description: string | null
+  department: DepartmentId | string | null
+  task_type: UnifiedTaskType | string | null
+
+  // Template defaults
+  default_title: string
+  default_description: string | null
   default_priority: TaskPriority
-  trigger_event: string // 'event_created', 'opportunity_won', etc.
-  trigger_conditions: Record<string, any> | null
-  due_date_offset_days: number | null
-  auto_assign_to: 'owner' | 'department_default' | string | null
+  default_due_in_days: number | null
+  requires_assignment: boolean
+
+  // Timeline calculation fields
+  days_before_event: number | null
+  days_after_booking: number | null
+  start_days_before_event: number | null
+  start_days_after_booking: number | null
+  use_event_date: boolean
+
+  // Approval settings
+  requires_approval: boolean
+  default_quantity: number | null
+
+  // Display settings
+  display_order: number
+  icon: string | null
+  color: string | null
+  category: string | null
+
+  // Status
+  enabled: boolean
+  is_active: boolean
+
+  // Metadata
+  created_by: string | null
   created_at: string
+  updated_at: string
+
+  // Migration tracking
+  migrated_from_table: string | null
+  migrated_from_id: string | null
 }
 
 /**
@@ -264,7 +376,21 @@ export type TaskAction =
  * Utility type guards
  */
 export function isTaskStatus(value: string): value is TaskStatus {
-  return ['pending', 'in_progress', 'completed', 'cancelled'].includes(value)
+  return ['pending', 'in_progress', 'awaiting_approval', 'needs_revision', 'approved', 'completed', 'cancelled'].includes(value)
+}
+
+/**
+ * Check if a status represents a completed state
+ */
+export function isCompletedStatus(status: TaskStatus): boolean {
+  return status === 'completed' || status === 'approved'
+}
+
+/**
+ * Check if task type is a unified task type
+ */
+export function isUnifiedTaskType(value: string): value is UnifiedTaskType {
+  return ['general', 'design', 'operations', 'sales', 'admin', 'project', 'misc'].includes(value)
 }
 
 export function isTaskPriority(value: string): value is TaskPriority {

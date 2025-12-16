@@ -9,8 +9,11 @@ interface CreateDesignItemParams {
   eventDate: string
   designTypeId: string
   customDesignDays?: number
+  assignedDesignerId?: string
   tenantId: string
   supabase: SupabaseClient // Pass in the tenant database client
+  notes?: string
+  createdBy?: string
 }
 
 export async function createDesignItemForEvent({
@@ -18,8 +21,11 @@ export async function createDesignItemForEvent({
   eventDate,
   designTypeId,
   customDesignDays,
+  assignedDesignerId,
   tenantId,
-  supabase
+  supabase,
+  notes,
+  createdBy
 }: CreateDesignItemParams) {
   // Use the provided tenant database client instead of creating a new one
 
@@ -69,7 +75,7 @@ export async function createDesignItemForEvent({
     return existingItem
   }
 
-  // Create design item
+  // Create design item (legacy table - kept for backwards compatibility)
   const { data: designItem, error: itemError } = await supabase
     .from('event_design_items')
     .insert({
@@ -83,7 +89,10 @@ export async function createDesignItemForEvent({
       design_deadline: designDeadline.toISOString().split('T')[0],
       custom_design_days: customDesignDays || null,
       status: 'pending',
-      due_date: designDeadline.toISOString().split('T')[0]
+      due_date: designDeadline.toISOString().split('T')[0],
+      assigned_designer_id: assignedDesignerId || null,
+      internal_notes: notes || null,
+      created_by: createdBy || null
     })
     .select()
     .single()
@@ -105,22 +114,51 @@ export async function createDesignItemForEvent({
     return designItem
   }
 
-  // Create task
+  // Create unified task with ALL required fields
   const taskName = `Design: ${designType.name}`
   const now = new Date()
   const daysUntilDeadline = Math.ceil((designDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  // Determine priority based on deadline
+  let priority = 'medium'
+  if (daysUntilDeadline <= 7) priority = 'high'
+  if (daysUntilDeadline <= 3) priority = 'urgent'
 
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .insert({
       tenant_id: tenantId,
-      event_id: eventId,
       title: taskName,
-      description: `Complete ${designType.name} for this event. Due by ${designDeadline.toLocaleDateString()}`,
+      description: notes || `Complete ${designType.name} for this event. Due by ${designDeadline.toLocaleDateString()}`,
+
+      // CRITICAL: These fields are required for My Tasks and dashboards
+      entity_type: 'event',
+      entity_id: eventId,
+      assigned_to: assignedDesignerId || null,
+      assigned_at: assignedDesignerId ? new Date().toISOString() : null,
+      created_by: createdBy || null,
+
+      // Task categorization
+      task_type: 'design',
+      department: 'design',
+
+      // Dates
       due_date: designDeadline.toISOString().split('T')[0],
-      priority: daysUntilDeadline <= 7 ? 'high' : 'medium',
+      design_deadline: designDeadline.toISOString().split('T')[0],
+      design_start_date: designStartDate.toISOString().split('T')[0],
+
+      // Status and priority
       status: 'pending',
-      task_type: 'design'
+      priority: priority,
+
+      // Design-specific fields
+      quantity: 1,
+      requires_approval: true,
+      internal_notes: notes || null,
+
+      // Link to legacy table for migration tracking
+      migrated_from_table: 'event_design_items',
+      migrated_from_id: designItem.id
     })
     .select()
     .single()
@@ -144,7 +182,8 @@ export async function createAutoDesignItems(
   eventId: string,
   eventDate: string,
   tenantId: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  createdBy?: string
 ) {
   // Find all auto-added design types
   const { data: autoTypes, error } = await supabase
@@ -169,7 +208,8 @@ export async function createAutoDesignItems(
       eventDate,
       designTypeId: type.id,
       tenantId,
-      supabase
+      supabase,
+      createdBy
     })
     if (item) results.push(item)
   }
@@ -182,13 +222,19 @@ export async function createDesignItemsForProduct({
   eventDate,
   productId,
   tenantId,
-  supabase
+  supabase,
+  assignedDesignerId,
+  notes,
+  createdBy
 }: {
   eventId: string
   eventDate: string
   productId: string
   tenantId: string
   supabase: SupabaseClient
+  assignedDesignerId?: string
+  notes?: string
+  createdBy?: string
 }) {
   // Fetch product with design requirements
   const { data: product, error: productError } = await supabase
@@ -215,7 +261,10 @@ export async function createDesignItemsForProduct({
     eventDate,
     designTypeId: product.design_item_type_id,
     customDesignDays: product.design_lead_time_override,
+    assignedDesignerId,
     tenantId,
-    supabase
+    supabase,
+    notes,
+    createdBy
   })
 }
