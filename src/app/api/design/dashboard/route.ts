@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       .from('tasks')
       .select(`
         *,
-        template:task_templates(id, name, task_type, days_before_event, urgent_threshold_days, missed_deadline_days),
+        template:task_templates(id, name, task_type, due_date_days, urgent_threshold_days, missed_deadline_days),
         assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, avatar_url, department),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name),
         approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name)
@@ -119,7 +119,7 @@ export async function GET(request: Request) {
 
       // Use template thresholds if available, otherwise use defaults
       const template = task.template
-      const dueDateDays = template?.days_before_event || 21
+      const dueDateDays = template?.due_date_days || 21
       const urgentThresholdDays = template?.urgent_threshold_days || 14
       const missedDeadlineDays = template?.missed_deadline_days || 13
 
