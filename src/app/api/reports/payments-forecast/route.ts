@@ -1,6 +1,7 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { getESTDateParts, toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
 
 const log = createLogger('api:payments-forecast')
 
@@ -12,17 +13,21 @@ export async function GET(request: NextRequest) {
     const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
 
-    // Get month and year from params (default to current month)
-    const now = new Date()
-    const month = parseInt(searchParams.get('month') || String(now.getMonth() + 1))
-    const year = parseInt(searchParams.get('year') || String(now.getFullYear()))
+    // Get current date parts in EST for consistent date handling
+    const estNow = getESTDateParts()
 
-    // Calculate start and end of the selected month
-    const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0)
-    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
+    // Get month and year from params (default to current month in EST)
+    const month = parseInt(searchParams.get('month') || String(estNow.month))
+    const year = parseInt(searchParams.get('year') || String(estNow.year))
+
+    // Calculate start and end of the selected month as YYYY-MM-DD strings
+    const monthStartDate = new Date(year, month - 1, 1)
+    const monthEndDate = new Date(year, month, 0) // Last day of month
+    const monthStartISO = toDateInputValue(monthStartDate)
+    const monthEndISO = toDateInputValue(monthEndDate)
 
     // Check if we're viewing the current month (to include overdue invoices)
-    const isCurrentMonth = month === (now.getMonth() + 1) && year === now.getFullYear()
+    const isCurrentMonth = month === estNow.month && year === estNow.year
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let invoices: any[] = []
@@ -43,7 +48,7 @@ export async function GET(request: NextRequest) {
           created_at
         `)
         .eq('tenant_id', dataSourceTenantId)
-        .lte('due_date', monthEnd.toISOString()) // Due on or before end of current month
+        .lte('due_date', monthEndISO + 'T23:59:59.999Z') // Due on or before end of current month
         .order('due_date', { ascending: true })
 
       invoices = data || []
@@ -62,8 +67,8 @@ export async function GET(request: NextRequest) {
           created_at
         `)
         .eq('tenant_id', dataSourceTenantId)
-        .gte('due_date', monthStart.toISOString())
-        .lte('due_date', monthEnd.toISOString())
+        .gte('due_date', monthStartISO)
+        .lte('due_date', monthEndISO + 'T23:59:59.999Z')
         .order('due_date', { ascending: true })
 
       invoices = data || []
@@ -80,7 +85,10 @@ export async function GET(request: NextRequest) {
         invoices: [],
         totalExpected: 0,
         totalBalance: 0,
-        monthLabel: monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        overdueCount: 0,
+        overdueBalance: 0,
+        monthLabel: monthStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        isCurrentMonth
       })
     }
 
@@ -115,8 +123,11 @@ export async function GET(request: NextRequest) {
     const invoicesWithBalance = invoices.map(invoice => {
       const paymentsReceived = paymentsByInvoice.get(invoice.id) || 0
       const balance = (invoice.total_amount || 0) - paymentsReceived
-      const dueDate = new Date(invoice.due_date)
-      const isOverdue = dueDate < monthStart // Due before the start of selected month
+
+      // Parse due date without timezone conversion to determine if overdue
+      // Compare date strings directly to avoid timezone issues
+      const dueDateStr = invoice.due_date?.split('T')[0] || ''
+      const isOverdue = dueDateStr < monthStartISO // Due before the start of selected month
 
       return {
         id: invoice.id,
@@ -144,7 +155,7 @@ export async function GET(request: NextRequest) {
       totalBalance: Math.round(totalBalance * 100) / 100,
       overdueCount: overdueInvoices.length,
       overdueBalance: Math.round(overdueBalance * 100) / 100,
-      monthLabel: monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      monthLabel: monthStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       isCurrentMonth
     })
   } catch (error) {

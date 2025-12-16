@@ -1,6 +1,14 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import {
+  getTodayRange,
+  getWeekRange,
+  getMonthRange,
+  getQuarterRange,
+  getYearRange,
+  parseLocalDate
+} from '@/lib/utils/date-utils'
 
 const log = createLogger('api:payments-search')
 
@@ -16,52 +24,43 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const preset = searchParams.get('preset') || 'this_month'
 
-    // Calculate date range based on preset or custom dates
-    const now = new Date()
-    let dateStart: Date
-    let dateEnd: Date
+    // Calculate date range based on preset or custom dates (all in EST)
+    let dateStartISO: string
+    let dateEndISO: string
 
     if (startDate && endDate) {
-      // Custom date range
-      dateStart = new Date(startDate)
-      dateStart.setHours(0, 0, 0, 0)
-      dateEnd = new Date(endDate)
-      dateEnd.setHours(23, 59, 59, 999)
+      // Custom date range - parse as local dates (no timezone conversion)
+      dateStartISO = startDate
+      dateEndISO = endDate
     } else {
-      // Use preset
+      // Use preset with EST-aware date utilities
+      let range
       switch (preset) {
         case 'today':
-          dateStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-          dateEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+          range = getTodayRange()
           break
         case 'this_week':
-          // Start of week (Sunday)
-          dateStart = new Date(now)
-          dateStart.setDate(now.getDate() - now.getDay())
-          dateStart.setHours(0, 0, 0, 0)
-          dateEnd = new Date()
+          range = getWeekRange()
           break
         case 'this_month':
-          dateStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
-          dateEnd = new Date()
+          range = getMonthRange()
           break
         case 'this_quarter':
-          const quarter = Math.floor(now.getMonth() / 3)
-          dateStart = new Date(now.getFullYear(), quarter * 3, 1, 0, 0, 0, 0)
-          dateEnd = new Date()
+          range = getQuarterRange()
           break
         case 'this_year':
-          dateStart = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
-          dateEnd = new Date()
+          range = getYearRange()
           break
         default:
-          // Default to this month
-          dateStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
-          dateEnd = new Date()
+          range = getMonthRange()
       }
+      dateStartISO = range.startISO
+      dateEndISO = range.endISO
     }
 
     // Fetch payments in date range
+    // Use date strings for comparison (YYYY-MM-DD format)
+    // This avoids timezone issues - compares dates as stored in DB
     const { data: payments, error: paymentsError } = await supabase
       .from('payments')
       .select(`
@@ -74,8 +73,8 @@ export async function GET(request: NextRequest) {
         notes
       `)
       .eq('tenant_id', dataSourceTenantId)
-      .gte('payment_date', dateStart.toISOString())
-      .lte('payment_date', dateEnd.toISOString())
+      .gte('payment_date', dateStartISO)
+      .lte('payment_date', dateEndISO + 'T23:59:59.999Z')
       .order('payment_date', { ascending: false })
 
     if (paymentsError) {
@@ -88,8 +87,8 @@ export async function GET(request: NextRequest) {
         payments: [],
         totalAmount: 0,
         dateRange: {
-          start: dateStart.toISOString(),
-          end: dateEnd.toISOString()
+          start: dateStartISO,
+          end: dateEndISO
         }
       })
     }
@@ -134,8 +133,8 @@ export async function GET(request: NextRequest) {
       totalAmount: Math.round(totalAmount * 100) / 100,
       count: paymentsWithDetails.length,
       dateRange: {
-        start: dateStart.toISOString(),
-        end: dateEnd.toISOString()
+        start: dateStartISO,
+        end: dateEndISO
       }
     })
   } catch (error) {

@@ -1,6 +1,7 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { getESTDateParts } from '@/lib/utils/date-utils'
 
 const log = createLogger('api:payments-yoy')
 
@@ -11,35 +12,36 @@ export async function GET(_request: NextRequest) {
 
     const { supabase, dataSourceTenantId } = context
 
-    const now = new Date()
-    const currentYear = now.getFullYear()
+    // Get current year in EST for consistent date handling
+    const estNow = getESTDateParts()
+    const currentYear = estNow.year
     const previousYear = currentYear - 1
 
-    // Fetch all payments for current year
-    const currentYearStart = new Date(currentYear, 0, 1, 0, 0, 0, 0)
-    const currentYearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999)
+    // Use date strings for year boundaries to avoid timezone issues
+    const currentYearStartISO = `${currentYear}-01-01`
+    const currentYearEndISO = `${currentYear}-12-31T23:59:59.999Z`
 
     const { data: currentYearPayments, error: currentError } = await supabase
       .from('payments')
       .select('amount, payment_date')
       .eq('tenant_id', dataSourceTenantId)
-      .gte('payment_date', currentYearStart.toISOString())
-      .lte('payment_date', currentYearEnd.toISOString())
+      .gte('payment_date', currentYearStartISO)
+      .lte('payment_date', currentYearEndISO)
 
     if (currentError) {
       log.error({ currentError }, 'Error fetching current year payments')
     }
 
-    // Fetch all payments for previous year
-    const previousYearStart = new Date(previousYear, 0, 1, 0, 0, 0, 0)
-    const previousYearEnd = new Date(previousYear, 11, 31, 23, 59, 59, 999)
+    // Previous year boundaries
+    const previousYearStartISO = `${previousYear}-01-01`
+    const previousYearEndISO = `${previousYear}-12-31T23:59:59.999Z`
 
     const { data: previousYearPayments, error: previousError } = await supabase
       .from('payments')
       .select('amount, payment_date')
       .eq('tenant_id', dataSourceTenantId)
-      .gte('payment_date', previousYearStart.toISOString())
-      .lte('payment_date', previousYearEnd.toISOString())
+      .gte('payment_date', previousYearStartISO)
+      .lte('payment_date', previousYearEndISO)
 
     if (previousError) {
       log.error({ previousError }, 'Error fetching previous year payments')
@@ -58,17 +60,22 @@ export async function GET(_request: NextRequest) {
     }
 
     // Sum current year by month
+    // Extract month from date string to avoid timezone conversion issues
     currentYearPayments?.forEach(payment => {
-      const date = new Date(payment.payment_date)
-      const month = date.getMonth()
-      currentByMonth.set(month, (currentByMonth.get(month) || 0) + (payment.amount || 0))
+      const dateStr = payment.payment_date?.split('T')[0] || ''
+      const month = parseInt(dateStr.split('-')[1], 10) - 1 // Convert to 0-indexed month
+      if (!isNaN(month) && month >= 0 && month < 12) {
+        currentByMonth.set(month, (currentByMonth.get(month) || 0) + (payment.amount || 0))
+      }
     })
 
     // Sum previous year by month
     previousYearPayments?.forEach(payment => {
-      const date = new Date(payment.payment_date)
-      const month = date.getMonth()
-      previousByMonth.set(month, (previousByMonth.get(month) || 0) + (payment.amount || 0))
+      const dateStr = payment.payment_date?.split('T')[0] || ''
+      const month = parseInt(dateStr.split('-')[1], 10) - 1 // Convert to 0-indexed month
+      if (!isNaN(month) && month >= 0 && month < 12) {
+        previousByMonth.set(month, (previousByMonth.get(month) || 0) + (payment.amount || 0))
+      }
     })
 
     // Build monthly comparison data
