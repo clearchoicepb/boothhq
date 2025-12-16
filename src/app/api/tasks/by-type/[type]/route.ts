@@ -52,7 +52,6 @@ export async function GET(
         assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, avatar_url, department, department_role),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name),
         approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name),
-        event:events(id, event_name, event_date, client_name, start_date),
         template:task_templates(id, name, task_type)
       `)
       .eq('tenant_id', dataSourceTenantId)
@@ -83,12 +82,34 @@ export async function GET(
     }
 
     // Order by due date, with nulls last
-    const { data, error } = await query.order('due_date', { ascending: true, nullsFirst: false })
+    const { data: tasks, error } = await query.order('due_date', { ascending: true, nullsFirst: false })
 
     if (error) {
       log.error({ error }, 'Error fetching tasks by type')
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Fetch event data for tasks linked to events (polymorphic relationship)
+    const eventTasks = (tasks || []).filter(t => t.entity_type === 'event' && t.entity_id)
+    const eventIds = [...new Set(eventTasks.map(t => t.entity_id))]
+
+    let eventsMap: Record<string, any> = {}
+    if (eventIds.length > 0) {
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, event_name, event_date, client_name, start_date')
+        .in('id', eventIds)
+
+      if (events) {
+        eventsMap = Object.fromEntries(events.map(e => [e.id, e]))
+      }
+    }
+
+    // Attach event data to tasks
+    const data = (tasks || []).map(task => ({
+      ...task,
+      event: task.entity_type === 'event' && task.entity_id ? eventsMap[task.entity_id] || null : null
+    }))
 
     return NextResponse.json({ data })
   } catch (error) {

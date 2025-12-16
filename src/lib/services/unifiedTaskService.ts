@@ -335,8 +335,7 @@ export const unifiedTaskService = {
       .from('tasks')
       .select(`
         *,
-        assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, avatar_url),
-        event:events(id, event_name, event_date, client_name)
+        assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, avatar_url)
       `)
       .eq('tenant_id', tenantId)
       .eq('assigned_to', userId)
@@ -345,13 +344,35 @@ export const unifiedTaskService = {
       query = query.not('status', 'in', '("completed","cancelled","approved")')
     }
 
-    const { data, error } = await query.order('due_date', { ascending: true, nullsFirst: false })
+    const { data: tasks, error } = await query.order('due_date', { ascending: true, nullsFirst: false })
 
     if (error) {
       return { data: [], error: new Error(error.message) }
     }
 
-    return { data: (data || []) as UnifiedTask[], error: null }
+    // Fetch event data for tasks linked to events (polymorphic relationship)
+    const eventTasks = (tasks || []).filter(t => t.entity_type === 'event' && t.entity_id)
+    const eventIds = [...new Set(eventTasks.map(t => t.entity_id))]
+
+    let eventsMap: Record<string, any> = {}
+    if (eventIds.length > 0) {
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, event_name, event_date, client_name')
+        .in('id', eventIds)
+
+      if (events) {
+        eventsMap = Object.fromEntries(events.map(e => [e.id, e]))
+      }
+    }
+
+    // Attach event data to tasks
+    const data = (tasks || []).map(task => ({
+      ...task,
+      event: task.entity_type === 'event' && task.entity_id ? eventsMap[task.entity_id] || null : null
+    }))
+
+    return { data: data as UnifiedTask[], error: null }
   },
 
   /**
