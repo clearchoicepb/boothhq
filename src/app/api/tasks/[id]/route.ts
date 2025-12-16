@@ -38,7 +38,7 @@ export async function GET(
     if (task.entity_type === 'event' && task.entity_id) {
       const { data: event } = await supabase
         .from('events')
-        .select('id, event_name, event_date, client_name, start_date')
+        .select('id, title, start_date')
         .eq('id', task.entity_id)
         .single()
       eventData = event
@@ -217,7 +217,7 @@ export async function PATCH(
     if (task.entity_type === 'event' && task.entity_id) {
       const { data: event } = await supabase
         .from('events')
-        .select('id, event_name, event_date, client_name, start_date')
+        .select('id, title, start_date')
         .eq('id', task.entity_id)
         .single()
       eventData = event

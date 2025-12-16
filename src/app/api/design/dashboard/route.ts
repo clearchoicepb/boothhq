@@ -64,7 +64,6 @@ export async function GET(request: Request) {
         .select(`
           id,
           title,
-          event_name,
           start_date,
           event_date,
           event_dates(event_date),

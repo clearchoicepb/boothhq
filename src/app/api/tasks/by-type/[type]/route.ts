@@ -97,7 +97,7 @@ export async function GET(
     if (eventIds.length > 0) {
       const { data: events } = await supabase
         .from('events')
-        .select('id, event_name, event_date, client_name, start_date')
+        .select('id, title, start_date')
         .in('id', eventIds)
 
       if (events) {
