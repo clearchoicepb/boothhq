@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { Search, Download, DollarSign, FileText, Calendar, ChevronDown } from 'lucide-react'
+import { formatDate } from '@/lib/utils/date-utils'
 
 type PresetRange = 'today' | 'this_week' | 'this_month' | 'this_quarter' | 'this_year' | 'custom'
 
@@ -87,14 +88,6 @@ export function PaymentSearch() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
   }
 
   const getCurrentPresetLabel = () => {

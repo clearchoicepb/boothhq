@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { DollarSign, Calendar, ChevronDown, FileText, AlertCircle, AlertTriangle } from 'lucide-react'
 import { WeeklyForecastChart } from './WeeklyForecastChart'
+import { formatDate, parseLocalDate, getTodayEST } from '@/lib/utils/date-utils'
 
 interface ForecastInvoice {
   id: string
@@ -87,14 +88,6 @@ export function IncomingPaymentsForecast() {
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
-
   const getSelectedMonthLabel = () => {
     const option = monthOptions.find(
       opt => opt.month === selectedMonth.month && opt.year === selectedMonth.year
@@ -103,9 +96,8 @@ export function IncomingPaymentsForecast() {
   }
 
   const getDueDateStatus = (dueDate: string) => {
-    const due = new Date(dueDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const due = parseLocalDate(dueDate)
+    const today = getTodayEST()
     const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) return { label: 'Overdue', className: 'bg-red-100 text-red-800' }
@@ -125,7 +117,7 @@ export function IncomingPaymentsForecast() {
 
       if (invoice.is_overdue) return false
 
-      const dueDate = new Date(invoice.due_date)
+      const dueDate = parseLocalDate(invoice.due_date)
       const dayOfMonth = dueDate.getDate()
 
       switch (selectedWeek) {
