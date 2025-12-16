@@ -84,13 +84,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query for tasks
+    // Note: Using column-based joins instead of explicit FK names for better compatibility
     let query = supabase
       .from('tasks')
       .select(
         `
         *,
-        assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email),
-        created_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
+        assigned_user:users!assigned_to(id, first_name, last_name, email),
+        created_user:users!created_by(id, first_name, last_name, email)
       `
       )
       .eq('tenant_id', dataSourceTenantId)

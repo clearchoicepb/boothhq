@@ -18,9 +18,9 @@ export async function GET(
       .from('tasks')
       .select(`
         *,
-        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email, department, department_role),
+        created_by_user:users!created_by(id, first_name, last_name, email),
+        event_date:event_dates!event_date_id(id, event_date)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
@@ -114,9 +114,9 @@ export async function PATCH(
       .eq('tenant_id', dataSourceTenantId)
       .select(`
         *,
-        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email, department, department_role),
+        created_by_user:users!created_by(id, first_name, last_name, email),
+        event_date:event_dates!event_date_id(id, event_date)
       `)
       .single()
 

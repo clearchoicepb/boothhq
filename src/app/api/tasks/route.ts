@@ -32,13 +32,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100')
 
     // Build query with relations
+    // Note: Using column-based joins instead of explicit FK names for better compatibility
     let query = supabase
       .from('tasks')
       .select(`
         *,
-        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email, department, department_role),
+        created_by_user:users!created_by(id, first_name, last_name, email),
+        event_date:event_dates!event_date_id(id, event_date)
       `)
       .eq('tenant_id', dataSourceTenantId)
 
@@ -193,9 +194,9 @@ export async function POST(request: NextRequest) {
       })
       .select(`
         *,
-        assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
-        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        assigned_to_user:users!assigned_to(id, first_name, last_name, email, department, department_role),
+        created_by_user:users!created_by(id, first_name, last_name, email),
+        event_date:event_dates!event_date_id(id, event_date)
       `)
       .single()
 
