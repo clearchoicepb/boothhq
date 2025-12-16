@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { DollarSign, Calendar, ChevronDown, FileText, AlertCircle, AlertTriangle } from 'lucide-react'
+import { WeeklyForecastChart } from './WeeklyForecastChart'
 
 interface ForecastInvoice {
   id: string
@@ -34,6 +35,7 @@ export function IncomingPaymentsForecast() {
     return { month: now.getMonth() + 1, year: now.getFullYear() }
   })
   const [showMonthDropdown, setShowMonthDropdown] = useState(false)
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
 
   // Generate month options (current month + next 6 months)
   const getMonthOptions = () => {
@@ -54,6 +56,7 @@ export function IncomingPaymentsForecast() {
 
   useEffect(() => {
     fetchForecast()
+    setSelectedWeek(null) // Clear week filter when month changes
   }, [selectedMonth])
 
   const fetchForecast = async () => {
@@ -107,6 +110,37 @@ export function IncomingPaymentsForecast() {
     if (diffDays <= 7) return { label: `Due in ${diffDays}d`, className: 'bg-orange-100 text-orange-800' }
     return { label: formatDate(dueDate), className: 'bg-gray-100 text-gray-800' }
   }
+
+  // Filter invoices by selected week
+  const getFilteredInvoices = () => {
+    if (!data?.invoices || !selectedWeek) return data?.invoices || []
+
+    return data.invoices.filter(invoice => {
+      if (selectedWeek === 'overdue') {
+        return invoice.is_overdue
+      }
+
+      if (invoice.is_overdue) return false
+
+      const dueDate = new Date(invoice.due_date)
+      const dayOfMonth = dueDate.getDate()
+
+      switch (selectedWeek) {
+        case 'week1':
+          return dayOfMonth <= 7
+        case 'week2':
+          return dayOfMonth > 7 && dayOfMonth <= 14
+        case 'week3':
+          return dayOfMonth > 14 && dayOfMonth <= 21
+        case 'week4':
+          return dayOfMonth > 21
+        default:
+          return true
+      }
+    })
+  }
+
+  const filteredInvoices = getFilteredInvoices()
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
@@ -197,6 +231,15 @@ export function IncomingPaymentsForecast() {
         </KPICardGrid>
       </div>
 
+      {/* Weekly Chart */}
+      {!loading && data?.invoices && data.invoices.length > 0 && (
+        <WeeklyForecastChart
+          invoices={data.invoices}
+          onWeekClick={setSelectedWeek}
+          selectedWeek={selectedWeek}
+        />
+      )}
+
       {/* Invoice List */}
       <div className="p-6">
         {loading ? (
@@ -209,6 +252,19 @@ export function IncomingPaymentsForecast() {
               <AlertCircle className="h-6 w-6 text-gray-400" />
             </div>
             <p className="text-sm text-gray-500">No invoices with outstanding balances due in {data?.monthLabel}</p>
+          </div>
+        ) : filteredInvoices.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-3">
+              <AlertCircle className="h-6 w-6 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-500">No invoices match the selected filter</p>
+            <button
+              onClick={() => setSelectedWeek(null)}
+              className="mt-2 text-sm text-[#347dc4] hover:underline"
+            >
+              Clear filter
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -236,7 +292,7 @@ export function IncomingPaymentsForecast() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {data?.invoices.map((invoice) => {
+                {filteredInvoices.map((invoice) => {
                   const dueDateStatus = getDueDateStatus(invoice.due_date)
                   return (
                     <tr
@@ -279,16 +335,28 @@ export function IncomingPaymentsForecast() {
               <tfoot className="bg-gray-50">
                 <tr>
                   <td colSpan={3} className="px-4 py-3 text-sm font-medium text-gray-900">
-                    Total
+                    {selectedWeek ? (
+                      <span>
+                        Showing {filteredInvoices.length} of {data?.invoices.length} invoices
+                        <button
+                          onClick={() => setSelectedWeek(null)}
+                          className="ml-2 text-[#347dc4] hover:underline"
+                        >
+                          (Clear filter)
+                        </button>
+                      </span>
+                    ) : (
+                      'Total'
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                    {formatCurrency(data?.totalExpected || 0)}
+                    {formatCurrency(filteredInvoices.reduce((sum, inv) => sum + inv.total_amount, 0))}
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-medium text-green-600">
-                    {formatCurrency((data?.totalExpected || 0) - (data?.totalBalance || 0))}
+                    {formatCurrency(filteredInvoices.reduce((sum, inv) => sum + inv.payments_received, 0))}
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
-                    {formatCurrency(data?.totalBalance || 0)}
+                    {formatCurrency(filteredInvoices.reduce((sum, inv) => sum + inv.balance, 0))}
                   </td>
                 </tr>
               </tfoot>
