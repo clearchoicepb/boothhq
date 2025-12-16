@@ -51,35 +51,35 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    // Fetch event data for tasks linked to events (polymorphic relationship)
-    const eventTasks = (designTasks || []).filter(t => t.entity_type === 'event' && t.entity_id)
-    const eventIds = [...new Set(eventTasks.map(t => t.entity_id))]
+    log.debug({ taskCount: designTasks?.length }, 'Design tasks fetched')
 
-    log.debug({ eventIds, taskCount: designTasks?.length, eventTaskCount: eventTasks.length }, 'Fetching events for design tasks')
+    // Fetch event data for tasks linked to events (same pattern as My Tasks)
+    const eventTaskIds = (designTasks || [])
+      .filter(t => t.entity_type === 'event' && t.entity_id)
+      .map(t => t.entity_id!)
 
-    let eventsMap: Record<string, any> = {}
-    if (eventIds.length > 0) {
+    const uniqueEventIds = [...new Set(eventTaskIds)]
+    const eventsMap: Record<string, any> = {}
+
+    log.debug({ uniqueEventIds }, 'Fetching events')
+
+    if (uniqueEventIds.length > 0) {
+      // Use same query pattern as My Tasks which works
       const { data: events, error: eventsError } = await supabase
         .from('events')
-        .select(`
-          id,
-          title,
-          start_date,
-          event_date,
-          event_dates(event_date),
-          account:accounts(id, name)
-        `)
+        .select('id, title, start_date, event_dates(event_date), account:accounts(id, name)')
         .eq('tenant_id', dataSourceTenantId)
-        .in('id', eventIds)
+        .in('id', uniqueEventIds)
 
       if (eventsError) {
         log.error({ eventsError }, 'Error fetching events for design dashboard')
-      }
-
-      log.debug({ eventsFound: events?.length || 0 }, 'Events query result')
-
-      if (events) {
-        eventsMap = Object.fromEntries(events.map(e => [e.id, e]))
+      } else {
+        log.debug({ eventsFound: events?.length || 0 }, 'Events query result')
+        if (events) {
+          events.forEach((event: any) => {
+            eventsMap[event.id] = event
+          })
+        }
       }
     }
 
@@ -90,42 +90,33 @@ export async function GET(request: Request) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const items = (designTasks || [])
-      .map(task => {
-        // Attach event data from map
-        const event = task.entity_type === 'event' && task.entity_id ? eventsMap[task.entity_id] || null : null
+    const items = (designTasks || []).map(task => {
+      // Attach event data from map (same pattern as My Tasks)
+      const event = task.entity_type === 'event' && task.entity_id && eventsMap[task.entity_id]
+        ? eventsMap[task.entity_id]
+        : null
 
-        // Get earliest event date
-        const eventDate = event?.event_dates?.[0]?.event_date || event?.start_date || event?.event_date
+      // Get earliest event date
+      const eventDate = event?.event_dates?.[0]?.event_date || event?.start_date
 
-        // Use design_deadline if no event date available
-        const deadlineDate = task.design_deadline || task.due_date
+      // Use design_deadline if no event date available
+      const deadlineDate = task.design_deadline || task.due_date
 
-        if (!eventDate && !deadlineDate) {
-          return {
-            ...task,
-            event,
-            calculated_status: 'pending',
-            // Map fields for backwards compatibility with frontend
-            item_name: task.title,
-            assigned_designer: task.assigned_user,
-            assigned_designer_id: task.assigned_to,
-            design_item_type: task.template
-          }
-        }
+      // Calculate days until event or deadline
+      let daysUntilEvent: number | null = null
+      let calculated_status = 'pending'
 
-        // Calculate days until event or deadline
-        let daysUntilEvent: number
-        if (eventDate) {
-          const eventDateTime = new Date(eventDate)
-          eventDateTime.setHours(0, 0, 0, 0)
-          daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-        } else {
-          const deadlineDateTime = new Date(deadlineDate!)
-          deadlineDateTime.setHours(0, 0, 0, 0)
-          daysUntilEvent = Math.ceil((deadlineDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-        }
+      if (eventDate) {
+        const eventDateTime = new Date(eventDate)
+        eventDateTime.setHours(0, 0, 0, 0)
+        daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      } else if (deadlineDate) {
+        const deadlineDateTime = new Date(deadlineDate)
+        deadlineDateTime.setHours(0, 0, 0, 0)
+        daysUntilEvent = Math.ceil((deadlineDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      }
 
+      if (daysUntilEvent !== null) {
         // Use template thresholds if available, otherwise use defaults
         const template = task.template
         const dueDateDays = template?.due_date_days || 21
@@ -133,8 +124,6 @@ export async function GET(request: Request) {
         const missedDeadlineDays = template?.missed_deadline_days || 13
 
         // Calculate status based on days until event
-        let calculated_status = 'on_time'
-
         if (isCompletedStatus(task.status)) {
           calculated_status = 'completed'
         } else if (daysUntilEvent <= missedDeadlineDays) {
@@ -143,22 +132,26 @@ export async function GET(request: Request) {
           calculated_status = 'urgent'
         } else if (daysUntilEvent <= dueDateDays) {
           calculated_status = 'due_soon'
+        } else {
+          calculated_status = 'on_time'
         }
+      } else if (isCompletedStatus(task.status)) {
+        calculated_status = 'completed'
+      }
 
-        return {
-          ...task,
-          event,
-          calculated_status,
-          days_until_event: daysUntilEvent,
-          // Map fields for backwards compatibility with frontend
-          item_name: task.title,
-          assigned_designer: task.assigned_user,
-          assigned_designer_id: task.assigned_to,
-          design_item_type: task.template
-        }
-      })
-      // Filter out items without valid event data (frontend requires event.id)
-      .filter(item => item.event !== null)
+      return {
+        ...task,
+        event,
+        calculated_status,
+        days_until_event: daysUntilEvent,
+        // Map fields for backwards compatibility with frontend
+        item_name: task.title,
+        assigned_designer: task.assigned_user,
+        assigned_designer_id: task.assigned_to,
+        design_item_type: task.template,
+        design_deadline: task.design_deadline || task.due_date
+      }
+    })
 
     // Categorize items based on new status logic
     const missedDeadline = items.filter(item =>
@@ -178,6 +171,11 @@ export async function GET(request: Request) {
 
     const onTime = items.filter(item =>
       item.calculated_status === 'on_time' &&
+      !isCompletedStatus(item.status)
+    )
+
+    const pending = items.filter(item =>
+      item.calculated_status === 'pending' &&
       !isCompletedStatus(item.status)
     )
 
@@ -206,6 +204,7 @@ export async function GET(request: Request) {
         urgent: urgent.length,
         dueSoon: dueSoon.length,
         onTime: onTime.length,
+        pending: pending.length,
         completed: completed.length,
         recentCompletions: recentCompletions.length,
         physicalItems: physicalItems.length
@@ -215,6 +214,7 @@ export async function GET(request: Request) {
         urgent,
         dueSoon,
         onTime,
+        pending,
         completed: recentCompletions.slice(0, 10)
       }
     })
