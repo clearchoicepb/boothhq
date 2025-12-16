@@ -1,89 +1,113 @@
+/**
+ * Design Dashboard API
+ *
+ * Updated to use unified tasks table (task_type = 'design')
+ * instead of deprecated event_design_items table.
+ */
+
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('api:design')
+
+// Completion statuses for the unified task system
+const COMPLETION_STATUSES = ['completed', 'approved', 'cancelled']
+
 export async function GET(request: Request) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  const { supabase, dataSourceTenantId } = context
   try {
     const { searchParams } = new URL(request.url)
     const designerId = searchParams.get('designer_id')
     const status = searchParams.get('status')
 
-    // Build query - Now users table is in Tenant DB, so we can join directly!
-    // IMPORTANT: Use explicit FK constraint name to avoid ambiguity
-    // (event_design_items has 3 FKs to users: assigned_designer_id, approved_by, created_by)
+    // Query unified tasks table with task_type = 'design'
     let query = supabase
-      .from('event_design_items')
+      .from('tasks')
       .select(`
         *,
-        design_item_type:design_item_types(id, name, type, due_date_days, urgent_threshold_days, missed_deadline_days),
-        assigned_designer:users!event_design_items_assigned_designer_id_fkey(id, first_name, last_name, email),
+        template:task_templates(id, name, task_type, days_before_event, urgent_threshold_days, missed_deadline_days),
+        assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, avatar_url, department),
+        created_by_user:users!tasks_created_by_fkey(id, first_name, last_name),
+        approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name),
         event:events!inner(
           id,
           title,
+          event_name,
           start_date,
+          event_date,
           event_dates(event_date),
           account:accounts(id, name)
         )
       `)
       .eq('tenant_id', dataSourceTenantId)
-      .order('design_deadline', { ascending: true })
+      .eq('task_type', 'design')
+      .order('design_deadline', { ascending: true, nullsFirst: false })
 
     // Apply filters
     if (designerId) {
-      query = query.eq('assigned_designer_id', designerId)
+      query = query.eq('assigned_to', designerId)
     }
 
     if (status) {
       query = query.eq('status', status)
     }
 
-    const { data: designItems, error } = await query
+    const { data: designTasks, error } = await query
 
     if (error) throw error
 
-    // Fetch design statuses to check which ones are completion states
-    const { data: designStatuses } = await supabase
-      .from('design_statuses')
-      .select('slug, is_completed')
-      .eq('tenant_id', dataSourceTenantId)
-
-    // Create a lookup map for completion status
-    const completionStatusMap = new Map<string, boolean>()
-    designStatuses?.forEach(status => {
-      completionStatusMap.set(status.slug, status.is_completed || false)
-    })
-
     // Helper function to check if a status represents completion
-    const isCompletedStatus = (statusSlug: string) => completionStatusMap.get(statusSlug) === true
+    const isCompletedStatus = (statusSlug: string) => COMPLETION_STATUSES.includes(statusSlug)
 
     // Calculate stats with new event-based logic
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const items = (designItems || []).map(item => {
+    const items = (designTasks || []).map(task => {
       // Get earliest event date
-      const eventDate = item.event?.event_dates?.[0]?.event_date || item.event?.start_date
-      if (!eventDate || !item.design_item_type) return { ...item, calculated_status: 'pending' }
+      const eventDate = task.event?.event_dates?.[0]?.event_date || task.event?.start_date || task.event?.event_date
 
-      const eventDateTime = new Date(eventDate)
-      eventDateTime.setHours(0, 0, 0, 0)
+      // Use design_deadline if no event date available
+      const deadlineDate = task.design_deadline || task.due_date
 
-      const daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      if (!eventDate && !deadlineDate) {
+        return {
+          ...task,
+          calculated_status: 'pending',
+          // Map fields for backwards compatibility with frontend
+          item_name: task.title,
+          assigned_designer: task.assigned_user,
+          assigned_designer_id: task.assigned_to,
+          design_item_type: task.template
+        }
+      }
 
-      const designType = item.design_item_type
-      const dueDateDays = designType.due_date_days || 21
-      const urgentThresholdDays = designType.urgent_threshold_days || 14
-      const missedDeadlineDays = designType.missed_deadline_days || 13
+      // Calculate days until event or deadline
+      let daysUntilEvent: number
+      if (eventDate) {
+        const eventDateTime = new Date(eventDate)
+        eventDateTime.setHours(0, 0, 0, 0)
+        daysUntilEvent = Math.ceil((eventDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      } else {
+        const deadlineDateTime = new Date(deadlineDate!)
+        deadlineDateTime.setHours(0, 0, 0, 0)
+        daysUntilEvent = Math.ceil((deadlineDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      }
+
+      // Use template thresholds if available, otherwise use defaults
+      const template = task.template
+      const dueDateDays = template?.days_before_event || 21
+      const urgentThresholdDays = template?.urgent_threshold_days || 14
+      const missedDeadlineDays = template?.missed_deadline_days || 13
 
       // Calculate status based on days until event
       let calculated_status = 'on_time'
 
-      if (isCompletedStatus(item.status)) {
+      if (isCompletedStatus(task.status)) {
         calculated_status = 'completed'
       } else if (daysUntilEvent <= missedDeadlineDays) {
         calculated_status = 'missed_deadline'
@@ -93,7 +117,16 @@ export async function GET(request: Request) {
         calculated_status = 'due_soon'
       }
 
-      return { ...item, calculated_status, days_until_event: daysUntilEvent }
+      return {
+        ...task,
+        calculated_status,
+        days_until_event: daysUntilEvent,
+        // Map fields for backwards compatibility with frontend
+        item_name: task.title,
+        assigned_designer: task.assigned_user,
+        assigned_designer_id: task.assigned_to,
+        design_item_type: task.template
+      }
     })
 
     // Categorize items based on new status logic
@@ -121,14 +154,14 @@ export async function GET(request: Request) {
       isCompletedStatus(item.status)
     )
 
-    // Physical items count
+    // Physical items count (based on template type if available)
     const physicalItems = items.filter(item =>
-      item.design_item_type?.type === 'physical' &&
+      item.template?.task_type === 'physical' &&
       !isCompletedStatus(item.status)
     )
 
     // Recent completions (last 7 days)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 24 * 1000)
     const recentCompletions = completed.filter(item => {
       const completedAt = item.completed_at ? new Date(item.completed_at) : null
       return completedAt && completedAt >= sevenDaysAgo
