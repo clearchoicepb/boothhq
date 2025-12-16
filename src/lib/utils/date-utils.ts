@@ -21,7 +21,7 @@ const EST_TIMEZONE = 'America/New_York'
  * Get the current date/time in EST timezone
  * @returns Object with year, month, day, hour, minute in EST
  */
-function getESTDateParts(): { year: number; month: number; day: number; hour: number; minute: number } {
+export function getESTDateParts(): { year: number; month: number; day: number; hour: number; minute: number } {
   const now = new Date()
   const estString = now.toLocaleString('en-US', {
     timeZone: EST_TIMEZONE,
@@ -510,6 +510,36 @@ export function getMonthRange(): DateRange {
 }
 
 /**
+ * Get the current quarter's date range (Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec)
+ *
+ * @returns DateRange object with start and end dates for the current quarter
+ *
+ * @example
+ * // If today is May 15, 2025 (Q2):
+ * getQuarterRange()
+ * // → { start: Apr 1, end: Jun 30, startISO: '2025-04-01', endISO: '2025-06-30' }
+ */
+export function getQuarterRange(): DateRange {
+  const estParts = getESTDateParts() // Use EST for consistent date calculation
+  const quarter = Math.floor((estParts.month - 1) / 3) // 0, 1, 2, or 3
+  const quarterStartMonth = quarter * 3 // 0 (Jan), 3 (Apr), 6 (Jul), 9 (Oct)
+
+  const start = new Date(estParts.year, quarterStartMonth, 1)
+  start.setHours(0, 0, 0, 0)
+
+  // End of quarter: go to next quarter's first month, day 0
+  const end = new Date(estParts.year, quarterStartMonth + 3, 0)
+  end.setHours(23, 59, 59, 999)
+
+  return {
+    start,
+    end,
+    startISO: toDateInputValue(start),
+    endISO: toDateInputValue(end)
+  }
+}
+
+/**
  * Get the current year's date range (Jan 1 00:00:00 to Dec 31 23:59:59)
  *
  * @returns DateRange object with start and end dates for the current year
@@ -540,11 +570,11 @@ export function getYearRange(): DateRange {
 /**
  * Get date range for a specified period
  *
- * @param period - 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
+ * @param period - 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | 'year' | 'all'
  * @returns DateRange object for the specified period
  *         For 'all', returns a very wide range (1970 - 2099)
  */
-export function getDateRangeForPeriod(period: 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'): DateRange {
+export function getDateRangeForPeriod(period: 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | 'year' | 'all'): DateRange {
   switch (period) {
     case 'today':
       return getTodayRange()
@@ -572,6 +602,8 @@ export function getDateRangeForPeriod(period: 'today' | 'yesterday' | 'week' | '
       return getWeekRange()
     case 'month':
       return getMonthRange()
+    case 'quarter':
+      return getQuarterRange()
     case 'year':
       return getYearRange()
     case 'all':
