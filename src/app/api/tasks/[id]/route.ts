@@ -23,7 +23,6 @@ export async function GET(
         approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name, email),
         event_date:event_dates!tasks_event_date_id_fkey(id, event_date),
         project:projects!tasks_project_id_fkey(id, name, target_date),
-        event:events(id, event_name, event_date, client_name, start_date),
         template:task_templates(id, name, task_type)
       `)
       .eq('id', id)
@@ -34,7 +33,18 @@ export async function GET(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
-    return NextResponse.json(task)
+    // Fetch event data separately if entity_type is 'event' (polymorphic relationship)
+    let eventData = null
+    if (task.entity_type === 'event' && task.entity_id) {
+      const { data: event } = await supabase
+        .from('events')
+        .select('id, event_name, event_date, client_name, start_date')
+        .eq('id', task.entity_id)
+        .single()
+      eventData = event
+    }
+
+    return NextResponse.json({ ...task, event: eventData })
   } catch (error) {
     log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -190,7 +200,6 @@ export async function PATCH(
         approved_by_user:users!tasks_approved_by_fkey(id, first_name, last_name, email),
         event_date:event_dates!tasks_event_date_id_fkey(id, event_date),
         project:projects!tasks_project_id_fkey(id, name, target_date),
-        event:events(id, event_name, event_date, client_name, start_date),
         template:task_templates(id, name, task_type)
       `)
       .single()
@@ -203,13 +212,26 @@ export async function PATCH(
       }, { status: 500 })
     }
 
+    // Fetch event data separately if entity_type is 'event' (polymorphic relationship)
+    let eventData = null
+    if (task.entity_type === 'event' && task.entity_id) {
+      const { data: event } = await supabase
+        .from('events')
+        .select('id, event_name, event_date, client_name, start_date')
+        .eq('id', task.entity_id)
+        .single()
+      eventData = event
+    }
+
+    const taskWithEvent = { ...task, event: eventData }
+
     // Phase 3: Trigger task_status_changed workflows if status changed (non-blocking)
     if (previousStatus !== null && status !== undefined && previousStatus !== status) {
       try {
         const { workflowTriggerService } = await import('@/lib/services/workflowTriggerService')
         // Don't await - run in background to not block the response
         workflowTriggerService.onTaskStatusChanged({
-          task,
+          task: taskWithEvent,
           previousStatus,
           tenantId: context.tenantId,
           dataSourceTenantId,
@@ -223,7 +245,7 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({ success: true, task })
+    return NextResponse.json({ success: true, task: taskWithEvent })
   } catch (error) {
     log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
