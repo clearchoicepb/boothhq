@@ -1,24 +1,14 @@
 -- ============================================================================
 -- PHASE 2D: Migrate event_operations_items to tasks table
 --
--- Same pattern as design items migration:
--- 1. Updates existing linked tasks with operations-specific fields
--- 2. Creates new tasks for operations items that don't have linked tasks
--- 3. Links the newly created tasks back to operations items
+-- This migration:
+-- 1. Creates unified tasks for ALL operations items
+-- 2. Links the newly created tasks back to operations items (if task_id column exists)
+--
+-- Note: This migration handles the case where task_id column may not exist
 -- ============================================================================
 
--- First: Update existing linked tasks
-UPDATE tasks t
-SET
-    task_type = 'operations',
-    department = 'operations',
-    migrated_from_table = 'event_operations_items',
-    migrated_from_id = eoi.id
-FROM event_operations_items eoi
-WHERE eoi.task_id = t.id
-AND t.migrated_from_table IS NULL;
-
--- Second: Create new tasks for ops items without linked tasks
+-- Create tasks for ALL operations items that don't have a migrated task yet
 INSERT INTO tasks (
     id,
     tenant_id,
@@ -73,14 +63,30 @@ SELECT
     eoi.created_at,
     eoi.updated_at
 FROM event_operations_items eoi
-WHERE eoi.task_id IS NULL
-AND NOT EXISTS (
+WHERE NOT EXISTS (
     SELECT 1 FROM tasks t
     WHERE t.migrated_from_table = 'event_operations_items'
     AND t.migrated_from_id = eoi.id
 );
 
--- Third: Update operations items to link to newly created tasks
+-- Add task_id column to event_operations_items if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'event_operations_items' AND column_name = 'task_id'
+    ) THEN
+        ALTER TABLE event_operations_items
+            ADD COLUMN task_id UUID REFERENCES tasks(id) ON DELETE SET NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_event_operations_items_task
+            ON event_operations_items(task_id);
+
+        COMMENT ON COLUMN event_operations_items.task_id IS 'Linked task in the unified tasks system';
+    END IF;
+END $$;
+
+-- Link operations items to their newly created tasks
 UPDATE event_operations_items eoi
 SET task_id = t.id
 FROM tasks t
@@ -91,10 +97,10 @@ AND eoi.task_id IS NULL;
 -- Log results
 DO $$
 DECLARE
-    updated_count INTEGER;
+    migrated_count INTEGER;
     linked_count INTEGER;
 BEGIN
-    SELECT COUNT(*) INTO updated_count
+    SELECT COUNT(*) INTO migrated_count
     FROM tasks
     WHERE migrated_from_table = 'event_operations_items';
 
@@ -102,7 +108,7 @@ BEGIN
     FROM event_operations_items
     WHERE task_id IS NOT NULL;
 
-    RAISE NOTICE 'Operations items migration: % tasks updated/created, % ops items now linked', updated_count, linked_count;
+    RAISE NOTICE 'Operations items migration: % tasks created, % ops items now linked', migrated_count, linked_count;
 END $$;
 
 -- Reload schema cache

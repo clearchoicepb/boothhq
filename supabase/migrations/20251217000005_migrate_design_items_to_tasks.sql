@@ -2,46 +2,13 @@
 -- PHASE 2C: Migrate event_design_items to tasks table
 --
 -- This migration:
--- 1. Updates existing linked tasks with design-specific fields
--- 2. Creates new tasks for design items that don't have linked tasks
--- 3. Links the newly created tasks back to design items
+-- 1. Creates unified tasks for ALL design items
+-- 2. Links the newly created tasks back to design items (if task_id column exists)
+--
+-- Note: This migration handles the case where task_id column may not exist
 -- ============================================================================
 
--- First: Update existing linked tasks with design-specific fields
-UPDATE tasks t
-SET
-    task_type = 'design',
-    quantity = edi.quantity,
-    revision_count = edi.revision_count,
-    design_file_urls = edi.design_file_urls,
-    proof_file_urls = edi.proof_file_urls,
-    final_file_urls = edi.final_file_urls,
-    client_notes = edi.client_notes,
-    internal_notes = edi.internal_notes,
-    requires_approval = true,
-    approved_by = edi.approved_by,
-    approval_notes = edi.approval_notes,
-    submitted_for_approval_at = edi.submitted_for_approval_at,
-    approved_at = edi.approved_at,
-    assigned_at = edi.assigned_at,
-    started_at = edi.started_at,
-    design_deadline = edi.design_deadline,
-    design_start_date = edi.design_start_date,
-    product_id = edi.product_id,
-    migrated_from_table = 'event_design_items',
-    migrated_from_id = edi.id,
-    -- Update status if needed (map design statuses)
-    status = CASE
-        WHEN edi.status = 'awaiting_approval' THEN 'awaiting_approval'
-        WHEN edi.status = 'needs_revision' THEN 'needs_revision'
-        WHEN edi.status = 'approved' THEN 'approved'
-        ELSE t.status  -- Keep existing status
-    END
-FROM event_design_items edi
-WHERE edi.task_id = t.id
-AND t.migrated_from_table IS NULL;  -- Don't re-migrate
-
--- Second: Create new tasks for design items that have NO linked task
+-- Create tasks for ALL design items that don't have a migrated task yet
 INSERT INTO tasks (
     id,
     tenant_id,
@@ -126,15 +93,31 @@ SELECT
     edi.created_at,
     edi.updated_at
 FROM event_design_items edi
-WHERE edi.task_id IS NULL  -- No linked task exists
-AND NOT EXISTS (
-    -- Don't duplicate if somehow already migrated
+WHERE NOT EXISTS (
+    -- Don't duplicate if already migrated
     SELECT 1 FROM tasks t
     WHERE t.migrated_from_table = 'event_design_items'
     AND t.migrated_from_id = edi.id
 );
 
--- Third: Update event_design_items to link to newly created tasks
+-- Add task_id column to event_design_items if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'event_design_items' AND column_name = 'task_id'
+    ) THEN
+        ALTER TABLE event_design_items
+            ADD COLUMN task_id UUID REFERENCES tasks(id) ON DELETE SET NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_event_design_items_task
+            ON event_design_items(task_id);
+
+        COMMENT ON COLUMN event_design_items.task_id IS 'Linked task in the unified tasks system';
+    END IF;
+END $$;
+
+-- Link design items to their newly created tasks
 UPDATE event_design_items edi
 SET task_id = t.id
 FROM tasks t
@@ -145,20 +128,18 @@ AND edi.task_id IS NULL;
 -- Log results
 DO $$
 DECLARE
-    updated_count INTEGER;
-    created_count INTEGER;
+    migrated_count INTEGER;
     linked_count INTEGER;
 BEGIN
-    SELECT COUNT(*) INTO updated_count
+    SELECT COUNT(*) INTO migrated_count
     FROM tasks
-    WHERE migrated_from_table = 'event_design_items'
-    AND task_type = 'design';
+    WHERE migrated_from_table = 'event_design_items';
 
     SELECT COUNT(*) INTO linked_count
     FROM event_design_items
     WHERE task_id IS NOT NULL;
 
-    RAISE NOTICE 'Design items migration: % tasks updated/created, % design items now linked', updated_count, linked_count;
+    RAISE NOTICE 'Design items migration: % tasks created, % design items now linked', migrated_count, linked_count;
 END $$;
 
 -- Reload schema cache
