@@ -14,6 +14,12 @@ interface EventInfo {
   event_dates: Array<{ event_date: string }>
 }
 
+// Project data structure for tasks linked to projects
+interface ProjectInfo {
+  id: string
+  name: string
+}
+
 export async function GET(request: Request) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
@@ -94,18 +100,46 @@ export async function GET(request: Request) {
       }
     }
 
-    // Attach event info to tasks
-    const tasksWithEvents = (tasks || []).map(task => {
+    // Fetch project data for tasks linked to projects
+    const projectTaskIds = (tasks || [])
+      .filter(t => t.entity_type === 'project' && t.entity_id)
+      .map(t => t.entity_id!)
+
+    const uniqueProjectIds = [...new Set(projectTaskIds)]
+    const projectsMap: Record<string, ProjectInfo> = {}
+
+    if (uniqueProjectIds.length > 0) {
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('tenant_id', dataSourceTenantId)
+        .in('id', uniqueProjectIds)
+
+      if (projects) {
+        projects.forEach((project: ProjectInfo) => {
+          projectsMap[project.id] = project
+        })
+      }
+    }
+
+    // Attach event and project info to tasks
+    const tasksWithEntities = (tasks || []).map(task => {
       if (task.entity_type === 'event' && task.entity_id && eventsMap[task.entity_id]) {
         return {
           ...task,
           event: eventsMap[task.entity_id]
         }
       }
+      if (task.entity_type === 'project' && task.entity_id && projectsMap[task.entity_id]) {
+        return {
+          ...task,
+          project: projectsMap[task.entity_id]
+        }
+      }
       return task
     })
 
-    return NextResponse.json({ tasks: tasksWithEvents })
+    return NextResponse.json({ tasks: tasksWithEntities })
   } catch (error: any) {
     log.error({ error }, '[MyTasks] Error')
     return NextResponse.json(
