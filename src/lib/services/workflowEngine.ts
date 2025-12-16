@@ -161,7 +161,8 @@ const executeCreateTaskAction: ActionExecutor = async (
 
 /**
  * Execute a 'create_design_item' action
- * Creates a design item with automatic timeline calculations
+ * Creates a UNIFIED design task with all design-specific fields
+ * Also creates legacy event_design_items record for backwards compatibility
  */
 const executeCreateDesignItemAction: ActionExecutor = async (
   action,
@@ -185,12 +186,12 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       has_assigned_to_user: !!action.assigned_to_user,
       action_keys: Object.keys(action),
     }, 'create_design_item action')
-    
+
     // Validate required fields
     if (!action.design_item_type_id) {
       throw new Error('create_design_item action requires design_item_type_id')
     }
-    
+
     if (!action.assigned_to_user_id) {
       log.warn('[WorkflowEngine] ⚠️  No assigned_to_user_id found in action!')
     }
@@ -226,10 +227,8 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     // Parse event date - handles both YYYY-MM-DD and full ISO timestamps
     let eventDateObj: Date
     if (typeof eventDate === 'string') {
-      // If it's already a full ISO timestamp, just parse it directly
-      // If it's YYYY-MM-DD, add time component
-      eventDateObj = eventDate.includes('T') 
-        ? new Date(eventDate) 
+      eventDateObj = eventDate.includes('T')
+        ? new Date(eventDate)
         : new Date(eventDate + 'T00:00:00')
     } else {
       eventDateObj = new Date(eventDate)
@@ -242,101 +241,94 @@ const executeCreateDesignItemAction: ActionExecutor = async (
     }, 'Parsed event date')
 
     // Calculate deadlines working backwards from event date
-    // Timeline: Event Date <- Shipping <- Production <- Design <- Approval Buffer
     const totalDays =
       (designItemType.default_design_days || 0) +
       (designItemType.default_production_days || 0) +
       (designItemType.default_shipping_days || 0) +
       (designItemType.client_approval_buffer_days || 0)
 
-    // Design deadline = event date - all days
     const designDeadline = new Date(eventDateObj)
     designDeadline.setDate(designDeadline.getDate() - totalDays)
 
-    // Design start date = design deadline - design days
     const designStartDate = new Date(designDeadline)
     designStartDate.setDate(designStartDate.getDate() - (designItemType.default_design_days || 0))
 
-    // Production start = design deadline (when design is complete)
-    const productionStartDate = new Date(designDeadline)
-
-    // Shipping start = production start + production days
-    const shippingStartDate = new Date(productionStartDate)
-    shippingStartDate.setDate(shippingStartDate.getDate() + (designItemType.default_production_days || 0))
-
     // Format dates as YYYY-MM-DD
     const formatDate = (date: Date) => date.toISOString().split('T')[0]
-
-    // Create design item with calculated deadline
-    const insertData = {
-      tenant_id: dataSourceTenantId,
-      event_id: context.triggerEntity.id,
-      design_item_type_id: action.design_item_type_id,
-      item_name: designItemType.name,
-      description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
-      quantity: 1,
-      status: 'pending',
-      assigned_designer_id: action.assigned_to_user_id,
-      design_deadline: formatDate(designDeadline), // Add the calculated deadline
-      // Workflow tracking
-      auto_created: true,
-      workflow_id: action.workflow_id,
-    }
-    
-    log.debug({ insertData }, 'Inserting design item')
-    
-    const { data: designItem, error: designItemError } = await supabase
-      .from('event_design_items')
-      .insert(insertData)
-      .select()
-      .single()
-
-    if (designItemError || !designItem) {
-      throw new Error(`Failed to create design item: ${designItemError?.message || 'Unknown error'}`)
-    }
-
-    console.log(`[WorkflowEngine] Created design item "${designItemType.name}" (${designItem.id}) with deadline ${formatDate(designDeadline)}`)
-
-    // Create associated task for the designer
-    // This ensures the design item appears in the designer's "My Tasks" list
-    const taskName = `Design: ${designItemType.name}`
     const now = new Date()
     const daysUntilDeadline = Math.ceil((designDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // UNIFIED TASK MODEL: Create the design task with ALL design fields
+    // This is the PRIMARY record - the unified task
+    // ═══════════════════════════════════════════════════════════════════════
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .insert({
         tenant_id: dataSourceTenantId,
         entity_type: 'event',
         entity_id: context.triggerEntity.id,
-        title: taskName,
-        description: `Complete ${designItemType.name} for this event. Due by ${designDeadline.toLocaleDateString()}`,
+        title: designItemType.name,
+        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
         due_date: formatDate(designDeadline),
         priority: daysUntilDeadline <= 7 ? 'high' : 'medium',
         status: 'pending',
         department: 'design',
+        task_type: 'design',  // UNIFIED: This is a design task
         assigned_to: action.assigned_to_user_id,
+        assigned_at: action.assigned_to_user_id ? new Date().toISOString() : null,
         auto_created: true,
-        workflow_id: action.workflow_id
+        workflow_id: action.workflow_id,
+        // Design-specific fields (UNIFIED model)
+        quantity: 1,
+        requires_approval: designItemType.requires_approval ?? true,
+        design_deadline: formatDate(designDeadline),
+        design_start_date: formatDate(designStartDate),
+        product_id: designItemType.default_product_id,
+        internal_notes: `Design type: ${designItemType.name}`,
       })
       .select()
       .single()
 
-    if (taskError) {
-      log.warn({ taskError }, '[WorkflowEngine] Failed to create task for design item')
-      // Don't fail the whole action if task creation fails
+    if (taskError || !task) {
+      throw new Error(`Failed to create design task: ${taskError?.message || 'Unknown error'}`)
+    }
+
+    console.log(`[WorkflowEngine] Created UNIFIED design task "${designItemType.name}" (${task.id}) with deadline ${formatDate(designDeadline)}`)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BACKWARDS COMPATIBILITY: Also create legacy event_design_items record
+    // This ensures existing UI components continue to work during migration
+    // ═══════════════════════════════════════════════════════════════════════
+    const { data: designItem, error: designItemError } = await supabase
+      .from('event_design_items')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        event_id: context.triggerEntity.id,
+        design_item_type_id: action.design_item_type_id,
+        item_name: designItemType.name,
+        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
+        quantity: 1,
+        status: 'pending',
+        assigned_designer_id: action.assigned_to_user_id,
+        design_deadline: formatDate(designDeadline),
+        design_start_date: formatDate(designStartDate),
+        task_id: task.id,  // Link to unified task
+        auto_created: true,
+        workflow_id: action.workflow_id,
+      })
+      .select()
+      .single()
+
+    if (designItemError) {
+      log.warn({ designItemError }, '[WorkflowEngine] Failed to create legacy design item (non-fatal)')
     } else {
-      console.log(`[WorkflowEngine] Created task "${taskName}" (${task.id}) for designer`)
-      
-      // Link task to design item
-      await supabase
-        .from('event_design_items')
-        .update({ task_id: task.id })
-        .eq('id', designItem.id)
+      log.debug(`[WorkflowEngine] Created legacy design item "${designItemType.name}" (${designItem.id}) linked to task ${task.id}`)
     }
 
     result.success = true
-    result.createdDesignItemId = designItem.id
+    result.createdTaskId = task.id
+    result.createdDesignItemId = designItem?.id
 
     return result
   } catch (error) {
@@ -350,8 +342,8 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 
 /**
  * Execute a 'create_ops_item' action
- * Creates an operations item with automatic timeline calculations
- * Mirrors the create_design_item action for the Operations department
+ * Creates a UNIFIED operations task with operations-specific fields
+ * Also creates legacy event_operations_items record for backwards compatibility
  */
 const executeCreateOpsItemAction: ActionExecutor = async (
   action,
@@ -423,78 +415,74 @@ const executeCreateOpsItemAction: ActionExecutor = async (
 
     // Format dates as YYYY-MM-DD
     const formatDate = (date: Date) => date.toISOString().split('T')[0]
-
-    // Create operations item
-    const insertData = {
-      tenant_id: dataSourceTenantId,
-      event_id: context.triggerEntity.id,
-      operations_item_type_id: action.operations_item_type_id,
-      item_name: opsItemType.name,
-      description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
-      status: 'pending',
-      assigned_to_id: action.assigned_to_user_id,
-      due_date: formatDate(dueDate),
-      // Workflow tracking
-      auto_created: true,
-      workflow_id: action.workflow_id,
-    }
-
-    log.debug({ insertData }, 'Inserting operations item')
-
-    const { data: opsItem, error: opsItemError } = await supabase
-      .from('event_operations_items')
-      .insert(insertData)
-      .select()
-      .single()
-
-    if (opsItemError || !opsItem) {
-      throw new Error(`Failed to create operations item: ${opsItemError?.message || 'Unknown error'}`)
-    }
-
-    console.log(`[WorkflowEngine] Created operations item "${opsItemType.name}" (${opsItem.id}) with deadline ${formatDate(dueDate)}`)
-
-    // Create associated task for the operations team member
-    const taskName = `Ops: ${opsItemType.name}`
     const now = new Date()
     const daysUntilDeadline = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // UNIFIED TASK MODEL: Create the operations task with all ops fields
+    // This is the PRIMARY record - the unified task
+    // ═══════════════════════════════════════════════════════════════════════
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .insert({
         tenant_id: dataSourceTenantId,
         entity_type: 'event',
         entity_id: context.triggerEntity.id,
-        title: taskName,
-        description: `Complete ${opsItemType.name} for this event. Due by ${dueDate.toLocaleDateString()}`,
+        title: opsItemType.name,
+        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
         due_date: formatDate(dueDate),
         priority: daysUntilDeadline <= 3 ? 'urgent' : daysUntilDeadline <= 7 ? 'high' : 'medium',
         status: 'pending',
         department: 'operations',
+        task_type: 'operations',  // UNIFIED: This is an operations task
         assigned_to: action.assigned_to_user_id,
+        assigned_at: action.assigned_to_user_id ? new Date().toISOString() : null,
         auto_created: true,
-        workflow_id: action.workflow_id
+        workflow_id: action.workflow_id,
+        // Operations tasks don't require approval by default
+        requires_approval: false,
+        internal_notes: `Operations type: ${opsItemType.name}`,
       })
       .select()
       .single()
 
-    if (taskError) {
-      log.warn({ taskError }, '[WorkflowEngine] Failed to create task for operations item')
-      // Don't fail the whole action if task creation fails
-    } else {
-      console.log(`[WorkflowEngine] Created task "${taskName}" (${task.id}) for operations team`)
+    if (taskError || !task) {
+      throw new Error(`Failed to create operations task: ${taskError?.message || 'Unknown error'}`)
+    }
 
-      // Link task to operations item
-      await supabase
-        .from('event_operations_items')
-        .update({ task_id: task.id })
-        .eq('id', opsItem.id)
+    console.log(`[WorkflowEngine] Created UNIFIED operations task "${opsItemType.name}" (${task.id}) with deadline ${formatDate(dueDate)}`)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BACKWARDS COMPATIBILITY: Also create legacy event_operations_items record
+    // This ensures existing UI components continue to work during migration
+    // ═══════════════════════════════════════════════════════════════════════
+    const { data: opsItem, error: opsItemError } = await supabase
+      .from('event_operations_items')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        event_id: context.triggerEntity.id,
+        operations_item_type_id: action.operations_item_type_id,
+        item_name: opsItemType.name,
+        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
+        status: 'pending',
+        assigned_to_id: action.assigned_to_user_id,
+        due_date: formatDate(dueDate),
+        task_id: task.id,  // Link to unified task
+        auto_created: true,
+        workflow_id: action.workflow_id,
+      })
+      .select()
+      .single()
+
+    if (opsItemError) {
+      log.warn({ opsItemError }, '[WorkflowEngine] Failed to create legacy operations item (non-fatal)')
+    } else {
+      log.debug(`[WorkflowEngine] Created legacy operations item "${opsItemType.name}" (${opsItem.id}) linked to task ${task.id}`)
     }
 
     result.success = true
-    result.createdOpsItemId = opsItem.id
-    if (task) {
-      result.createdTaskId = task.id
-    }
+    result.createdTaskId = task.id
+    result.createdOpsItemId = opsItem?.id
 
     return result
   } catch (error) {
