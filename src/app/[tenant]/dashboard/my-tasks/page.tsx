@@ -40,6 +40,7 @@ interface Task {
   assigned_to?: string
   entity_type?: string
   entity_id?: string
+  project_id?: string  // Direct FK for project tasks
   created_at: string
   completed_at?: string
   // Event data from API join
@@ -314,7 +315,11 @@ export default function MyTasksPage() {
       router.push(`/${tenant}/events/${task.entity_id}`)
     } else if (task.entity_type === 'opportunity' && task.entity_id) {
       router.push(`/${tenant}/opportunities/${task.entity_id}`)
+    } else if (task.project_id) {
+      // New project_id FK takes precedence
+      router.push(`/${tenant}/projects/${task.project_id}`)
     } else if (task.entity_type === 'project' && task.entity_id) {
+      // Fallback for legacy entity_type/entity_id pattern
       router.push(`/${tenant}/projects/${task.entity_id}`)
     }
   }
@@ -589,7 +594,7 @@ function TaskList({
                     </h3>
 
                     {/* Open Entity Link */}
-                    {task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project') && (
+                    {(task.project_id || (task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project'))) && (
                       <button
                         onClick={(e) => onOpenEntity(e, task)}
                         className="flex-shrink-0 text-blue-600 hover:text-blue-700"

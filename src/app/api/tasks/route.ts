@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     // Parse filters from query params
     const entityType = searchParams.get('entityType')
     const entityId = searchParams.get('entityId')
+    const projectId = searchParams.get('projectId') // Direct FK filter for project tasks
     const assignedTo = searchParams.get('assignedTo')
     const createdBy = searchParams.get('createdBy')
     const status = searchParams.get('status')
@@ -38,13 +39,19 @@ export async function GET(request: NextRequest) {
         *,
         assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date),
+        project:projects!tasks_project_id_fkey(id, name, target_date)
       `)
       .eq('tenant_id', dataSourceTenantId)
 
     // Apply filters
     if (entityType && entityId) {
       query = query.eq('entity_type', entityType).eq('entity_id', entityId)
+    }
+
+    // Project ID filter (direct FK for project tasks)
+    if (projectId) {
+      query = query.eq('project_id', projectId)
     }
 
     if (assignedTo) {
@@ -140,6 +147,7 @@ export async function POST(request: NextRequest) {
       entityType,
       entityId,
       eventDateId,
+      projectId, // Direct FK for project tasks
       status = 'pending',
       priority = 'medium',
       dueDate,
@@ -185,6 +193,7 @@ export async function POST(request: NextRequest) {
         entity_type: entityType || null,
         entity_id: entityId || null,
         event_date_id: eventDateId || null,
+        project_id: projectId || null, // Direct FK for project tasks
         status,
         priority,
         due_date: dueDate || null,
@@ -195,7 +204,8 @@ export async function POST(request: NextRequest) {
         *,
         assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date),
+        project:projects!tasks_project_id_fkey(id, name, target_date)
       `)
       .single()
 

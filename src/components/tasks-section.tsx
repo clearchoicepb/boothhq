@@ -39,6 +39,7 @@ interface Task {
   entity_type: string | null
   entity_id: string | null
   event_date_id: string | null
+  project_id: string | null
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   due_date: string | null
@@ -61,15 +62,21 @@ interface Task {
     id: string
     event_date: string
   }
+  project?: {
+    id: string
+    name: string
+    target_date: string | null
+  }
 }
 
 interface TasksSectionProps {
-  entityType: string
-  entityId: string
+  entityType?: string  // For events, opportunities, etc.
+  entityId?: string
+  projectId?: string   // Direct FK for project tasks
   onRefresh?: () => void
 }
 
-export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionProps) {
+export function TasksSection({ entityType, entityId, projectId, onRefresh }: TasksSectionProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set())
@@ -78,12 +85,19 @@ export function TasksSection({ entityType, entityId, onRefresh }: TasksSectionPr
 
   useEffect(() => {
     fetchTasks()
-  }, [entityType, entityId])
+  }, [entityType, entityId, projectId])
 
   const fetchTasks = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/tasks?entityType=${entityType}&entityId=${entityId}`)
+      // Use projectId for project tasks, entityType/entityId for others
+      let url = '/api/tasks?'
+      if (projectId) {
+        url += `projectId=${projectId}`
+      } else if (entityType && entityId) {
+        url += `entityType=${entityType}&entityId=${entityId}`
+      }
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setTasks(data)

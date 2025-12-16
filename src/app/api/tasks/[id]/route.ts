@@ -20,7 +20,8 @@ export async function GET(
         *,
         assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date),
+        project:projects!tasks_project_id_fkey(id, name, target_date)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
@@ -62,6 +63,7 @@ export async function PATCH(
       entityType,
       entityId,
       eventDateId,
+      projectId, // Direct FK for project tasks
       completedAt,
     } = body
 
@@ -105,6 +107,7 @@ export async function PATCH(
     if (entityType !== undefined) updateData.entity_type = entityType
     if (entityId !== undefined) updateData.entity_id = entityId
     if (eventDateId !== undefined) updateData.event_date_id = eventDateId
+    if (projectId !== undefined) updateData.project_id = projectId
     if (completedAt !== undefined) updateData.completed_at = completedAt
 
     const { data: task, error: updateError } = await supabase
@@ -116,7 +119,8 @@ export async function PATCH(
         *,
         assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
         created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email),
-        event_date:event_dates!tasks_event_date_id_fkey(id, event_date)
+        event_date:event_dates!tasks_event_date_id_fkey(id, event_date),
+        project:projects!tasks_project_id_fkey(id, name, target_date)
       `)
       .single()
 

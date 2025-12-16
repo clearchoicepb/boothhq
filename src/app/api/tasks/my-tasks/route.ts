@@ -101,11 +101,16 @@ export async function GET(request: Request) {
     }
 
     // Fetch project data for tasks linked to projects
-    const projectTaskIds = (tasks || [])
+    // Support both legacy entity_type/entity_id pattern AND new project_id FK
+    const projectTaskIdsFromEntity = (tasks || [])
       .filter(t => t.entity_type === 'project' && t.entity_id)
       .map(t => t.entity_id!)
 
-    const uniqueProjectIds = [...new Set(projectTaskIds)]
+    const projectTaskIdsFromFK = (tasks || [])
+      .filter(t => t.project_id)
+      .map(t => t.project_id!)
+
+    const uniqueProjectIds = [...new Set([...projectTaskIdsFromEntity, ...projectTaskIdsFromFK])]
     const projectsMap: Record<string, ProjectInfo> = {}
 
     if (uniqueProjectIds.length > 0) {
@@ -128,6 +133,13 @@ export async function GET(request: Request) {
         return {
           ...task,
           event: eventsMap[task.entity_id]
+        }
+      }
+      // Support both legacy entity_type/entity_id pattern AND new project_id FK
+      if (task.project_id && projectsMap[task.project_id]) {
+        return {
+          ...task,
+          project: projectsMap[task.project_id]
         }
       }
       if (task.entity_type === 'project' && task.entity_id && projectsMap[task.entity_id]) {
