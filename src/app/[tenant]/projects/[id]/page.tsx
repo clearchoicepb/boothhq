@@ -566,8 +566,7 @@ export default function ProjectDetailPage() {
               </div>
               <TasksSection
                 key={tasksKey}
-                entityType="project"
-                entityId={projectId}
+                projectId={projectId}
                 onRefresh={() => setTasksKey(prev => prev + 1)}
               />
             </div>
@@ -720,8 +719,7 @@ export default function ProjectDetailPage() {
           setIsTaskModalOpen(false)
           setTasksKey(prev => prev + 1)
         }}
-        entityType="project"
-        entityId={projectId}
+        projectId={projectId}
       />
     </AppLayout>
   )

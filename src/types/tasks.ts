@@ -20,6 +20,7 @@ export interface Task {
   entity_type: string | null
   entity_id: string | null
   event_date_id: string | null
+  project_id: string | null // Direct FK to projects table (for internal project tasks)
   status: TaskStatus
   priority: TaskPriority
   due_date: string | null
@@ -52,6 +53,11 @@ export interface TaskWithRelations extends Task {
     id: string
     event_date: string
   } | null
+  project: {
+    id: string
+    name: string
+    target_date: string | null
+  } | null
 }
 
 /**
@@ -74,6 +80,7 @@ export interface TaskInsert {
   entityType?: string | null
   entityId?: string | null
   eventDateId?: string | null
+  projectId?: string | null // Direct FK to projects (for internal project tasks)
   status?: TaskStatus
   priority?: TaskPriority
   dueDate?: string | null
@@ -91,6 +98,7 @@ export interface TaskUpdate {
   entity_type?: string | null
   entity_id?: string | null
   event_date_id?: string | null
+  project_id?: string | null
   status?: TaskStatus
   priority?: TaskPriority
   due_date?: string | null
@@ -105,6 +113,7 @@ export interface TaskUpdate {
 export interface TaskFilters {
   entityType?: string
   entityId?: string
+  projectId?: string // Direct FK filter for project tasks
   assignedTo?: string
   createdBy?: string
   status?: TaskStatus | 'all'

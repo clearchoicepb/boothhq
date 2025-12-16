@@ -40,6 +40,7 @@ interface Task {
   assigned_to?: string
   entity_type?: string
   entity_id?: string
+  project_id?: string  // Direct FK for project tasks
   created_at: string
   completed_at?: string
   // Event data from API join
@@ -47,6 +48,11 @@ interface Task {
     id: string
     title: string
     event_dates: Array<{ event_date: string }>
+  }
+  // Project data from API join
+  project?: {
+    id: string
+    name: string
   }
 }
 
@@ -175,7 +181,7 @@ export default function MyTasksPage() {
     if (opportunityIds.length > 0) {
       try {
         const uniqueOppIds = [...new Set(opportunityIds)]
-        const oppPromises = uniqueOppIds.map(id => 
+        const oppPromises = uniqueOppIds.map(id =>
           fetch(`/api/opportunities/${id}`).then(r => r.ok ? r.json() : null)
         )
         const opportunities = await Promise.all(oppPromises)
@@ -191,7 +197,28 @@ export default function MyTasksPage() {
         log.error({ error }, 'Error fetching opportunities')
       }
     }
-    
+
+    // Fetch projects
+    const projectIds = tasks.filter(t => t.entity_type === 'project' && t.entity_id).map(t => t.entity_id!)
+    if (projectIds.length > 0) {
+      try {
+        const uniqueProjectIds = [...new Set(projectIds)]
+        const projectPromises = uniqueProjectIds.map(id =>
+          fetch(`/api/projects/${id}`).then(r => r.ok ? r.json() : null)
+        )
+        const projects = await Promise.all(projectPromises)
+        projects.forEach((project, idx) => {
+          if (project) {
+            entityMap[uniqueProjectIds[idx]] = {
+              name: project.name
+            }
+          }
+        })
+      } catch (error) {
+        log.error({ error }, 'Error fetching projects')
+      }
+    }
+
     setEntityData(entityMap)
   }
 
@@ -236,6 +263,9 @@ export default function MyTasksPage() {
     // Use event data from API if available
     if (task.event) {
       parts.push(task.event.title)
+    } else if (task.project) {
+      // Use project data from API if available
+      parts.push(task.project.name)
     } else if (task.entity_id && entityData[task.entity_id]) {
       // Fallback to separately fetched entity data
       const entity = entityData[task.entity_id]
@@ -285,6 +315,12 @@ export default function MyTasksPage() {
       router.push(`/${tenant}/events/${task.entity_id}`)
     } else if (task.entity_type === 'opportunity' && task.entity_id) {
       router.push(`/${tenant}/opportunities/${task.entity_id}`)
+    } else if (task.project_id) {
+      // New project_id FK takes precedence
+      router.push(`/${tenant}/projects/${task.project_id}`)
+    } else if (task.entity_type === 'project' && task.entity_id) {
+      // Fallback for legacy entity_type/entity_id pattern
+      router.push(`/${tenant}/projects/${task.entity_id}`)
     }
   }
 
@@ -558,7 +594,7 @@ function TaskList({
                     </h3>
 
                     {/* Open Entity Link */}
-                    {task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity') && (
+                    {(task.project_id || (task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project'))) && (
                       <button
                         onClick={(e) => onOpenEntity(e, task)}
                         className="flex-shrink-0 text-blue-600 hover:text-blue-700"

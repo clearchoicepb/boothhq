@@ -15,6 +15,7 @@ interface CreateTaskModalProps {
   onClose: () => void
   entityType?: string
   entityId?: string
+  projectId?: string   // Direct FK for project tasks (use instead of entityType/entityId for projects)
   eventDates?: EventDate[]
   accountId?: string | null
   contactId?: string | null
@@ -26,6 +27,7 @@ export function CreateTaskModal({
   onClose,
   entityType,
   entityId,
+  projectId,
   eventDates,
   accountId,
   contactId,
@@ -105,6 +107,7 @@ export function CreateTaskModal({
           dueDate: formData.dueDate || null,
           entityType,
           entityId,
+          projectId, // Direct FK for project tasks
         }),
       })
 
