@@ -15,6 +15,12 @@ interface EventInfo {
   event_dates: Array<{ event_date: string }>
 }
 
+// Project data structure for tasks linked to projects
+interface ProjectInfo {
+  id: string
+  name: string
+}
+
 /**
  * GET /api/tasks/dashboard
  *
@@ -151,9 +157,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Enrich tasks with urgency information and event data
+    // Fetch project data for tasks linked to projects
+    // Tasks can be linked via entity_type='project' OR via project_id FK
+    const projectTaskIds = (tasks || [])
+      .filter(t => (t.entity_type === 'project' && t.entity_id) || t.project_id)
+      .map(t => t.project_id || t.entity_id!)
+
+    const uniqueProjectIds = [...new Set(projectTaskIds)]
+    const projectsMap: Record<string, ProjectInfo> = {}
+
+    if (uniqueProjectIds.length > 0) {
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('tenant_id', dataSourceTenantId)
+        .in('id', uniqueProjectIds)
+
+      if (projects) {
+        projects.forEach((project: ProjectInfo) => {
+          projectsMap[project.id] = project
+        })
+      }
+    }
+
+    // Enrich tasks with urgency information, event data, and project data
     const tasksWithUrgency = (tasks || []).map(task => {
       const enriched = enrichTaskWithUrgency(task)
+
       // Attach event info if this task is linked to an event
       if (task.entity_type === 'event' && task.entity_id && eventsMap[task.entity_id]) {
         return {
@@ -161,6 +191,16 @@ export async function GET(request: NextRequest) {
           event: eventsMap[task.entity_id]
         }
       }
+
+      // Attach project info if this task is linked to a project
+      const projectId = task.project_id || (task.entity_type === 'project' ? task.entity_id : null)
+      if (projectId && projectsMap[projectId]) {
+        return {
+          ...enriched,
+          project: projectsMap[projectId]
+        }
+      }
+
       return enriched
     })
 

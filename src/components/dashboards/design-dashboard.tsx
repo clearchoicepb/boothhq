@@ -190,6 +190,10 @@ export function DesignDashboard() {
     router.push(`/${tenant}/events/${eventId}`)
   }
 
+  const navigateToProject = (projectId: string) => {
+    router.push(`/${tenant}/projects/${projectId}`)
+  }
+
   const openTaskModal = (task: TaskWithRelations) => {
     setSelectedTask(task)
     setTaskStatus(task.status)
@@ -522,7 +526,7 @@ export function DesignDashboard() {
                     Task Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Event
+                    Event / Project
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Due Date
@@ -591,6 +595,18 @@ export function DesignDashboard() {
                               style={{ color: textColor }}
                             >
                               {(task as any).event?.title || 'View Event'}
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </button>
+                          ) : (task as any).project ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigateToProject((task as any).project.id)
+                              }}
+                              className="font-medium hover:underline inline-flex items-center"
+                              style={{ color: textColor }}
+                            >
+                              {(task as any).project.name}
                               <ExternalLink className="h-3 w-3 ml-1" />
                             </button>
                           ) : (
@@ -680,7 +696,22 @@ export function DesignDashboard() {
                       }}
                       className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
                     >
-                      View Event
+                      {(selectedTask as any).event?.title || 'View Event'}
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </button>
+                  </div>
+                )}
+                {(selectedTask as any).project && (
+                  <div>
+                    <span className="text-gray-600">Project:</span>
+                    <button
+                      onClick={() => {
+                        closeTaskModal()
+                        navigateToProject((selectedTask as any).project.id)
+                      }}
+                      className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
+                    >
+                      {(selectedTask as any).project.name}
                       <ExternalLink className="h-3 w-3 ml-1" />
                     </button>
                   </div>
