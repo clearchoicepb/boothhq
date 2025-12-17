@@ -23,8 +23,12 @@ interface EventInfo {
  * - Statistics (overdue, due today, due this week, etc.)
  *
  * Query params:
- * - department: Department ID (required)
+ * - department: Department ID (legacy, filters by department column)
+ * - taskType: Unified task type (filters by task_type column - preferred)
  * - assignedTo: User ID to filter tasks (optional)
+ *
+ * Note: Either department OR taskType is required. If both are provided,
+ * taskType takes precedence as it's the new unified task system.
  *
  * Authorization:
  * - Managers can access all departments
@@ -39,14 +43,19 @@ export async function GET(request: NextRequest) {
     const { supabase, dataSourceTenantId, session } = context
     const searchParams = request.nextUrl.searchParams
     const department = searchParams.get('department')
+    const taskType = searchParams.get('taskType')
     const assignedTo = searchParams.get('assignedTo')
 
-    if (!department) {
+    // Either department or taskType is required
+    if (!department && !taskType) {
       return NextResponse.json(
-        { error: 'Department is required' },
+        { error: 'Either department or taskType is required' },
         { status: 400 }
       )
     }
+
+    // Use taskType for authorization check if provided, otherwise fall back to department
+    const authDepartment = taskType || department
 
     // Authorization check: Verify user can access this department
     // Fetch user's department and role from database (may not be in session JWT)
@@ -69,7 +78,7 @@ export async function GET(request: NextRequest) {
     const hasAccess = canAccessDepartment(
       userDepartment as DepartmentId | null,
       userRole,
-      department as DepartmentId,
+      authDepartment as DepartmentId,
       systemRole
     )
 
@@ -77,7 +86,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Unauthorized',
-          message: `You do not have permission to access the ${department} department dashboard. System role: ${systemRole || 'none'}, Department: ${userDepartment || 'none'}, Department role: ${userRole || 'none'}`
+          message: `You do not have permission to access the ${authDepartment} department dashboard. System role: ${systemRole || 'none'}, Department: ${userDepartment || 'none'}, Department role: ${userRole || 'none'}`
         },
         { status: 403 }
       )
@@ -94,8 +103,16 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq('tenant_id', dataSourceTenantId)
-      .eq('department', department)
       .in('status', ['pending', 'in_progress']) // Only show active tasks on dashboard
+
+    // Filter by task_type (preferred) or department (legacy)
+    // taskType filters by the unified task_type column
+    // department filters by the legacy department column
+    if (taskType) {
+      query = query.eq('task_type', taskType)
+    } else if (department) {
+      query = query.eq('department', department)
+    }
 
     // Filter by assignee if provided
     if (assignedTo) {

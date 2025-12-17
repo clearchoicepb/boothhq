@@ -132,7 +132,7 @@ export function DesignDashboard() {
     const fetchDashboardData = async () => {
       log.debug('Starting fetchDashboardData')
       try {
-        let url = '/api/tasks/dashboard?department=design'
+        let url = '/api/tasks/dashboard?taskType=design'
         if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
         log.debug({ url }, 'Fetching')
@@ -223,7 +223,7 @@ export function DesignDashboard() {
       closeTaskModal()
 
       // Refresh dashboard data
-      let url = '/api/tasks/dashboard?department=design'
+      let url = '/api/tasks/dashboard?taskType=design'
       if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
       const res = await fetch(url)
@@ -284,7 +284,7 @@ export function DesignDashboard() {
       setSelectedItems(new Set())
 
       // Refresh dashboard data
-      let url = '/api/tasks/dashboard?department=design'
+      let url = '/api/tasks/dashboard?taskType=design'
       if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
       const res = await fetch(url)
@@ -812,7 +812,7 @@ export function DesignDashboard() {
           // Then the user can re-apply filters if needed
           const fetchData = async () => {
             // Fetch without filters to ensure new task is visible
-            const url = '/api/tasks/dashboard?department=design'
+            const url = '/api/tasks/dashboard?taskType=design'
             const res = await fetch(url)
             if (res.ok) {
               const dashboardData: TaskDashboardData = await res.json()
