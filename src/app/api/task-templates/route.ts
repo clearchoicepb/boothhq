@@ -13,6 +13,7 @@ const log = createLogger('api:task-templates')
  *
  * Query params:
  * - department: Filter by department ID
+ * - task_type: Filter by unified task type (general, design, operations, etc.)
  * - enabled: Filter by enabled status (true/false)
  */
 export async function GET(request: NextRequest) {
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
 
     const department = searchParams.get('department')
+    const taskType = searchParams.get('task_type')
     const enabled = searchParams.get('enabled')
 
     let query = supabase
@@ -42,6 +44,11 @@ export async function GET(request: NextRequest) {
         )
       }
       query = query.eq('department', department)
+    }
+
+    // Apply task_type filter (unified task type)
+    if (taskType) {
+      query = query.eq('task_type', taskType)
     }
 
     // Apply enabled filter

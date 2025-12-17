@@ -3,12 +3,36 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, FileText } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
+import { useTaskTemplates } from '@/hooks/useTaskTemplates'
 import type { EventDate } from '@/types/events'
+import type { UnifiedTaskType } from '@/types/tasks'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('components')
+
+// Display labels for unified task types
+const UNIFIED_TASK_TYPE_LABELS: Record<UnifiedTaskType, string> = {
+  general: 'General',
+  design: 'Design',
+  operations: 'Operations',
+  sales: 'Sales',
+  admin: 'Admin',
+  project: 'Project',
+  misc: 'Miscellaneous',
+}
+
+// All unified task types in order
+const UNIFIED_TASK_TYPES: UnifiedTaskType[] = [
+  'general',
+  'design',
+  'operations',
+  'sales',
+  'admin',
+  'project',
+  'misc',
+]
 
 interface CreateTaskModalProps {
   isOpen: boolean
@@ -20,6 +44,8 @@ interface CreateTaskModalProps {
   accountId?: string | null
   contactId?: string | null
   onSuccess?: () => void
+  /** Default unified task type - when set, pre-selects this type */
+  defaultTaskType?: UnifiedTaskType
 }
 
 export function CreateTaskModal({
@@ -31,12 +57,15 @@ export function CreateTaskModal({
   eventDates,
   accountId,
   contactId,
-  onSuccess
+  onSuccess,
+  defaultTaskType
 }: CreateTaskModalProps) {
   const { data: users = [], isLoading: loadingUsers } = useUsers()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [taskType, setTaskType] = useState<UnifiedTaskType | ''>(defaultTaskType || '')
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -45,6 +74,12 @@ export function CreateTaskModal({
     priority: 'medium',
     status: 'pending',
     dueDate: '',
+  })
+
+  // Fetch templates filtered by unified task type
+  const { data: templates = [] } = useTaskTemplates({
+    task_type: taskType || undefined,
+    enabled: true,
   })
 
   // Reset form when modal opens
@@ -59,10 +94,40 @@ export function CreateTaskModal({
         status: 'pending',
         dueDate: '',
       })
+      setTaskType(defaultTaskType || '')
+      setSelectedTemplateId('')
       setError('')
       setErrors({})
     }
-  }, [isOpen])
+  }, [isOpen, defaultTaskType])
+
+  // When a template is selected, populate the form
+  useEffect(() => {
+    if (selectedTemplateId) {
+      const template = templates.find(t => t.id === selectedTemplateId)
+      if (template) {
+        setFormData(prev => ({
+          ...prev,
+          title: template.default_title,
+          description: template.default_description || '',
+          priority: template.default_priority,
+        }))
+        if (template.default_due_in_days) {
+          const dueDate = new Date()
+          dueDate.setDate(dueDate.getDate() + template.default_due_in_days)
+          setFormData(prev => ({
+            ...prev,
+            dueDate: dueDate.toISOString().split('T')[0]
+          }))
+        }
+      }
+    }
+  }, [selectedTemplateId, templates])
+
+  // Reset template selection when task type changes
+  useEffect(() => {
+    setSelectedTemplateId('')
+  }, [taskType])
 
   // Clear field error when user types
   const handleTitleChange = (value: string) => {
@@ -108,6 +173,8 @@ export function CreateTaskModal({
           entityType,
           entityId,
           projectId, // Direct FK for project tasks
+          taskType: taskType || null, // Unified task type
+          taskTemplateId: selectedTemplateId || null,
         }),
       })
 
@@ -143,6 +210,53 @@ export function CreateTaskModal({
           </div>
         )}
 
+        {/* Task Category */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Task Category
+          </label>
+          <select
+            value={taskType}
+            onChange={(e) => setTaskType(e.target.value as UnifiedTaskType | '')}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          >
+            <option value="">Select category...</option>
+            {UNIFIED_TASK_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {UNIFIED_TASK_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Categorize this task (e.g., Design, Operations, Sales)
+          </p>
+        </div>
+
+        {/* Template Selection - shown when templates are available */}
+        {templates.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <FileText className="h-4 w-4 inline mr-1" />
+              Use Template (Optional)
+            </label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            >
+              <option value="">Start from scratch...</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Templates pre-fill task details based on common workflows
+            </p>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Task Title <span className="text-red-500">*</span>
@@ -168,7 +282,7 @@ export function CreateTaskModal({
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            rows={4}
+            rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             placeholder="Add task details..."
           />

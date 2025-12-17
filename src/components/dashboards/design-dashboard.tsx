@@ -22,13 +22,15 @@ import {
   Save,
   Paperclip,
   Trash2,
-  X
+  X,
+  Plus
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import AttachmentUpload from '@/components/attachment-upload'
+import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 import { createLogger } from '@/lib/logger'
 import type { TaskWithRelations, TaskDashboardData, TaskStatus } from '@/types/tasks'
 
@@ -90,6 +92,9 @@ export function DesignDashboard() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Add task modal state
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
+
   // Get tenant colors from settings (with fallback defaults)
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
   const SECONDARY_COLOR = getSetting('appearance.secondaryColor', '#8b5cf6')
@@ -127,7 +132,7 @@ export function DesignDashboard() {
     const fetchDashboardData = async () => {
       log.debug('Starting fetchDashboardData')
       try {
-        let url = '/api/tasks/dashboard?department=design'
+        let url = '/api/tasks/dashboard?taskType=design'
         if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
         log.debug({ url }, 'Fetching')
@@ -185,6 +190,10 @@ export function DesignDashboard() {
     router.push(`/${tenant}/events/${eventId}`)
   }
 
+  const navigateToProject = (projectId: string) => {
+    router.push(`/${tenant}/projects/${projectId}`)
+  }
+
   const openTaskModal = (task: TaskWithRelations) => {
     setSelectedTask(task)
     setTaskStatus(task.status)
@@ -218,7 +227,7 @@ export function DesignDashboard() {
       closeTaskModal()
 
       // Refresh dashboard data
-      let url = '/api/tasks/dashboard?department=design'
+      let url = '/api/tasks/dashboard?taskType=design'
       if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
       const res = await fetch(url)
@@ -279,7 +288,7 @@ export function DesignDashboard() {
       setSelectedItems(new Set())
 
       // Refresh dashboard data
-      let url = '/api/tasks/dashboard?department=design'
+      let url = '/api/tasks/dashboard?taskType=design'
       if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
       const res = await fetch(url)
@@ -347,6 +356,14 @@ export function DesignDashboard() {
           </h1>
           <p className="text-gray-600 mt-1">Creative workflow and deadline management</p>
         </div>
+        <button
+          onClick={() => setIsAddTaskModalOpen(true)}
+          className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center"
+          style={{ backgroundColor: PRIMARY_COLOR }}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Add Task
+        </button>
       </div>
 
       {/* Bulk Actions Bar */}
@@ -509,7 +526,7 @@ export function DesignDashboard() {
                     Task Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Event
+                    Event / Project
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Due Date
@@ -578,6 +595,18 @@ export function DesignDashboard() {
                               style={{ color: textColor }}
                             >
                               {(task as any).event?.title || 'View Event'}
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </button>
+                          ) : (task as any).project ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigateToProject((task as any).project.id)
+                              }}
+                              className="font-medium hover:underline inline-flex items-center"
+                              style={{ color: textColor }}
+                            >
+                              {(task as any).project.name}
                               <ExternalLink className="h-3 w-3 ml-1" />
                             </button>
                           ) : (
@@ -667,7 +696,22 @@ export function DesignDashboard() {
                       }}
                       className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
                     >
-                      View Event
+                      {(selectedTask as any).event?.title || 'View Event'}
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </button>
+                  </div>
+                )}
+                {(selectedTask as any).project && (
+                  <div>
+                    <span className="text-gray-600">Project:</span>
+                    <button
+                      onClick={() => {
+                        closeTaskModal()
+                        navigateToProject((selectedTask as any).project.id)
+                      }}
+                      className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
+                    >
+                      {(selectedTask as any).project.name}
                       <ExternalLink className="h-3 w-3 ml-1" />
                     </button>
                   </div>
@@ -789,6 +833,35 @@ export function DesignDashboard() {
           </div>
         </Modal>
       )}
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => {
+          setIsAddTaskModalOpen(false)
+          // Refresh data after adding a task - clear filters to show the new task
+          // Then the user can re-apply filters if needed
+          const fetchData = async () => {
+            // Fetch without filters to ensure new task is visible
+            const url = '/api/tasks/dashboard?taskType=design'
+            const res = await fetch(url)
+            if (res.ok) {
+              const dashboardData: TaskDashboardData = await res.json()
+              setTasks(dashboardData.tasks)
+              setStats(dashboardData.stats)
+              // Clear filters so the new task is visible
+              setSelectedDesigner('')
+              setSelectedStatus('')
+            }
+          }
+          fetchData()
+        }}
+        departmentId="design"
+        userId={currentUser?.id}
+        primaryColor={PRIMARY_COLOR}
+        defaultTaskType="design"
+        hideTaskTypeSelector={true}
+      />
     </div>
   )
 }

@@ -20,14 +20,19 @@ import {
   User,
   Briefcase,
   Loader2,
+  Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { tasksService } from '@/lib/api/services/tasksService'
+import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 import type { TaskWithRelations } from '@/types/tasks'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('dashboards')
+
+// Brand color - same as used in other dashboards
+const PRIMARY_COLOR = '#347dc4'
 
 interface TaskStats {
   total: number
@@ -58,6 +63,9 @@ export function MyTasksDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [departmentFilter, setDepartmentFilter] = useState<string>('all')
+
+  // Add task modal state
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -173,14 +181,23 @@ export function MyTasksDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-          <User className="h-6 w-6 mr-3 text-[#347dc4]" />
-          My Tasks
-        </h1>
-        <p className="text-sm text-gray-600 mt-1">
-          All tasks assigned to you across all departments
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
+            <User className="h-6 w-6 mr-3 text-[#347dc4]" />
+            My Tasks
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            All tasks assigned to you across all departments
+          </p>
+        </div>
+        <Button
+          onClick={() => setIsAddTaskModalOpen(true)}
+          className="bg-[#347dc4] hover:bg-[#2a6aa8]"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Add Task
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -359,6 +376,19 @@ export function MyTasksDashboard() {
           })}
         </div>
       )}
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => {
+          setIsAddTaskModalOpen(false)
+          // Refresh tasks after adding
+          fetchTasks()
+        }}
+        departmentId="sales" // Default department - user can select task category in modal
+        userId={session?.user?.id}
+        primaryColor={PRIMARY_COLOR}
+      />
     </div>
   )
 }

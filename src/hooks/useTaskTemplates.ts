@@ -21,7 +21,7 @@ const log = createLogger('hooks')
 /**
  * Hook to fetch all task templates
  *
- * @param filters - Optional filters for department and enabled status
+ * @param filters - Optional filters for department, task_type, and enabled status
  * @returns Query result with task templates
  *
  * @example
@@ -29,14 +29,36 @@ const log = createLogger('hooks')
  *
  * @example
  * const { data: salesTemplates } = useTaskTemplates({ department: 'sales', enabled: true })
+ *
+ * @example
+ * const { data: designTemplates } = useTaskTemplates({ task_type: 'design', enabled: true })
  */
 export function useTaskTemplates(filters?: {
   department?: string
+  task_type?: string
   enabled?: boolean
 }) {
   return useQuery({
     queryKey: ['task-templates', filters],
     queryFn: () => taskTemplateService.getAll(filters),
+  })
+}
+
+/**
+ * Hook to fetch templates for a specific task type
+ * Only returns enabled templates, useful for template dropdowns in task creation
+ *
+ * @param taskType - Unified task type (general, design, operations, etc.)
+ * @returns Query result with enabled templates for the task type
+ *
+ * @example
+ * const { data: designTemplates } = useTaskTemplatesByTaskType('design')
+ */
+export function useTaskTemplatesByTaskType(taskType: string) {
+  return useQuery({
+    queryKey: ['task-templates', 'task-type', taskType],
+    queryFn: () => taskTemplateService.getByTaskType(taskType),
+    enabled: !!taskType,
   })
 }
 
