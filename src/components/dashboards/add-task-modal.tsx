@@ -97,8 +97,12 @@ export function AddTaskModal({
   useEffect(() => {
     if (isOpen) {
       setUnifiedTaskType(defaultTaskType || '')
+      // Also ensure assignedTo is updated if userId becomes available
+      if (userId && !assignedTo) {
+        setAssignedTo(userId)
+      }
     }
-  }, [isOpen, defaultTaskType])
+  }, [isOpen, defaultTaskType, userId, assignedTo])
 
   // When a template is selected, populate the form
   useEffect(() => {

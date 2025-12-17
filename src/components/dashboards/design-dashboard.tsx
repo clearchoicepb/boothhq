@@ -808,19 +808,19 @@ export function DesignDashboard() {
         isOpen={isAddTaskModalOpen}
         onClose={() => {
           setIsAddTaskModalOpen(false)
-          // Refresh data after adding a task
+          // Refresh data after adding a task - clear filters to show the new task
+          // Then the user can re-apply filters if needed
           const fetchData = async () => {
-            let url = '/api/tasks/dashboard?department=design'
-            if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
+            // Fetch without filters to ensure new task is visible
+            const url = '/api/tasks/dashboard?department=design'
             const res = await fetch(url)
             if (res.ok) {
               const dashboardData: TaskDashboardData = await res.json()
-              let filteredTasks = dashboardData.tasks
-              if (selectedStatus) {
-                filteredTasks = filteredTasks.filter(t => t.status === selectedStatus)
-              }
-              setTasks(filteredTasks)
+              setTasks(dashboardData.tasks)
               setStats(dashboardData.stats)
+              // Clear filters so the new task is visible
+              setSelectedDesigner('')
+              setSelectedStatus('')
             }
           }
           fetchData()
