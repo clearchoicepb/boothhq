@@ -169,34 +169,6 @@ class EventsService {
   }
 
   /**
-   * Get event design items
-   */
-  async getDesignItems(eventId: string): Promise<any[]> {
-    return apiClient.get<any[]>(`/api/events/${eventId}/design-items`)
-  }
-
-  /**
-   * Create event design item
-   */
-  async createDesignItem(eventId: string, data: any): Promise<any> {
-    return apiClient.post(`/api/events/${eventId}/design-items`, data)
-  }
-
-  /**
-   * Update event design item
-   */
-  async updateDesignItem(eventId: string, itemId: string, data: any): Promise<any> {
-    return apiClient.put(`/api/events/${eventId}/design-items/${itemId}`, data)
-  }
-
-  /**
-   * Delete event design item
-   */
-  async deleteDesignItem(eventId: string, itemId: string): Promise<void> {
-    return apiClient.delete(`/api/events/${eventId}/design-items/${itemId}`)
-  }
-
-  /**
    * Get event logistics
    */
   async getLogistics(eventId: string): Promise<any> {

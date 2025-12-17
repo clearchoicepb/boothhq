@@ -94,29 +94,12 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
         setTaskTemplates(Array.isArray(templates) ? templates : [])
       }
 
-      // Fetch design item types
-      log.debug('Fetching design item types...')
-      const designTypesRes = await fetch('/api/design/types')
-      log.debug({ status: designTypesRes.status }, 'Design types response status')
-
-      if (designTypesRes.ok) {
-        const designTypesData = await designTypesRes.json()
-        const types = designTypesData.types || designTypesData.designTypes || designTypesData
-        setDesignItemTypes(Array.isArray(types) ? types : [])
-      } else {
-        console.error('[ActionCard] Failed to fetch design types:', await designTypesRes.text())
-      }
-
-      // Fetch operations item types
-      log.debug('Fetching operations item types...')
-      const opsTypesRes = await fetch('/api/operations/types')
-      if (opsTypesRes.ok) {
-        const opsTypesData = await opsTypesRes.json()
-        const types = opsTypesData.types || opsTypesData
-        setOpsItemTypes(Array.isArray(types) ? types.filter((t: OperationsItemType) => t.is_active) : [])
-      } else {
-        console.error('[ActionCard] Failed to fetch operations types:', await opsTypesRes.text())
-      }
+      // Design item types are now deprecated - use task templates with task_type='design' instead
+      // The create_design_item and create_ops_item actions are deprecated
+      // New workflows should use create_task with appropriate task templates
+      log.debug('Design and operations types deprecated - use task templates instead')
+      setDesignItemTypes([])
+      setOpsItemTypes([])
 
       // Fetch staff roles (for assign_event_role actions)
       log.debug('Fetching staff roles...')

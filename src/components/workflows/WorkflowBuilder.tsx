@@ -128,12 +128,8 @@ export default function WorkflowBuilder({
         setTaskTemplates(Array.isArray(templates) ? templates : [])
       }
 
-      // Fetch design item types
-      const designTypesRes = await fetch('/api/design/types')
-      if (designTypesRes.ok) {
-        const designData = await designTypesRes.json()
-        setDesignItemTypes(designData.types || designData.designTypes || designData || [])
-      }
+      // Design item types are now deprecated - use task templates with task_type='design' instead
+      // setDesignItemTypes is no longer used
 
       // Fetch users
       const usersRes = await fetch('/api/users')
