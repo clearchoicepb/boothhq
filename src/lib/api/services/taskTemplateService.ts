@@ -56,10 +56,12 @@ class TaskTemplateService {
    */
   async getAll(filters?: {
     department?: string
+    task_type?: string
     enabled?: boolean
   }): Promise<TaskTemplate[]> {
     const params = new URLSearchParams()
     if (filters?.department) params.append('department', filters.department)
+    if (filters?.task_type) params.append('task_type', filters.task_type)
     if (filters?.enabled !== undefined) params.append('enabled', String(filters.enabled))
 
     const response = await fetch(`/api/task-templates?${params}`)
@@ -68,6 +70,14 @@ class TaskTemplateService {
       throw new Error(error.error || 'Failed to fetch task templates')
     }
     return response.json()
+  }
+
+  /**
+   * Get templates by unified task type (for template dropdowns)
+   * Only returns enabled templates, sorted by display_order
+   */
+  async getByTaskType(taskType: string): Promise<TaskTemplate[]> {
+    return this.getAll({ task_type: taskType, enabled: true })
   }
 
   /**

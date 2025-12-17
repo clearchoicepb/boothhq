@@ -22,13 +22,15 @@ import {
   Save,
   Paperclip,
   Trash2,
-  X
+  X,
+  Plus
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import AttachmentUpload from '@/components/attachment-upload'
+import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 import { createLogger } from '@/lib/logger'
 import type { TaskWithRelations, TaskDashboardData, TaskStatus } from '@/types/tasks'
 
@@ -89,6 +91,9 @@ export function DesignDashboard() {
   // Bulk actions state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Add task modal state
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
 
   // Get tenant colors from settings (with fallback defaults)
   const PRIMARY_COLOR = getSetting('appearance.primaryColor', '#347dc4')
@@ -347,6 +352,14 @@ export function DesignDashboard() {
           </h1>
           <p className="text-gray-600 mt-1">Creative workflow and deadline management</p>
         </div>
+        <button
+          onClick={() => setIsAddTaskModalOpen(true)}
+          className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center"
+          style={{ backgroundColor: PRIMARY_COLOR }}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Add Task
+        </button>
       </div>
 
       {/* Bulk Actions Bar */}
@@ -789,6 +802,35 @@ export function DesignDashboard() {
           </div>
         </Modal>
       )}
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => {
+          setIsAddTaskModalOpen(false)
+          // Refresh data after adding a task
+          const fetchData = async () => {
+            let url = '/api/tasks/dashboard?department=design'
+            if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
+            const res = await fetch(url)
+            if (res.ok) {
+              const dashboardData: TaskDashboardData = await res.json()
+              let filteredTasks = dashboardData.tasks
+              if (selectedStatus) {
+                filteredTasks = filteredTasks.filter(t => t.status === selectedStatus)
+              }
+              setTasks(filteredTasks)
+              setStats(dashboardData.stats)
+            }
+          }
+          fetchData()
+        }}
+        departmentId="design"
+        userId={currentUser?.id}
+        primaryColor={PRIMARY_COLOR}
+        defaultTaskType="design"
+        hideTaskTypeSelector={true}
+      />
     </div>
   )
 }
