@@ -162,7 +162,7 @@ const executeCreateTaskAction: ActionExecutor = async (
 /**
  * Execute a 'create_design_item' action
  * Creates a UNIFIED design task with all design-specific fields
- * Also creates legacy event_design_items record for backwards compatibility
+ * NOTE: Legacy event_design_items table has been deprecated - only unified tasks are created
  */
 const executeCreateDesignItemAction: ActionExecutor = async (
   action,
@@ -196,17 +196,46 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       log.warn('[WorkflowEngine] ⚠️  No assigned_to_user_id found in action!')
     }
 
-    // Fetch design item type
-    const { data: designItemType, error: designItemTypeError } = await supabase
-      .from('design_item_types')
+    // NOTE: design_item_types table has been deprecated.
+    // Look up the migrated task template by the original design item type ID
+    const { data: taskTemplate, error: templateError } = await supabase
+      .from('task_templates')
       .select('*')
-      .eq('id', action.design_item_type_id)
+      .eq('migrated_from_id', action.design_item_type_id)
+      .eq('migrated_from_table', 'design_item_types')
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
-    if (designItemTypeError || !designItemType) {
-      throw new Error(`Design item type not found: ${action.design_item_type_id}`)
+    // Fallback: try direct ID lookup (in case template was manually created)
+    let designItemType = taskTemplate
+    if (templateError || !taskTemplate) {
+      const { data: directTemplate, error: directError } = await supabase
+        .from('task_templates')
+        .select('*')
+        .eq('id', action.design_item_type_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (directError || !directTemplate) {
+        throw new Error(`Design item type ${action.design_item_type_id} not found in task_templates. ` +
+          `The design_item_types table has been deprecated. Please update your workflow to use a task template.`)
+      }
+      designItemType = directTemplate
     }
+
+    // Map task_template fields to expected design item type fields
+    const mappedDesignItemType = {
+      ...designItemType,
+      name: designItemType.name || designItemType.default_title,
+      // Use days_before_event as the total timeline
+      default_design_days: designItemType.days_before_event || designItemType.default_due_in_days || 14,
+      default_production_days: 0,
+      default_shipping_days: 0,
+      client_approval_buffer_days: 0,
+    }
+
+    // Reassign to use the mapped type
+    designItemType = mappedDesignItemType as any
 
     // Get event data to calculate deadlines
     const event = context.triggerEntity.data
@@ -296,39 +325,11 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 
     console.log(`[WorkflowEngine] Created UNIFIED design task "${designItemType.name}" (${task.id}) with deadline ${formatDate(designDeadline)}`)
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // BACKWARDS COMPATIBILITY: Also create legacy event_design_items record
-    // This ensures existing UI components continue to work during migration
-    // ═══════════════════════════════════════════════════════════════════════
-    const { data: designItem, error: designItemError } = await supabase
-      .from('event_design_items')
-      .insert({
-        tenant_id: dataSourceTenantId,
-        event_id: context.triggerEntity.id,
-        design_item_type_id: action.design_item_type_id,
-        item_name: designItemType.name,
-        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
-        quantity: 1,
-        status: 'pending',
-        assigned_designer_id: action.assigned_to_user_id,
-        design_deadline: formatDate(designDeadline),
-        design_start_date: formatDate(designStartDate),
-        task_id: task.id,  // Link to unified task
-        auto_created: true,
-        workflow_id: action.workflow_id,
-      })
-      .select()
-      .single()
-
-    if (designItemError) {
-      log.warn({ designItemError }, '[WorkflowEngine] Failed to create legacy design item (non-fatal)')
-    } else {
-      log.debug(`[WorkflowEngine] Created legacy design item "${designItemType.name}" (${designItem.id}) linked to task ${task.id}`)
-    }
+    // Legacy event_design_items table has been deprecated
+    // All design tasks are now created in the unified tasks table only
 
     result.success = true
     result.createdTaskId = task.id
-    result.createdDesignItemId = designItem?.id
 
     return result
   } catch (error) {
@@ -343,7 +344,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
 /**
  * Execute a 'create_ops_item' action
  * Creates a UNIFIED operations task with operations-specific fields
- * Also creates legacy event_operations_items record for backwards compatibility
+ * NOTE: Legacy event_operations_items table has been deprecated - only unified tasks are created
  */
 const executeCreateOpsItemAction: ActionExecutor = async (
   action,
@@ -371,17 +372,42 @@ const executeCreateOpsItemAction: ActionExecutor = async (
       throw new Error('create_ops_item action requires operations_item_type_id')
     }
 
-    // Fetch operations item type
-    const { data: opsItemType, error: opsItemTypeError } = await supabase
-      .from('operations_item_types')
+    // NOTE: operations_item_types table has been deprecated.
+    // Look up the migrated task template by the original operations item type ID
+    const { data: taskTemplate, error: templateError } = await supabase
+      .from('task_templates')
       .select('*')
-      .eq('id', action.operations_item_type_id)
+      .eq('migrated_from_id', action.operations_item_type_id)
+      .eq('migrated_from_table', 'operations_item_types')
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
-    if (opsItemTypeError || !opsItemType) {
-      throw new Error(`Operations item type not found: ${action.operations_item_type_id}`)
+    // Fallback: try direct ID lookup (in case template was manually created)
+    let opsItemType = taskTemplate
+    if (templateError || !taskTemplate) {
+      const { data: directTemplate, error: directError } = await supabase
+        .from('task_templates')
+        .select('*')
+        .eq('id', action.operations_item_type_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (directError || !directTemplate) {
+        throw new Error(`Operations item type ${action.operations_item_type_id} not found in task_templates. ` +
+          `The operations_item_types table has been deprecated. Please update your workflow to use a task template.`)
+      }
+      opsItemType = directTemplate
     }
+
+    // Map task_template fields to expected operations item type fields
+    const mappedOpsItemType = {
+      ...opsItemType,
+      name: opsItemType.name || opsItemType.default_title,
+      due_date_days: opsItemType.days_before_event || opsItemType.default_due_in_days || 7,
+    }
+
+    // Reassign to use the mapped type
+    opsItemType = mappedOpsItemType as any
 
     // Get event data to calculate deadlines
     const event = context.triggerEntity.data
@@ -452,37 +478,11 @@ const executeCreateOpsItemAction: ActionExecutor = async (
 
     console.log(`[WorkflowEngine] Created UNIFIED operations task "${opsItemType.name}" (${task.id}) with deadline ${formatDate(dueDate)}`)
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // BACKWARDS COMPATIBILITY: Also create legacy event_operations_items record
-    // This ensures existing UI components continue to work during migration
-    // ═══════════════════════════════════════════════════════════════════════
-    const { data: opsItem, error: opsItemError } = await supabase
-      .from('event_operations_items')
-      .insert({
-        tenant_id: dataSourceTenantId,
-        event_id: context.triggerEntity.id,
-        operations_item_type_id: action.operations_item_type_id,
-        item_name: opsItemType.name,
-        description: `Auto-created from workflow: ${context.workflowName || 'Unnamed workflow'}`,
-        status: 'pending',
-        assigned_to_id: action.assigned_to_user_id,
-        due_date: formatDate(dueDate),
-        task_id: task.id,  // Link to unified task
-        auto_created: true,
-        workflow_id: action.workflow_id,
-      })
-      .select()
-      .single()
-
-    if (opsItemError) {
-      log.warn({ opsItemError }, '[WorkflowEngine] Failed to create legacy operations item (non-fatal)')
-    } else {
-      log.debug(`[WorkflowEngine] Created legacy operations item "${opsItemType.name}" (${opsItem.id}) linked to task ${task.id}`)
-    }
+    // Legacy event_operations_items table has been deprecated
+    // All operations tasks are now created in the unified tasks table only
 
     result.success = true
     result.createdTaskId = task.id
-    result.createdOpsItemId = opsItem?.id
 
     return result
   } catch (error) {
@@ -669,6 +669,8 @@ class WorkflowEngine {
 
       // Find all active workflows that include this event type
       // Uses PostgreSQL array containment operator (@>) to check if event_type_ids contains eventTypeId
+      // NOTE: design_item_types and operations_item_types tables have been deprecated.
+      // The join to design_item_type has been removed - templates are looked up at action execution time.
       const { data: workflows, error: workflowsError } = await supabase
         .from('workflows')
         .select(`
@@ -676,7 +678,6 @@ class WorkflowEngine {
           actions:workflow_actions(
             *,
             task_template:task_templates(*),
-            design_item_type:design_item_types(*),
             assigned_to_user:users(id, first_name, last_name, email, department, department_role)
           )
         `)
@@ -927,28 +928,8 @@ class WorkflowEngine {
               .update({ workflow_execution_id: execution.id })
               .eq('id', result.createdTaskId)
           }
-          if (result.createdDesignItemId) {
-            createdDesignItemIds.push(result.createdDesignItemId)
-
-            // Update design item with execution_id
-            await supabase
-              .from('event_design_items')
-              .update({ workflow_execution_id: execution.id })
-              .eq('id', result.createdDesignItemId)
-
-            log.debug(`Created design item: ${result.createdDesignItemId}`)
-          }
-          if (result.createdOpsItemId) {
-            createdOpsItemIds.push(result.createdOpsItemId)
-
-            // Update operations item with execution_id
-            await supabase
-              .from('event_operations_items')
-              .update({ workflow_execution_id: execution.id })
-              .eq('id', result.createdOpsItemId)
-
-            log.debug(`Created operations item: ${result.createdOpsItemId}`)
-          }
+          // Legacy design item and operations item tables have been deprecated
+          // All tasks are now created in the unified tasks table only
           if (result.createdAssignmentId) {
             createdAssignmentIds.push(result.createdAssignmentId)
             log.debug(`Created staff assignment: ${result.createdAssignmentId}`)
@@ -1122,21 +1103,23 @@ class WorkflowEngine {
           }
         }
       } else if (action.action_type === 'create_design_item') {
-        // Validate design item type
+        // NOTE: design_item_types table has been deprecated.
+        // Validate by looking up migrated template in task_templates
         if (!action.design_item_type_id) {
           errors.push(`Action ${actionNum}: Design item type is required`)
         } else {
-          const { data: designItemType } = await supabase
-            .from('design_item_types')
-            .select('id, is_active')
-            .eq('id', action.design_item_type_id)
+          // Try to find by migrated_from_id first, then by direct ID
+          const { data: designTemplate } = await supabase
+            .from('task_templates')
+            .select('id, is_active, migrated_from_id')
+            .or(`migrated_from_id.eq.${action.design_item_type_id},id.eq.${action.design_item_type_id}`)
             .eq('tenant_id', dataSourceTenantId)
-            .single()
+            .maybeSingle()
 
-          if (!designItemType) {
-            errors.push(`Action ${actionNum}: Design item type does not exist`)
-          } else if (!designItemType.is_active) {
-            warnings.push(`Action ${actionNum}: Design item type is inactive`)
+          if (!designTemplate) {
+            warnings.push(`Action ${actionNum}: Design item type not found in task_templates (may need migration)`)
+          } else if (!designTemplate.is_active) {
+            warnings.push(`Action ${actionNum}: Design item template is inactive`)
           }
         }
 
@@ -1154,21 +1137,23 @@ class WorkflowEngine {
           }
         }
       } else if (action.action_type === 'create_ops_item') {
-        // Validate operations item type
+        // NOTE: operations_item_types table has been deprecated.
+        // Validate by looking up migrated template in task_templates
         if (!action.operations_item_type_id) {
           errors.push(`Action ${actionNum}: Operations item type is required`)
         } else {
-          const { data: opsItemType } = await supabase
-            .from('operations_item_types')
-            .select('id, is_active')
-            .eq('id', action.operations_item_type_id)
+          // Try to find by migrated_from_id first, then by direct ID
+          const { data: opsTemplate } = await supabase
+            .from('task_templates')
+            .select('id, is_active, migrated_from_id')
+            .or(`migrated_from_id.eq.${action.operations_item_type_id},id.eq.${action.operations_item_type_id}`)
             .eq('tenant_id', dataSourceTenantId)
-            .single()
+            .maybeSingle()
 
-          if (!opsItemType) {
-            errors.push(`Action ${actionNum}: Operations item type does not exist`)
-          } else if (!opsItemType.is_active) {
-            warnings.push(`Action ${actionNum}: Operations item type is inactive`)
+          if (!opsTemplate) {
+            warnings.push(`Action ${actionNum}: Operations item type not found in task_templates (may need migration)`)
+          } else if (!opsTemplate.is_active) {
+            warnings.push(`Action ${actionNum}: Operations item template is inactive`)
           }
         }
 

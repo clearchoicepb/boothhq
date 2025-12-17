@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
-import { createAutoDesignItems } from '@/lib/design-helpers'
 import { workflowEngine } from '@/lib/services/workflowEngine'
 import { revalidatePath } from 'next/cache'
 import { createLogger } from '@/lib/logger'
@@ -293,16 +292,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Auto-create design items for auto-added types
-    if (event.start_date && dataSourceTenantId) {
-      try {
-        const designItems = await createAutoDesignItems(event.id, event.start_date, dataSourceTenantId, supabase)
-        log.info({ eventId: event.id, designItemCount: designItems.length }, 'Auto-created design items')
-      } catch (error) {
-        log.error({ error, eventId: event.id }, 'Failed to auto-create design items')
-      }
-    }
-
+    // Design items are now created through the unified task system via workflows
     // Execute workflows for this event type (automated task creation)
     if (event.event_type_id && dataSourceTenantId) {
       try {

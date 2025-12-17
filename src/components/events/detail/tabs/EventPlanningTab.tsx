@@ -1,17 +1,16 @@
 /**
  * Event Planning Tab
- * Consolidates: Design Items + Logistics + Equipment + Tasks
+ * Consolidates: Core Tasks + Logistics + Equipment + Tasks
  *
- * This tab groups all planning-related activities in one place
- * following the audit recommendation to reduce from 11 tabs to 7
+ * This tab groups all planning-related activities in one place.
+ * Design tasks are now managed through the unified tasks system.
  */
 
 'use client'
 
 import { useState } from 'react'
-import { Palette, Truck, Package, ListTodo, ChevronDown, ChevronUp } from 'lucide-react'
+import { Truck, Package, ListTodo, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { EventDesignItems } from '../../event-design-items'
 import { EventLogistics } from '../../event-logistics'
 import { EventInventoryAssignments } from '@/components/inventory/EventInventoryAssignments'
 import { TasksSection } from '@/components/tasks-section'
@@ -26,7 +25,7 @@ interface EventPlanningTabProps {
   onTasksRefresh?: () => void
 }
 
-type Section = 'core-tasks' | 'design' | 'logistics' | 'equipment' | 'tasks'
+type Section = 'core-tasks' | 'logistics' | 'equipment' | 'tasks'
 
 export function EventPlanningTab({
   eventId,
@@ -82,38 +81,6 @@ export function EventPlanningTab({
             <div className="pt-4">
               <EventCoreTasksChecklist eventId={eventId} />
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Design Items */}
-      <div className="bg-white rounded-lg shadow">
-        <button
-          onClick={() => toggleSection('design')}
-          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Palette className="h-5 w-5 text-purple-600" />
-            </div>
-            <div className="text-left">
-              <h2 className="text-lg font-semibold text-gray-900">Design Items</h2>
-              <p className="text-sm text-gray-500">Graphics, banners, and visual elements</p>
-            </div>
-          </div>
-          {isSectionExpanded('design') ? (
-            <ChevronUp className="h-5 w-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          )}
-        </button>
-        {isSectionExpanded('design') && (
-          <div className="border-t border-gray-100">
-            <EventDesignItems
-              eventId={eventId}
-              eventDate={eventDate}
-              tenant={tenantSubdomain}
-            />
           </div>
         )}
       </div>

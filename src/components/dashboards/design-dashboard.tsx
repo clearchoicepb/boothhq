@@ -1,5 +1,12 @@
 'use client'
 
+/**
+ * Design Dashboard
+ *
+ * Uses the unified tasks API to display design tasks.
+ * Replaces the old design-items-based dashboard.
+ */
+
 import { useState, useEffect } from 'react'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
@@ -13,7 +20,6 @@ import {
   User,
   ExternalLink,
   Save,
-  Package,
   Paperclip,
   Trash2,
   X
@@ -24,6 +30,7 @@ import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import AttachmentUpload from '@/components/attachment-upload'
 import { createLogger } from '@/lib/logger'
+import type { TaskWithRelations, TaskDashboardData, TaskStatus } from '@/types/tasks'
 
 const log = createLogger('dashboards')
 
@@ -32,66 +39,6 @@ interface Designer {
   first_name?: string
   last_name?: string
   email: string
-}
-
-interface DesignStatus {
-  id: string
-  name: string
-  slug: string
-  is_active: boolean
-}
-
-interface DesignItem {
-  id: string
-  item_name?: string
-  design_deadline: string
-  status: string
-  design_item_type?: {
-    id: string
-    name: string
-    type: string
-  }
-  assigned_designer?: {
-    id: string
-    first_name: string
-    last_name: string
-    email: string
-  }
-  event: {
-    id: string
-    title: string
-    start_date?: string
-    event_dates?: Array<{ event_date: string }>
-    account?: {
-      name: string
-    }
-  }
-}
-
-interface EventWithDates {
-  event_dates?: Array<{ event_date: string }>
-  start_date?: string
-}
-
-interface DashboardData {
-  items: DesignItem[]
-  stats: {
-    total: number
-    missedDeadline: number
-    urgent: number
-    dueSoon: number
-    onTime: number
-    completed: number
-    recentCompletions: number
-    physicalItems: number
-  }
-  categories: {
-    missedDeadline: DesignItem[]
-    urgent: DesignItem[]
-    dueSoon: DesignItem[]
-    onTime: DesignItem[]
-    completed: DesignItem[]
-  }
 }
 
 // Helper function to determine if color is light or dark
@@ -111,24 +58,34 @@ const getTextColor = (bgColor: string): string => {
   return luminance > 0.5 ? '#1f2937' : '#ffffff'
 }
 
+// Task status options
+const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'awaiting_approval', label: 'Awaiting Approval' },
+  { value: 'needs_revision', label: 'Needs Revision' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'completed', label: 'Completed' },
+]
+
 export function DesignDashboard() {
   const { tenant } = useTenant()
   const router = useRouter()
   const { getSetting } = useSettings()
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<DashboardData | null>(null)
+  const [tasks, setTasks] = useState<TaskWithRelations[]>([])
+  const [stats, setStats] = useState<TaskDashboardData['stats'] | null>(null)
   const [designers, setDesigners] = useState<Designer[]>([])
-  const [designStatuses, setDesignStatuses] = useState<DesignStatus[]>([])
   const [selectedDesigner, setSelectedDesigner] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
-  const [selectedTask, setSelectedTask] = useState<DesignItem | null>(null)
-  const [taskStatus, setTaskStatus] = useState('')
+  const [selectedTask, setSelectedTask] = useState<TaskWithRelations | null>(null)
+  const [taskStatus, setTaskStatus] = useState<TaskStatus>('pending')
   const [taskNotes, setTaskNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isDesignManager, setIsDesignManager] = useState(false)
-  
+
   // Bulk actions state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
@@ -145,12 +102,12 @@ export function DesignDashboard() {
         if (res.ok) {
           const user = await res.json()
           setCurrentUser(user)
-          
+
           // Check if user is a design manager
           const managerDepts = user.manager_of_departments || []
-          const isManager = managerDepts.includes('design')
+          const isManager = managerDepts.includes('design') || user.department_role === 'manager'
           setIsDesignManager(isManager)
-          
+
           // If not a manager, automatically filter to show only their tasks
           if (!isManager && user.id) {
             setSelectedDesigner(user.id)
@@ -160,7 +117,7 @@ export function DesignDashboard() {
         log.error({ error }, '[DesignDashboard] Error fetching current user')
       }
     }
-    
+
     fetchCurrentUser()
   }, []) // Empty dependency array - run once on mount
 
@@ -170,11 +127,8 @@ export function DesignDashboard() {
     const fetchDashboardData = async () => {
       log.debug('Starting fetchDashboardData')
       try {
-        let url = '/api/design/dashboard'
-        const urlParams = new URLSearchParams()
-        if (selectedDesigner) urlParams.append('designer_id', selectedDesigner)
-        if (selectedStatus) urlParams.append('status', selectedStatus)
-        if (urlParams.toString()) url += `?${urlParams.toString()}`
+        let url = '/api/tasks/dashboard?department=design'
+        if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
         log.debug({ url }, 'Fetching')
         const res = await fetch(url)
@@ -184,9 +138,17 @@ export function DesignDashboard() {
           throw new Error(`API returned ${res.status}`)
         }
 
-        const dashboardData = await res.json()
-        log.debug('Data received:', dashboardData)
-        setData(dashboardData)
+        const dashboardData: TaskDashboardData = await res.json()
+        log.debug({ dashboardData }, 'Data received')
+
+        // Filter by status client-side if needed
+        let filteredTasks = dashboardData.tasks
+        if (selectedStatus) {
+          filteredTasks = filteredTasks.filter(t => t.status === selectedStatus)
+        }
+
+        setTasks(filteredTasks)
+        setStats(dashboardData.stats)
       } catch (error) {
         log.error({ error }, '[DesignDashboard] Error fetching dashboard')
         toast.error('Failed to load dashboard')
@@ -198,7 +160,7 @@ export function DesignDashboard() {
     const fetchDesigners = async () => {
       log.debug('Starting fetchDesigners')
       try {
-        const res = await fetch('/api/users')
+        const res = await fetch('/api/users?department=design')
         const responseData = await res.json()
         setDesigners(responseData.users || responseData || [])
       } catch (error) {
@@ -206,23 +168,12 @@ export function DesignDashboard() {
       }
     }
 
-    const fetchDesignStatuses = async () => {
-      log.debug('Starting fetchDesignStatuses')
-      try {
-        const res = await fetch('/api/design/statuses')
-        const responseData = await res.json()
-        setDesignStatuses(responseData.statuses || [])
-      } catch (error) {
-        log.error({ error }, '[DesignDashboard] Error fetching design statuses')
-      }
-    }
-
     fetchDashboardData()
     fetchDesigners()
-    fetchDesignStatuses()
   }, [selectedDesigner, selectedStatus])
 
-  const getDaysUntil = (deadline: string) => {
+  const getDaysUntil = (deadline: string | null) => {
+    if (!deadline) return null
     const deadlineDate = new Date(deadline)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -230,24 +181,20 @@ export function DesignDashboard() {
     return Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const getEventDate = (event: EventWithDates): string => {
-    return event.event_dates?.[0]?.event_date || event.start_date || new Date().toISOString()
-  }
-
   const navigateToEvent = (eventId: string) => {
     router.push(`/${tenant}/events/${eventId}`)
   }
 
-  const openTaskModal = (task: DesignItem) => {
+  const openTaskModal = (task: TaskWithRelations) => {
     setSelectedTask(task)
     setTaskStatus(task.status)
-    setTaskNotes('') // Could load existing notes if available
+    setTaskNotes(task.internal_notes || '')
     setAttachmentRefreshKey(prev => prev + 1)
   }
 
   const closeTaskModal = () => {
     setSelectedTask(null)
-    setTaskStatus('')
+    setTaskStatus('pending')
     setTaskNotes('')
   }
 
@@ -256,12 +203,12 @@ export function DesignDashboard() {
 
     setSaving(true)
     try {
-      const response = await fetch(`/api/events/${selectedTask.event.id}/design-items/${selectedTask.id}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/tasks/${selectedTask.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: taskStatus,
-          notes: taskNotes || undefined
+          internal_notes: taskNotes || undefined
         })
       })
 
@@ -271,15 +218,18 @@ export function DesignDashboard() {
       closeTaskModal()
 
       // Refresh dashboard data
-      const urlParams = new URLSearchParams()
-      if (selectedDesigner) urlParams.append('designer_id', selectedDesigner)
-      if (selectedStatus) urlParams.append('status', selectedStatus)
-      const url = `/api/design/dashboard${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+      let url = '/api/tasks/dashboard?department=design'
+      if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
       const res = await fetch(url)
       if (res.ok) {
-        const dashboardData = await res.json()
-        setData(dashboardData)
+        const dashboardData: TaskDashboardData = await res.json()
+        let filteredTasks = dashboardData.tasks
+        if (selectedStatus) {
+          filteredTasks = filteredTasks.filter(t => t.status === selectedStatus)
+        }
+        setTasks(filteredTasks)
+        setStats(dashboardData.stats)
       }
     } catch (error) {
       log.error({ error }, 'Error updating task')
@@ -303,64 +253,70 @@ export function DesignDashboard() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedItems.size === data?.items.length) {
+    if (selectedItems.size === tasks.length) {
       setSelectedItems(new Set())
     } else {
-      setSelectedItems(new Set(data?.items.map(item => item.id) || []))
+      setSelectedItems(new Set(tasks.map(item => item.id)))
     }
   }
 
   const handleBulkDelete = async () => {
     if (selectedItems.size === 0) return
-    
-    if (!confirm(`Are you sure you want to delete ${selectedItems.size} design item${selectedItems.size > 1 ? 's' : ''}? This cannot be undone.`)) {
+
+    if (!confirm(`Are you sure you want to delete ${selectedItems.size} task${selectedItems.size > 1 ? 's' : ''}? This cannot be undone.`)) {
       return
     }
 
     setIsDeleting(true)
     try {
-      const deletePromises = Array.from(selectedItems).map(itemId => {
-        const item = data?.items.find(i => i.id === itemId)
-        if (!item) return Promise.resolve()
-        
-        return fetch(`/api/events/${item.event.id}/design-items/${itemId}`, {
-          method: 'DELETE'
-        })
-      })
+      const deletePromises = Array.from(selectedItems).map(itemId =>
+        fetch(`/api/tasks/${itemId}`, { method: 'DELETE' })
+      )
 
       await Promise.all(deletePromises)
-      
-      toast.success(`Successfully deleted ${selectedItems.size} item${selectedItems.size > 1 ? 's' : ''}`)
+
+      toast.success(`Successfully deleted ${selectedItems.size} task${selectedItems.size > 1 ? 's' : ''}`)
       setSelectedItems(new Set())
-      
+
       // Refresh dashboard data
-      const urlParams = new URLSearchParams()
-      if (selectedDesigner) urlParams.append('designer_id', selectedDesigner)
-      if (selectedStatus) urlParams.append('status', selectedStatus)
-      const url = `/api/design/dashboard${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+      let url = '/api/tasks/dashboard?department=design'
+      if (selectedDesigner) url += `&assignedTo=${selectedDesigner}`
 
       const res = await fetch(url)
       if (res.ok) {
-        const dashboardData = await res.json()
-        setData(dashboardData)
+        const dashboardData: TaskDashboardData = await res.json()
+        let filteredTasks = dashboardData.tasks
+        if (selectedStatus) {
+          filteredTasks = filteredTasks.filter(t => t.status === selectedStatus)
+        }
+        setTasks(filteredTasks)
+        setStats(dashboardData.stats)
       }
     } catch (error) {
-      log.error({ error }, 'Error deleting items')
-      toast.error('Failed to delete some items')
+      log.error({ error }, 'Error deleting tasks')
+      toast.error('Failed to delete some tasks')
     } finally {
       setIsDeleting(false)
     }
   }
 
-  // Group items by event
-  const groupItemsByEvent = (items: DesignItem[]) => {
-    const grouped = new Map<string, DesignItem[]>()
-    items.forEach(item => {
-      const eventId = item.event.id
-      if (!grouped.has(eventId)) {
-        grouped.set(eventId, [])
+  // Group tasks by event
+  const groupTasksByEvent = (taskList: TaskWithRelations[]) => {
+    const grouped = new Map<string, TaskWithRelations[]>()
+    taskList.forEach(task => {
+      if (task.entity_type === 'event' && task.entity_id) {
+        const eventId = task.entity_id
+        if (!grouped.has(eventId)) {
+          grouped.set(eventId, [])
+        }
+        grouped.get(eventId)!.push(task)
+      } else {
+        // Tasks not linked to events go under 'other'
+        if (!grouped.has('other')) {
+          grouped.set('other', [])
+        }
+        grouped.get('other')!.push(task)
       }
-      grouped.get(eventId)!.push(item)
     })
     return Array.from(grouped.entries())
   }
@@ -380,8 +336,6 @@ export function DesignDashboard() {
     )
   }
 
-  if (!data) return null
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -400,7 +354,7 @@ export function DesignDashboard() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-blue-900">
-              {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
+              {selectedItems.size} task{selectedItems.size > 1 ? 's' : ''} selected
             </span>
             <button
               onClick={() => setSelectedItems(new Set())}
@@ -470,13 +424,11 @@ export function DesignDashboard() {
           } as React.CSSProperties}
         >
           <option value="">All Statuses</option>
-          {designStatuses
-            .filter((status) => status.is_active)
-            .map((status) => (
-              <option key={status.id} value={status.slug}>
-                {status.name}
-              </option>
-            ))}
+          {TASK_STATUSES.map(status => (
+            <option key={status.value} value={status.value}>
+              {status.label}
+            </option>
+          ))}
         </select>
 
         {(selectedDesigner || selectedStatus) && (
@@ -496,44 +448,44 @@ export function DesignDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <KPICard
-          title="Missed Deadline"
-          value={data.stats.missedDeadline}
+          title="Overdue"
+          value={stats?.overdue ?? 0}
           icon={AlertCircle}
           color="red"
-          subtitle="Too late to offer"
+          subtitle="Past due date"
         />
         <KPICard
-          title="Urgent"
-          value={data.stats.urgent}
+          title="Due Today"
+          value={stats?.due_today ?? 0}
           icon={Clock}
           color="orange"
-          subtitle="Needs immediate attention"
+          subtitle="Needs attention"
         />
         <KPICard
-          title="Due Soon"
-          value={data.stats.dueSoon}
+          title="Due This Week"
+          value={stats?.due_this_week ?? 0}
           icon={Calendar}
           color="yellow"
-          subtitle="Before due date"
+          subtitle="Coming up soon"
         />
         <KPICard
-          title="Physical Items"
-          value={data.stats.physicalItems}
-          icon={Package}
-          color="purple"
-          subtitle="Vendor-dependent"
+          title="In Progress"
+          value={stats?.in_progress ?? 0}
+          icon={Clock}
+          color="blue"
+          subtitle="Currently working"
         />
         <KPICard
-          title="Recent Completions"
-          value={data.stats.recentCompletions}
+          title="Recently Completed"
+          value={stats?.completed ?? 0}
           icon={CheckCircle}
           color="green"
-          subtitle="Last 7 days"
+          subtitle="Done"
         />
       </div>
 
       {/* All Tasks Grouped by Event */}
-      {data.items.length > 0 && (
+      {tasks.length > 0 && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900 flex items-center">
@@ -548,7 +500,7 @@ export function DesignDashboard() {
                   <th className="px-3 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedItems.size === data.items.length && data.items.length > 0}
+                      checked={selectedItems.size === tasks.length && tasks.length > 0}
                       onChange={toggleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
@@ -557,16 +509,10 @@ export function DesignDashboard() {
                     Task Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Event
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Account
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Deadline
+                    Due Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Days Until
@@ -580,24 +526,22 @@ export function DesignDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {groupItemsByEvent(data.items).map(([, items], eventIndex) => {
+                {groupTasksByEvent(tasks).map(([eventId, eventTasks], eventIndex) => {
                   const bgColor = eventIndex % 2 === 0 ? PRIMARY_COLOR : SECONDARY_COLOR
                   const textColor = getTextColor(bgColor)
 
-                  return items.map((item) => {
-                    const daysUntil = getDaysUntil(item.design_deadline)
-                    const itemName = item.item_name || item.design_item_type?.name || 'Design Item'
-                    const designerName = item.assigned_designer
-                      ? item.assigned_designer.first_name && item.assigned_designer.last_name
-                        ? `${item.assigned_designer.first_name} ${item.assigned_designer.last_name}`
-                        : item.assigned_designer.email
+                  return eventTasks.map((task) => {
+                    const dueDate = task.due_date || task.design_deadline
+                    const daysUntil = getDaysUntil(dueDate)
+                    const designerName = task.assigned_to_user
+                      ? task.assigned_to_user.first_name && task.assigned_to_user.last_name
+                        ? `${task.assigned_to_user.first_name} ${task.assigned_to_user.last_name}`
+                        : task.assigned_to_user.email
                       : 'Unassigned'
-
-                    const isPhysical = item.design_item_type?.type === 'physical'
 
                     return (
                       <tr
-                        key={item.id}
+                        key={task.id}
                         className="cursor-pointer hover:opacity-90 transition-opacity text-sm"
                         style={{
                           backgroundColor: bgColor,
@@ -607,56 +551,47 @@ export function DesignDashboard() {
                         <td className="px-3 py-1" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
-                            checked={selectedItems.has(item.id)}
-                            onChange={() => toggleItemSelection(item.id)}
+                            checked={selectedItems.has(task.id)}
+                            onChange={() => toggleItemSelection(task.id)}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(task)}>
                           <div className="flex items-center">
-                            {daysUntil < 0 && (
+                            {daysUntil !== null && daysUntil < 0 && (
                               <AlertCircle className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             )}
-                            {daysUntil >= 0 && daysUntil <= 3 && (
+                            {daysUntil !== null && daysUntil >= 0 && daysUntil <= 3 && (
                               <Clock className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             )}
-                            <span className="font-medium">{itemName}</span>
+                            <span className="font-medium">{task.title}</span>
                           </div>
-                        </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full" style={{
-                            backgroundColor: isPhysical
-                              ? (textColor === '#ffffff' ? 'rgba(251, 146, 60, 0.3)' : 'rgba(251, 146, 60, 0.2)')
-                              : (textColor === '#ffffff' ? 'rgba(96, 165, 250, 0.3)' : 'rgba(96, 165, 250, 0.2)')
-                          }}>
-                            {isPhysical ? '📦 Physical' : '💻 Digital'}
-                          </span>
                         </td>
                         <td className="px-4 py-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigateToEvent(item.event.id)
-                            }}
-                            className="font-medium hover:underline inline-flex items-center"
-                            style={{ color: textColor }}
-                          >
-                            {item.event.title}
-                            <ExternalLink className="h-3 w-3 ml-1" />
-                          </button>
-                          <div className="text-xs opacity-80">
-                            {new Date(getEventDate(item.event)).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                          </div>
+                          {task.entity_type === 'event' && task.entity_id ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigateToEvent(task.entity_id!)
+                              }}
+                              className="font-medium hover:underline inline-flex items-center"
+                              style={{ color: textColor }}
+                            >
+                              {(task as any).event?.title || 'View Event'}
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </button>
+                          ) : (
+                            <span className="text-sm opacity-70">-</span>
+                          )}
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
-                          {item.event.account?.name || '-'}
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(task)}>
+                          {dueDate ? new Date(dueDate).toLocaleDateString() : '-'}
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
-                          {new Date(item.design_deadline).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(task)}>
                           <div className="flex items-center">
-                            {daysUntil < 0 ? (
+                            {daysUntil === null ? (
+                              <span>-</span>
+                            ) : daysUntil < 0 ? (
                               <span className="font-bold">{Math.abs(daysUntil)} days overdue</span>
                             ) : daysUntil === 0 ? (
                               <span className="font-bold">Due today</span>
@@ -667,17 +602,17 @@ export function DesignDashboard() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(task)}>
                           <div className="flex items-center">
                             <User className="h-3 w-3 mr-1.5 flex-shrink-0" />
                             {designerName}
                           </div>
                         </td>
-                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(item)}>
+                        <td className="px-4 py-1 whitespace-nowrap" onClick={() => openTaskModal(task)}>
                           <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{
                             backgroundColor: textColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
                           }}>
-                            {item.status.replace('_', ' ').toUpperCase()}
+                            {task.status.replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
                       </tr>
@@ -691,12 +626,12 @@ export function DesignDashboard() {
       )}
 
       {/* Empty State */}
-      {data.stats.total === 0 && (
+      {tasks.length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <Palette className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Design Items Yet</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Design Tasks Yet</h3>
           <p className="text-gray-600 mb-6">
-            Design items will appear here when they are added to events
+            Design tasks will appear here when they are created
           </p>
           <button
             onClick={() => router.push(`/${tenant}/events`)}
@@ -719,54 +654,44 @@ export function DesignDashboard() {
                 <div>
                   <span className="text-gray-600">Task Name:</span>
                   <span className="ml-2 font-medium text-gray-900">
-                    {selectedTask.item_name || selectedTask.design_item_type?.name || 'Design Item'}
+                    {selectedTask.title}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-600">Event:</span>
-                  <button
-                    onClick={() => {
-                      closeTaskModal()
-                      navigateToEvent(selectedTask.event.id)
-                    }}
-                    className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
-                  >
-                    {selectedTask.event.title}
-                    <ExternalLink className="h-3 w-3 ml-1" />
-                  </button>
-                </div>
-                {selectedTask.event.account && (
+                {selectedTask.entity_type === 'event' && selectedTask.entity_id && (
                   <div>
-                    <span className="text-gray-600">Account:</span>
-                    <span className="ml-2 font-medium text-gray-900">{selectedTask.event.account.name}</span>
+                    <span className="text-gray-600">Event:</span>
+                    <button
+                      onClick={() => {
+                        closeTaskModal()
+                        navigateToEvent(selectedTask.entity_id!)
+                      }}
+                      className="ml-2 font-medium text-blue-600 hover:text-blue-800 inline-flex items-center"
+                    >
+                      View Event
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </button>
                   </div>
                 )}
                 <div>
-                  <span className="text-gray-600">Design Deadline:</span>
+                  <span className="text-gray-600">Due Date:</span>
                   <span className="ml-2 font-medium text-gray-900">
-                    {new Date(selectedTask.design_deadline).toLocaleDateString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Event Date:</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {new Date(getEventDate(selectedTask.event)).toLocaleDateString()}
+                    {selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'Not set'}
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Assigned To:</span>
                   <span className="ml-2 font-medium text-gray-900">
-                    {selectedTask.assigned_designer
-                      ? selectedTask.assigned_designer.first_name && selectedTask.assigned_designer.last_name
-                        ? `${selectedTask.assigned_designer.first_name} ${selectedTask.assigned_designer.last_name}`
-                        : selectedTask.assigned_designer.email
+                    {selectedTask.assigned_to_user
+                      ? selectedTask.assigned_to_user.first_name && selectedTask.assigned_to_user.last_name
+                        ? `${selectedTask.assigned_to_user.first_name} ${selectedTask.assigned_to_user.last_name}`
+                        : selectedTask.assigned_to_user.email
                       : 'Unassigned'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Type:</span>
+                  <span className="text-gray-600">Priority:</span>
                   <span className="ml-2 font-medium text-gray-900">
-                    {selectedTask.design_item_type?.type === 'physical' ? '📦 Physical' : '💻 Digital'}
+                    {selectedTask.priority.charAt(0).toUpperCase() + selectedTask.priority.slice(1)}
                   </span>
                 </div>
               </div>
@@ -779,7 +704,7 @@ export function DesignDashboard() {
               </label>
               <select
                 value={taskStatus}
-                onChange={(e) => setTaskStatus(e.target.value)}
+                onChange={(e) => setTaskStatus(e.target.value as TaskStatus)}
                 aria-label="Task status"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
                 style={{
@@ -787,20 +712,18 @@ export function DesignDashboard() {
                   borderColor: 'rgb(209 213 219)'
                 } as React.CSSProperties}
               >
-                {designStatuses
-                  .filter((status) => status.is_active)
-                  .map((status) => (
-                    <option key={status.id} value={status.slug}>
-                      {status.name}
-                    </option>
-                  ))}
+                {TASK_STATUSES.map(status => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
               </select>
             </div>
 
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Add Notes
+                Internal Notes
               </label>
               <Textarea
                 value={taskNotes}
@@ -812,26 +735,28 @@ export function DesignDashboard() {
             </div>
 
             {/* Design Proof Upload */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                <Paperclip className="h-4 w-4 mr-2" />
-                Upload Design Proof
-              </h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-xs text-gray-600 mb-4">
-                  Upload design proofs, mockups, or final files. These will appear in the Files tab on the event detail page.
-                </p>
-                <AttachmentUpload
-                  key={attachmentRefreshKey}
-                  entityType="event"
-                  entityId={selectedTask.event.id}
-                  onUploadComplete={() => {
-                    toast.success('Design proof uploaded successfully')
-                    setAttachmentRefreshKey(prev => prev + 1)
-                  }}
-                />
+            {selectedTask.entity_type === 'event' && selectedTask.entity_id && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Upload Design Proof
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-600 mb-4">
+                    Upload design proofs, mockups, or final files. These will appear in the Files tab on the event detail page.
+                  </p>
+                  <AttachmentUpload
+                    key={attachmentRefreshKey}
+                    entityType="event"
+                    entityId={selectedTask.entity_id}
+                    onUploadComplete={() => {
+                      toast.success('Design proof uploaded successfully')
+                      setAttachmentRefreshKey(prev => prev + 1)
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Actions */}
             <div className="flex justify-end space-x-3 pt-4 border-t">
@@ -874,7 +799,7 @@ interface KPICardProps {
   value: number
   subtitle: string
   icon: React.ComponentType<{ className?: string }>
-  color: 'yellow' | 'green' | 'red' | 'orange' | 'purple'
+  color: 'yellow' | 'green' | 'red' | 'orange' | 'blue'
 }
 
 function KPICard({ title, value, subtitle, icon: Icon, color }: KPICardProps) {
@@ -883,7 +808,7 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: KPICardProps) {
     green: 'bg-green-50 text-green-600',
     red: 'bg-red-50 text-red-600',
     orange: 'bg-orange-50 text-orange-600',
-    purple: 'bg-purple-50 text-purple-600',
+    blue: 'bg-blue-50 text-blue-600',
   }
 
   return (
@@ -899,4 +824,3 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: KPICardProps) {
     </div>
   )
 }
-
