@@ -13,8 +13,9 @@ import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import { useCreateTask, useCreateTaskFromTemplate } from '@/hooks/useTaskActions'
 import { useTaskTemplates } from '@/hooks/useTaskTemplates'
+import { useUsers } from '@/hooks/useUsers'
 import { DEPARTMENTS, DEPARTMENT_TASK_TYPES, type DepartmentId } from '@/lib/departments'
-import { Plus, FileText } from 'lucide-react'
+import { Plus, FileText, Loader2 } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
 import type { UnifiedTaskType } from '@/types/tasks'
 
@@ -79,6 +80,9 @@ export function AddTaskModal({
 
   const { createTask, isPending } = useCreateTask()
   const { createFromTemplate, isPending: isCreatingFromTemplate } = useCreateTaskFromTemplate()
+
+  // Fetch users for assignment dropdown
+  const { data: users = [], isLoading: loadingUsers } = useUsers()
 
   // Fetch templates filtered by unified task type
   const { data: templates = [] } = useTaskTemplates({
@@ -330,23 +334,31 @@ export function AddTaskModal({
           </div>
         </div>
 
-        {/* Assigned To (simple text for now - could be enhanced with user dropdown) */}
+        {/* Assigned To */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Assigned To (User ID)
+            Assign To
           </label>
-          <input
-            type="text"
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            placeholder="Leave empty for unassigned"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
-            style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-            disabled={isSubmitting}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Currently requires user ID. Leave empty to create unassigned task.
-          </p>
+          {loadingUsers ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <select
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+              style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
+              disabled={isSubmitting}
+            >
+              <option value="">Unassigned</option>
+              {users.map((user: { id: string; first_name: string; last_name: string }) => (
+                <option key={user.id} value={user.id}>
+                  {user.first_name} {user.last_name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Actions */}
