@@ -23,9 +23,19 @@ import {
   FileText,
   X,
   Eye,
+  Database,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Info,
 } from 'lucide-react'
 import type { FormField, FormFieldType } from '@/types/event-forms'
 import { FIELD_TYPE_CONFIG, FormFieldRenderer } from './fields'
+import {
+  mergeFieldCategories,
+  getCompatibleMergeFieldsByCategory,
+  getMergeFieldLabel,
+  type MergeFieldCategory,
+} from '@/lib/event-forms/available-merge-fields'
 
 interface FormBuilderProps {
   fields: FormField[]
@@ -43,6 +53,20 @@ const FIELD_ICONS: Record<FormFieldType, React.ComponentType<{ className?: strin
   time: Clock,
   section: Heading,
   paragraph: FileText,
+}
+
+/**
+ * Generate tooltip text for data mapping indicator
+ */
+function getDataMappingTooltip(field: FormField): string {
+  const parts: string[] = []
+  if (field.prePopulateFrom) {
+    parts.push(`Pre-fills from: ${getMergeFieldLabel(field.prePopulateFrom)}`)
+  }
+  if (field.saveResponseTo) {
+    parts.push(`Saves to: ${getMergeFieldLabel(field.saveResponseTo)}`)
+  }
+  return parts.join('\n')
 }
 
 /**
@@ -246,6 +270,16 @@ export function FormBuilder({ fields, onChange, readOnly = false }: FormBuilderP
                                   {field.required && (
                                     <span className="text-xs text-red-500">Required</span>
                                   )}
+                                  {/* Data mapping indicator */}
+                                  {(field.prePopulateFrom || field.saveResponseTo) && (
+                                    <span
+                                      className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded"
+                                      title={getDataMappingTooltip(field)}
+                                    >
+                                      <Database className="h-3 w-3" />
+                                      Mapped
+                                    </span>
+                                  )}
                                 </div>
                                 <span className="text-xs text-gray-500">{config.label}</span>
                               </div>
@@ -421,6 +455,14 @@ function FieldEditorModal({ field, onSave, onClose }: FieldEditorModalProps) {
           </div>
         )}
 
+        {/* Data Mapping Section */}
+        {!isDisplayOnly && (
+          <DataMappingSection
+            field={editedField}
+            onChange={(updates) => setEditedField({ ...editedField, ...updates })}
+          />
+        )}
+
         {/* Preview */}
         <div className="border-t pt-4 mt-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
@@ -438,6 +480,111 @@ function FieldEditorModal({ field, onSave, onClose }: FieldEditorModalProps) {
         </div>
       </div>
     </Modal>
+  )
+}
+
+/**
+ * Data Mapping Section
+ * Allows users to configure pre-population and save-back behavior for form fields
+ */
+interface DataMappingSectionProps {
+  field: FormField
+  onChange: (updates: Pick<FormField, 'prePopulateFrom' | 'saveResponseTo'>) => void
+}
+
+function DataMappingSection({ field, onChange }: DataMappingSectionProps) {
+  // Get compatible merge fields for this field type
+  const compatibleCategories = getCompatibleMergeFieldsByCategory(field.type)
+
+  return (
+    <div className="border-t pt-4 mt-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Database className="h-4 w-4 text-gray-500" />
+        <span className="text-sm font-medium text-gray-700">Data Mapping</span>
+      </div>
+
+      <div className="space-y-4 bg-gray-50 rounded-lg p-4">
+        {/* Pre-populate from */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+            <ArrowDownToLine className="h-4 w-4 text-blue-500" />
+            Pre-populate from event data
+          </label>
+          <MergeFieldSelect
+            value={field.prePopulateFrom || ''}
+            onChange={(value) => onChange({
+              prePopulateFrom: value || undefined,
+              saveResponseTo: field.saveResponseTo
+            })}
+            categories={compatibleCategories}
+            placeholder="Select field to pull data from..."
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            When the form loads, this field will be pre-filled with the selected event data.
+          </p>
+        </div>
+
+        {/* Save response to */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+            <ArrowUpFromLine className="h-4 w-4 text-green-500" />
+            Save response to event data
+          </label>
+          <MergeFieldSelect
+            value={field.saveResponseTo || ''}
+            onChange={(value) => onChange({
+              prePopulateFrom: field.prePopulateFrom,
+              saveResponseTo: value || undefined
+            })}
+            categories={compatibleCategories}
+            placeholder="Select field to save response to..."
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            When the form is submitted, the response will update the selected event field.
+          </p>
+        </div>
+
+        {/* Info callout */}
+        <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-md border border-blue-100">
+          <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-blue-700">
+            Both options are independent. You can use either, both, or neither for each field.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Merge Field Select Dropdown
+ * Grouped select for choosing merge fields
+ */
+interface MergeFieldSelectProps {
+  value: string
+  onChange: (value: string) => void
+  categories: MergeFieldCategory[]
+  placeholder: string
+}
+
+function MergeFieldSelect({ value, onChange, categories, placeholder }: MergeFieldSelectProps) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+    >
+      <option value="">{placeholder}</option>
+      {categories.map((category) => (
+        <optgroup key={category.id} label={category.label}>
+          {category.fields.map((field) => (
+            <option key={field.key} value={field.key}>
+              {field.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
   )
 }
 
