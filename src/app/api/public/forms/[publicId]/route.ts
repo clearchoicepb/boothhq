@@ -1,0 +1,192 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:public:forms')
+
+// We need to use the default tenant database client for public access
+// since we don't have a session
+async function getPublicSupabaseClient() {
+  const { createClient } = await import('@supabase/supabase-js')
+
+  const url = process.env.DEFAULT_TENANT_DATA_URL!
+  const serviceKey = process.env.DEFAULT_TENANT_DATA_SERVICE_KEY!
+
+  return createClient(url, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+/**
+ * GET /api/public/forms/[publicId]
+ * Get form data for public viewing (no auth required)
+ */
+export async function GET(
+  request: NextRequest,
+  routeContext: { params: Promise<{ publicId: string }> }
+) {
+  try {
+    const params = await routeContext.params
+    const { publicId } = params
+
+    if (!publicId || publicId.length < 8) {
+      return NextResponse.json({ error: 'Invalid form ID' }, { status: 400 })
+    }
+
+    const supabase = await getPublicSupabaseClient()
+
+    // Fetch form by public_id
+    const { data: form, error: formError } = await supabase
+      .from('event_forms')
+      .select(`
+        id,
+        tenant_id,
+        event_id,
+        name,
+        fields,
+        responses,
+        status,
+        public_id,
+        viewed_at,
+        completed_at
+      `)
+      .eq('public_id', publicId)
+      .single()
+
+    if (formError || !form) {
+      log.error({ error: formError }, 'Form not found')
+      return NextResponse.json({ error: 'Form not found' }, { status: 404 })
+    }
+
+    // Don't show draft forms publicly
+    if (form.status === 'draft') {
+      return NextResponse.json({ error: 'Form not available' }, { status: 404 })
+    }
+
+    // Fetch event details for context
+    const { data: event } = await supabase
+      .from('events')
+      .select('id, title, start_date')
+      .eq('id', form.event_id)
+      .single()
+
+    // Fetch tenant branding (logo)
+    const { data: logoSetting } = await supabase
+      .from('tenant_settings')
+      .select('setting_value')
+      .eq('tenant_id', form.tenant_id)
+      .eq('setting_key', 'appearance.logoUrl')
+      .single()
+
+    const logoUrl = logoSetting?.setting_value || null
+
+    // Track first view
+    if (!form.viewed_at && form.status === 'sent') {
+      await supabase
+        .from('event_forms')
+        .update({
+          viewed_at: new Date().toISOString(),
+          status: 'viewed',
+        })
+        .eq('id', form.id)
+    }
+
+    return NextResponse.json({
+      form: {
+        id: form.id,
+        name: form.name,
+        fields: form.fields || [],
+        status: form.status,
+        responses: form.responses,
+        completed_at: form.completed_at,
+      },
+      event: event
+        ? {
+            title: event.title,
+            start_date: event.start_date,
+          }
+        : null,
+      tenant: {
+        logoUrl,
+      },
+    })
+  } catch (error) {
+    log.error({ error }, 'Error fetching public form')
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/public/forms/[publicId]
+ * Submit form responses (no auth required)
+ */
+export async function POST(
+  request: NextRequest,
+  routeContext: { params: Promise<{ publicId: string }> }
+) {
+  try {
+    const params = await routeContext.params
+    const { publicId } = params
+    const body = await request.json()
+
+    if (!publicId || publicId.length < 8) {
+      return NextResponse.json({ error: 'Invalid form ID' }, { status: 400 })
+    }
+
+    const { responses } = body
+
+    if (!responses || typeof responses !== 'object') {
+      return NextResponse.json({ error: 'Responses are required' }, { status: 400 })
+    }
+
+    const supabase = await getPublicSupabaseClient()
+
+    // Fetch form to verify it exists and is submittable
+    const { data: form, error: formError } = await supabase
+      .from('event_forms')
+      .select('id, status, fields')
+      .eq('public_id', publicId)
+      .single()
+
+    if (formError || !form) {
+      return NextResponse.json({ error: 'Form not found' }, { status: 404 })
+    }
+
+    // Don't allow submission of draft or already completed forms
+    if (form.status === 'draft') {
+      return NextResponse.json({ error: 'Form not available' }, { status: 404 })
+    }
+
+    if (form.status === 'completed') {
+      return NextResponse.json({ error: 'Form already submitted' }, { status: 400 })
+    }
+
+    // Add submission metadata
+    const formResponses = {
+      ...responses,
+      _submittedAt: new Date().toISOString(),
+    }
+
+    // Update form with responses
+    const { error: updateError } = await supabase
+      .from('event_forms')
+      .update({
+        responses: formResponses,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', form.id)
+
+    if (updateError) {
+      log.error({ error: updateError }, 'Error submitting form')
+      return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    log.error({ error }, 'Error submitting public form')
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

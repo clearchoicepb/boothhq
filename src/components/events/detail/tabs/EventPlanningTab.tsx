@@ -9,12 +9,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Truck, Package, ListTodo, ChevronDown, ChevronUp } from 'lucide-react'
+import { Truck, Package, ListTodo, ChevronDown, ChevronUp, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EventLogistics } from '../../event-logistics'
 import { EventInventoryAssignments } from '@/components/inventory/EventInventoryAssignments'
 import { TasksSection } from '@/components/tasks-section'
 import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
+import { EventFormsSection } from '@/components/event-forms/EventFormsSection'
 
 interface EventPlanningTabProps {
   eventId: string
@@ -25,7 +26,7 @@ interface EventPlanningTabProps {
   onTasksRefresh?: () => void
 }
 
-type Section = 'core-tasks' | 'logistics' | 'equipment' | 'tasks'
+type Section = 'core-tasks' | 'logistics' | 'equipment' | 'tasks' | 'forms'
 
 export function EventPlanningTab({
   eventId,
@@ -36,7 +37,7 @@ export function EventPlanningTab({
   onTasksRefresh
 }: EventPlanningTabProps) {
   const [expandedSections, setExpandedSections] = useState<Set<Section>>(
-    new Set(['core-tasks', 'tasks']) // Expand core tasks and tasks by default
+    new Set(['core-tasks', 'forms', 'tasks']) // Expand core tasks, forms, and tasks by default
   )
 
   const toggleSection = (section: Section) => {
@@ -80,6 +81,36 @@ export function EventPlanningTab({
           <div className="px-6 pb-6 border-t border-gray-100">
             <div className="pt-4">
               <EventCoreTasksChecklist eventId={eventId} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Client Forms */}
+      <div className="bg-white rounded-lg shadow">
+        <button
+          onClick={() => toggleSection('forms')}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <FileText className="h-5 w-5 text-purple-600" />
+            </div>
+            <div className="text-left">
+              <h2 className="text-lg font-semibold text-gray-900">Client Forms</h2>
+              <p className="text-sm text-gray-500">Questionnaires for gathering client information</p>
+            </div>
+          </div>
+          {isSectionExpanded('forms') ? (
+            <ChevronUp className="h-5 w-5 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-gray-400" />
+          )}
+        </button>
+        {isSectionExpanded('forms') && (
+          <div className="px-6 pb-6 border-t border-gray-100">
+            <div className="pt-4">
+              <EventFormsSection eventId={eventId} tenantSubdomain={tenantSubdomain} />
             </div>
           </div>
         )}

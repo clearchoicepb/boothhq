@@ -205,6 +205,13 @@ const settingsStructure: SettingsCategory[] = [
         icon: FileText,
         href: '/templates/contracts',
       },
+      {
+        id: 'event-forms',
+        title: 'Event Forms',
+        description: 'Client questionnaires and information gathering forms',
+        icon: FileText,
+        href: '/event-forms',
+      },
     ]
   },
   {
