@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { NotesSection } from '@/components/notes-section'
-import { ArrowLeft, Edit, Trash2, Building2, User, Phone, Mail, MapPin, Globe, FileText, Plus, Calendar, DollarSign, ArrowRight, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Building2, User, Phone, Mail, MapPin, Globe, FileText, Plus, Calendar, DollarSign, ArrowRight, CheckCircle, X } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -64,6 +64,7 @@ interface ContactWithRole extends Contact {
 import type { AccountEvent } from '@/types/events'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
+import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
 
 const log = createLogger('id')
 
@@ -119,10 +120,35 @@ export default function AccountDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showContactSelector, setShowContactSelector] = useState(false)
+  const [showLinkContactModal, setShowLinkContactModal] = useState(false)
 
   // Helper to invalidate account data
   const refreshAccountData = () => {
     queryClient.invalidateQueries({ queryKey: ['account', accountId] })
+  }
+
+  // Handle unlinking a contact from this account
+  const handleUnlinkContact = async (junctionId: string, contactName: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent navigation to contact
+
+    if (!confirm(`Remove ${contactName} from ${account?.name}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/contact-accounts?id=${junctionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove relationship')
+      }
+
+      refreshAccountData()
+    } catch (error) {
+      console.error('Error unlinking contact:', error)
+      alert('Failed to remove contact association')
+    }
   }
 
   // Fetch assigned user details when account changes
@@ -639,12 +665,22 @@ export default function AccountDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Contact Associations</h2>
-                <Link href={`/${tenantSubdomain}/contacts/new?account_id=${account.id}`}>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Contact
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowLinkContactModal(true)}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Link Existing
                   </Button>
-                </Link>
+                  <Link href={`/${tenantSubdomain}/contacts/new?account_id=${account.id}`}>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {/* Active Contacts */}
@@ -653,9 +689,9 @@ export default function AccountDetailPage() {
                   <h3 className="text-sm font-medium text-gray-700 mb-3">Current Contacts</h3>
                   <div className="space-y-3">
                     {account.active_contacts.map((contact) => (
-                      <div 
+                      <div
                         key={contact.junction_id || contact.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer group"
                         onClick={() => router.push(`/${tenantSubdomain}/contacts/${contact.id}`)}
                       >
                         <div className="flex items-center space-x-3 flex-1">
@@ -692,7 +728,18 @@ export default function AccountDetailPage() {
                               </p>
                             )}
                           </div>
-                          <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {contact.junction_id && (
+                              <button
+                                onClick={(e) => handleUnlinkContact(contact.junction_id!, `${contact.first_name} ${contact.last_name}`, e)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove from account"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -706,9 +753,9 @@ export default function AccountDetailPage() {
                   <h3 className="text-sm font-medium text-gray-700 mb-3">Former Contacts</h3>
                   <div className="space-y-3">
                     {account.former_contacts.map((contact) => (
-                      <div 
+                      <div
                         key={contact.junction_id || contact.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all cursor-pointer opacity-75"
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all cursor-pointer opacity-75 group"
                         onClick={() => router.push(`/${tenantSubdomain}/contacts/${contact.id}`)}
                       >
                         <div className="flex items-center space-x-3 flex-1">
@@ -737,7 +784,18 @@ export default function AccountDetailPage() {
                               </p>
                             )}
                           </div>
-                          <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {contact.junction_id && (
+                              <button
+                                onClick={(e) => handleUnlinkContact(contact.junction_id!, `${contact.first_name} ${contact.last_name}`, e)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove from account"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -998,6 +1056,17 @@ export default function AccountDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Link Existing Contact Modal */}
+      {account && (
+        <LinkContactAccountModal
+          isOpen={showLinkContactModal}
+          onClose={() => setShowLinkContactModal(false)}
+          onSuccess={refreshAccountData}
+          accountId={account.id}
+          accountName={account.name}
+        />
       )}
     </div>
   )

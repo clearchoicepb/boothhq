@@ -7,31 +7,21 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { NotesSection } from '@/components/notes-section'
-import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText, ArrowRight } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText, ArrowRight, X } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { useContact } from '@/hooks/useContact'
+import { ContactForm } from '@/components/forms'
+import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
+import type { Contact as BaseContact } from '@/lib/supabase-client'
 
-interface Contact {
-  id: string
-  first_name: string
-  last_name: string
-  email: string | null
-  phone: string | null
-  job_title: string | null
-  department: string | null
-  relationship_to_account: string | null
-  address: any | null
-  avatar_url: string | null
-  status: string
-  assigned_to: string | null
-  notes: string | null
-  account_id: string | null
+// Extended contact type with API response fields
+interface Contact extends BaseContact {
   account_name: string | null
-  created_at: string
-  updated_at: string
-  // NEW: Many-to-many account relationships
+  relationship_to_account: string | null
+  avatar_url: string | null
+  // Many-to-many account relationships from API
   all_accounts?: Array<{
     id: string
     name: string
@@ -64,6 +54,37 @@ export default function ContactDetailPage() {
 
   // UI State (not data fetching)
   const [showAccountSelector, setShowAccountSelector] = useState(false)
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false)
+  const [showLinkAccountModal, setShowLinkAccountModal] = useState(false)
+
+  // Helper to refresh contact data
+  const refreshContactData = () => {
+    queryClient.invalidateQueries({ queryKey: ['contact', contactId] })
+  }
+
+  // Handle unlinking an account from this contact
+  const handleUnlinkAccount = async (junctionId: string, accountName: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent navigation to account
+
+    if (!confirm(`Remove ${contact?.first_name} ${contact?.last_name} from ${accountName}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/contact-accounts?id=${junctionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove relationship')
+      }
+
+      refreshContactData()
+    } catch (error) {
+      console.error('Error unlinking account:', error)
+      alert('Failed to remove account association')
+    }
+  }
 
   const handleCreateOpportunity = () => {
     if (!contact) return
@@ -88,6 +109,12 @@ export default function ContactDetailPage() {
     router.push(
       `/${tenantSubdomain}/opportunities/new-sequential?contact_id=${contact?.id}&account_id=${accountId}`
     )
+  }
+
+  const handleEditFormSubmit = async () => {
+    // Invalidate and refetch the contact data
+    queryClient.invalidateQueries({ queryKey: ['contact', contactId] })
+    setIsEditFormOpen(false)
   }
 
   const getStatusColor = (status: string) => {
@@ -169,12 +196,10 @@ export default function ContactDetailPage() {
               </div>
             </div>
             <div className="flex space-x-2">
-              <Link href={`/${tenantSubdomain}/contacts/${contact.id}/edit`}>
-                <Button variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
+              <Button variant="outline" onClick={() => setIsEditFormOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
               <Button variant="outline" className="text-red-600 hover:text-red-700">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
@@ -273,9 +298,19 @@ export default function ContactDetailPage() {
 
             {/* Account Associations Section */}
             <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="h-5 w-5 text-gray-700" />
-                <h2 className="text-lg font-semibold text-gray-900">Account Associations</h2>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-gray-700" />
+                  <h2 className="text-lg font-semibold text-gray-900">Account Associations</h2>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowLinkAccountModal(true)}
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Link Account
+                </Button>
               </div>
               <p className="text-sm text-gray-500 mb-4">
                 Companies and organizations this contact works with
@@ -292,7 +327,7 @@ export default function ContactDetailPage() {
                         {contact.active_accounts.map((account: any) => (
                           <div
                             key={account.junction_id}
-                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group"
                             onClick={() => router.push(`/${tenantSubdomain}/accounts/${account.id}`)}
                           >
                             <div className="flex items-center gap-3">
@@ -314,7 +349,16 @@ export default function ContactDetailPage() {
                                 </div>
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => handleUnlinkAccount(account.junction_id, account.name, e)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove from account"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -331,7 +375,7 @@ export default function ContactDetailPage() {
                         {contact.former_accounts.map((account: any) => (
                           <div
                             key={account.junction_id}
-                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg opacity-60 hover:opacity-100 cursor-pointer transition-opacity"
+                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg opacity-60 hover:opacity-100 cursor-pointer transition-opacity group"
                             onClick={() => router.push(`/${tenantSubdomain}/accounts/${account.id}`)}
                           >
                             <div className="flex items-center gap-3">
@@ -350,7 +394,16 @@ export default function ContactDetailPage() {
                                 </div>
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => handleUnlinkAccount(account.junction_id, account.name, e)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove from account"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -390,7 +443,7 @@ export default function ContactDetailPage() {
                   <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No account associations</p>
                   <p className="text-sm mt-2">
-                    Edit this contact to add account relationships
+                    Click &quot;Link Account&quot; above to associate this contact with an account
                   </p>
                 </div>
               )}
@@ -549,6 +602,27 @@ export default function ContactDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Contact Modal */}
+      {isEditFormOpen && contact && (
+        <ContactForm
+          isOpen={isEditFormOpen}
+          onClose={() => setIsEditFormOpen(false)}
+          onSubmit={handleEditFormSubmit}
+          contact={contact as unknown as BaseContact}
+        />
+      )}
+
+      {/* Link Account Modal */}
+      {contact && (
+        <LinkContactAccountModal
+          isOpen={showLinkAccountModal}
+          onClose={() => setShowLinkAccountModal(false)}
+          onSuccess={refreshContactData}
+          contactId={contact.id}
+          contactName={`${contact.first_name} ${contact.last_name}`}
+        />
       )}
     </div>
   )
