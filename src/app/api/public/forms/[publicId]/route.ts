@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { resolveFormPrefillValues } from '@/lib/event-forms/merge-field-resolver'
+import type { FormField } from '@/types/event-forms'
 
 const log = createLogger('api:public:forms')
 
@@ -93,6 +95,18 @@ export async function GET(
         .eq('id', form.id)
     }
 
+    // Resolve pre-populated values from merge field mappings
+    const fields = (form.fields || []) as FormField[]
+    let prefilled: Record<string, string> = {}
+
+    try {
+      prefilled = await resolveFormPrefillValues(supabase, form.event_id, fields)
+      log.debug({ fieldCount: Object.keys(prefilled).length }, 'Resolved prefill values')
+    } catch (prefillError) {
+      log.error({ error: prefillError }, 'Error resolving prefill values')
+      // Continue without prefilled values - non-critical error
+    }
+
     return NextResponse.json({
       form: {
         id: form.id,
@@ -111,6 +125,7 @@ export async function GET(
       tenant: {
         logoUrl,
       },
+      prefilled,
     })
   } catch (error) {
     log.error({ error }, 'Error fetching public form')

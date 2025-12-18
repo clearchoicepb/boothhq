@@ -22,6 +22,7 @@ interface PublicFormData {
   tenant: {
     logoUrl: string | null
   }
+  prefilled?: Record<string, string>
 }
 
 /**
@@ -112,7 +113,7 @@ export default function PublicFormPage() {
     )
   }
 
-  const { form, event, tenant } = formData
+  const { form, event, tenant, prefilled } = formData
   const isCompleted = form.status === 'completed'
 
   return (
@@ -146,6 +147,7 @@ export default function PublicFormPage() {
             fields={form.fields}
             responses={form.responses}
             status={form.status}
+            prefilled={prefilled}
             readOnly={isCompleted}
             onSubmit={handleSubmit}
             showSubmitButton={!isCompleted}

@@ -32,6 +32,7 @@ export const mergeFieldCategories: MergeFieldCategory[] = [
     id: 'event_details',
     label: 'Event Details',
     fields: [
+      { key: 'events.id', label: 'Event ID', type: 'text', table: 'events', column: 'id' },
       { key: 'events.title', label: 'Event Title', type: 'text', table: 'events', column: 'title' },
       { key: 'events.description', label: 'Event Description', type: 'textarea', table: 'events', column: 'description' },
       { key: 'events.status', label: 'Event Status', type: 'text', table: 'events', column: 'status' },
@@ -158,41 +159,13 @@ export function getMergeFieldByKey(key: string): MergeField | undefined {
 /**
  * Get fields compatible with a given form field type
  *
- * Compatibility rules:
- * - text form fields: can map to text, textarea, email, number fields
- * - textarea form fields: can map to text, textarea fields
- * - date form fields: should prefer date fields, but allow text
- * - time form fields: should prefer time fields, but allow text
- * - select/radio/multiselect: can map to text, select fields
- *
- * We're intentionally permissive - users may have valid reasons for cross-type mapping
+ * Returns ALL fields regardless of form field type.
+ * Users should be able to map any form field to any event data field.
+ * Type conversion will be handled during pre-population and save operations.
  */
 export function getCompatibleMergeFields(formFieldType: string): MergeField[] {
-  const allFields = getAllMergeFields()
-
-  // Define type compatibility groups
-  const textCompatible: MergeFieldType[] = ['text', 'textarea', 'email', 'number']
-  const dateCompatible: MergeFieldType[] = ['date', 'text']
-  const timeCompatible: MergeFieldType[] = ['time', 'text']
-  const selectCompatible: MergeFieldType[] = ['text', 'select']
-
-  switch (formFieldType) {
-    case 'text':
-      return allFields.filter(f => textCompatible.includes(f.type))
-    case 'textarea':
-      return allFields.filter(f => ['text', 'textarea'].includes(f.type))
-    case 'date':
-      return allFields.filter(f => dateCompatible.includes(f.type))
-    case 'time':
-      return allFields.filter(f => timeCompatible.includes(f.type))
-    case 'select':
-    case 'radio':
-    case 'multiselect':
-      return allFields.filter(f => selectCompatible.includes(f.type))
-    default:
-      // For section, paragraph, etc. - return all fields
-      return allFields
-  }
+  // Return all fields - let users decide what makes sense for their use case
+  return getAllMergeFields()
 }
 
 /**
