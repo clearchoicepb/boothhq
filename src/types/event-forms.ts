@@ -37,6 +37,9 @@ export interface FormField {
   order: number                 // Display order (for drag-drop reordering)
   options?: string[]            // Options for select/multiselect/radio
   content?: string              // Content for section headers and paragraphs
+  // Data mapping for merge tags (Phase 7B)
+  prePopulateFrom?: string      // Merge field key to pull data from (e.g., "events.venue_contact_name")
+  saveResponseTo?: string       // Merge field key to save response to (e.g., "events.venue_contact_name")
 }
 
 /**

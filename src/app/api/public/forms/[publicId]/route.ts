@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { resolveFormPrefillValues } from '@/lib/event-forms/merge-field-resolver'
+import { saveFormResponsesToEventData } from '@/lib/event-forms/form-response-saver'
+import type { FormField, FormResponses } from '@/types/event-forms'
 
 const log = createLogger('api:public:forms')
 
@@ -93,6 +96,18 @@ export async function GET(
         .eq('id', form.id)
     }
 
+    // Resolve pre-populated values from merge field mappings
+    const fields = (form.fields || []) as FormField[]
+    let prefilled: Record<string, string> = {}
+
+    try {
+      prefilled = await resolveFormPrefillValues(supabase, form.event_id, fields)
+      log.debug({ fieldCount: Object.keys(prefilled).length }, 'Resolved prefill values')
+    } catch (prefillError) {
+      log.error({ error: prefillError }, 'Error resolving prefill values')
+      // Continue without prefilled values - non-critical error
+    }
+
     return NextResponse.json({
       form: {
         id: form.id,
@@ -111,6 +126,7 @@ export async function GET(
       tenant: {
         logoUrl,
       },
+      prefilled,
     })
   } catch (error) {
     log.error({ error }, 'Error fetching public form')
@@ -146,7 +162,7 @@ export async function POST(
     // Fetch form to verify it exists and is submittable
     const { data: form, error: formError } = await supabase
       .from('event_forms')
-      .select('id, status, fields')
+      .select('id, event_id, status, fields')
       .eq('public_id', publicId)
       .single()
 
@@ -182,6 +198,36 @@ export async function POST(
     if (updateError) {
       log.error({ error: updateError }, 'Error submitting form')
       return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 })
+    }
+
+    // Apply save-back mappings to update event data
+    const fields = (form.fields || []) as FormField[]
+    const hasSaveBackMappings = fields.some(f => f.saveResponseTo)
+
+    if (hasSaveBackMappings && form.event_id) {
+      try {
+        const saveBackResult = await saveFormResponsesToEventData(
+          supabase,
+          form.event_id,
+          fields,
+          formResponses as FormResponses
+        )
+
+        if (!saveBackResult.success) {
+          log.warn(
+            { errors: saveBackResult.errors },
+            'Some save-back updates failed (form still submitted successfully)'
+          )
+        } else if (saveBackResult.updatedTables.length > 0) {
+          log.info(
+            { tables: saveBackResult.updatedTables },
+            'Successfully applied save-back updates'
+          )
+        }
+      } catch (saveBackError) {
+        // Log but don't fail the request - form submission was successful
+        log.error({ error: saveBackError }, 'Error applying save-back mappings')
+      }
     }
 
     return NextResponse.json({ success: true })
