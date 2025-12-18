@@ -10,7 +10,7 @@ const log = createLogger('api:event-forms')
  */
 export async function GET(
   request: NextRequest,
-  routeContext: { params: Promise<{ eventId: string; formId: string }> }
+  routeContext: { params: Promise<{ id: string; formId: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -18,7 +18,7 @@ export async function GET(
 
     const { supabase, dataSourceTenantId } = context
     const params = await routeContext.params
-    const { eventId, formId } = params
+    const { id: eventId, formId } = params
 
     const { data, error } = await supabase
       .from('event_forms')
@@ -48,7 +48,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  routeContext: { params: Promise<{ eventId: string; formId: string }> }
+  routeContext: { params: Promise<{ id: string; formId: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -61,7 +61,7 @@ export async function PUT(
     }
 
     const params = await routeContext.params
-    const { eventId, formId } = params
+    const { id: eventId, formId } = params
     const body = await request.json()
 
     const { name, fields, status, field_mappings, responses, sent_at, viewed_at, completed_at } = body
@@ -114,7 +114,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  routeContext: { params: Promise<{ eventId: string; formId: string }> }
+  routeContext: { params: Promise<{ id: string; formId: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -127,7 +127,7 @@ export async function DELETE(
     }
 
     const params = await routeContext.params
-    const { eventId, formId } = params
+    const { id: eventId, formId } = params
 
     const { error } = await supabase
       .from('event_forms')

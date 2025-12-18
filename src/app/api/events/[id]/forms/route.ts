@@ -19,7 +19,7 @@ function generatePublicId(): string {
  */
 export async function GET(
   request: NextRequest,
-  routeContext: { params: Promise<{ eventId: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -27,7 +27,7 @@ export async function GET(
 
     const { supabase, dataSourceTenantId } = context
     const params = await routeContext.params
-    const { eventId } = params
+    const { id: eventId } = params
 
     const { data, error } = await supabase
       .from('event_forms')
@@ -57,7 +57,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  routeContext: { params: Promise<{ eventId: string }> }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -70,7 +70,7 @@ export async function POST(
     }
 
     const params = await routeContext.params
-    const { eventId } = params
+    const { id: eventId } = params
     const body = await request.json()
     const { name, template_id, fields, field_mappings } = body
 
