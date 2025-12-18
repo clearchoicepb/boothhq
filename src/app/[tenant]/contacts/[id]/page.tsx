@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { useContact } from '@/hooks/useContact'
 import { ContactForm } from '@/components/forms'
+import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
 import type { Contact as BaseContact } from '@/lib/supabase-client'
 
 // Extended contact type with API response fields
@@ -54,6 +55,12 @@ export default function ContactDetailPage() {
   // UI State (not data fetching)
   const [showAccountSelector, setShowAccountSelector] = useState(false)
   const [isEditFormOpen, setIsEditFormOpen] = useState(false)
+  const [showLinkAccountModal, setShowLinkAccountModal] = useState(false)
+
+  // Helper to refresh contact data
+  const refreshContactData = () => {
+    queryClient.invalidateQueries({ queryKey: ['contact', contactId] })
+  }
 
   const handleCreateOpportunity = () => {
     if (!contact) return
@@ -267,9 +274,19 @@ export default function ContactDetailPage() {
 
             {/* Account Associations Section */}
             <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="h-5 w-5 text-gray-700" />
-                <h2 className="text-lg font-semibold text-gray-900">Account Associations</h2>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-gray-700" />
+                  <h2 className="text-lg font-semibold text-gray-900">Account Associations</h2>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowLinkAccountModal(true)}
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Link Account
+                </Button>
               </div>
               <p className="text-sm text-gray-500 mb-4">
                 Companies and organizations this contact works with
@@ -384,7 +401,7 @@ export default function ContactDetailPage() {
                   <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No account associations</p>
                   <p className="text-sm mt-2">
-                    Edit this contact to add account relationships
+                    Click &quot;Link Account&quot; above to associate this contact with an account
                   </p>
                 </div>
               )}
@@ -552,6 +569,17 @@ export default function ContactDetailPage() {
           onClose={() => setIsEditFormOpen(false)}
           onSubmit={handleEditFormSubmit}
           contact={contact as unknown as BaseContact}
+        />
+      )}
+
+      {/* Link Account Modal */}
+      {contact && (
+        <LinkContactAccountModal
+          isOpen={showLinkAccountModal}
+          onClose={() => setShowLinkAccountModal(false)}
+          onSuccess={refreshContactData}
+          contactId={contact.id}
+          contactName={`${contact.first_name} ${contact.last_name}`}
         />
       )}
     </div>

@@ -64,6 +64,7 @@ interface ContactWithRole extends Contact {
 import type { AccountEvent } from '@/types/events'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
+import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
 
 const log = createLogger('id')
 
@@ -119,6 +120,7 @@ export default function AccountDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showContactSelector, setShowContactSelector] = useState(false)
+  const [showLinkContactModal, setShowLinkContactModal] = useState(false)
 
   // Helper to invalidate account data
   const refreshAccountData = () => {
@@ -639,12 +641,22 @@ export default function AccountDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Contact Associations</h2>
-                <Link href={`/${tenantSubdomain}/contacts/new?account_id=${account.id}`}>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Contact
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowLinkContactModal(true)}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Link Existing
                   </Button>
-                </Link>
+                  <Link href={`/${tenantSubdomain}/contacts/new?account_id=${account.id}`}>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {/* Active Contacts */}
@@ -998,6 +1010,17 @@ export default function AccountDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Link Existing Contact Modal */}
+      {account && (
+        <LinkContactAccountModal
+          isOpen={showLinkContactModal}
+          onClose={() => setShowLinkContactModal(false)}
+          onSuccess={refreshAccountData}
+          accountId={account.id}
+          accountName={account.name}
+        />
       )}
     </div>
   )
