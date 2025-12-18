@@ -10,7 +10,7 @@ import { FormPreview } from './FormPreview'
 import {
   Plus,
   FileText,
-  Copy,
+  Link2,
   Eye,
   Pencil,
   Trash2,
@@ -59,6 +59,9 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
   const [formName, setFormName] = useState('')
   const [formFields, setFormFields] = useState<FormField[]>([])
   const [saving, setSaving] = useState(false)
+
+  // Link copied feedback state
+  const [linkCopiedFormId, setLinkCopiedFormId] = useState<string | null>(null)
 
   // Fetch forms and templates
   useEffect(() => {
@@ -216,7 +219,10 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
     const url = `${window.location.origin}/forms/${form.public_id}`
     try {
       await navigator.clipboard.writeText(url)
-      toast.success('Link copied to clipboard')
+
+      // Show "Link Copied!" feedback
+      setLinkCopiedFormId(form.id)
+      setTimeout(() => setLinkCopiedFormId(null), 2000)
 
       // Mark as sent if it's still a draft
       if (form.status === 'draft') {
@@ -300,65 +306,89 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
           <p className="text-xs text-gray-400">Add a form to gather information from your client</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {forms.map((form) => (
-            <div
-              key={form.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {getStatusIcon(form.status)}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-gray-900">{form.name}</span>
-                    {getStatusBadge(form.status)}
+        <div className="space-y-3">
+          {forms.map((form) => {
+            const linkCopied = linkCopiedFormId === form.id
+
+            return (
+              <div
+                key={form.id}
+                className="bg-gray-50 rounded-lg border border-gray-200"
+              >
+                {/* Form Header Row */}
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    {getStatusIcon(form.status)}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-gray-900">{form.name}</span>
+                        {getStatusBadge(form.status)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {form.fields?.length || 0} fields
+                        {form.completed_at && (
+                          <>
+                            {' • '}
+                            Submitted {new Date(form.completed_at).toLocaleDateString()}
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {form.fields?.length || 0} fields
-                    {form.completed_at && (
-                      <>
-                        {' • '}
-                        Submitted {new Date(form.completed_at).toLocaleDateString()}
-                      </>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handlePreviewForm(form)}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-200"
+                      title="Preview"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    {form.status !== 'completed' && (
+                      <button
+                        onClick={() => handleEditForm(form)}
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-200"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                     )}
+                    <button
+                      onClick={() => handleDeleteForm(form)}
+                      className="p-2 text-gray-400 hover:text-red-600 rounded hover:bg-gray-200"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Actions Row - matches invoice pattern */}
+                <div className="px-3 pb-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleCopyLink(form)}
+                      size="sm"
+                      variant="outline"
+                      className={linkCopied ? 'bg-green-50 border-green-500' : ''}
+                    >
+                      {linkCopied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2 text-green-600" />
+                          <span className="text-green-600">Link Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className="h-4 w-4 mr-2" />
+                          Copy Public Link
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handlePreviewForm(form)}
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-200"
-                  title="Preview"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleCopyLink(form)}
-                  className="p-2 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-200"
-                  title="Copy Link"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                {form.status !== 'completed' && (
-                  <button
-                    onClick={() => handleEditForm(form)}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-200"
-                    title="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                )}
-                <button
-                  onClick={() => handleDeleteForm(form)}
-                  className="p-2 text-gray-400 hover:text-red-600 rounded hover:bg-gray-200"
-                  title="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
