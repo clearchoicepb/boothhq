@@ -37,7 +37,7 @@ export function EventPlanningTab({
   onTasksRefresh
 }: EventPlanningTabProps) {
   const [expandedSections, setExpandedSections] = useState<Set<Section>>(
-    new Set(['core-tasks', 'tasks']) // Expand core tasks and tasks by default
+    new Set(['core-tasks', 'forms', 'tasks']) // Expand core tasks, forms, and tasks by default
   )
 
   const toggleSection = (section: Section) => {
