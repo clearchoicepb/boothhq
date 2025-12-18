@@ -12,26 +12,15 @@ import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { useContact } from '@/hooks/useContact'
+import { ContactForm } from '@/components/forms'
+import type { Contact as BaseContact } from '@/lib/supabase-client'
 
-interface Contact {
-  id: string
-  first_name: string
-  last_name: string
-  email: string | null
-  phone: string | null
-  job_title: string | null
-  department: string | null
-  relationship_to_account: string | null
-  address: any | null
-  avatar_url: string | null
-  status: string
-  assigned_to: string | null
-  notes: string | null
-  account_id: string | null
+// Extended contact type with API response fields
+interface Contact extends BaseContact {
   account_name: string | null
-  created_at: string
-  updated_at: string
-  // NEW: Many-to-many account relationships
+  relationship_to_account: string | null
+  avatar_url: string | null
+  // Many-to-many account relationships from API
   all_accounts?: Array<{
     id: string
     name: string
@@ -64,6 +53,7 @@ export default function ContactDetailPage() {
 
   // UI State (not data fetching)
   const [showAccountSelector, setShowAccountSelector] = useState(false)
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false)
 
   const handleCreateOpportunity = () => {
     if (!contact) return
@@ -88,6 +78,12 @@ export default function ContactDetailPage() {
     router.push(
       `/${tenantSubdomain}/opportunities/new-sequential?contact_id=${contact?.id}&account_id=${accountId}`
     )
+  }
+
+  const handleEditFormSubmit = async () => {
+    // Invalidate and refetch the contact data
+    queryClient.invalidateQueries({ queryKey: ['contact', contactId] })
+    setIsEditFormOpen(false)
   }
 
   const getStatusColor = (status: string) => {
@@ -169,12 +165,10 @@ export default function ContactDetailPage() {
               </div>
             </div>
             <div className="flex space-x-2">
-              <Link href={`/${tenantSubdomain}/contacts/${contact.id}/edit`}>
-                <Button variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
+              <Button variant="outline" onClick={() => setIsEditFormOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
               <Button variant="outline" className="text-red-600 hover:text-red-700">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
@@ -549,6 +543,16 @@ export default function ContactDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Contact Modal */}
+      {isEditFormOpen && contact && (
+        <ContactForm
+          isOpen={isEditFormOpen}
+          onClose={() => setIsEditFormOpen(false)}
+          onSubmit={handleEditFormSubmit}
+          contact={contact as unknown as BaseContact}
+        />
       )}
     </div>
   )
