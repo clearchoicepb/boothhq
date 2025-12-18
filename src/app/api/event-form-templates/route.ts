@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, insertWithTenantId } from '@/lib/tenant-helpers'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
-import type { EventFormTemplateInsert } from '@/types/event-forms'
 
 const log = createLogger('api:event-form-templates')
 
@@ -58,31 +57,35 @@ export async function POST(request: NextRequest) {
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
-    const body: EventFormTemplateInsert = await request.json()
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { name, description, category, status, fields } = body
 
     // Validate required fields
-    if (!body.name?.trim()) {
+    if (!name?.trim()) {
       return NextResponse.json(
         { error: 'Template name is required' },
         { status: 400 }
       )
     }
 
-    const templateData = {
-      name: body.name.trim(),
-      description: body.description || null,
-      category: body.category || 'other',
-      status: body.status || 'active',
-      fields: body.fields || [],
-    }
-
-    const { data, error } = await insertWithTenantId(
-      supabase,
-      'event_form_templates',
-      templateData,
-      dataSourceTenantId,
-      session.user.id
-    )
+    const { data, error } = await supabase
+      .from('event_form_templates')
+      .insert({
+        tenant_id: dataSourceTenantId,
+        name: name.trim(),
+        description: description || null,
+        category: category || 'other',
+        status: status || 'active',
+        fields: fields || [],
+        created_by: session.user.id,
+      })
+      .select()
+      .single()
 
     if (error) {
       log.error({ error }, 'Error creating event form template')

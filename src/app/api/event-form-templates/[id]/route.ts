@@ -1,39 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, updateWithTenantId, deleteWithTenantId } from '@/lib/tenant-helpers'
+import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
-import type { EventFormTemplateUpdate } from '@/types/event-forms'
 
 const log = createLogger('api:event-form-templates')
-
-interface RouteParams {
-  params: { id: string }
-}
 
 /**
  * GET /api/event-form-templates/[id]
  * Get a single event form template by ID
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  routeContext: { params: Promise<{ id: string }> }
+) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId } = context
-    const { id } = params
+    const params = await routeContext.params
+    const templateId = params.id
 
     const { data, error } = await supabase
       .from('event_form_templates')
       .select('*')
-      .eq('id', id)
+      .eq('id', templateId)
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Template not found' }, { status: 404 })
-      }
-      log.error({ error }, 'Error fetching event form template')
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error || !data) {
+      return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
 
     return NextResponse.json(data)
@@ -47,57 +42,53 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PUT /api/event-form-templates/[id]
  * Update an event form template
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  routeContext: { params: Promise<{ id: string }> }
+) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
-    const { id } = params
-    const body: EventFormTemplateUpdate = await request.json()
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const params = await routeContext.params
+    const templateId = params.id
+    const body = await request.json()
+
+    const { name, description, category, status, fields } = body
 
     // Build update object with only provided fields
     const updateData: Record<string, unknown> = {}
 
-    if (body.name !== undefined) {
-      if (!body.name.trim()) {
+    if (name !== undefined) {
+      if (!name.trim()) {
         return NextResponse.json(
           { error: 'Template name cannot be empty' },
           { status: 400 }
         )
       }
-      updateData.name = body.name.trim()
+      updateData.name = name.trim()
     }
 
-    if (body.description !== undefined) {
-      updateData.description = body.description
-    }
+    if (description !== undefined) updateData.description = description
+    if (category !== undefined) updateData.category = category
+    if (status !== undefined) updateData.status = status
+    if (fields !== undefined) updateData.fields = fields
 
-    if (body.category !== undefined) {
-      updateData.category = body.category
-    }
-
-    if (body.status !== undefined) {
-      updateData.status = body.status
-    }
-
-    if (body.fields !== undefined) {
-      updateData.fields = body.fields
-    }
-
-    const { data, error } = await updateWithTenantId(
-      supabase,
-      'event_form_templates',
-      id,
-      updateData,
-      dataSourceTenantId,
-      session.user.id
-    )
+    const { data, error } = await supabase
+      .from('event_form_templates')
+      .update(updateData)
+      .eq('id', templateId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select()
+      .single()
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Template not found' }, { status: 404 })
-      }
       log.error({ error }, 'Error updating event form template')
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
@@ -113,20 +104,28 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/event-form-templates/[id]
  * Delete an event form template
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  routeContext: { params: Promise<{ id: string }> }
+) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
-    const { supabase, dataSourceTenantId } = context
-    const { id } = params
+    const { supabase, dataSourceTenantId, session } = context
 
-    const { error } = await deleteWithTenantId(
-      supabase,
-      'event_form_templates',
-      id,
-      dataSourceTenantId
-    )
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const params = await routeContext.params
+    const templateId = params.id
+
+    const { error } = await supabase
+      .from('event_form_templates')
+      .delete()
+      .eq('id', templateId)
+      .eq('tenant_id', dataSourceTenantId)
 
     if (error) {
       log.error({ error }, 'Error deleting event form template')
