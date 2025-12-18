@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { NotesSection } from '@/components/notes-section'
-import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText, ArrowRight } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, User, Building2, Phone, Mail, MapPin, Briefcase, FileText, ArrowRight, X } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -60,6 +60,30 @@ export default function ContactDetailPage() {
   // Helper to refresh contact data
   const refreshContactData = () => {
     queryClient.invalidateQueries({ queryKey: ['contact', contactId] })
+  }
+
+  // Handle unlinking an account from this contact
+  const handleUnlinkAccount = async (junctionId: string, accountName: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent navigation to account
+
+    if (!confirm(`Remove ${contact?.first_name} ${contact?.last_name} from ${accountName}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/contact-accounts?id=${junctionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove relationship')
+      }
+
+      refreshContactData()
+    } catch (error) {
+      console.error('Error unlinking account:', error)
+      alert('Failed to remove account association')
+    }
   }
 
   const handleCreateOpportunity = () => {
@@ -303,7 +327,7 @@ export default function ContactDetailPage() {
                         {contact.active_accounts.map((account: any) => (
                           <div
                             key={account.junction_id}
-                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group"
                             onClick={() => router.push(`/${tenantSubdomain}/accounts/${account.id}`)}
                           >
                             <div className="flex items-center gap-3">
@@ -325,7 +349,16 @@ export default function ContactDetailPage() {
                                 </div>
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => handleUnlinkAccount(account.junction_id, account.name, e)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove from account"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -342,7 +375,7 @@ export default function ContactDetailPage() {
                         {contact.former_accounts.map((account: any) => (
                           <div
                             key={account.junction_id}
-                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg opacity-60 hover:opacity-100 cursor-pointer transition-opacity"
+                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg opacity-60 hover:opacity-100 cursor-pointer transition-opacity group"
                             onClick={() => router.push(`/${tenantSubdomain}/accounts/${account.id}`)}
                           >
                             <div className="flex items-center gap-3">
@@ -361,7 +394,16 @@ export default function ContactDetailPage() {
                                 </div>
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => handleUnlinkAccount(account.junction_id, account.name, e)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove from account"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </div>
                         ))}
                       </div>
