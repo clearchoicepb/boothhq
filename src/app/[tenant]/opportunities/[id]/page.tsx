@@ -113,6 +113,47 @@ export default function OpportunityDetailPage() {
     }
   }, [session, tenant])
 
+  // Fetch helper functions (declared before useEffect that uses them)
+  const fetchLead = useCallback(async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}`)
+      if (response.ok) {
+        const leadData = await response.json()
+        setLead(leadData)
+      }
+    } catch (error) {
+      log.error({ error }, 'Error fetching lead')
+    }
+  }, [])
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      const response = await fetch('/api/locations')
+      if (response.ok) {
+        const locationsData: Location[] = await response.json()
+        const locationsMap: Record<string, Location> = {}
+        locationsData.forEach((loc) => {
+          locationsMap[loc.id] = loc
+        })
+        setLocations(locationsMap)
+      }
+    } catch (error) {
+      log.error({ error }, 'Error fetching locations')
+    }
+  }, [])
+
+  const fetchCommunications = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/communications?opportunity_id=${opportunityId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setCommunications(data)
+      }
+    } catch (error) {
+      log.error({ error }, 'Error fetching communications')
+    }
+  }, [opportunityId])
+
   // Fetch related data when opportunity loads
   useEffect(() => {
     if (opportunity) {
@@ -146,18 +187,6 @@ export default function OpportunityDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
   }
 
-  const fetchLead = useCallback(async (leadId: string) => {
-    try {
-      const response = await fetch(`/api/leads/${leadId}`)
-      if (response.ok) {
-        const leadData = await response.json()
-        setLead(leadData)
-      }
-    } catch (error) {
-      log.error({ error }, 'Error fetching lead')
-    }
-  }, [])
-
   const handleActivityClick = (activity: OpportunityActivity) => {
     setSelectedActivity(activity)
 
@@ -174,22 +203,6 @@ export default function OpportunityDetailPage() {
       setIsActivityDetailOpen(true)
     }
   }
-
-  const fetchLocations = useCallback(async () => {
-    try {
-      const response = await fetch('/api/locations')
-      if (response.ok) {
-        const locationsData: Location[] = await response.json()
-        const locationsMap: Record<string, Location> = {}
-        locationsData.forEach((loc) => {
-          locationsMap[loc.id] = loc
-        })
-        setLocations(locationsMap)
-      }
-    } catch (error) {
-      log.error({ error }, 'Error fetching locations')
-    }
-  }, [])
 
   const handleSaveNotes = async (eventDateId: string) => {
     setSavingNotes(prev => ({ ...prev, [eventDateId]: true }))
@@ -398,18 +411,6 @@ export default function OpportunityDetailPage() {
       setUpdatingOwner(false)
     }
   }
-
-  const fetchCommunications = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/communications?opportunity_id=${opportunityId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setCommunications(data)
-      }
-    } catch (error) {
-      log.error({ error }, 'Error fetching communications')
-    }
-  }, [opportunityId])
 
   const handleStartEditAccountContact = () => {
     setEditAccountId(opportunity?.account_id || '')
