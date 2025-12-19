@@ -25,6 +25,8 @@ export interface Communication {
   communication_date: string
   subject?: string
   notes?: string
+  created_at?: string
+  created_by_name?: string
 }
 
 export interface CommunicationsTabProps {

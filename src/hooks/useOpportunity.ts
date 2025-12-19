@@ -37,6 +37,7 @@ export interface Opportunity {
   event_dates?: EventDate[]
   created_at: string
   updated_at: string
+  is_converted?: boolean
   // Optional joined relations for phone lookup
   contacts?: { phone?: string | null } | null
   leads?: { phone?: string | null } | null

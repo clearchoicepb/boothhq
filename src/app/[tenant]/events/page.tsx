@@ -26,6 +26,7 @@ import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters, type SortOption } from '@/hooks/useEventsFilters'
 import { eventsService } from '@/lib/api/services/eventsService'
 import type { Event, EventDate } from '@/types/events'
+import type { EventCoreTaskCompletion } from '@/types/api-responses'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('events')
@@ -136,7 +137,7 @@ export default function EventsPage() {
 
   // Expanded rows state (for inline tasks)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, any[]>>({})
+  const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, EventCoreTaskCompletion[]>>({})
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set())
 
   // Bulk selection state
