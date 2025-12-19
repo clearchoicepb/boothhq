@@ -1,9 +1,53 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
+import type { Tables } from '@/types/database'
 
 const log = createLogger('api:dashboard:drilldown')
+
+// Query result types for Supabase queries with joins
+interface EventDateWithJoins {
+  id: string
+  event_date: string
+  event_id: string
+  location_id: string | null
+  locations: { name: string } | null
+  events: {
+    id: string
+    title: string
+    status: string
+    location: string | null
+    account_id: string | null
+    accounts: { name: string } | null
+    event_categories: { name: string; color: string | null } | null
+    event_types: { name: string } | null
+  } | null
+}
+
+interface EventBookedWithAccount {
+  id: string
+  title: string
+  created_at: string
+  start_date: string | null
+  opportunity_id: string | null
+  account_id: string | null
+  accounts: { name: string } | null
+}
+
+interface OpportunityWithAccountJoin {
+  id: string
+  name: string
+  created_at: string
+  amount: number | null
+  stage: string
+  expected_close_date: string | null
+  account_id: string | null
+  accounts: { name: string } | null
+}
+
+type InvoiceAmountQueryResult = Pick<Tables<'invoices'>, 'event_id' | 'total_amount'>
+type OpportunityAmountQueryResult = Pick<Tables<'opportunities'>, 'id' | 'amount'>
+type TenantSettingRow = Pick<Tables<'tenant_settings'>, 'setting_key' | 'setting_value'>
 
 export type DrilldownType = 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
 export type DrilldownPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
@@ -251,7 +295,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: EventOccurringRecord[] = (eventDates || []).map((ed: any) => ({
+        const records: EventOccurringRecord[] = ((eventDates || []) as EventDateWithJoins[]).map((ed) => ({
           id: ed.id,
           eventId: ed.events?.id || ed.event_id,
           eventDate: ed.event_date,
@@ -298,8 +342,9 @@ export async function GET(request: NextRequest) {
         }
 
         // Get invoices for these events
-        const eventIds = (events || []).map((e: any) => e.id)
-        const opportunityIds = (events || []).map((e: any) => e.opportunity_id).filter(Boolean)
+        const typedEvents = (events || []) as EventBookedWithAccount[]
+        const eventIds = typedEvents.map((e) => e.id)
+        const opportunityIds = typedEvents.map((e) => e.opportunity_id).filter(Boolean)
 
         const invoicesByEvent: Record<string, number> = {}
         const opportunityAmounts: Record<string, number> = {}
@@ -312,7 +357,7 @@ export async function GET(request: NextRequest) {
             .in('event_id', eventIds)
 
           if (invoices) {
-            invoices.forEach((inv: any) => {
+            (invoices as InvoiceAmountQueryResult[]).forEach((inv) => {
               if (inv.event_id) {
                 invoicesByEvent[inv.event_id] = (invoicesByEvent[inv.event_id] || 0) + (inv.total_amount || 0)
               }
@@ -327,13 +372,13 @@ export async function GET(request: NextRequest) {
             .in('id', opportunityIds)
 
           if (opportunities) {
-            opportunities.forEach((opp: any) => {
+            (opportunities as OpportunityAmountQueryResult[]).forEach((opp) => {
               opportunityAmounts[opp.id] = opp.amount || 0
             })
           }
         }
 
-        const records: EventBookedRecord[] = (events || []).map((e: any) => {
+        const records: EventBookedRecord[] = typedEvents.map((e) => {
           let revenue = invoicesByEvent[e.id] || 0
           if (!revenue && e.opportunity_id && opportunityAmounts[e.opportunity_id]) {
             revenue = opportunityAmounts[e.opportunity_id]
@@ -372,10 +417,11 @@ export async function GET(request: NextRequest) {
 
         // Parse stages from settings
         let stages: StageConfig[] = defaultStages
-        if (stageSettings && stageSettings.length > 0) {
+        const typedSettings = (stageSettings || []) as TenantSettingRow[]
+        if (typedSettings.length > 0) {
           try {
             // Check for new format: single 'opportunities.stages' key with array value
-            const arrayFormat = stageSettings.find((row: any) => row.setting_key === 'opportunities.stages')
+            const arrayFormat = typedSettings.find((row) => row.setting_key === 'opportunities.stages')
             if (arrayFormat?.setting_value) {
               // Parse the array value (could be JSON string or already parsed)
               let parsedStages = arrayFormat.setting_value
@@ -383,16 +429,16 @@ export async function GET(request: NextRequest) {
                 parsedStages = JSON.parse(parsedStages)
               }
               if (Array.isArray(parsedStages) && parsedStages.length > 0) {
-                stages = parsedStages.filter((s: any) => s.enabled !== false)
+                stages = parsedStages.filter((s: StageConfig) => s.enabled !== false)
               }
             } else {
               // Fallback to old format: indexed keys like opportunities.stages.0.id
-              const stagesMap = new Map<number, any>()
-              stageSettings.forEach((row: any) => {
+              const stagesMap = new Map<number, Partial<StageConfig>>()
+              typedSettings.forEach((row) => {
                 const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
                 if (match) {
                   const index = parseInt(match[1], 10)
-                  const field = match[2]
+                  const field = match[2] as keyof StageConfig
 
                   if (!stagesMap.has(index)) {
                     stagesMap.set(index, {})
@@ -402,11 +448,11 @@ export async function GET(request: NextRequest) {
 
                   // Parse value based on field type
                   if (field === 'probability') {
-                    stage[field] = parseInt(row.setting_value, 10)
+                    stage[field] = parseInt(String(row.setting_value), 10)
                   } else if (field === 'enabled') {
                     stage[field] = row.setting_value === 'true'
-                  } else {
-                    stage[field] = row.setting_value
+                  } else if (field === 'id' || field === 'name' || field === 'color') {
+                    stage[field] = String(row.setting_value)
                   }
                 }
               })
@@ -414,7 +460,7 @@ export async function GET(request: NextRequest) {
               // Convert map to array sorted by index
               const parsedStages = Array.from(stagesMap.entries())
                 .sort((a, b) => a[0] - b[0])
-                .map((entry) => entry[1])
+                .map((entry) => entry[1] as StageConfig)
                 .filter((stage) => stage.enabled !== false)
 
               if (parsedStages.length > 0) {
@@ -449,7 +495,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityRecord[] = ((opportunities || []) as OpportunityWithAccountJoin[]).map((opp) => {
           const probability = getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           return {
@@ -493,10 +539,11 @@ export async function GET(request: NextRequest) {
 
         // Parse stages from settings
         let stages: StageConfig[] = defaultStages
-        if (stageSettings && stageSettings.length > 0) {
+        const typedSettings = (stageSettings || []) as TenantSettingRow[]
+        if (typedSettings.length > 0) {
           try {
             // Check for new format: single 'opportunities.stages' key with array value
-            const arrayFormat = stageSettings.find((row: any) => row.setting_key === 'opportunities.stages')
+            const arrayFormat = typedSettings.find((row) => row.setting_key === 'opportunities.stages')
             if (arrayFormat?.setting_value) {
               // Parse the array value (could be JSON string or already parsed)
               let parsedStages = arrayFormat.setting_value
@@ -504,16 +551,16 @@ export async function GET(request: NextRequest) {
                 parsedStages = JSON.parse(parsedStages)
               }
               if (Array.isArray(parsedStages) && parsedStages.length > 0) {
-                stages = parsedStages.filter((s: any) => s.enabled !== false)
+                stages = parsedStages.filter((s: StageConfig) => s.enabled !== false)
               }
             } else {
               // Fallback to old format: indexed keys like opportunities.stages.0.id
-              const stagesMap = new Map<number, any>()
-              stageSettings.forEach((row: any) => {
+              const stagesMap = new Map<number, Partial<StageConfig>>()
+              typedSettings.forEach((row) => {
                 const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
                 if (match) {
                   const index = parseInt(match[1], 10)
-                  const field = match[2]
+                  const field = match[2] as keyof StageConfig
 
                   if (!stagesMap.has(index)) {
                     stagesMap.set(index, {})
@@ -523,11 +570,11 @@ export async function GET(request: NextRequest) {
 
                   // Parse value based on field type
                   if (field === 'probability') {
-                    stage[field] = parseInt(row.setting_value, 10)
+                    stage[field] = parseInt(String(row.setting_value), 10)
                   } else if (field === 'enabled') {
                     stage[field] = row.setting_value === 'true'
-                  } else {
-                    stage[field] = row.setting_value
+                  } else if (field === 'id' || field === 'name' || field === 'color') {
+                    stage[field] = String(row.setting_value)
                   }
                 }
               })
@@ -535,7 +582,7 @@ export async function GET(request: NextRequest) {
               // Convert map to array sorted by index
               const parsedStages = Array.from(stagesMap.entries())
                 .sort((a, b) => a[0] - b[0])
-                .map((entry) => entry[1])
+                .map((entry) => entry[1] as StageConfig)
                 .filter((stage) => stage.enabled !== false)
 
               if (parsedStages.length > 0) {
@@ -569,7 +616,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityRecord[] = ((opportunities || []) as OpportunityWithAccountJoin[]).map((opp) => {
           const probability = getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           return {

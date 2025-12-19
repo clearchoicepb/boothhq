@@ -1,9 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
+import type { Tables } from '@/types/database'
 
 const log = createLogger('api:dashboard:stats')
+
+// Query result types for Supabase queries
+type EventBookedQueryResult = Pick<Tables<'events'>, 'id' | 'opportunity_id'>
+type InvoiceAmountQueryResult = Pick<Tables<'invoices'>, 'event_id' | 'total_amount'>
+type OpportunityAmountQueryResult = Pick<Tables<'opportunities'>, 'id' | 'amount'>
 
 export interface DashboardStatsResponse {
   eventsOccurring: {
@@ -229,7 +234,7 @@ export async function GET(_request: NextRequest) {
         .in('event_id', allEventIds)
 
       if (invoices) {
-        invoices.forEach((inv: any) => {
+        (invoices as InvoiceAmountQueryResult[]).forEach((inv) => {
           if (inv.event_id) {
             invoicesByEvent[inv.event_id] = (invoicesByEvent[inv.event_id] || 0) + (inv.total_amount || 0)
           }
@@ -244,14 +249,14 @@ export async function GET(_request: NextRequest) {
         .in('id', allOpportunityIds)
 
       if (opportunities) {
-        opportunities.forEach((opp: any) => {
+        (opportunities as OpportunityAmountQueryResult[]).forEach((opp) => {
           opportunityAmounts[opp.id] = opp.amount || 0
         })
       }
     }
 
     // Calculate revenue for each period
-    const calculateRevenue = (events: any[]) => {
+    const calculateRevenue = (events: EventBookedQueryResult[]) => {
       let revenue = 0
       events.forEach(event => {
         if (invoicesByEvent[event.id]) {
@@ -299,7 +304,7 @@ export async function GET(_request: NextRequest) {
     }
 
     const totalOpportunitiesCount = activeOpportunities?.length || 0
-    const totalPipelineValue = (activeOpportunities || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+    const totalPipelineValue = ((activeOpportunities || []) as OpportunityAmountQueryResult[]).reduce((sum, opp) => sum + (opp.amount || 0), 0)
 
     // =====================================================
     // NEW OPPORTUNITIES - By created_at
@@ -345,23 +350,23 @@ export async function GET(_request: NextRequest) {
 
     const newOpportunitiesToday = {
       count: newOppsTodayResult.data?.length || 0,
-      value: (newOppsTodayResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+      value: ((newOppsTodayResult.data || []) as OpportunityAmountQueryResult[]).reduce((sum, opp) => sum + (opp.amount || 0), 0)
     }
     const newOpportunitiesYesterday = {
       count: newOppsYesterdayResult.data?.length || 0,
-      value: (newOppsYesterdayResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+      value: ((newOppsYesterdayResult.data || []) as OpportunityAmountQueryResult[]).reduce((sum, opp) => sum + (opp.amount || 0), 0)
     }
     const newOpportunitiesWeek = {
       count: newOppsWeekResult.data?.length || 0,
-      value: (newOppsWeekResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+      value: ((newOppsWeekResult.data || []) as OpportunityAmountQueryResult[]).reduce((sum, opp) => sum + (opp.amount || 0), 0)
     }
     const newOpportunitiesMonth = {
       count: newOppsMonthResult.data?.length || 0,
-      value: (newOppsMonthResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+      value: ((newOppsMonthResult.data || []) as OpportunityAmountQueryResult[]).reduce((sum, opp) => sum + (opp.amount || 0), 0)
     }
     const newOpportunitiesYear = {
       count: newOppsYearResult.data?.length || 0,
-      value: (newOppsYearResult.data || []).reduce((sum: number, opp: any) => sum + (opp.amount || 0), 0)
+      value: ((newOppsYearResult.data || []) as OpportunityAmountQueryResult[]).reduce((sum, opp) => sum + (opp.amount || 0), 0)
     }
 
     const response: DashboardStatsResponse = {

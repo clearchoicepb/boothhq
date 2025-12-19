@@ -35,6 +35,13 @@ interface YoYData {
   }
 }
 
+interface TooltipPayloadEntry {
+  value?: number
+  name?: string
+  dataKey?: string
+  fill?: string
+}
+
 export function YearOverYearChart() {
   const [data, setData] = useState<YoYData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,8 +84,7 @@ export function YearOverYearChart() {
   }
 
   // Custom tooltip for the chart
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
     if (active && payload && payload.length) {
       const monthData = data?.monthlyData.find(m => m.month === label)
       return (
