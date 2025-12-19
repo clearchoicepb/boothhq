@@ -39,9 +39,8 @@ export default function SignInPage() {
 
         // Check if user has multiple tenants
         if (session?.user?.hasMultipleTenants) {
-          // Store password temporarily for tenant selection re-auth
-          sessionStorage.setItem('tempPassword', password)
-          sessionStorage.setItem('tempEmail', email)
+          // Redirect to tenant selection - no need to store credentials
+          // since we'll use the existing session to switch tenants
           router.push(`/auth/select-tenant?email=${encodeURIComponent(email)}`)
         } else if (session?.user?.tenantSubdomain) {
           router.push(`/${session.user.tenantSubdomain}/dashboard`)

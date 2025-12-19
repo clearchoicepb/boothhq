@@ -115,7 +115,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role
         token.tenantId = user.tenantId
@@ -124,6 +124,16 @@ export const authOptions: NextAuthOptions = {
         token.permissions = user.permissions
         token.hasMultipleTenants = user.hasMultipleTenants
       }
+
+      // Handle session updates (e.g., tenant switching)
+      if (trigger === 'update' && session?.tenantId) {
+        token.tenantId = session.tenantId
+        token.tenantName = session.tenantName
+        token.tenantSubdomain = session.tenantSubdomain
+        token.role = session.role
+        token.permissions = session.permissions
+      }
+
       return token
     },
     async session({ session, token }) {

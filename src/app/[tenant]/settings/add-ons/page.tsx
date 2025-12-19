@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Plus as PlusIcon, Edit2, Trash2, ChevronLeft } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 const log = createLogger('add-ons')
 
@@ -226,7 +227,7 @@ export default function AddOnsPage() {
                 {addOn.description && (
                   <div
                     className="text-sm text-gray-600 mb-4 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: addOn.description }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(addOn.description) }}
                   />
                 )}
 

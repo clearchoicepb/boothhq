@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Package, Plus, Edit2, Trash2, ChevronLeft } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 const log = createLogger('packages')
 
@@ -221,7 +222,7 @@ export default function PackagesPage() {
                 {pkg.description && (
                   <div
                     className="text-sm text-gray-600 mb-4 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: pkg.description }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(pkg.description) }}
                   />
                 )}
 

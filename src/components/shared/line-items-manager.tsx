@@ -25,6 +25,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 import toast from 'react-hot-toast'
 
 const log = createLogger('shared')
@@ -133,7 +134,7 @@ function SortableRow({
             {item.description && (
               <div
                 className="text-xs text-gray-500 prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: item.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
               />
             )}
           </div>

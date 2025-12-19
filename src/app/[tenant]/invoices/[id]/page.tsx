@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus, Pencil } from 'lucide-react'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 import toast from 'react-hot-toast'
 
 const log = createLogger('id')
@@ -689,7 +690,7 @@ export default function InvoiceDetailPage() {
                       {item.description && (
                         <div
                           className="text-xs text-gray-600 mt-1 leading-relaxed prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: item.description }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
                         />
                       )}
                       {item.taxable === false && (
