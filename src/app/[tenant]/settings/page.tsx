@@ -29,7 +29,6 @@ import {
   ChevronRight,
   ChevronDown,
   Zap,
-  PenTool,
   Boxes,
   DollarSign
 } from 'lucide-react';
@@ -143,30 +142,6 @@ const settingsStructure: SettingsCategory[] = [
         icon: UserCheck,
         href: '/staff-roles',
       },
-      {
-        id: 'operations',
-        title: 'Operations Settings',
-        description: 'Operations item types, categories, and deadlines',
-        icon: Package,
-        href: '/operations',
-        status: 'configured'
-      },
-    ]
-  },
-  {
-    id: 'design',
-    label: 'Design Management',
-    icon: PenTool,
-    color: 'purple',
-    items: [
-      {
-        id: 'design',
-        title: 'Design Settings',
-        description: 'Design item types, deadlines, and statuses',
-        icon: Palette,
-        href: '/design',
-        status: 'configured'
-      },
     ]
   },
   {
@@ -193,17 +168,10 @@ const settingsStructure: SettingsCategory[] = [
     items: [
       {
         id: 'templates',
-        title: 'Email & SMS Templates',
-        description: 'Communication templates',
+        title: 'Templates',
+        description: 'Email, SMS, and contract templates',
         icon: Mail,
         href: '/templates',
-      },
-      {
-        id: 'contract-templates',
-        title: 'Contract Templates',
-        description: 'Agreement and contract templates',
-        icon: FileText,
-        href: '/templates/contracts',
       },
       {
         id: 'event-forms',
