@@ -25,8 +25,8 @@ interface Account {
   phone: string | null
   business_url: string | null
   photo_url: string | null
-  billing_address: any | null
-  shipping_address: any | null
+  billing_address: Address | null
+  shipping_address: Address | null
   status: string
   assigned_to: string | null
   notes: string | null
@@ -39,7 +39,7 @@ interface Account {
   primary_contact?: Contact | null
   // Related data
   opportunities?: Opportunity[]
-  events?: any[]
+  events?: AccountEvent[]
 }
 
 interface Contact {
@@ -62,6 +62,7 @@ interface ContactWithRole extends Contact {
 }
 
 import type { AccountEvent } from '@/types/events'
+import type { Address, TenantUserBasic } from '@/types/api-responses'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
@@ -116,7 +117,7 @@ export default function AccountDetailPage() {
   const localLoading = accountLoading
 
   // UI State (not data fetching)
-  const [assignedUser, setAssignedUser] = useState<{id: string, first_name: string | null, last_name: string | null, email: string, role: string} | null>(null)
+  const [assignedUser, setAssignedUser] = useState<TenantUserBasic | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showContactSelector, setShowContactSelector] = useState(false)
@@ -155,8 +156,8 @@ export default function AccountDetailPage() {
     try {
       const response = await fetch('/api/users')
       if (response.ok) {
-        const users = await response.json()
-        const user = users.find((u: any) => u.id === userId)
+        const users: TenantUserBasic[] = await response.json()
+        const user = users.find((u) => u.id === userId)
         setAssignedUser(user || null)
       }
     } catch (error) {

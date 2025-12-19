@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArrowLeft, Edit, Trash2, DollarSign, FileText, CheckCircle, Plus, MessageSquare, Paperclip, ListTodo, Info, ChevronDown, Clock, X, Copy } from 'lucide-react'
 import Link from 'next/link'
-import { useOpportunity } from '@/hooks/useOpportunity'
+import { useOpportunity, type Opportunity } from '@/hooks/useOpportunity'
 import { useOpportunityQuotes } from '@/hooks/useOpportunityQuotes'
 import { useOpportunityActivities } from '@/hooks/useOpportunityActivities'
 import { useAccounts, useContacts } from '@/hooks/useAccountsAndContacts'
@@ -34,41 +34,18 @@ import toast from 'react-hot-toast'
 import { useSettings } from '@/lib/settings-context'
 import { getStageName } from '@/lib/utils/stage-utils'
 import type { EventDate } from '@/types/events'
+import type { Communication } from '@/components/shared/CommunicationsTab'
+import type {
+  Location,
+  OpportunityActivity,
+  OpportunityStage,
+  LeadConversionData,
+  OpportunityStageUpdateBody
+} from '@/types/api-responses'
 import { createLogger } from '@/lib/logger'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const log = createLogger('id')
-
-interface Opportunity {
-  id: string
-  name: string
-  description: string | null
-  stage: string
-  probability: number | null
-  amount: number | null
-  expected_close_date: string | null
-  actual_close_date: string | null
-  close_reason: string | null
-  close_notes: string | null
-  event_type: string | null
-  date_type: string | null
-  event_date: string | null
-  initial_date: string | null
-  final_date: string | null
-  account_id: string | null
-  contact_id: string | null
-  lead_id: string | null
-  owner_id: string | null
-  account_name: string | null
-  contact_name: string | null
-  event_dates?: EventDate[]
-  created_at: string
-  updated_at: string
-  // Optional joined relations for phone lookup
-  contacts?: { phone?: string | null } | null
-  leads?: { phone?: string | null } | null
-  accounts?: { phone?: string | null } | null
-}
 
 export default function OpportunityDetailPage() {
   const { data: session, status } = useSession()
@@ -97,7 +74,7 @@ export default function OpportunityDetailPage() {
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false)
   const [lead, setLead] = useState<Lead | null>(null)
   const [activeEventTab, setActiveEventTab] = useState(0)
-  const [locations, setLocations] = useState<Record<string, any>>({})
+  const [locations, setLocations] = useState<Record<string, Location>>({})
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
   const [updatingStage, setUpdatingStage] = useState(false)
@@ -107,14 +84,14 @@ export default function OpportunityDetailPage() {
   const [showSMSThread, setShowSMSThread] = useState(false)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
-  const [communications, setCommunications] = useState<any[]>([])
+  const [communications, setCommunications] = useState<Communication[]>([])
   const [communicationsPage, setCommunicationsPage] = useState(1)
   const [tasksKey, setTasksKey] = useState(0)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const actionsRef = useRef<HTMLDivElement>(null)
-  const [selectedCommunication, setSelectedCommunication] = useState<any>(null)
+  const [selectedCommunication, setSelectedCommunication] = useState<Communication | null>(null)
   const [isCommunicationDetailOpen, setIsCommunicationDetailOpen] = useState(false)
-  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [selectedActivity, setSelectedActivity] = useState<OpportunityActivity | null>(null)
   const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false)
   const [isEditingAccountContact, setIsEditingAccountContact] = useState(false)
   const [editAccountId, setEditAccountId] = useState<string>('')
@@ -181,14 +158,15 @@ export default function OpportunityDetailPage() {
     }
   }, [])
 
-  const handleActivityClick = (activity: any) => {
+  const handleActivityClick = (activity: OpportunityActivity) => {
     setSelectedActivity(activity)
 
     // For different activity types, handle differently
-    if (activity.type === 'communication') {
-      setSelectedCommunication(activity.metadata)
+    if (activity.type === 'communication' && activity.metadata) {
+      // Cast metadata to Communication since activity type guarantees the shape
+      setSelectedCommunication(activity.metadata as unknown as Communication)
       setIsCommunicationDetailOpen(true)
-    } else if (activity.type === 'quote') {
+    } else if (activity.type === 'quote' && activity.metadata?.id) {
       // Navigate to quote detail page
       router.push(`/${tenantSubdomain}/quotes/${activity.metadata.id}?returnTo=opportunities/${opportunityId}`)
     } else {
@@ -201,9 +179,9 @@ export default function OpportunityDetailPage() {
     try {
       const response = await fetch('/api/locations')
       if (response.ok) {
-        const locationsData = await response.json()
-        const locationsMap: Record<string, any> = {}
-        locationsData.forEach((loc: any) => {
+        const locationsData: Location[] = await response.json()
+        const locationsMap: Record<string, Location> = {}
+        locationsData.forEach((loc) => {
           locationsMap[loc.id] = loc
         })
         setLocations(locationsMap)
@@ -269,17 +247,11 @@ export default function OpportunityDetailPage() {
     setUpdatingStage(true)
 
     try {
-      const body: any = {
+      const body: OpportunityStageUpdateBody = {
         stage: newStage,
-        actual_close_date: newStage === 'closed_won' ? new Date().toISOString().split('T')[0] : null
-      }
-
-      // Include close reason and notes if provided
-      if (closeReason !== undefined) {
-        body.close_reason = closeReason
-      }
-      if (closeNotes !== undefined) {
-        body.close_notes = closeNotes
+        actual_close_date: newStage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
+        ...(closeReason !== undefined && { close_reason: closeReason }),
+        ...(closeNotes !== undefined && { close_notes: closeNotes })
       }
 
       const response = await fetch(`/api/opportunities/${opportunityId}`, {
@@ -476,7 +448,7 @@ export default function OpportunityDetailPage() {
     }
   }
 
-  const handleConvertLead = async (conversionData: any) => {
+  const handleConvertLead = async (conversionData: LeadConversionData) => {
     if (!lead) return
 
     try {
@@ -601,7 +573,7 @@ export default function OpportunityDetailPage() {
               </Link>
             </div>
             <div className="flex space-x-2">
-              {!(opportunity as any).is_converted && (
+              {!opportunity.is_converted && (
                 <Button
                   className="bg-[#347dc4] hover:bg-[#2c6aa3] text-white"
                   onClick={() => handleConvertToEvent()}
@@ -818,12 +790,12 @@ export default function OpportunityDetailPage() {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            {(settings.opportunities?.stages?.filter((s: any) => s.enabled !== false && s.id !== 'closed_lost') || 
+            {(settings.opportunities?.stages?.filter((s: OpportunityStage) => s.enabled !== false && s.id !== 'closed_lost') ||
               ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won']
-            ).map((stage: any, index: number) => {
+            ).map((stage: OpportunityStage | string, index: number) => {
               const stageId = typeof stage === 'string' ? stage : stage.id
               const stageName = typeof stage === 'string' ? getStageName(stage, settings) : stage.name
-              const stagesList = settings.opportunities?.stages?.filter((s: any) => s.enabled !== false && s.id !== 'closed_lost').map((s: any) => s.id) || 
+              const stagesList = settings.opportunities?.stages?.filter((s: OpportunityStage) => s.enabled !== false && s.id !== 'closed_lost').map((s: OpportunityStage) => s.id) ||
                                  ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won']
               
               return (
@@ -1169,10 +1141,12 @@ export default function OpportunityDetailPage() {
                 {/* Metadata */}
                 <div className="pt-4 border-t border-gray-200">
                   <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium">Created:</span>{' '}
-                      {new Date(selectedCommunication.created_at).toLocaleDateString()}
-                    </div>
+                    {selectedCommunication.created_at && (
+                      <div>
+                        <span className="font-medium">Created:</span>{' '}
+                        {new Date(selectedCommunication.created_at).toLocaleDateString()}
+                      </div>
+                    )}
                     {selectedCommunication.created_by_name && (
                       <div>
                         <span className="font-medium">Created By:</span>{' '}
