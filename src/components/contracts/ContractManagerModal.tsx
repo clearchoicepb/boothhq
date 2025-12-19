@@ -18,6 +18,7 @@ import {
 import toast from 'react-hot-toast'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 const log = createLogger('contracts')
 
@@ -325,9 +326,9 @@ export function ContractManagerModal({
                     />
                   </div>
                 )}
-                <div 
+                <div
                   className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: contract.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(contract.content) }}
                 />
               </div>
             )}

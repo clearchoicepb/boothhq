@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { Building2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
@@ -19,6 +19,7 @@ interface TenantOption {
 function SelectTenantContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { update: updateSession } = useSession()
   const [tenants, setTenants] = useState<TenantOption[]>([])
   const [loading, setLoading] = useState(true)
   const [selecting, setSelecting] = useState(false)
@@ -52,29 +53,33 @@ function SelectTenantContent() {
     setSelecting(true)
 
     try {
-      // Store selected tenant in session storage for auth callback
-      sessionStorage.setItem('selectedTenantId', tenantId)
-
-      // Trigger re-authentication with tenant selection
-      const result = await signIn('credentials', {
-        email: email,
-        password: sessionStorage.getItem('tempPassword') || '',
-        tenantId: tenantId,
-        redirect: false
+      // Call the switch-tenant API to validate access and get new session data
+      const response = await fetch('/api/auth/switch-tenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId })
       })
 
-      if (result?.ok) {
-        // Find the selected tenant to get subdomain
-        const selectedTenant = tenants.find(t => t.id === tenantId)
-        if (selectedTenant) {
-          router.push(`/${selectedTenant.subdomain}/dashboard`)
-        }
-      } else {
-        console.error('Tenant selection failed:', result?.error)
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Tenant selection failed:', errorData.error)
         router.push('/auth/signin?error=TenantSelectionFailed')
+        return
+      }
+
+      const { sessionData } = await response.json()
+
+      // Update the NextAuth session with the new tenant information
+      await updateSession(sessionData)
+
+      // Find the selected tenant to get subdomain and redirect
+      const selectedTenant = tenants.find(t => t.id === tenantId)
+      if (selectedTenant) {
+        router.push(`/${selectedTenant.subdomain}/dashboard`)
       }
     } catch (error) {
       log.error({ error }, 'Error selecting tenant')
+      router.push('/auth/signin?error=TenantSelectionFailed')
     } finally {
       setSelecting(false)
     }

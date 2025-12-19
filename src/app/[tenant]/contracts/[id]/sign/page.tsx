@@ -6,6 +6,7 @@ import { SignatureCapture } from '@/components/contracts/SignatureCapture'
 import { CheckCircle, FileText, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 const log = createLogger('sign')
 
@@ -163,9 +164,9 @@ export default function ContractSignPage() {
           )}
           
           {/* Contract Content with improved styling */}
-          <div 
+          <div
             className="prose prose-sm max-w-none prose-p:mb-4 prose-headings:mt-6 prose-headings:mb-3 prose-ul:my-4 prose-li:my-1"
-            dangerouslySetInnerHTML={{ __html: contract.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(contract.content) }}
           />
         </div>
 

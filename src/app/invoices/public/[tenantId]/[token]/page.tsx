@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { CreditCard, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 const log = createLogger('token')
 
@@ -346,7 +347,7 @@ export default function PublicInvoicePage() {
                       {item.name && item.description && (
                         <div
                           className="text-xs text-gray-600 mt-1 leading-relaxed prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: item.description }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
                         />
                       )}
                       {item.taxable === false && (
