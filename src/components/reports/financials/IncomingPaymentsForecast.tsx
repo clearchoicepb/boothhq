@@ -7,6 +7,9 @@ import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { DollarSign, Calendar, ChevronDown, FileText, AlertCircle, AlertTriangle } from 'lucide-react'
 import { WeeklyForecastChart } from './WeeklyForecastChart'
 import { formatDate, parseLocalDate, getTodayEST } from '@/lib/utils/date-utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('reports')
 
 interface ForecastInvoice {
   id: string
@@ -73,7 +76,7 @@ export function IncomingPaymentsForecast() {
       const result = await response.json()
       setData(result)
     } catch (error) {
-      console.error('Error fetching forecast:', error)
+      log.error({ error }, 'Error fetching forecast')
     } finally {
       setLoading(false)
     }

@@ -376,7 +376,7 @@ export function OpportunityPreviewModal({
                   router.push(`/${tenantSubdomain}/opportunities/${newOpp.id}`)
                 } catch (error) {
                   toast.error('Failed to duplicate opportunity')
-                  console.error(error)
+                  log.error({ error }, 'Failed to duplicate opportunity')
                 } finally {
                   setDuplicating(false)
                 }

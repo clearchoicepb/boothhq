@@ -72,7 +72,7 @@ export default function SectionLibrary({ onAddSection }: SectionLibraryProps) {
       setSections(data.sections || [])
     } catch (error) {
       toast.error('Failed to load sections')
-      console.error(error)
+      log.error({ error }, 'Failed to load sections')
     } finally {
       setIsLoading(false)
     }

@@ -169,12 +169,12 @@ export async function PUT(
       .maybeSingle()
 
     // Log the update data for debugging
-    console.log('Updating inventory item:', {
+    log.debug({
       itemId,
       product_group_id,
       updateData,
       currentGroupId: currentGroupItem?.product_group_id
-    })
+    }, 'Updating inventory item')
 
     const { data, error } = await supabase
       .from('inventory_items')
@@ -185,14 +185,14 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Failed to update inventory item:', {
+      log.error({
         error,
         errorCode: error.code,
         errorHint: error.hint,
         errorDetails: error.details,
         itemId,
         updateData
-      })
+      }, 'Failed to update inventory item')
       return NextResponse.json({
         error: 'Failed to update inventory item',
         details: error.message,

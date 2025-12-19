@@ -297,7 +297,7 @@ export default function TemplateBuilder({
       toast.success('Template saved successfully')
     } catch (error) {
       toast.error('Failed to save template')
-      console.error(error)
+      log.error({ error }, 'Failed to save template')
     } finally {
       setIsSaving(false)
     }

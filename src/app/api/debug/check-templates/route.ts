@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
 
     const { supabase, dataSourceTenantId, tenantId } = context
 
-    console.log('Tenant ID:', tenantId)
-    console.log('Data Source Tenant ID:', dataSourceTenantId)
+    log.debug({ tenantId }, 'Tenant ID')
+    log.debug({ dataSourceTenantId }, 'Data Source Tenant ID')
 
     // Try to query templates table
     const { data, error } = await supabase

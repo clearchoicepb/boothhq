@@ -146,7 +146,7 @@ export class GenericApiHandler {
       // Validate data (isUpdate = true for PUT requests)
       const validation = validateEntityData(this.entity, body, true)
       if (!validation.isValid) {
-        console.error(`[${this.entity}] Validation failed:`, validation.errors)
+        log.error({ entity: this.entity, errors: validation.errors }, 'Validation failed')
         return NextResponse.json({
           error: 'Validation failed',
           details: validation.errors

@@ -7,6 +7,9 @@
 
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('api:debug')
 
 export async function GET(request: NextRequest) {
   try {
@@ -304,7 +307,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(results, { status: 200 })
 
   } catch (error) {
-    console.error('Contact data analysis error:', error)
+    log.error({ error }, 'Contact data analysis error')
     return NextResponse.json(
       { error: 'Analysis failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

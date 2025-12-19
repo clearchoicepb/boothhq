@@ -13,6 +13,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Event } from '@/types/events'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('dashboard')
 
 type WeekTab = 'last' | 'this' | 'next'
 
@@ -464,7 +467,7 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
 
       doc.save(filename)
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      log.error({ error }, 'Error generating PDF')
     } finally {
       setIsExporting(false)
     }

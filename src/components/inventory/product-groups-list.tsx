@@ -80,8 +80,7 @@ export function ProductGroupsList() {
       setIsModalOpen(false)
       setEditingGroup(null)
     } catch (error: any) {
-      log.error({ error }, '[Product Group Submit] Error occurred')
-      console.error('[Product Group Submit] Error message:', error.message)
+      log.error({ error, message: error.message }, 'Product Group Submit error occurred')
       // Re-throw the error so the BaseForm can handle it
       throw error
     }

@@ -105,8 +105,7 @@ export async function PUT(
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
     return response
   } catch (error: any) {
-    log.error({ error }, '[Event Date API] Caught exception')
-    console.error('[Event Date API] Error stack:', error.stack)
+    log.error({ error, stack: error.stack }, 'Caught exception')
     return NextResponse.json({ 
       error: 'Internal server error',
       message: error.message 

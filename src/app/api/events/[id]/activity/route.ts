@@ -112,11 +112,11 @@ export async function GET(
       attachments: { count: attachments.data?.length || 0, error: attachments.error?.message },
     }, 'Query results')
 
-    if (communications.error) console.error('[Activity] Communications error:', communications.error)
-    if (tasks.error) console.error('[Activity] Tasks error:', tasks.error)
-    if (invoices.error) console.error('[Activity] Invoices error:', invoices.error)
-    if (notes.error) console.error('[Activity] Notes error:', notes.error)
-    if (attachments.error) console.error('[Activity] Attachments error:', attachments.error)
+    if (communications.error) log.error({ error: communications.error }, 'Communications error')
+    if (tasks.error) log.error({ error: tasks.error }, 'Tasks error')
+    if (invoices.error) log.error({ error: invoices.error }, 'Invoices error')
+    if (notes.error) log.error({ error: notes.error }, 'Notes error')
+    if (attachments.error) log.error({ error: attachments.error }, 'Attachments error')
 
     // Transform and combine all activities into a single timeline
     const activities: any[] = []

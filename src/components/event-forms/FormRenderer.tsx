@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { FormFieldRenderer } from './fields'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('event-forms')
 
 interface FormRendererProps {
   /** Form name/title */
@@ -137,7 +140,7 @@ export function FormRenderer({
       await onSubmit(responses)
       setIsSubmitted(true)
     } catch (error) {
-      console.error('Form submission error:', error)
+      log.error({ error }, 'Form submission error')
     } finally {
       setIsSubmitting(false)
     }

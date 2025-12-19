@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
 import {
   BarChart,
   Bar,
@@ -13,6 +14,8 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
+
+const log = createLogger('reports')
 
 interface MonthlyData {
   month: string
@@ -58,7 +61,7 @@ export function YearOverYearChart() {
       const result = await response.json()
       setData(result)
     } catch (error) {
-      console.error('Error fetching YoY data:', error)
+      log.error({ error }, 'Error fetching YoY data')
     } finally {
       setLoading(false)
     }

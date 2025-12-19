@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (result.error) {
-      console.error(`Error performing bulk ${action}:`, result.error)
+      log.error({ action, error: result.error }, 'Error performing bulk action')
       return NextResponse.json({
         error: `Failed to ${action} users: ${result.error.message}`
       }, { status: 500 })

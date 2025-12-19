@@ -150,8 +150,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  log.debug({}, '🚀🚀🚀 WORKFLOW APPLY ENDPOINT CALLED! 🚀🚀🚀')
-  console.log('='.repeat(80))
+  log.debug({}, 'WORKFLOW APPLY ENDPOINT CALLED')
   
   try {
     const { id: workflowId } = params
@@ -321,11 +320,13 @@ export async function POST(
           })
         }
       } catch (error: any) {
-        log.error('[ApplyWorkflow] ❌ CRITICAL ERROR processing event ${event.id}:')
-        console.error('[ApplyWorkflow] Error type:', typeof error)
-        console.error('[ApplyWorkflow] Error message:', error?.message)
-        console.error('[ApplyWorkflow] Error stack:', error?.stack)
-        log.error({ error }, '[ApplyWorkflow] Full error object')
+        log.error({
+          eventId: event.id,
+          errorType: typeof error,
+          message: error?.message,
+          stack: error?.stack,
+          error
+        }, 'CRITICAL ERROR processing event')
         failed++
         results.push({
           eventId: event.id,

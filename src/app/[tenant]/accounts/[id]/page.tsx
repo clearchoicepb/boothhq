@@ -16,6 +16,9 @@ import { useAccountContacts } from '@/hooks/useAccountContacts'
 import { useAccountUpcomingEvents, useAccountPreviousEvents } from '@/hooks/useAccountEvents'
 import { useAccountInvoices } from '@/hooks/useAccountInvoices'
 import { useAccountSummary } from '@/hooks/useAccountSummary'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('accounts')
 
 interface Account {
   id: string
@@ -63,11 +66,8 @@ interface ContactWithRole extends Contact {
 
 import type { AccountEvent } from '@/types/events'
 import type { Address, TenantUserBasic } from '@/types/api-responses'
-import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
-
-const log = createLogger('id')
 
 interface Opportunity {
   id: string
@@ -147,7 +147,7 @@ export default function AccountDetailPage() {
 
       refreshAccountData()
     } catch (error) {
-      console.error('Error unlinking contact:', error)
+      log.error({ error }, 'Error unlinking contact')
       alert('Failed to remove contact association')
     }
   }

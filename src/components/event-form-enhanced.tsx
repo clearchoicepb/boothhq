@@ -389,7 +389,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
             }))
             .sort((a, b) => a.date.getTime() - b.date.getTime())
           
-          console.log('Sequential validation - sorted dates:', sortedDates.map(d => d.original))
+          log.debug({ dates: sortedDates.map(d => d.original) }, 'Sequential validation - sorted dates')
           
           for (let i = 1; i < sortedDates.length; i++) {
             const prevDate = sortedDates[i-1].date

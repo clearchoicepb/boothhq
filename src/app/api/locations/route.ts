@@ -42,11 +42,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('[Locations API GET] Database error:', {
+      log.error({
         message: error.message,
         code: error.code,
         details: error.details
-      })
+      }, 'Database error')
       return NextResponse.json({ error: 'Failed to fetch locations' }, { status: 500 })
     }
 
@@ -60,10 +60,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error: any) {
-    console.error('[Locations API GET] Unexpected error:', {
-      message: error.message,
-      stack: error.stack
-    })
+    log.error({ message: error.message, stack: error.stack }, 'Unexpected error')
     log.debug({}, '=== LOCATION GET API END (ERROR) ===')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -126,12 +123,12 @@ export async function POST(request: NextRequest) {
     }, 'Insert result')
 
     if (insertResult.error) {
-      console.error('[Locations API] Database INSERT failed:', {
+      log.error({
         message: insertResult.error.message,
         code: insertResult.error.code,
         details: insertResult.error.details,
         hint: insertResult.error.hint
-      })
+      }, 'Database INSERT failed')
       return NextResponse.json({
         error: 'Failed to create location',
         details: insertResult.error.message,
@@ -160,10 +157,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(insertResult.data)
   } catch (error: any) {
-    console.error('[Locations API] Unexpected error:', {
-      message: error.message,
-      stack: error.stack
-    })
+    log.error({ message: error.message, stack: error.stack }, 'Unexpected error in POST')
     log.debug({}, '=== LOCATION CREATE API END (ERROR) ===')
     return NextResponse.json({
       error: 'Internal server error',

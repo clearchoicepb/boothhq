@@ -82,8 +82,8 @@ export default function TestSMSPage() {
       if (response.ok) {
         const data = await response.json();
         
-        console.log('📥 Fetched SMS messages:', data.length);
-        console.log('🔍 Looking for phone:', testPhone, 'normalized:', normalizePhone(testPhone));
+        log.debug({ count: data.length }, 'Fetched SMS messages');
+        log.debug({ testPhone, normalized: normalizePhone(testPhone) }, 'Looking for phone');
         
         // Filter messages related to our test phone number
         const normalizedTestPhone = normalizePhone(testPhone);
@@ -91,19 +91,19 @@ export default function TestSMSPage() {
           const fromPhone = msg.metadata?.from_number ? normalizePhone(msg.metadata.from_number) : '';
           const toPhone = msg.metadata?.to_number ? normalizePhone(msg.metadata.to_number) : '';
           
-          console.log('📨 Message:', {
+          log.debug({
             direction: msg.direction,
             from: msg.metadata?.from_number,
             to: msg.metadata?.to_number,
             fromNormalized: fromPhone,
             toNormalized: toPhone,
             matches: fromPhone === normalizedTestPhone || toPhone === normalizedTestPhone
-          });
+          }, 'Message');
           
           return fromPhone === normalizedTestPhone || toPhone === normalizedTestPhone;
         });
 
-        console.log('✅ Relevant messages:', relevantMessages.length);
+        log.debug({ count: relevantMessages.length }, 'Relevant messages');
         
         setTestMessages(relevantMessages.sort((a: TestMessage, b: TestMessage) =>
           new Date(a.communication_date).getTime() - new Date(b.communication_date).getTime()

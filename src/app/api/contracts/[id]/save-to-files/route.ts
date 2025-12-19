@@ -105,13 +105,13 @@ export async function POST(
       .single()
 
     if (fileError) {
-      log.error({ fileError }, '[save-to-files/route.ts] Error creating file entry')
-      console.error('[save-to-files/route.ts] Error details:', {
+      log.error({
+        fileError,
         code: fileError.code,
         message: fileError.message,
         details: fileError.details,
         hint: fileError.hint
-      })
+      }, 'Error creating file entry')
       return NextResponse.json(
         { error: 'Failed to create file entry', details: fileError.message },
         { status: 500 }
@@ -130,7 +130,7 @@ export async function POST(
         })
         .eq('id', contractId)
       
-      console.log('[save-to-files/route.ts] Contract status updated to "sent"')
+      log.debug({}, 'Contract status updated to "sent"')
     }
 
     return NextResponse.json({ 
@@ -144,8 +144,7 @@ export async function POST(
       }
     })
   } catch (error) {
-    log.error({ error }, '[save-to-files/route.ts] ERROR')
-    console.error('[save-to-files/route.ts] Error stack:', error instanceof Error ? error.stack : 'No stack')
+    log.error({ error, stack: error instanceof Error ? error.stack : 'No stack' }, 'ERROR in save-to-files')
     return NextResponse.json(
       { 
         error: 'Internal server error', 

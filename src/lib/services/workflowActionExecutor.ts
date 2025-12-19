@@ -769,7 +769,7 @@ export async function executeWorkflowActions(
         }
       } else {
         actionsFailed++
-        console.error(`[WorkflowActionExecutor] Action failed:`, result.error)
+        log.error({ error: result.error }, 'Action failed')
       }
     } catch (error) {
       log.error({ error }, '[WorkflowActionExecutor] Action execution error')

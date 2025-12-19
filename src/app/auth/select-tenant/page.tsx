@@ -62,7 +62,7 @@ function SelectTenantContent() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Tenant selection failed:', errorData.error)
+        log.error({ error: errorData.error }, 'Tenant selection failed')
         router.push('/auth/signin?error=TenantSelectionFailed')
         return
       }

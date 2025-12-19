@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     // The webhook needs to find which tenant owns a phone number BEFORE connecting to tenant DB
     const twilioPhoneNumber = settings?.integrations?.thirdPartyIntegrations?.twilio?.phoneNumber
     if (twilioPhoneNumber) {
-      console.log('💾 Saving Twilio phone number to Application DB for webhook lookup:', twilioPhoneNumber)
+      log.debug({ twilioPhoneNumber }, 'Saving Twilio phone number to Application DB for webhook lookup')
       
       const { createServerSupabaseClient } = await import('@/lib/supabase-client')
       const appSupabase = createServerSupabaseClient()

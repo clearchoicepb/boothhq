@@ -121,11 +121,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      log.error({ error }, '[Projects API] Error creating project')
-      console.error('[Projects API] Error code:', error.code)
-      console.error('[Projects API] Error details:', error.details)
-      console.error('[Projects API] Error hint:', error.hint)
-      console.error('[Projects API] Error message:', error.message)
+      log.error({
+        error,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        message: error.message
+      }, 'Error creating project')
       return NextResponse.json({ error: 'Failed to create project', details: error.message }, { status: 500 })
     }
 

@@ -288,8 +288,8 @@ export default function SMSMessagesPage() {
       if (response.ok) {
         const allMessages = await response.json()
         
-        console.log('📥 Fetched', allMessages.length, 'total SMS messages')
-        console.log('📋 Sample messages:', allMessages.slice(0, 3))
+        log.debug({ count: allMessages.length }, 'Fetched total SMS messages')
+        log.debug({ sample: allMessages.slice(0, 3) }, 'Sample messages')
         
         // Group messages by phone number
         const conversationMap = new Map<string, Conversation>()
@@ -300,25 +300,26 @@ export default function SMSMessagesPage() {
             : msg.metadata?.to_number
           
           if (!phoneNumber) {
-            console.warn('⚠️ Message missing phone number:', { direction: msg.direction, metadata: msg.metadata, id: msg.id })
+            log.warn({ direction: msg.direction, metadata: msg.metadata, id: msg.id }, 'Message missing phone number')
             return
           }
           
           const normalized = normalizePhone(phoneNumber)
-          console.log('📞 Processing message:', { 
-            direction: msg.direction, 
-            phoneNumber, 
+          log.debug({
+            direction: msg.direction,
+            phoneNumber,
             normalized,
             hasMetadata: !!msg.metadata,
-            metadata: msg.metadata 
-          })
+            metadata: msg.metadata
+          }, 'Processing message')
           
           if (!conversationMap.has(normalized)) {
             // Determine display name
             let displayName = phoneNumber
             
             // Check for contact, lead, or account first (from database relationships)
-            console.log('🔍 Determining display name for', phoneNumber, {
+            log.debug({
+              phoneNumber,
               hasContact: !!msg.contacts,
               hasLead: !!msg.leads,
               hasAccount: !!msg.accounts,
@@ -328,7 +329,7 @@ export default function SMSMessagesPage() {
               leadId: msg.lead_id,
               contactId: msg.contact_id,
               accountId: msg.account_id
-            })
+            }, 'Determining display name')
             
             if (msg.contacts?.first_name) {
               displayName = `${msg.contacts.first_name} ${msg.contacts.last_name || ''}`.trim()
@@ -369,8 +370,8 @@ export default function SMSMessagesPage() {
           (a, b) => new Date(b.lastMessageDate).getTime() - new Date(a.lastMessageDate).getTime()
         )
         
-        console.log('✅ Grouped into', conversationsArray.length, 'conversations')
-        console.log('📋 Conversations:', conversationsArray)
+        log.debug({ count: conversationsArray.length }, 'Grouped into conversations')
+        log.debug({ conversations: conversationsArray }, 'Conversations')
         
         setConversations(conversationsArray)
       }

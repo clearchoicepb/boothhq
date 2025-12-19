@@ -24,7 +24,7 @@ export async function fetchFavicon(url: string): Promise<string | null> {
     })
     
     if (!response.ok) {
-      console.error('Favicon API error:', response.status, response.statusText)
+      log.error({ status: response.status, statusText: response.statusText }, 'Favicon API error')
       return null
     }
     
