@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
@@ -95,13 +95,7 @@ export default function InvoiceDetailPage() {
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState(false)
   const [newInvoiceNumber, setNewInvoiceNumber] = useState('')
 
-  useEffect(() => {
-    if (session && tenant && invoiceId) {
-      fetchInvoice()
-    }
-  }, [session, tenant, invoiceId])
-
-  const fetchInvoice = async () => {
+  const fetchInvoice = useCallback(async () => {
     try {
       setLocalLoading(true)
       const response = await fetch(`/api/invoices/${invoiceId}`)
@@ -129,7 +123,13 @@ export default function InvoiceDetailPage() {
     } finally {
       setLocalLoading(false)
     }
-  }
+  }, [invoiceId])
+
+  useEffect(() => {
+    if (session && tenant && invoiceId) {
+      fetchInvoice()
+    }
+  }, [session, tenant, invoiceId, fetchInvoice])
 
   const handleDownloadPDF = async () => {
     try {

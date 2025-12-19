@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -151,16 +151,7 @@ export default function AccountDetailPage() {
     }
   }
 
-  // Fetch assigned user details when account changes
-  useEffect(() => {
-    if (account?.assigned_to) {
-      fetchAssignedUser(account.assigned_to)
-    } else {
-      setAssignedUser(null)
-    }
-  }, [account?.assigned_to])
-
-  const fetchAssignedUser = async (userId: string) => {
+  const fetchAssignedUser = useCallback(async (userId: string) => {
     try {
       const response = await fetch('/api/users')
       if (response.ok) {
@@ -171,7 +162,16 @@ export default function AccountDetailPage() {
     } catch (error) {
       log.error({ error }, 'Error fetching assigned user')
     }
-  }
+  }, [])
+
+  // Fetch assigned user details when account changes
+  useEffect(() => {
+    if (account?.assigned_to) {
+      fetchAssignedUser(account.assigned_to)
+    } else {
+      setAssignedUser(null)
+    }
+  }, [account?.assigned_to, fetchAssignedUser])
 
   const handleDelete = async () => {
     if (!account) return

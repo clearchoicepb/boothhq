@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -146,13 +146,13 @@ export default function OpportunityDetailPage() {
 
       // Fetch locations for event_dates
       if (opportunity.event_dates && opportunity.event_dates.length > 0) {
-        fetchLocations(opportunity.event_dates)
+        fetchLocations()
       }
 
       // Fetch communications
       fetchCommunications()
     }
-  }, [opportunity?.id])
+  }, [opportunity, fetchLead, fetchLocations, fetchCommunications])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -169,7 +169,7 @@ export default function OpportunityDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] })
   }
 
-  const fetchLead = async (leadId: string) => {
+  const fetchLead = useCallback(async (leadId: string) => {
     try {
       const response = await fetch(`/api/leads/${leadId}`)
       if (response.ok) {
@@ -179,7 +179,7 @@ export default function OpportunityDetailPage() {
     } catch (error) {
       log.error({ error }, 'Error fetching lead')
     }
-  }
+  }, [])
 
   const handleActivityClick = (activity: any) => {
     setSelectedActivity(activity)
@@ -197,7 +197,7 @@ export default function OpportunityDetailPage() {
     }
   }
 
-  const fetchLocations = async (eventDates: EventDate[]) => {
+  const fetchLocations = useCallback(async () => {
     try {
       const response = await fetch('/api/locations')
       if (response.ok) {
@@ -211,7 +211,7 @@ export default function OpportunityDetailPage() {
     } catch (error) {
       log.error({ error }, 'Error fetching locations')
     }
-  }
+  }, [])
 
   const handleSaveNotes = async (eventDateId: string) => {
     setSavingNotes(prev => ({ ...prev, [eventDateId]: true }))
@@ -427,7 +427,7 @@ export default function OpportunityDetailPage() {
     }
   }
 
-  const fetchCommunications = async () => {
+  const fetchCommunications = useCallback(async () => {
     try {
       const response = await fetch(`/api/communications?opportunity_id=${opportunityId}`)
       if (response.ok) {
@@ -437,7 +437,7 @@ export default function OpportunityDetailPage() {
     } catch (error) {
       log.error({ error }, 'Error fetching communications')
     }
-  }
+  }, [opportunityId])
 
   const handleStartEditAccountContact = () => {
     setEditAccountId(opportunity?.account_id || '')
