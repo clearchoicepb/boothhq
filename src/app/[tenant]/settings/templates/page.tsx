@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText } from 'lucide-react'
 import TemplateBuilder from '@/components/templates/TemplateBuilder'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
 
@@ -36,20 +37,7 @@ export default function TemplatesSettingsPage() {
     content: '',
   })
   const [saving, setSaving] = useState(false)
-  const subjectInputRef = useRef<HTMLInputElement>(null)
-  const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [isBuilderMode, setIsBuilderMode] = useState(false)
-
-  const mergeFields = [
-    { label: 'First Name', value: '{{first_name}}' },
-    { label: 'Last Name', value: '{{last_name}}' },
-    { label: 'Email', value: '{{email}}' },
-    { label: 'Phone', value: '{{phone}}' },
-    { label: 'Company', value: '{{company_name}}' },
-    { label: 'Opportunity', value: '{{opportunity_name}}' },
-    { label: 'Amount', value: '{{amount}}' },
-    { label: 'Event Date', value: '{{event_date}}' },
-  ]
 
   useEffect(() => {
     fetchTemplates()
@@ -179,36 +167,6 @@ export default function TemplatesSettingsPage() {
     } catch (error) {
       log.error({ error }, 'Error deleting template')
       toast.error('Error deleting template')
-    }
-  }
-
-  const insertMergeField = (field: string, target: 'subject' | 'content') => {
-    if (target === 'subject' && subjectInputRef.current) {
-      const input = subjectInputRef.current
-      const start = input.selectionStart || 0
-      const end = input.selectionEnd || 0
-      const newValue = formData.subject.substring(0, start) + field + formData.subject.substring(end)
-
-      setFormData({ ...formData, subject: newValue })
-
-      // Set cursor position after inserted text
-      setTimeout(() => {
-        input.focus()
-        input.setSelectionRange(start + field.length, start + field.length)
-      }, 0)
-    } else if (target === 'content' && contentTextareaRef.current) {
-      const textarea = contentTextareaRef.current
-      const start = textarea.selectionStart || 0
-      const end = textarea.selectionEnd || 0
-      const newValue = formData.content.substring(0, start) + field + formData.content.substring(end)
-
-      setFormData({ ...formData, content: newValue })
-
-      // Set cursor position after inserted text
-      setTimeout(() => {
-        textarea.focus()
-        textarea.setSelectionRange(start + field.length, start + field.length)
-      }, 0)
     }
   }
 
@@ -373,26 +331,16 @@ export default function TemplatesSettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Subject Line
                     </label>
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      {mergeFields.map((field) => (
-                        <button
-                          key={field.value}
-                          type="button"
-                          onClick={() => insertMergeField(field.value, 'subject')}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
-                        >
-                          + {field.label}
-                        </button>
-                      ))}
-                    </div>
                     <input
-                      ref={subjectInputRef}
                       type="text"
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                       placeholder="e.g., Welcome to {{company_name}}"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Use merge fields like {'{{first_name}}'}, {'{{company_name}}'}, etc.
+                    </p>
                   </div>
                 )}
 
@@ -400,25 +348,15 @@ export default function TemplatesSettingsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Content
                   </label>
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {mergeFields.map((field) => (
-                      <button
-                        key={field.value}
-                        type="button"
-                        onClick={() => insertMergeField(field.value, 'content')}
-                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
-                      >
-                        + {field.label}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    ref={contentTextareaRef}
+                  <RichTextEditor
                     value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    rows={12}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900"
-                    placeholder={`Hi {{first_name}},\n\nThank you for your interest...\n\nBest regards,\n{{company_name}}`}
+                    onChange={(value) => setFormData({ ...formData, content: value })}
+                    placeholder={activeTab === 'sms'
+                      ? "Hi {{first_name}}, thank you for your interest..."
+                      : "Hi {{first_name}},\n\nThank you for your interest...\n\nBest regards,\n{{company_name}}"
+                    }
+                    minHeight={activeTab === 'sms' ? '100px' : '200px'}
+                    showMergeFields={true}
                   />
                 </div>
         </div>
