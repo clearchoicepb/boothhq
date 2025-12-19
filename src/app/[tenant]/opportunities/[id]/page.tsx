@@ -45,10 +45,7 @@ import type {
   LeadConversionData,
   OpportunityStageUpdateBody
 } from '@/types/api-responses'
-import { createLogger } from '@/lib/logger'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
-
-const log = createLogger('id')
 
 export default function OpportunityDetailPage() {
   const { data: session, status } = useSession()

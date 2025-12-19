@@ -66,11 +66,8 @@ interface ContactWithRole extends Contact {
 
 import type { AccountEvent } from '@/types/events'
 import type { Address, TenantUserBasic } from '@/types/api-responses'
-import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
 import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
-
-const log = createLogger('id')
 
 interface Opportunity {
   id: string
