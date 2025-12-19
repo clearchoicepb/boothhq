@@ -107,7 +107,7 @@ export async function GET(
     ])
 
     if (error || countError) {
-      console.error(`Error fetching ${entity}:`, error || countError)
+      log.error({ entity, error: error || countError }, 'Error fetching entity')
       return NextResponse.json({
         error: `Failed to fetch ${entity}`,
         details: (error || countError)?.message
@@ -199,7 +199,7 @@ export async function POST(
     // Validate the transformed data (isUpdate = false for POST requests)
     const validation = validateEntityData(entity, transformedBody, false)
     if (!validation.isValid) {
-      console.error(`Validation failed for ${entity}:`, validation.errors)
+      log.error({ entity, errors: validation.errors }, 'Validation failed')
       return NextResponse.json({ 
         error: `Validation failed for ${entity}`,
         details: validation.errors 

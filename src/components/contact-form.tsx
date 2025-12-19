@@ -279,7 +279,7 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
           })
           
           if (!relResponse.ok) {
-            console.error('Failed to save account relationship:', await relResponse.text())
+            log.error({ response: await relResponse.text() }, 'Failed to save account relationship')
           }
         }
       }

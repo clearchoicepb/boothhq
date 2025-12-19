@@ -197,8 +197,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(contract)
   } catch (error) {
-    log.error({ error }, '[contracts/route.ts] ERROR in POST handler')
-    console.error('[contracts/route.ts] Error stack:', error instanceof Error ? error.stack : 'No stack')
+    log.error({ error, stack: error instanceof Error ? error.stack : 'No stack' }, 'ERROR in POST handler')
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -243,13 +242,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      log.error({ error }, '[contracts/route.ts] GET Error fetching contracts')
-      console.error('[contracts/route.ts] GET Error details:', {
+      log.error({
+        error,
         code: error.code,
         message: error.message,
         details: error.details,
         hint: error.hint
-      })
+      }, 'GET Error fetching contracts')
       return NextResponse.json(
         { error: 'Failed to fetch contracts', details: error.message },
         { status: 500 }

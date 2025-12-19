@@ -80,7 +80,7 @@ export default function TicketsPage() {
 
   const getVoteCount = (ticket: Ticket) => {
     const count = ticket.ticket_votes?.length || 0
-    console.log(`[Votes] Ticket "${ticket.title}": ${count} votes`, ticket.ticket_votes)
+    log.debug({ title: ticket.title, count, votes: ticket.ticket_votes }, 'Ticket vote count')
     return count
   }
 
@@ -90,7 +90,7 @@ export default function TicketsPage() {
       return false
     }
     const voted = ticket.ticket_votes?.some(vote => vote.user_id === session.user.id) || false
-    console.log(`[Votes] User ${session.user.id} voted for "${ticket.title}":`, voted)
+    log.debug({ userId: session.user.id, title: ticket.title, voted }, 'User vote status')
     return voted
   }
 

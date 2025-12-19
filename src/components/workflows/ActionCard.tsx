@@ -110,7 +110,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
         const roles = Array.isArray(staffRolesData) ? staffRolesData : (staffRolesData.roles || [])
         setStaffRoles(roles.filter((r: StaffRole) => r.is_active && r.type === 'operations'))
       } else {
-        console.error('[ActionCard] Failed to fetch staff roles:', await staffRolesRes.text())
+        log.error({ response: await staffRolesRes.text() }, 'Failed to fetch staff roles')
       }
 
       // Fetch all users

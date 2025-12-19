@@ -264,7 +264,7 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
             })
             
             if (!relResponse.ok) {
-              console.error('Failed to save contact relationship:', await relResponse.text())
+              log.error({ response: await relResponse.text() }, 'Failed to save contact relationship')
             }
           }
         }

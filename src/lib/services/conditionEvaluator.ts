@@ -107,7 +107,7 @@ function evaluateOperator(
     case 'in': {
       // expectedValue should be an array
       if (!Array.isArray(expectedValue)) {
-        console.warn('[ConditionEvaluator] "in" operator expects array value')
+        log.warn({}, '"in" operator expects array value')
         return false
       }
       const normalActual = normalizeForComparison(actualValue)
@@ -119,7 +119,7 @@ function evaluateOperator(
     case 'not_in': {
       // expectedValue should be an array
       if (!Array.isArray(expectedValue)) {
-        console.warn('[ConditionEvaluator] "not_in" operator expects array value')
+        log.warn({}, '"not_in" operator expects array value')
         return false
       }
       const normalActual = normalizeForComparison(actualValue)

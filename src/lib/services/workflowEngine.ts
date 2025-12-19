@@ -323,7 +323,7 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       throw new Error(`Failed to create design task: ${taskError?.message || 'Unknown error'}`)
     }
 
-    console.log(`[WorkflowEngine] Created UNIFIED design task "${designItemType.name}" (${task.id}) with deadline ${formatDate(designDeadline)}`)
+    log.info({ taskName: designItemType.name, taskId: task.id, deadline: formatDate(designDeadline) }, 'Created UNIFIED design task')
 
     // Legacy event_design_items table has been deprecated
     // All design tasks are now created in the unified tasks table only
@@ -476,7 +476,7 @@ const executeCreateOpsItemAction: ActionExecutor = async (
       throw new Error(`Failed to create operations task: ${taskError?.message || 'Unknown error'}`)
     }
 
-    console.log(`[WorkflowEngine] Created UNIFIED operations task "${opsItemType.name}" (${task.id}) with deadline ${formatDate(dueDate)}`)
+    log.info({ taskName: opsItemType.name, taskId: task.id, deadline: formatDate(dueDate) }, 'Created UNIFIED operations task')
 
     // Legacy event_operations_items table has been deprecated
     // All operations tasks are now created in the unified tasks table only
@@ -634,8 +634,7 @@ class WorkflowEngine {
   ): Promise<WorkflowExecutionResult[]> {
     const { eventId, eventTypeId, tenantId, dataSourceTenantId, supabase, userId, force } = options
 
-    log.debug('✨ Workflow Engine - executeWorkflowsForEvent called')
-    console.log('Force rerun:', force)
+    log.debug({ force }, 'Workflow Engine - executeWorkflowsForEvent called')
 
     try {
       // ═══════════════════════════════════════════════════════════════════════════
@@ -936,7 +935,7 @@ class WorkflowEngine {
           }
         } else {
           actionsFailed++
-          console.error(`[WorkflowEngine] Action failed:`, result.error)
+          log.error({ error: result.error }, 'Action failed')
         }
       } catch (error) {
         log.error({ error }, '[WorkflowEngine] Action execution error')

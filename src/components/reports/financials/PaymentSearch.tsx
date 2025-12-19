@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { KPICard, KPICardGrid } from '@/components/ui/kpi-card'
 import { Search, Download, DollarSign, FileText, Calendar, ChevronDown } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date-utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('reports')
 
 type PresetRange = 'today' | 'this_week' | 'this_month' | 'this_quarter' | 'this_year' | 'custom'
 
@@ -69,7 +72,7 @@ export function PaymentSearch() {
       const result = await response.json()
       setData(result)
     } catch (error) {
-      console.error('Error fetching payments:', error)
+      log.error({ error }, 'Error fetching payments')
     } finally {
       setLoading(false)
     }

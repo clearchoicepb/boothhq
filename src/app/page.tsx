@@ -21,7 +21,7 @@ export default function HomePage() {
         router.push(`/${session.user.tenantSubdomain}/dashboard`)
       } else {
         // User is authenticated but doesn't have a tenantSubdomain
-        console.error('User authenticated but missing tenantSubdomain:', session.user)
+        log.error({ userId: session.user?.id }, 'User authenticated but missing tenantSubdomain')
         // Redirect to sign in to re-authenticate
         router.push('/auth/signin')
       }

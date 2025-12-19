@@ -27,7 +27,7 @@ export default function TestServicesPage() {
     try {
       const result = await testFn()
       setOutput({ testName, success: true, data: result })
-      console.log(`✅ ${testName} Success:`, result)
+      log.info({ testName, result }, 'Test success')
     } catch (err: any) {
       setError(err.message)
       setOutput({ testName, success: false, error: err.message })

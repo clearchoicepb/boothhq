@@ -25,7 +25,7 @@ function extractDomain(url: string): string | null {
     const urlObj = new URL(url)
     return urlObj.hostname
   } catch (error) {
-    console.error('Invalid URL:', url, error)
+    log.error({ url, error }, 'Invalid URL')
     return null
   }
 }

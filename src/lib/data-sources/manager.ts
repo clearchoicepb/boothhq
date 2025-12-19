@@ -400,7 +400,7 @@ export class DataSourceManager {
       return decrypted.toString('utf8');
     } catch (error: any) {
       // Log error for debugging but don't expose sensitive details
-      console.error('Decryption failed:', error.message);
+      log.error({ error: error.message }, 'Decryption failed');
 
       // Provide more helpful error messages for common issues
       if (error.message.includes('Unsupported state or unable to authenticate data')) {
@@ -470,7 +470,7 @@ export class DataSourceManager {
       return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
     } catch (error: any) {
       // Log error for debugging but don't expose sensitive details
-      console.error('Encryption failed:', error.message);
+      log.error({ error: error.message }, 'Encryption failed');
       throw new Error(`Failed to encrypt key: ${error.message}`);
     }
   }

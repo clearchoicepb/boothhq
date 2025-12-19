@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user has admin role
     if (!isAdmin(session.user.role as UserRole)) {
-      console.error('[Create User] User is not admin:', session.user.role)
+      log.error({ role: session.user.role }, 'User is not admin')
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

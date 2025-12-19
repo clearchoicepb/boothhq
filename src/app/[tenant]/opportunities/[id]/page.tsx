@@ -28,6 +28,9 @@ import { CommunicationsTab } from '@/components/shared/CommunicationsTab'
 import { OpportunityOverviewTab } from '@/components/opportunities/detail/tabs/OpportunityOverviewTab'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { Lead } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('opportunities')
 import { CloseOpportunityModal } from '@/components/close-opportunity-modal'
 import { fetchTenantUsers, getOwnerDisplayName, type TenantUser } from '@/lib/users'
 import toast from 'react-hot-toast'
@@ -606,7 +609,7 @@ export default function OpportunityDetailPage() {
                     router.push(`/${tenantSubdomain}/opportunities/${newOpp.id}`)
                   } catch (error) {
                     toast('Failed to duplicate opportunity', { icon: '❌' })
-                    console.error(error)
+                    log.error({ error }, 'Failed to duplicate opportunity')
                   }
                 }}
               >

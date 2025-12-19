@@ -47,7 +47,7 @@ export default function EventEditPage() {
 
   const handleSave = async (eventData: EventUpdate) => {
     try {
-      console.log('Sending event data:', eventData)
+      log.debug({ eventData }, 'Sending event data')
       await eventsService.update(eventId, eventData)
       router.push(`/${tenantSubdomain}/events/${eventId}`)
     } catch (error) {

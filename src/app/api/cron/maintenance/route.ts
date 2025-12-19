@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
       results: results.map(r => r.status === 'fulfilled' ? r.value : { error: 'rejected' })
     }
 
-    console.log('Maintenance cron completed:', summary)
+    log.info({ summary }, 'Maintenance cron completed')
 
     return NextResponse.json({
       success: true,

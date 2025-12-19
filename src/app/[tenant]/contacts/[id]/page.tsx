@@ -15,6 +15,9 @@ import { useContact } from '@/hooks/useContact'
 import { ContactForm } from '@/components/forms'
 import { LinkContactAccountModal } from '@/components/link-contact-account-modal'
 import type { Contact as BaseContact } from '@/lib/supabase-client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('contacts')
 
 // Extended contact type with API response fields
 interface Contact extends BaseContact {
@@ -81,7 +84,7 @@ export default function ContactDetailPage() {
 
       refreshContactData()
     } catch (error) {
-      console.error('Error unlinking account:', error)
+      log.error({ error }, 'Error unlinking account')
       alert('Failed to remove account association')
     }
   }

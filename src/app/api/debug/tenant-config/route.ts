@@ -124,10 +124,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error: any) {
-    console.error('[Debug] Unexpected error:', {
-      message: error.message,
-      stack: error.stack
-    })
+    log.error({ message: error.message, stack: error.stack }, 'Unexpected error')
     return NextResponse.json({
       error: 'Internal server error',
       details: error.message

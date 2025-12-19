@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       query = query.gte('communication_date', since)
     }
 
-    console.log('🔍 [Communications API] Query params:', {
+    log.debug({
       tenantId: dataSourceTenantId,
       communicationType,
       since,
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       contactId,
       leadId,
       eventId
-    })
+    }, 'Query params')
 
     const { data, error } = await query
 
@@ -77,14 +77,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch communications' }, { status: 500 })
     }
 
-    console.log('✅ [Communications API] Returned', data?.length, 'messages')
-    console.log('📊 [Communications API] Directions:', data?.map(d => d.direction).join(', '))
+    log.debug({ count: data?.length }, 'Returned messages')
+    log.debug({ directions: data?.map(d => d.direction).join(', ') }, 'Message directions')
     
     // Debug relationship data for first 3 messages
     if (data && data.length > 0) {
-      log.debug({}, '🔍 [Communications API] Sample relationship data')
+      log.debug({}, 'Sample relationship data')
       data.slice(0, 3).forEach((msg, i) => {
-        console.log(`  Message ${i + 1}:`, {
+        log.debug({
+          messageIndex: i + 1,
           id: msg.id,
           contact_id: msg.contact_id,
           lead_id: msg.lead_id,
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
           leadName: msg.leads ? `${msg.leads.first_name} ${msg.leads.last_name}` : null,
           accountName: msg.accounts?.name || null,
           metadata: msg.metadata
-        })
+        }, 'Message relationship data')
       })
     }
 
