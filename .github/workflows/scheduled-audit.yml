@@ -45,7 +45,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: "--max-turns 50"
+          claude_args: "--max-turns 50 --allowedTools 'Bash(npm run *),Bash(npx tsc *),Bash(npx next lint *),Read(*),Grep(*),Glob(*)'"
           prompt: |
             Run an AUTONOMOUS AUDIT of this codebase. DO NOT modify any files.
 
