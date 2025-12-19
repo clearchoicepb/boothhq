@@ -1,9 +1,16 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
-import { getESTDateParts, toDateInputValue, parseLocalDate } from '@/lib/utils/date-utils'
+import { getESTDateParts, toDateInputValue } from '@/lib/utils/date-utils'
+import type { PostgrestError } from '@supabase/supabase-js'
+import type { Tables } from '@/types/database'
 
 const log = createLogger('api:payments-forecast')
+
+// Type for invoice query result (subset of columns selected)
+type InvoiceQueryResult = Pick<Tables<'invoices'>,
+  'id' | 'invoice_number' | 'account_id' | 'due_date' | 'total_amount' | 'status' | 'created_at'
+>
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,10 +36,8 @@ export async function GET(request: NextRequest) {
     // Check if we're viewing the current month (to include overdue invoices)
     const isCurrentMonth = month === estNow.month && year === estNow.year
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let invoices: any[] = []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let invoicesError: any = null
+    let invoices: InvoiceQueryResult[] = []
+    let invoicesError: PostgrestError | null = null
 
     if (isCurrentMonth) {
       // For current month: fetch invoices due in this month OR overdue (due before this month)

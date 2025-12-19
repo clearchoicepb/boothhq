@@ -1,12 +1,77 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { createLogger } from '@/lib/logger'
 import { getDateRangeForPeriod, getTodayEST, toDateInputValue } from '@/lib/utils/date-utils'
 import type { TimePeriod } from '@/components/ui/kpi-card'
 import { CLOSED_STAGES } from '@/lib/constants/opportunity-stages'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Tables } from '@/types/database'
 
 const log = createLogger('api:opportunities:drilldown')
+
+// Query result types for Supabase queries
+type TenantSettingRow = Pick<Tables<'tenant_settings'>, 'setting_key' | 'setting_value'>
+
+interface EventDateJoin {
+  event_date: string
+}
+
+interface OpportunityWithEventDates {
+  id: string
+  name: string
+  created_at: string
+  amount: number | null
+  stage: string
+  probability: number | null
+  expected_close_date: string | null
+  accounts: { name: string } | null
+  event_dates: EventDateJoin[] | null
+}
+
+interface OpportunityWithActualClose {
+  id: string
+  name: string
+  created_at: string
+  amount: number | null
+  stage: string
+  probability: number | null
+  actual_close_date: string | null
+  expected_close_date: string | null
+  accounts: { name: string } | null
+  event_dates: EventDateJoin[] | null
+}
+
+interface OpportunityWithCloseReason {
+  id: string
+  name: string
+  created_at: string
+  amount: number | null
+  stage: string
+  probability: number | null
+  actual_close_date: string | null
+  close_reason: string | null
+  accounts: { name: string } | null
+  event_dates: EventDateJoin[] | null
+}
+
+interface OpportunityClosedSimple {
+  id: string
+  name: string
+  created_at: string
+  amount: number | null
+  stage: string
+  actual_close_date: string | null
+  accounts: { name: string } | null
+}
+
+interface OpportunityWonSimple {
+  id: string
+  name: string
+  created_at: string
+  amount: number | null
+  actual_close_date: string | null
+  accounts: { name: string } | null
+}
 
 export type OpportunityDrilldownType =
   | 'new-opps'
@@ -84,7 +149,7 @@ export interface OpportunityDrilldownResponse {
   avgDealSize?: number
 }
 
-async function getStages(supabase: any, dataSourceTenantId: string): Promise<StageConfig[]> {
+async function getStages(supabase: SupabaseClient, dataSourceTenantId: string): Promise<StageConfig[]> {
   const { data: stageSettings } = await supabase
     .from('tenant_settings')
     .select('setting_key, setting_value')
@@ -92,16 +157,17 @@ async function getStages(supabase: any, dataSourceTenantId: string): Promise<Sta
     .like('setting_key', 'opportunities.stages%')
 
   let stages: StageConfig[] = defaultStages
-  if (stageSettings && stageSettings.length > 0) {
+  const typedSettings = (stageSettings || []) as TenantSettingRow[]
+  if (typedSettings.length > 0) {
     try {
-      const arrayFormat = stageSettings.find((row: any) => row.setting_key === 'opportunities.stages')
+      const arrayFormat = typedSettings.find((row) => row.setting_key === 'opportunities.stages')
       if (arrayFormat?.setting_value) {
         let parsedStages = arrayFormat.setting_value
         if (typeof parsedStages === 'string') {
           parsedStages = JSON.parse(parsedStages)
         }
         if (Array.isArray(parsedStages) && parsedStages.length > 0) {
-          stages = parsedStages.filter((s: any) => s.enabled !== false)
+          stages = parsedStages.filter((s: StageConfig) => s.enabled !== false)
         }
       }
     } catch (e) {
@@ -188,12 +254,12 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWithEventDates[]).map((opp) => {
           const probability = opp.probability ?? getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           const eventDates = opp.event_dates || []
           const earliestEventDate = eventDates.length > 0
-            ? eventDates.map((ed: any) => ed.event_date).filter(Boolean).sort()[0]
+            ? eventDates.map((ed) => ed.event_date).filter(Boolean).sort()[0]
             : null
 
           return {
@@ -249,12 +315,12 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWithEventDates[]).map((opp) => {
           const probability = opp.probability ?? getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           const eventDates = opp.event_dates || []
           const earliestEventDate = eventDates.length > 0
-            ? eventDates.map((ed: any) => ed.event_date).filter(Boolean).sort()[0]
+            ? eventDates.map((ed) => ed.event_date).filter(Boolean).sort()[0]
             : null
 
           return {
@@ -317,11 +383,11 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWithActualClose[]).map((opp) => {
           const value = opp.amount || 0
           const eventDates = opp.event_dates || []
           const earliestEventDate = eventDates.length > 0
-            ? eventDates.map((ed: any) => ed.event_date).filter(Boolean).sort()[0]
+            ? eventDates.map((ed) => ed.event_date).filter(Boolean).sort()[0]
             : null
 
           // Calculate days to close
@@ -391,11 +457,11 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWithCloseReason[]).map((opp) => {
           const value = opp.amount || 0
           const eventDates = opp.event_dates || []
           const earliestEventDate = eventDates.length > 0
-            ? eventDates.map((ed: any) => ed.event_date).filter(Boolean).sort()[0]
+            ? eventDates.map((ed) => ed.event_date).filter(Boolean).sort()[0]
             : null
 
           return {
@@ -456,7 +522,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityClosedSimple[]).map((opp) => {
           const value = opp.amount || 0
           const isWon = opp.stage === 'closed_won'
 
@@ -526,7 +592,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWonSimple[]).map((opp) => {
           const value = opp.amount || 0
 
           // Calculate days to close
@@ -600,7 +666,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWonSimple[]).map((opp) => {
           const value = opp.amount || 0
 
           return {
@@ -659,12 +725,12 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityDrilldownRecord[] = (opportunities || []).map((opp: any) => {
+        const records: OpportunityDrilldownRecord[] = ((opportunities || []) as OpportunityWithEventDates[]).map((opp) => {
           const probability = opp.probability ?? getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           const eventDates = opp.event_dates || []
           const earliestEventDate = eventDates.length > 0
-            ? eventDates.map((ed: any) => ed.event_date).filter(Boolean).sort()[0]
+            ? eventDates.map((ed) => ed.event_date).filter(Boolean).sort()[0]
             : null
 
           // Calculate days until close using EST timezone for consistency
