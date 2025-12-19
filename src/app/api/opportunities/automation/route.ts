@@ -514,8 +514,27 @@ export async function POST(request: NextRequest) {
  * GET /api/opportunities/automation
  *
  * Health check / status endpoint
+ *
+ * Authorization: Requires CRON_SECRET, AUTOMATION_API_KEY, or valid session
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Verify authorization - same pattern as POST
+  const authHeader = request.headers.get('authorization')
+  const cronSecret = process.env.CRON_SECRET
+
+  // Check for API key authentication (cron or manual)
+  const hasApiKeyAuth =
+    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
+    authHeader === `Bearer ${process.env.AUTOMATION_API_KEY}`
+
+  // Check for session authentication
+  const session = await getServerSession(authOptions)
+  const hasSessionAuth = !!session?.user
+
+  if (!hasApiKeyAuth && !hasSessionAuth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   return NextResponse.json({
     status: 'healthy',
     description: 'Opportunity automation API',
