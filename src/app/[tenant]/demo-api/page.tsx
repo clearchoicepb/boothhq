@@ -169,8 +169,8 @@ export default function DemoApiPage() {
 
     const sampleData = getSampleData(selectedEntity)
 
-    runApiTest(selectedEntity, 'Create', () => 
-      apiClient.create(selectedEntity, sampleData)
+    runApiTest(selectedEntity, 'Create', () =>
+      apiClient.create(selectedEntity, sampleData as Record<string, unknown>)
     )
   }
 

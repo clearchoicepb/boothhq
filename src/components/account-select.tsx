@@ -62,9 +62,11 @@ export function AccountSelect({
     fetchAccounts()
   }, [])
 
-  const handleAccountCreated = (account: Account) => {
-    setAccounts(prev => [account, ...prev])
-    onChange(account.id, account)
+  const handleAccountCreated = async (account: { id?: string; name?: string; [key: string]: unknown }) => {
+    if (!account.id || !account.name) return // Skip if no ID or name returned
+    const fullAccount = { ...account, id: account.id, name: account.name } as Account
+    setAccounts(prev => [fullAccount, ...prev])
+    onChange(fullAccount.id, fullAccount)
     setIsFormOpen(false)
   }
 

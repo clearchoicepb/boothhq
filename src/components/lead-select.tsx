@@ -61,7 +61,7 @@ export function LeadSelect({
     fetchLeads()
   }, [])
 
-  const handleLeadCreated = (lead: Lead) => {
+  const handleLeadCreated = async (lead: Lead) => {
     setLeads(prev => [lead, ...prev])
     onChange(lead.id, lead)
     setIsFormOpen(false)

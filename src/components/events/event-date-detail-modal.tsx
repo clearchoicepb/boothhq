@@ -7,13 +7,13 @@ import type { EventDate, EventDateLocation, EditableEventDate } from '@/types/ev
 
 type EventStaffAssignment = {
   id: string
-  event_date_id: string
+  event_date_id: string | null
   role?: string | null
   users?: {
     first_name?: string | null
     last_name?: string | null
     name?: string | null
-  }
+  } | null
 }
 
 interface EventDateDetailModalProps {

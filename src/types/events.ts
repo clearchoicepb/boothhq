@@ -132,11 +132,11 @@ export interface EventDate {
 export interface EditableEventDate {
   event_date?: string
   status?: string
-  setup_time?: string
-  start_time?: string
-  end_time?: string
-  notes?: string
-  location_id?: string
+  setup_time?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  notes?: string | null
+  location_id?: string | null
 }
 
 // =============================================================================

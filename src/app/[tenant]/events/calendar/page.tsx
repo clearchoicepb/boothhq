@@ -34,10 +34,10 @@ interface CalendarEvent {
   id: string
   name: string
   event_date: string
-  start_time?: string
-  end_time?: string
+  start_time?: string | null
+  end_time?: string | null
   status: string
-  event_id: string
+  event_id?: string
 }
 
 export default function EventsCalendarPage() {
@@ -105,8 +105,9 @@ export default function EventsCalendarPage() {
   }
 
   const handleEventClick = (calendarEvent: CalendarEvent) => {
-    // Navigate to the event detail page
-    router.push(`/${tenantSubdomain}/events/${calendarEvent.event_id}`)
+    // Navigate to the event detail page (use event_id if available, otherwise use id)
+    const eventId = calendarEvent.event_id || calendarEvent.id
+    router.push(`/${tenantSubdomain}/events/${eventId}`)
   }
 
   if (status === 'loading' || loading) {

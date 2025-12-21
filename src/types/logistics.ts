@@ -9,16 +9,16 @@
  */
 export interface LogisticsLocation {
   name: string
-  address_line1?: string
-  address_line2?: string
-  city?: string
-  state?: string
-  postal_code?: string
-  country?: string
-  contact_name?: string
-  contact_phone?: string
-  contact_email?: string
-  notes?: string
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+  country?: string | null
+  contact_name?: string | null
+  contact_phone?: string | null
+  contact_email?: string | null
+  notes?: string | null
 }
 
 /**
