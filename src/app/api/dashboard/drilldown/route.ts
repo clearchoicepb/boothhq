@@ -45,9 +45,16 @@ interface OpportunityWithAccountJoin {
   accounts: { name: string } | null
 }
 
-type InvoiceAmountQueryResult = Pick<Tables<'invoices'>, 'event_id' | 'total_amount'>
+// Query result types for amount calculations
+interface InvoiceAmountQueryResult {
+  event_id: string | null
+  total_amount: number | null
+}
 type OpportunityAmountQueryResult = Pick<Tables<'opportunities'>, 'id' | 'amount'>
-type TenantSettingRow = Pick<Tables<'tenant_settings'>, 'setting_key' | 'setting_value'>
+interface TenantSettingRow {
+  setting_key: string
+  setting_value: string | null
+}
 
 export type DrilldownType = 'events-occurring' | 'events-booked' | 'total-opportunities' | 'new-opportunities'
 export type DrilldownPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all'
@@ -69,7 +76,7 @@ export interface EventBookedRecord {
   id: string
   createdAt: string
   eventName: string
-  eventDate: string
+  eventDate: string | null
   accountName: string | null
   revenue: number
 }
@@ -295,7 +302,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: EventOccurringRecord[] = ((eventDates || []) as EventDateWithJoins[]).map((ed) => ({
+        const records: EventOccurringRecord[] = ((eventDates || []) as unknown as EventDateWithJoins[]).map((ed) => ({
           id: ed.id,
           eventId: ed.events?.id || ed.event_id,
           eventDate: ed.event_date,
@@ -342,7 +349,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Get invoices for these events
-        const typedEvents = (events || []) as EventBookedWithAccount[]
+        const typedEvents = (events || []) as unknown as EventBookedWithAccount[]
         const eventIds = typedEvents.map((e) => e.id)
         const opportunityIds = typedEvents.map((e) => e.opportunity_id).filter(Boolean)
 
@@ -417,7 +424,7 @@ export async function GET(request: NextRequest) {
 
         // Parse stages from settings
         let stages: StageConfig[] = defaultStages
-        const typedSettings = (stageSettings || []) as TenantSettingRow[]
+        const typedSettings = (stageSettings || []) as unknown as TenantSettingRow[]
         if (typedSettings.length > 0) {
           try {
             // Check for new format: single 'opportunities.stages' key with array value
@@ -495,7 +502,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityRecord[] = ((opportunities || []) as OpportunityWithAccountJoin[]).map((opp) => {
+        const records: OpportunityRecord[] = ((opportunities || []) as unknown as OpportunityWithAccountJoin[]).map((opp) => {
           const probability = getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           return {
@@ -539,7 +546,7 @@ export async function GET(request: NextRequest) {
 
         // Parse stages from settings
         let stages: StageConfig[] = defaultStages
-        const typedSettings = (stageSettings || []) as TenantSettingRow[]
+        const typedSettings = (stageSettings || []) as unknown as TenantSettingRow[]
         if (typedSettings.length > 0) {
           try {
             // Check for new format: single 'opportunities.stages' key with array value
@@ -616,7 +623,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
         }
 
-        const records: OpportunityRecord[] = ((opportunities || []) as OpportunityWithAccountJoin[]).map((opp) => {
+        const records: OpportunityRecord[] = ((opportunities || []) as unknown as OpportunityWithAccountJoin[]).map((opp) => {
           const probability = getStageProbability(opp.stage, stages)
           const value = opp.amount || 0
           return {

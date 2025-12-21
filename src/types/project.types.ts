@@ -98,8 +98,8 @@ export interface CreateProjectInput {
   stage?: string
   owner_id?: string
   department?: DepartmentId
-  start_date?: string
-  target_date?: string
+  start_date?: string | null
+  target_date?: string | null
   progress_percentage?: number
   related_account_id?: string
   related_event_id?: string
@@ -110,9 +110,6 @@ export interface CreateProjectInput {
 
 export interface UpdateProjectInput extends Partial<CreateProjectInput> {
   completed_date?: string | null
-  // Allow null for date fields when clearing dates
-  start_date?: string | null
-  target_date?: string | null
 }
 
 export interface ProjectWithRelations extends Project {

@@ -7,7 +7,10 @@ const log = createLogger('api:dashboard:stats')
 
 // Query result types for Supabase queries
 type EventBookedQueryResult = Pick<Tables<'events'>, 'id' | 'opportunity_id'>
-type InvoiceAmountQueryResult = Pick<Tables<'invoices'>, 'event_id' | 'total_amount'>
+interface InvoiceAmountQueryResult {
+  event_id: string | null
+  total_amount: number | null
+}
 type OpportunityAmountQueryResult = Pick<Tables<'opportunities'>, 'id' | 'amount'>
 
 export interface DashboardStatsResponse {

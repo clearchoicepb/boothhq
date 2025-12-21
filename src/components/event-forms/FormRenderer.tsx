@@ -58,8 +58,8 @@ export function FormRenderer({
     const initial: Record<string, string | string[] | null> = {}
 
     fields.forEach((field) => {
-      if (existingResponses?.[field.id] !== undefined) {
-        initial[field.id] = existingResponses[field.id]
+      if (existingResponses?.[field.id] != null) {
+        initial[field.id] = existingResponses[field.id] ?? null
       } else if (prefilled[field.id]) {
         initial[field.id] = prefilled[field.id]
       } else {

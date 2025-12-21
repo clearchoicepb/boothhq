@@ -11,6 +11,26 @@ interface PaymentStatusOption {
   status_color: string | null
 }
 
+type PaymentStatusValue = { name: string; color: string } | string | null | undefined
+
+/**
+ * Helper to get payment status name from payment_status which can be a string or object
+ */
+function getPaymentStatusName(status: PaymentStatusValue): string | undefined {
+  if (!status) return undefined
+  if (typeof status === 'string') return status
+  return status.name
+}
+
+/**
+ * Helper to get payment status color from payment_status which can be a string or object
+ */
+function getPaymentStatusColor(status: PaymentStatusValue): string | undefined {
+  if (!status) return undefined
+  if (typeof status === 'string') return undefined
+  return status.color
+}
+
 interface EventInformationCardProps {
   event: EventWithRelations
   paymentStatusOptions: PaymentStatusOption[]
@@ -60,7 +80,7 @@ export function EventInformationCard({
               <select
                 id="payment-status"
                 name="payment-status"
-                value={event.payment_status?.name || ''}
+                value={getPaymentStatusName(event.payment_status) || ''}
                 onChange={(e) => onUpdatePaymentStatus(e.target.value)}
                 className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
               >
@@ -82,8 +102,8 @@ export function EventInformationCard({
           ) : (
             <div className="flex items-center gap-2">
               <PaymentStatusBadge
-                status={event.payment_status?.name}
-                color={event.payment_status?.color}
+                status={getPaymentStatusName(event.payment_status)}
+                color={getPaymentStatusColor(event.payment_status)}
               />
               {canManageEvents && (
                 <button

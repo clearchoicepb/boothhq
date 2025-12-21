@@ -6,8 +6,8 @@
 import { apiClient } from '../apiClient'
 import type { Event, EventInsert, EventUpdate } from '@/lib/supabase-client'
 
-// Extended event type with relations
-export interface EventWithRelations extends Event {
+// Extended event type with relations (omits fields that are redefined)
+export interface EventWithRelations extends Omit<Event, 'location'> {
   account_name?: string | null
   account_type?: 'individual' | 'company' | null
   contact_name?: string | null

@@ -1,4 +1,4 @@
-import { Event as EventType } from '@/lib/supabase-client'
+import { Event as EventType, EventUpdate } from '@/lib/supabase-client'
 import { useEventDetail, useUpdateEvent, useDeleteEvent } from './useEventDetail'
 import { useEventDates } from './useEventDates'
 import type { EventDate } from '@/types/events'
@@ -10,8 +10,9 @@ export type { EventDate }
 
 /**
  * Event with related data (account, contact, opportunity names, category, type, payment status)
+ * Omits fields that are redefined with different types (joined data instead of raw values)
  */
-export interface EventWithRelations extends Omit<EventType, 'event_type'> {
+export interface EventWithRelations extends Omit<EventType, 'event_type' | 'payment_status'> {
   account_name: string | null
   contact_name: string | null // Legacy field
   opportunity_name: string | null
@@ -40,11 +41,11 @@ export interface EventWithRelations extends Omit<EventType, 'event_type'> {
   }
   event_type?: {
     name: string
-  }
+  } | string | null
   payment_status?: {
     name: string
     color: string
-  }
+  } | string | null
   event_dates?: Array<{
     id: string
     event_date: string
@@ -71,7 +72,7 @@ export function useEventData(eventId: string) {
   /**
    * Update event data with React Query mutation
    */
-  const updateEvent = async (data: Partial<EventType>) => {
+  const updateEvent = async (data: EventUpdate) => {
     try {
       await updateMutation.mutateAsync(data)
       return true

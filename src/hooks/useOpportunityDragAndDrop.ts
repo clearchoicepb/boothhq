@@ -6,7 +6,7 @@ const log = createLogger('hooks')
 
 interface UseOpportunityDragAndDropProps {
   opportunities: OpportunityWithRelations[]
-  setOpportunities: React.Dispatch<React.SetStateAction<OpportunityWithRelations[]>>
+  setOpportunities: (opportunities: OpportunityWithRelations[]) => void
   onShowCloseModal: (opportunity: OpportunityWithRelations, stage: 'closed_won' | 'closed_lost') => void
 }
 

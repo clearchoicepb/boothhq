@@ -13,7 +13,7 @@ const log = createLogger('ui')
 interface PhotoUploadProps {
   currentPhotoUrl?: string | null
   onPhotoChange: (photoUrl: string | null) => void
-  entityType: 'account' | 'contact'
+  entityType: 'account' | 'contact' | 'lead'
   entityName?: string
   websiteUrl?: string | null
   className?: string

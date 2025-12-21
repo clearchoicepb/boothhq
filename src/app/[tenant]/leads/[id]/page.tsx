@@ -28,14 +28,14 @@ const log = createLogger('id')
 interface Lead {
   id: string
   tenant_id: string
-  lead_type?: 'personal' | 'company'
+  lead_type: string
   first_name: string
   last_name: string
   email: string | null
   phone: string | null
   company: string | null
-  company_url?: string | null
-  photo_url?: string | null
+  company_url: string | null
+  photo_url: string | null
   source: string | null
   status: 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted'
   assigned_to: string | null

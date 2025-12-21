@@ -288,7 +288,7 @@ describe('EventValidator', () => {
       archived: false,
       archived_at: null,
       archived_by: null,
-    } as Event;
+    } as unknown as Event;
 
     it('should validate a valid event update', () => {
       const data = {

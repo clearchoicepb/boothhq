@@ -17,6 +17,7 @@ export interface RolePermissions {
   invoices: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   contracts: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   users: { view: boolean; create: boolean; edit: boolean; delete: boolean }
+  projects?: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   settings: { view: boolean; edit: boolean }
 }
 
