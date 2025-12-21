@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 import type { Event, EventDate, EventActivity, Communication } from '@/types/events'
+import type { EventWithRelations } from '@/hooks/useEventData'
 
 // ============================================================================
 // Modal State Interface
@@ -89,7 +90,7 @@ type RefreshKeyTypes = 'tasksKey'
 
 interface EventDetailContextValue {
   // Event data
-  event: Event | null
+  event: Event | EventWithRelations | null
   eventDates: EventDate[]
   loading: boolean
 
@@ -152,7 +153,7 @@ const EventDetailContext = createContext<EventDetailContextValue | undefined>(un
 
 interface EventDetailProviderProps {
   children: ReactNode
-  event: Event | null
+  event: Event | EventWithRelations | null
   eventDates: EventDate[]
   loading: boolean
   onEventUpdate?: () => void
@@ -199,6 +200,13 @@ export function EventDetailProvider({
     attachmentsRefreshTrigger: 0
   })
 
+  // Helper to extract payment status as string
+  const getPaymentStatusString = (status: string | { name: string; color: string } | null | undefined): string => {
+    if (!status) return ''
+    if (typeof status === 'string') return status
+    return status.name || ''
+  }
+
   // Editing state (consolidated - single source of truth for all editing)
   const [editing, setEditing] = useState<EditingState>({
     isEditingAccountContact: false,
@@ -207,7 +215,7 @@ export function EventDetailProvider({
     editEventPlannerId: event?.event_planner_id || '',
 
     isEditingPaymentStatus: false,
-    editPaymentStatus: event?.payment_status || '',
+    editPaymentStatus: getPaymentStatusString(event?.payment_status),
 
     isEditingDescription: false,
     editedDescription: event?.description || '',
@@ -326,7 +334,7 @@ export function EventDetailProvider({
     setEditing(prev => ({
       ...prev,
       isEditingPaymentStatus: true,
-      editPaymentStatus: event?.payment_status || ''
+      editPaymentStatus: getPaymentStatusString(event?.payment_status)
     }))
   }
 
@@ -343,7 +351,7 @@ export function EventDetailProvider({
     setEditing(prev => ({
       ...prev,
       isEditingPaymentStatus: false,
-      editPaymentStatus: event?.payment_status || ''
+      editPaymentStatus: getPaymentStatusString(event?.payment_status)
     }))
   }
 

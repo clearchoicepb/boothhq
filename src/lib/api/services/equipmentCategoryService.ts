@@ -59,7 +59,7 @@ export interface EquipmentCategory {
  */
 export interface CategoryInsert {
   name: string
-  description?: string
+  description?: string | null
   color?: string
   enabled?: boolean
   requires_maintenance?: boolean
@@ -67,9 +67,9 @@ export interface CategoryInsert {
   maintenance_reminder_days?: number
   category_type?: 'equipment' | 'consumable'
   is_consumable?: boolean
-  estimated_consumption_per_event?: number
-  unit_of_measure?: string
-  low_stock_threshold?: number
+  estimated_consumption_per_event?: number | null
+  unit_of_measure?: string | null
+  low_stock_threshold?: number | null
   auto_track_usage?: boolean
   sort_order?: number
 }

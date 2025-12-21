@@ -35,9 +35,9 @@ export interface EventCategory {
 
 /** Event type data when joined with events */
 export interface EventType {
-  id: string
+  id?: string
   name: string
-  slug: string
+  slug?: string
   event_category_id?: string
 }
 
@@ -155,7 +155,7 @@ export interface Event {
   title: string
   status: string
   start_date: string
-  event_type: string
+  event_type?: string | EventType | null
   created_at: string
 
   // Core database fields (optional)
@@ -223,6 +223,7 @@ export interface CalendarEvent {
   end_time?: string | null
   status: string
   event_type?: string
+  event_id?: string  // Reference to parent event for multi-date events
 }
 
 /** Minimal event type for account events list */

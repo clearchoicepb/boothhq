@@ -120,6 +120,7 @@ export default function OpportunitiesSettingsPage() {
       id: `stage_${Date.now()}`,
       name: 'New Stage',
       probability: 50,
+      color: '#6B7280',
       backgroundColor: '#6B7280',
       textColor: '#FFFFFF',
       enabled: true

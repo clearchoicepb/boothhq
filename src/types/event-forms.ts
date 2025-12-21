@@ -57,7 +57,7 @@ export interface FormFieldWithValue extends FormField {
  * Structure for storing form responses
  */
 export interface FormResponses {
-  [fieldId: string]: string | string[] | null  // Field ID maps to response value
+  [fieldId: string]: string | string[] | null | undefined  // Field ID maps to response value
   _submittedAt?: string                         // ISO timestamp of submission
   _submittedBy?: string                         // Email or name if captured
   _submitterIp?: string                         // IP address for audit

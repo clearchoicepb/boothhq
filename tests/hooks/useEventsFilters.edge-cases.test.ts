@@ -559,7 +559,7 @@ describe('useEventsFilters - Edge Cases', () => {
 
         const incompleteTasks = result.current.getIncompleteTasks(event)
         expect(incompleteTasks).toHaveLength(2)
-        expect(incompleteTasks.map(t => t.id)).toEqual(['task-2', 'task-3'])
+        expect(incompleteTasks).toEqual(['task-2', 'task-3'])
       })
 
       it('should handle null task_completions array', () => {
@@ -739,7 +739,7 @@ describe('useEventsFilters - Edge Cases', () => {
         useEventsFilters({ events, coreTasks: [] })
       )
 
-      const sortModes = ['date_asc', 'date_desc', 'title_asc', 'title_desc', 'account_asc', 'account_desc']
+      const sortModes = ['date_asc', 'date_desc', 'title_asc', 'title_desc', 'account_asc', 'account_desc'] as const
 
       // Rapidly cycle through sort modes
       sortModes.forEach(mode => {

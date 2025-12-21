@@ -173,7 +173,7 @@ export class DataSourceManager {
     // Fetch tenant connection config
     const { config } = await this.getTenantConnectionConfig(tenantId);
 
-    log.debug('Creating client for tenant:', tenantId, 'URL:', config.supabaseUrl);
+    log.debug({ tenantId }, 'Creating client for tenant');
 
     // Create Supabase client
     const key = useServiceRole ? config.supabaseServiceKey : config.supabaseAnonKey;

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { EventWithRelations } from './useEventData'
+import type { EventUpdate } from '@/lib/supabase-client'
 import { queryKeys } from '@/lib/queryKeys'
 import { createLogger } from '@/lib/logger'
 import toast from 'react-hot-toast'
@@ -33,7 +34,7 @@ export function useUpdateEvent(eventId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: Partial<EventWithRelations>) => {
+    mutationFn: async (data: EventUpdate) => {
       const response = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
