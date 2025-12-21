@@ -361,7 +361,11 @@ export function InventoryItemsListEnterprise() {
         onFiltersChange={setFilters}
         categories={categories}
         productGroups={productGroups}
-        users={tenantUsers}
+        users={tenantUsers.map(u => ({
+          id: u.id,
+          first_name: u.first_name ?? 'Unknown',
+          last_name: u.last_name ?? ''
+        }))}
         physicalAddresses={physicalAddresses}
         onSaveView={() => setIsSavedViewsModalOpen(true)}
         counts={counts}

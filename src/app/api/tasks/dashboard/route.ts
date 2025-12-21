@@ -19,6 +19,7 @@ interface EventInfo {
 interface ProjectInfo {
   id: string
   name: string
+  target_date: string | null
 }
 
 /**
@@ -169,7 +170,7 @@ export async function GET(request: NextRequest) {
     if (uniqueProjectIds.length > 0) {
       const { data: projects } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id, name, target_date')
         .eq('tenant_id', dataSourceTenantId)
         .in('id', uniqueProjectIds)
 

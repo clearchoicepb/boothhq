@@ -2,20 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { maintenanceService } from '@/lib/api/services/maintenanceService'
+import { maintenanceService, type MaintenanceStats } from '@/lib/api/services/maintenanceService'
 import { MaintenanceItemCard } from './maintenance-item-card'
 import { CompleteMaintenanceModal } from './complete-maintenance-modal'
 import { Wrench, AlertTriangle, CheckCircle, Clock, TrendingUp } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('maintenance')
-
-interface MaintenanceStats {
-  total_due: number
-  overdue: number
-  upcoming: number
-  completed_this_month: number
-}
 
 export function MaintenanceDashboard() {
   const [stats, setStats] = useState<MaintenanceStats | null>(null)
@@ -72,31 +65,31 @@ export function MaintenanceDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
           title="Overdue"
-          value={stats?.overdue || 0}
+          value={stats?.items_overdue || 0}
           icon={AlertTriangle}
           color="red"
           description="Needs immediate attention"
         />
         <StatCard
           title="Due Soon"
-          value={stats?.total_due || 0}
+          value={stats?.items_due_soon || 0}
           icon={Clock}
           color="yellow"
           description="Within next 7 days"
         />
         <StatCard
-          title="Upcoming"
-          value={stats?.upcoming || 0}
+          title="Total Records"
+          value={stats?.total_maintenance_records || 0}
           icon={Wrench}
           color="blue"
-          description="Scheduled maintenance"
+          description="All maintenance records"
         />
         <StatCard
-          title="Completed"
-          value={stats?.completed_this_month || 0}
+          title="Average Cost"
+          value={stats?.average_cost ? `$${stats.average_cost.toFixed(0)}` : '$0'}
           icon={CheckCircle}
           color="green"
-          description="This month"
+          description="Per maintenance"
         />
       </div>
 
@@ -179,7 +172,7 @@ export function MaintenanceDashboard() {
 
 interface StatCardProps {
   title: string
-  value: number
+  value: number | string
   icon: React.ComponentType<{ className?: string }>
   color: 'red' | 'yellow' | 'blue' | 'green'
   description: string

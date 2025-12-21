@@ -11,10 +11,10 @@ interface Contact {
   id: string
   first_name: string
   last_name: string
-  email?: string
-  phone?: string
-  account_id?: string
-  title?: string
+  email?: string | null
+  phone?: string | null
+  account_id?: string | null
+  title?: string | null
 }
 
 interface ContactSelectProps {
