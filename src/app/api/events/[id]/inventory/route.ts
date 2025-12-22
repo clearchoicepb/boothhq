@@ -8,13 +8,14 @@ const log = createLogger('api:events')
 // GET /api/events/[id]/inventory - Get all inventory assigned to an event or available inventory
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId } = context
+    const params = await routeContext.params
     const eventId = params.id
     const { searchParams } = new URL(request.url)
     const includeAvailable = searchParams.get('include_available') === 'true'
@@ -61,10 +62,10 @@ export async function GET(
       .order('created_at', { ascending: false })
 
     if (assignedError) {
-      return NextResponse.json({
-        error: 'Failed to fetch assigned inventory',
-        details: assignedError.message
-      }, { status: 500 })
+      // Log the error but continue - inventory_assignments table may have RLS issues
+      // or be empty. We can still show available inventory.
+      log.error({ assignedError }, 'Failed to fetch assigned inventory (continuing with empty array)')
+      // Don't return error - just use empty array for assigned items
     }
 
     // Transform assignments into inventory items with quantity info
@@ -81,25 +82,34 @@ export async function GET(
     // If include_available, fetch warehouse items, staff equipment, and product groups
     if (includeAvailable) {
       // Get all staff assigned to this event
-      const { data: eventStaff } = await supabase
+      const { data: eventStaff, error: eventStaffError } = await supabase
         .from('event_staff_assignments')
         .select('user_id')
         .eq('tenant_id', dataSourceTenantId)
         .eq('event_id', eventId)
 
+      if (eventStaffError) {
+        log.error({ eventStaffError }, 'Failed to fetch event staff')
+      }
+
       const eventStaffIds = eventStaff?.map((s: { user_id: string }) => s.user_id) || []
 
-      // Build query for available items
-      let availableQuery = supabase
+      // Build query for available items - removed event_id filter as assignments are now tracked in inventory_assignments table
+      const { data: allItems, error: allItemsError } = await supabase
         .from('inventory_items')
         .select('*, product_group_items!left(product_group_id)')
         .eq('tenant_id', dataSourceTenantId)
-        .is('event_id', null) // Not already assigned to an event
 
-      // Filter: warehouse items OR staff items (if staff is on this event)
-      // We'll filter in code since Supabase doesn't support complex OR conditions easily
+      if (allItemsError) {
+        log.error({ allItemsError, tenant: dataSourceTenantId }, 'Failed to fetch available inventory items')
+        return NextResponse.json({
+          error: 'Failed to fetch available inventory',
+          details: allItemsError.message,
+          code: allItemsError.code
+        }, { status: 500 })
+      }
 
-      const { data: allItems } = await availableQuery
+      log.debug({ itemCount: allItems?.length || 0 }, 'Fetched inventory items')
 
       if (allItems) {
         availableInventory = allItems.filter((item: any) => {
@@ -137,10 +147,14 @@ export async function GET(
       )]
 
       if (groupIds.length > 0) {
-        const { data: groups } = await supabase
+        const { data: groups, error: groupsError } = await supabase
           .from('product_groups')
           .select('id, group_name, assigned_to_type, assigned_to_id')
           .in('id', groupIds)
+
+        if (groupsError) {
+          log.error({ groupsError }, 'Failed to fetch product groups for filtering')
+        }
 
         const groupsMap = new Map(groups?.map((g: any) => [g.id, g]) || [])
 
@@ -160,7 +174,7 @@ export async function GET(
       }
 
       // Fetch available product groups
-      const { data: allGroups } = await supabase
+      const { data: allGroups, error: allGroupsError } = await supabase
         .from('product_groups')
         .select(`
           *,
@@ -171,6 +185,10 @@ export async function GET(
         `)
         .eq('tenant_id', dataSourceTenantId)
         .order('group_name', { ascending: true })
+
+      if (allGroupsError) {
+        log.error({ allGroupsError }, 'Failed to fetch all product groups')
+      }
 
       if (allGroups) {
         availableProductGroups = allGroups.filter((group: any) => {
@@ -216,10 +234,14 @@ export async function GET(
       // Fetch users
       const usersMap = new Map()
       if (userIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: usersError } = await supabase
           .from('users')
           .select('id, first_name, last_name')
           .in('id', userIds)
+
+        if (usersError) {
+          log.error({ usersError }, 'Failed to fetch users for enrichment')
+        }
 
         users?.forEach((user: any) => {
           usersMap.set(user.id, `${user.first_name} ${user.last_name}`)
@@ -229,10 +251,14 @@ export async function GET(
       // Fetch locations
       const locationsMap = new Map()
       if (locationIds.length > 0) {
-        const { data: locations } = await supabase
+        const { data: locations, error: locationsError } = await supabase
           .from('physical_addresses')
           .select('id, location_name')
           .in('id', locationIds)
+
+        if (locationsError) {
+          log.error({ locationsError }, 'Failed to fetch locations for enrichment')
+        }
 
         locations?.forEach((location: any) => {
           locationsMap.set(location.id, location.location_name)
@@ -242,10 +268,14 @@ export async function GET(
       // Fetch groups
       const groupsMap = new Map()
       if (groupIds.length > 0) {
-        const { data: groups } = await supabase
+        const { data: groups, error: enrichGroupsError } = await supabase
           .from('product_groups')
           .select('id, group_name')
           .in('id', groupIds)
+
+        if (enrichGroupsError) {
+          log.error({ enrichGroupsError }, 'Failed to fetch groups for enrichment')
+        }
 
         groups?.forEach((group: any) => {
           groupsMap.set(group.id, group.group_name)
@@ -278,10 +308,14 @@ export async function GET(
       // Fetch users
       const groupUsersMap = new Map()
       if (groupUserIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: groupUsersError } = await supabase
           .from('users')
           .select('id, first_name, last_name')
           .in('id', groupUserIds)
+
+        if (groupUsersError) {
+          log.error({ groupUsersError }, 'Failed to fetch group users for enrichment')
+        }
 
         users?.forEach((user: any) => {
           groupUsersMap.set(user.id, `${user.first_name} ${user.last_name}`)
@@ -291,10 +325,14 @@ export async function GET(
       // Fetch locations
       const groupLocationsMap = new Map()
       if (groupLocationIds.length > 0) {
-        const { data: locations } = await supabase
+        const { data: locations, error: groupLocationsError } = await supabase
           .from('physical_addresses')
           .select('id, location_name')
           .in('id', groupLocationIds)
+
+        if (groupLocationsError) {
+          log.error({ groupLocationsError }, 'Failed to fetch group locations for enrichment')
+        }
 
         locations?.forEach((location: any) => {
           groupLocationsMap.set(location.id, location.location_name)
@@ -338,10 +376,12 @@ export async function GET(
       by_staff: Array.from(inventoryByStaff.values())
     })
   } catch (error) {
+    console.error('Inventory API error:', error)
     log.error({ error }, 'Event inventory error')
     return NextResponse.json({
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : String(error),
+      stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
     }, { status: 500 })
   }
 }
@@ -349,7 +389,7 @@ export async function GET(
 // POST /api/events/[id]/inventory - Assign inventory item to event
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -360,6 +400,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await routeContext.params
     const eventId = params.id
     const body = await request.json()
     const { 
@@ -507,13 +548,14 @@ export async function POST(
 // DELETE /api/events/[id]/inventory - Remove inventory assignment from event
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId } = context
+    const params = await routeContext.params
     const eventId = params.id
     const { searchParams } = new URL(request.url)
     const assignmentIds = searchParams.get('assignment_ids')?.split(',') || []
