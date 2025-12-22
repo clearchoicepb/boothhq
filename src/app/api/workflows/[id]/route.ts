@@ -47,16 +47,6 @@ export async function GET(
             task_type,
             default_priority
           ),
-          design_item_type:design_item_types(
-            id,
-            name,
-            type,
-            category,
-            default_design_days,
-            default_production_days,
-            default_shipping_days,
-            client_approval_buffer_days
-          ),
           assigned_to_user:users(
             id,
             first_name,
@@ -175,16 +165,6 @@ export async function PATCH(
             department,
             task_type,
             default_priority
-          ),
-          design_item_type:design_item_types(
-            id,
-            name,
-            type,
-            category,
-            default_design_days,
-            default_production_days,
-            default_shipping_days,
-            client_approval_buffer_days
           ),
           assigned_to_user:users(
             id,
