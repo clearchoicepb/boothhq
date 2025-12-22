@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('id, status, entity_id, title, description, priority, due_date, assigned_to, completed_at')
+        .eq('tenant_id', dataSourceTenantId)
         .eq('entity_type', 'event')
         .in('entity_id', eventIds)
 
