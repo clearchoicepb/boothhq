@@ -5,7 +5,8 @@ import { Calendar, MapPin, Building2, User, CheckCircle2, Clock, ExternalLink } 
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
-import type { Event, EventDate, TaskCompletion } from '@/types/events'
+import { isTaskCompleted } from '@/lib/utils/event-readiness'
+import type { Event, EventDate, EventTask } from '@/types/events'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('events')
@@ -194,24 +195,27 @@ export function EventPreviewModal({
               )}
 
               {/* Task Progress */}
-              {event.task_completions && event.task_completions.length > 0 && (
+              {event.event_tasks && event.event_tasks.length > 0 && (
                 <div className="border-t border-gray-200 pt-4">
                   <p className="mb-3 text-sm font-medium text-gray-900">Tasks</p>
                   <div className="space-y-2">
-                    {event.task_completions.map((task: TaskCompletion, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
-                        {task.is_completed ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-gray-400" />
-                        )}
-                        <span
-                          className={`text-sm ${task.is_completed ? 'text-gray-600 line-through' : 'text-gray-900'}`}
-                        >
-                          Task {index + 1}
-                        </span>
-                      </div>
-                    ))}
+                    {event.event_tasks.map((task: EventTask) => {
+                      const completed = isTaskCompleted(task.status)
+                      return (
+                        <div key={task.id} className="flex items-center gap-2">
+                          {completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-gray-400" />
+                          )}
+                          <span
+                            className={`text-sm ${completed ? 'text-gray-600 line-through' : 'text-gray-900'}`}
+                          >
+                            {task.title || 'Unnamed Task'}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

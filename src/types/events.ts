@@ -41,13 +41,45 @@ export interface EventType {
   event_category_id?: string
 }
 
-/** Task completion data for core tasks */
+/** Task completion data for core tasks @deprecated - Use EventTask instead */
 export interface TaskCompletion {
   event_id: string
   core_task_template_id: string
   is_completed: boolean
   completed_at: string | null
   completed_by: string | null
+}
+
+/**
+ * Task data from the unified tasks table
+ * Used for event readiness calculation
+ */
+export interface EventTask {
+  id: string
+  status: string
+  entity_id?: string | null
+  title?: string
+  description?: string | null
+  priority?: string
+  due_date?: string | null
+  assigned_to?: string | null
+  completed_at?: string | null
+}
+
+/**
+ * Event readiness summary based on Tasks
+ */
+export interface EventReadiness {
+  /** Total number of tasks for this event */
+  total: number
+  /** Number of completed tasks (status = 'completed' or 'approved') */
+  completed: number
+  /** Percentage complete (0-100) */
+  percentage: number
+  /** Whether the event is considered ready (100% complete) */
+  isReady: boolean
+  /** Whether the event has any tasks */
+  hasTasks: boolean
 }
 
 /** Staff assignment data */
@@ -197,7 +229,12 @@ export interface Event {
   event_dates?: EventDate[]
   primary_contact?: EventPrimaryContact | null
 
-  // Task/workflow fields
+  // Task/workflow fields - New Tasks-based readiness
+  tasks_ready?: boolean
+  task_readiness?: EventReadiness
+  event_tasks?: EventTask[]
+
+  // Legacy fields - kept for backward compatibility @deprecated
   core_tasks_ready?: boolean
   task_completions?: TaskCompletion[]
 

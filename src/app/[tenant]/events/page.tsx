@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDateShort, getDaysUntil, isDateToday } from '@/lib/utils/date-utils'
 import { getEventPriority } from '@/lib/utils/event-priority'
+import { calculateTaskProgress } from '@/hooks/useEventReadiness'
 import { TaskIndicator } from '@/components/opportunities/task-indicator'
 import { exportToCSV } from '@/lib/csv-export'
 import { EventTimelineView } from '@/components/events/event-timeline-view'
@@ -25,6 +26,7 @@ import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters, type SortOption } from '@/hooks/useEventsFilters'
 import { eventsService } from '@/lib/api/services/eventsService'
+import { tasksService } from '@/lib/api/services/tasksService'
 import type { Event, EventDate } from '@/types/events'
 import type { EventCoreTaskCompletion } from '@/types/api-responses'
 import { createLogger } from '@/lib/logger'
@@ -200,19 +202,20 @@ export default function EventsPage() {
       // Tasks are per event, not per date, so fetch using original event ID
       // But store under displayId so each row has its own task display
       if (!eventTaskCompletions[displayId]) {
-        await fetchEventTaskCompletions(displayId, originalEventId)
+        await fetchEventTasks(displayId, originalEventId)
       }
     }
   }
 
-  // Fetch task completions for a specific event
+  // Fetch tasks for a specific event from the unified tasks table
   // displayId: unique ID for the row (may include event date ID for multi-date events)
   // originalEventId: the actual event ID to fetch tasks from the API
-  const fetchEventTaskCompletions = async (displayId: string, originalEventId: string) => {
+  const fetchEventTasks = async (displayId: string, originalEventId: string) => {
     setLoadingTasks(prev => new Set(prev).add(displayId))
 
     try {
-      const tasks = await eventsService.getCoreTasks(originalEventId)
+      // Fetch tasks where entity_type = 'event' and entity_id = eventId
+      const tasks = await tasksService.getByEntity('event', originalEventId)
       setEventTaskCompletions(prev => ({
         ...prev,
         [displayId]: tasks
@@ -568,12 +571,11 @@ export default function EventsPage() {
                     const displayLocation = currentEventDate?.locations?.name || event.location || 'No location'
                     const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
 
-                    // Get incomplete tasks for this event
-                    const incompleteTaskIds = getIncompleteTasks(event)
-                    const incompleteCount = incompleteTaskIds.length
-                    const totalTasks = coreTasks.length
-                    const completedTasks = totalTasks - incompleteCount
-                    const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
+                    // Get task progress using the new Tasks-based calculation
+                    const taskProgress = calculateTaskProgress(event)
+                    const totalTasks = taskProgress.total
+                    const completedTasks = taskProgress.completed
+                    const taskCompletionPercentage = taskProgress.percentage
 
                     // Calculate priority level using shared utility (now based on specific event date)
                     const { level: priorityLevel, config: priority } = getEventPriority(daysUntil)
@@ -748,7 +750,7 @@ export default function EventsPage() {
                             }`}>
                               {event.status || 'Unknown'}
                             </span>
-                            {event.core_tasks_ready && (
+                            {event.tasks_ready && (
                               <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                 Ready
@@ -845,11 +847,12 @@ export default function EventsPage() {
               const displayDate = event.start_date ? formatDateShort(event.start_date) : 'No date'
               const displayLocation = currentEventDate?.locations?.name || event.location || 'No location'
               const daysUntil = event.start_date ? getDaysUntil(event.start_date) : null
-              const incompleteTaskIds = getIncompleteTasks(event)
-              const incompleteCount = incompleteTaskIds.length
-              const totalTasks = coreTasks.length
-              const completedTasks = totalTasks - incompleteCount
-              const taskCompletionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
+
+              // Get task progress using the new Tasks-based calculation
+              const mobileTaskProgress = calculateTaskProgress(event)
+              const totalTasks = mobileTaskProgress.total
+              const completedTasks = mobileTaskProgress.completed
+              const taskCompletionPercentage = mobileTaskProgress.percentage
 
               // Calculate priority level using shared utility (now based on specific event date)
               const { level: priorityLevel, config: priority } = getEventPriority(daysUntil)
@@ -992,7 +995,7 @@ export default function EventsPage() {
                             style={{ width: `${taskCompletionPercentage}%` }}
                           />
                         </div>
-                        {event.core_tasks_ready && (
+                        {event.tasks_ready && (
                           <div className="flex items-center gap-1 mt-2">
                             <CheckCircle2 className="w-4 h-4 text-green-600" />
                             <span className="text-xs font-semibold text-green-700">Ready for Event</span>

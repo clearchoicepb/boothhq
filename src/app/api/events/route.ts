@@ -3,6 +3,8 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { workflowEngine } from '@/lib/services/workflowEngine'
 import { revalidatePath } from 'next/cache'
 import { createLogger } from '@/lib/logger'
+import { calculateBulkEventReadiness } from '@/lib/utils/event-readiness'
+import type { TaskForReadiness, EventReadiness } from '@/lib/utils/event-readiness'
 
 const log = createLogger('api:events')
 
@@ -66,48 +68,41 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // Fetch core task completion data for all events
+    // Fetch tasks for all events (from the unified tasks table)
+    // A task is completed if status = 'completed' OR 'approved'
     const eventIds = data?.map(e => e.id) || []
-    let coreTasksStatus: Record<string, boolean> = {}
-    let eventTaskCompletions: Record<string, any[]> = {}
+    let eventReadiness: Record<string, EventReadiness> = {}
+    let eventTasks: Record<string, TaskForReadiness[]> = {}
 
     if (eventIds.length > 0) {
-      const { data: coreTasksData, error: tasksError } = await supabase
-        .from('event_core_task_completion')
-        .select('event_id, core_task_template_id, is_completed, completed_at, completed_by')
-        .in('event_id', eventIds)
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, status, entity_id, title, description, priority, due_date, assigned_to, completed_at')
+        .eq('entity_type', 'event')
+        .in('entity_id', eventIds)
 
-      log.debug({ 
-        eventCount: eventIds.length, 
-        taskCompletionsFound: coreTasksData?.length || 0,
-        error: tasksError 
-      }, 'Core tasks query result')
+      log.debug({
+        eventCount: eventIds.length,
+        tasksFound: tasksData?.length || 0,
+        error: tasksError
+      }, 'Tasks query result')
 
-      // Group completion data by event_id
-      if (coreTasksData) {
-        coreTasksData.forEach(task => {
-          if (!eventTaskCompletions[task.event_id]) {
-            eventTaskCompletions[task.event_id] = []
+      if (tasksData) {
+        // Group tasks by event_id
+        tasksData.forEach(task => {
+          if (task.entity_id) {
+            if (!eventTasks[task.entity_id]) {
+              eventTasks[task.entity_id] = []
+            }
+            eventTasks[task.entity_id].push(task as TaskForReadiness)
           }
-          eventTaskCompletions[task.event_id].push(task)
         })
 
-        // Determine if event is ready (all core tasks completed)
-        const grouped = coreTasksData.reduce((acc, task) => {
-          if (!acc[task.event_id]) {
-            acc[task.event_id] = { total: 0, completed: 0 }
-          }
-          acc[task.event_id].total++
-          if (task.is_completed) {
-            acc[task.event_id].completed++
-          }
-          return acc
-        }, {} as Record<string, { total: number; completed: number }>)
-
-        Object.keys(grouped).forEach(eventId => {
-          const status = grouped[eventId]
-          coreTasksStatus[eventId] = status.total > 0 && status.total === status.completed
-        })
+        // Calculate readiness using the new utility function
+        eventReadiness = calculateBulkEventReadiness(
+          tasksData as TaskForReadiness[],
+          eventIds
+        )
       }
     }
 
@@ -162,16 +157,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Transform the data to include account_name, contact_name, core_tasks_ready, task_completions, and staff assignments
-    const transformedData = data?.map(event => ({
-      ...event,
-      account_name: event.accounts?.name || null,
-      contact_name: event.contacts ?
-        `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null,
-      core_tasks_ready: coreTasksStatus[event.id] || false,
-      task_completions: eventTaskCompletions[event.id] || [],
-      event_staff_assignments: staffAssignmentsByEvent[event.id] || []
-    })) || []
+    // Transform the data to include account_name, contact_name, readiness, and staff assignments
+    const transformedData = data?.map(event => {
+      const readiness = eventReadiness[event.id] || {
+        total: 0,
+        completed: 0,
+        percentage: 0,
+        isReady: false,
+        hasTasks: false
+      }
+
+      return {
+        ...event,
+        account_name: event.accounts?.name || null,
+        contact_name: event.contacts ?
+          `${event.contacts.first_name} ${event.contacts.last_name}`.trim() : null,
+        // New Tasks-based readiness
+        tasks_ready: readiness.isReady,
+        task_readiness: readiness,
+        event_tasks: eventTasks[event.id] || [],
+        // Keep legacy field for backward compatibility during transition
+        core_tasks_ready: readiness.isReady,
+        task_completions: [], // Empty - no longer using Core Tasks
+        event_staff_assignments: staffAssignmentsByEvent[event.id] || []
+      }
+    }) || []
 
     const response = NextResponse.json(transformedData)
     
