@@ -5,14 +5,16 @@
  *
  * Department-categorized action configuration card
  * Supports:
- * - General: Create Task
- * - Design: Create Design Item
+ * - Create Task (organized by department)
+ * - Assign Event Role
+ * - Communication actions (email, notification)
  */
 
-import { useState, useEffect } from 'react'
-import { Trash2, ClipboardCheck, Palette, User, Loader2, Info, Briefcase, UserPlus, Mail, Bell, UserCheck } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Trash2, ClipboardCheck, User, Loader2, Info, UserPlus, Mail, Bell, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { WorkflowBuilderAction, WorkflowActionType } from '@/types/workflows'
+import { DEPARTMENTS, type DepartmentId } from '@/lib/departments'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('workflows')
@@ -22,29 +24,7 @@ interface TaskTemplate {
   name: string
   default_title: string
   department: string
-}
-
-interface DesignItemType {
-  id: string
-  name: string
-  type: 'digital' | 'physical'
-  category: string
-  default_design_days: number
-  default_production_days: number
-  default_shipping_days: number
-  client_approval_buffer_days: number
-}
-
-interface OperationsItemType {
-  id: string
-  name: string
-  description: string | null
-  category: 'equipment' | 'staffing' | 'logistics' | 'venue' | 'setup' | 'other'
-  due_date_days: number
-  urgent_threshold_days: number
-  missed_deadline_days: number
-  is_auto_added: boolean
-  is_active: boolean
+  task_type: string | null
 }
 
 interface UserOption {
@@ -71,12 +51,8 @@ interface ActionCardProps {
 
 export default function ActionCard({ action, index, onUpdate, onDelete }: ActionCardProps) {
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([])
-  const [designItemTypes, setDesignItemTypes] = useState<DesignItemType[]>([])
-  const [opsItemTypes, setOpsItemTypes] = useState<OperationsItemType[]>([])
   const [staffRoles, setStaffRoles] = useState<StaffRole[]>([])
   const [users, setUsers] = useState<UserOption[]>([])
-  const [designers, setDesigners] = useState<UserOption[]>([])
-  const [opsTeam, setOpsTeam] = useState<UserOption[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -93,13 +69,6 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
         const templates = await templatesRes.json()
         setTaskTemplates(Array.isArray(templates) ? templates : [])
       }
-
-      // Design item types are now deprecated - use task templates with task_type='design' instead
-      // The create_design_item and create_ops_item actions are deprecated
-      // New workflows should use create_task with appropriate task templates
-      log.debug('Design and operations types deprecated - use task templates instead')
-      setDesignItemTypes([])
-      setOpsItemTypes([])
 
       // Fetch staff roles (for assign_event_role actions)
       log.debug('Fetching staff roles...')
@@ -118,76 +87,56 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
       if (usersRes.ok) {
         const usersData = await usersRes.json()
         setUsers(Array.isArray(usersData) ? usersData : [])
-
-        // Filter users by department
-        const allUsers = Array.isArray(usersData) ? usersData : []
-
-        // Helper to get user's departments (checks array first, falls back to legacy singular)
-        const getUserDepartments = (user: any): string[] => {
-          if (user.departments && Array.isArray(user.departments) && user.departments.length > 0) {
-            return user.departments
-          }
-          return user.department ? [user.department] : []
-        }
-
-        // Filter designers (users with 'design' department)
-        setDesigners(allUsers.filter(u => {
-          const depts = getUserDepartments(u)
-          return depts.some(d => d.toLowerCase().includes('design'))
-        }))
-        // Filter operations team (users with 'operations' or 'ops' department)
-        setOpsTeam(allUsers.filter(u => {
-          const depts = getUserDepartments(u)
-          return depts.some(d =>
-            d.toLowerCase().includes('operations') ||
-            d.toLowerCase().includes('ops')
-          )
-        }))
       }
     } catch (error) {
       log.error({ error }, 'Error fetching data')
       setTaskTemplates([])
-      setDesignItemTypes([])
-      setOpsItemTypes([])
       setStaffRoles([])
       setUsers([])
-      setDesigners([])
-      setOpsTeam([])
     } finally {
       setLoading(false)
     }
   }
 
+  // Group task templates by department for organized dropdown
+  const templatesByDepartment = useMemo(() => {
+    const grouped: Record<string, TaskTemplate[]> = {}
+    taskTemplates.forEach(template => {
+      const dept = template.department || 'other'
+      if (!grouped[dept]) grouped[dept] = []
+      grouped[dept].push(template)
+    })
+    // Sort by department display order
+    const sortedDepts = Object.keys(grouped).sort((a, b) => {
+      const deptA = DEPARTMENTS[a as DepartmentId]
+      const deptB = DEPARTMENTS[b as DepartmentId]
+      if (!deptA) return 1
+      if (!deptB) return -1
+      return deptA.name.localeCompare(deptB.name)
+    })
+    return sortedDepts.map(dept => ({
+      department: dept,
+      name: DEPARTMENTS[dept as DepartmentId]?.name || dept,
+      templates: grouped[dept]
+    }))
+  }, [taskTemplates])
+
   const selectedTemplate = taskTemplates.find(t => t.id === action.taskTemplateId)
-  const selectedDesignItemType = designItemTypes.find(d => d.id === action.designItemTypeId)
-  const selectedOpsItemType = opsItemTypes.find(o => o.id === action.operationsItemTypeId)
   const selectedStaffRole = staffRoles.find(r => r.id === action.staffRoleId)
   const selectedUser = users.find(u => u.id === action.assignedToUserId)
 
-  // Action type metadata
-  const ACTION_TYPE_METADATA: Record<WorkflowActionType, {
+  // Action type metadata (only active action types)
+  const ACTION_TYPE_METADATA: Partial<Record<WorkflowActionType, {
     label: string
     icon: React.ComponentType<{ className?: string }>
     color: string
     department: string
-  }> = {
+  }>> = {
     create_task: {
       label: 'Create Task',
       icon: ClipboardCheck,
       color: 'blue',
       department: 'General Tasks',
-    },
-    create_design_item: {
-      label: 'Create Design Item',
-      icon: Palette,
-      color: 'purple',
-      department: 'Design Department',
-    },
-    create_ops_item: {
-      label: 'Create Operations Item',
-      icon: Briefcase,
-      color: 'amber',
-      department: 'Operations Department',
     },
     assign_event_role: {
       label: 'Assign Event Role',
@@ -215,18 +164,13 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
     },
   }
 
-  const metadata = ACTION_TYPE_METADATA[action.actionType]
-  const Icon = metadata.icon
-
-  // Calculate total timeline for design items
-  const getTotalTimeline = (designType: DesignItemType) => {
-    const total =
-      designType.default_design_days +
-      designType.default_production_days +
-      designType.default_shipping_days +
-      designType.client_approval_buffer_days
-    return total
+  const metadata = ACTION_TYPE_METADATA[action.actionType] || {
+    label: action.actionType,
+    icon: ClipboardCheck,
+    color: 'gray',
+    department: 'Unknown',
   }
+  const Icon = metadata.icon
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -280,8 +224,6 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
             >
               <optgroup label="Creation Actions">
                 <option value="create_task">Create Task</option>
-                <option value="create_design_item">Create Design Item</option>
-                <option value="create_ops_item">Create Operations Item</option>
               </optgroup>
               <optgroup label="Assignment Actions">
                 <option value="assign_event_role">Assign Event Role</option>
@@ -297,7 +239,7 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
           {/* Conditional Fields based on Action Type */}
           {action.actionType === 'create_task' && (
             <>
-              {/* Task Template Selection */}
+              {/* Task Template Selection - Organized by Department */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Task Template *
@@ -308,15 +250,20 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
                 >
                   <option value="">Select a task template...</option>
-                  {taskTemplates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name} - {template.default_title}
-                    </option>
+                  {templatesByDepartment.map(({ department, name, templates }) => (
+                    <optgroup key={department} label={name}>
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name} - {template.default_title}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
                 {selectedTemplate && (
                   <div className="mt-2 text-xs text-gray-500">
-                    Department: {selectedTemplate.department} | Default: {selectedTemplate.default_title}
+                    Department: {DEPARTMENTS[selectedTemplate.department as DepartmentId]?.name || selectedTemplate.department} |
+                    Default: {selectedTemplate.default_title}
                   </div>
                 )}
               </div>
@@ -359,225 +306,6 @@ export default function ActionCard({ action, index, onUpdate, onDelete }: Action
                       and assign to {selectedUser?.first_name && selectedUser?.last_name
                         ? `${selectedUser.first_name} ${selectedUser.last_name}`
                         : selectedUser?.email}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {action.actionType === 'create_design_item' && (
-            <>
-              {/* Design Item Type Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Design Item Type *
-                </label>
-                <select
-                  value={action.designItemTypeId || ''}
-                  onChange={(e) => onUpdate({ designItemTypeId: e.target.value || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
-                >
-                  <option value="">Select a design item type...</option>
-                  {designItemTypes.map((designType) => (
-                    <option key={designType.id} value={designType.id}>
-                      {designType.name} ({designType.type})
-                    </option>
-                  ))}
-                </select>
-                {selectedDesignItemType && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start">
-                      <Info className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs text-blue-800 space-y-1">
-                        <div><strong>Type:</strong> {selectedDesignItemType.type}</div>
-                        <div><strong>Category:</strong> {selectedDesignItemType.category}</div>
-                        <div><strong>Total Timeline:</strong> {getTotalTimeline(selectedDesignItemType)} days before event</div>
-                        <div className="text-xs text-blue-700 mt-2 pt-2 border-t border-blue-200">
-                          • Design: {selectedDesignItemType.default_design_days} days<br />
-                          • Approval Buffer: {selectedDesignItemType.client_approval_buffer_days} days
-                          {selectedDesignItemType.type === 'physical' && (
-                            <>
-                              <br />• Production: {selectedDesignItemType.default_production_days} days<br />
-                              • Shipping: {selectedDesignItemType.default_shipping_days} days
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Designer Assignment (Optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assign Designer (Optional)
-                </label>
-                <select
-                  value={action.assignedToUserId || ''}
-                  onChange={(e) => onUpdate({ assignedToUserId: e.target.value || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
-                >
-                  <option value="">Unassigned (can be assigned later)</option>
-                  {designers.length > 0 ? (
-                    designers.map((designer) => (
-                      <option key={designer.id} value={designer.id}>
-                        {designer.first_name && designer.last_name
-                          ? `${designer.first_name} ${designer.last_name}`
-                          : designer.email}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No designers found</option>
-                  )}
-                  {/* Fallback: Show all users if no designers */}
-                  {designers.length === 0 && users.length > 0 && (
-                    <optgroup label="All Users">
-                      {users.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.first_name && user.last_name
-                            ? `${user.first_name} ${user.last_name}`
-                            : user.email}
-                          {user.department && ` (${user.department})`}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-                {selectedUser && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    {selectedUser.email}
-                    {selectedUser.department && ` | Department: ${selectedUser.department}`}
-                  </div>
-                )}
-              </div>
-
-              {/* Design Item Preview */}
-              {action.designItemTypeId && (
-                <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-start">
-                    <Palette className="h-4 w-4 text-purple-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <div className="text-xs text-purple-800">
-                      <strong>Will create:</strong> "{selectedDesignItemType?.name}" design item
-                      {action.assignedToUserId && selectedUser && (
-                        <> and assign to {selectedUser.first_name && selectedUser.last_name
-                          ? `${selectedUser.first_name} ${selectedUser.last_name}`
-                          : selectedUser.email}</>
-                      )}
-                      {!action.assignedToUserId && <> (unassigned)</>}
-                      <div className="mt-1 pt-1 border-t border-purple-300 text-xs text-purple-700">
-                        ⏱ Timeline will be auto-calculated from event date
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {action.actionType === 'create_ops_item' && (
-            <>
-              {/* Operations Item Type Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Operations Item Type *
-                </label>
-                <select
-                  value={action.operationsItemTypeId || ''}
-                  onChange={(e) => onUpdate({ operationsItemTypeId: e.target.value || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
-                >
-                  <option value="">Select an operations type...</option>
-                  {opsItemTypes.length > 0 ? (
-                    opsItemTypes.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name} ({type.due_date_days} days before event)
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No operations types configured. Go to Settings → Operations to add them.</option>
-                  )}
-                </select>
-                {selectedOpsItemType && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    Category: {selectedOpsItemType.category} | Due: {selectedOpsItemType.due_date_days} days before event
-                    {selectedOpsItemType.description && <div className="mt-1">{selectedOpsItemType.description}</div>}
-                  </div>
-                )}
-              </div>
-
-              {/* Operations Team Assignment (Optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assign to Operations Team Member (Optional)
-                </label>
-                <select
-                  value={action.assignedToUserId || ''}
-                  onChange={(e) => onUpdate({ assignedToUserId: e.target.value || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4]"
-                >
-                  <option value="">Unassigned (can be assigned later)</option>
-                  {opsTeam.length > 0 ? (
-                    opsTeam.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.first_name && member.last_name
-                          ? `${member.first_name} ${member.last_name}`
-                          : member.email}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No operations team found</option>
-                  )}
-                  {/* Fallback: Show all users if no ops team */}
-                  {opsTeam.length === 0 && users.length > 0 && (
-                    <optgroup label="All Users">
-                      {users.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.first_name && user.last_name
-                            ? `${user.first_name} ${user.last_name}`
-                            : user.email}
-                          {user.department && ` (${user.department})`}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-                {selectedUser && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    {selectedUser.email}
-                    {selectedUser.department && ` | Department: ${selectedUser.department}`}
-                  </div>
-                )}
-              </div>
-
-              {/* Operations Info */}
-              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start">
-                  <Info className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-amber-800 space-y-1">
-                    <div><strong>Operations items</strong> are automatically created when events are created.</div>
-                    <div>Configure operations types in <strong>Settings → Operations</strong>.</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Operations Item Preview */}
-              {action.operationsItemTypeId && selectedOpsItemType && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-start">
-                    <Briefcase className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <div className="text-xs text-amber-800">
-                      <strong>Will create:</strong> "{selectedOpsItemType.name}" operations item
-                      {action.assignedToUserId && selectedUser && (
-                        <> and assign to {selectedUser.first_name && selectedUser.last_name
-                          ? `${selectedUser.first_name} ${selectedUser.last_name}`
-                          : selectedUser.email}</>
-                      )}
-                      {!action.assignedToUserId && <> (unassigned)</>}
-                      <div className="mt-1 pt-1 border-t border-amber-300 text-xs text-amber-700">
-                        ⏱ Due {selectedOpsItemType.due_date_days} days before event
-                      </div>
                     </div>
                   </div>
                 </div>

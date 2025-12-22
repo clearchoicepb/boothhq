@@ -210,16 +210,17 @@ export const CONDITION_FIELDS: Record<string, {
 
 /**
  * Action types that can be performed by workflows
- * Department-based actions:
- * - create_task: General tasks (simple to-dos)
- * - create_design_item: Design department (timeline-based items)
- * - create_ops_item: Operations department (timeline-based items)
- * - assign_event_role: Assign a user to an event staff role
  *
- * Phase 4 action types:
+ * Active action types:
+ * - create_task: Create a task from any template (design, operations, general, etc.)
+ * - assign_event_role: Assign a user to an event staff role
  * - send_email: Send templated email
  * - send_notification: In-app notification
  * - assign_task: Assign user to existing task
+ *
+ * DEPRECATED (kept for backwards compatibility with existing workflows):
+ * - create_design_item: Use create_task with design templates instead
+ * - create_ops_item: Use create_task with operations templates instead
  *
  * Future action types:
  * - update_field: Field updates
@@ -227,8 +228,8 @@ export const CONDITION_FIELDS: Record<string, {
  */
 export type WorkflowActionType =
   | 'create_task'
-  | 'create_design_item'
-  | 'create_ops_item'
+  | 'create_design_item'  // @deprecated - use create_task with design templates
+  | 'create_ops_item'     // @deprecated - use create_task with operations templates
   | 'assign_event_role'
   | 'send_email'
   | 'send_notification'
@@ -366,6 +367,9 @@ export const WORKFLOW_TRIGGER_TYPES: Record<WorkflowTriggerType, {
 /**
  * Available action types with metadata
  * Organized by department for UI grouping
+ *
+ * NOTE: create_design_item and create_ops_item are deprecated.
+ * Use create_task with design or operations templates instead.
  */
 export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
   label: string
@@ -374,31 +378,36 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
   department: string
   requiresFields: string[]
   category: 'creation' | 'communication' | 'assignment'
+  deprecated?: boolean
 }> = {
   // Creation actions
   create_task: {
     label: 'Create Task',
-    description: 'Create and assign a simple task',
+    description: 'Create a task from any template (design, operations, general, etc.)',
     icon: 'clipboard-check',
     department: 'General',
     requiresFields: ['task_template_id', 'assigned_to_user_id'],
     category: 'creation',
   },
+  // DEPRECATED: Use create_task with design templates instead
   create_design_item: {
-    label: 'Create Design Item',
-    description: 'Create a design item with timeline calculations',
+    label: 'Create Design Item (Deprecated)',
+    description: 'DEPRECATED: Use Create Task with a design template instead',
     icon: 'palette',
     department: 'Design',
     requiresFields: ['design_item_type_id'],
     category: 'creation',
+    deprecated: true,
   },
+  // DEPRECATED: Use create_task with operations templates instead
   create_ops_item: {
-    label: 'Create Operations Item',
-    description: 'Create an operations item with timeline calculations',
+    label: 'Create Operations Item (Deprecated)',
+    description: 'DEPRECATED: Use Create Task with an operations template instead',
     icon: 'briefcase',
     department: 'Operations',
     requiresFields: ['operations_item_type_id'],
     category: 'creation',
+    deprecated: true,
   },
   // Assignment actions
   assign_event_role: {

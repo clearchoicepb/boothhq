@@ -305,7 +305,11 @@ export default function WorkflowsSettingsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center text-sm text-gray-900">
                         <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                        {workflow.event_type?.name || 'N/A'}
+                        {workflow.event_type_ids && workflow.event_type_ids.length > 1
+                          ? `Multiple (${workflow.event_type_ids.length})`
+                          : workflow.event_type_ids && workflow.event_type_ids.length === 1
+                            ? '1 Event Type'
+                            : 'All Event Types'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -387,7 +391,13 @@ export default function WorkflowsSettingsPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="font-medium text-gray-700">Event Type:</span>
-                <span className="text-gray-900">{workflowToDelete.event_type?.name || 'N/A'}</span>
+                <span className="text-gray-900">
+                  {workflowToDelete.event_type_ids && workflowToDelete.event_type_ids.length > 1
+                    ? `Multiple (${workflowToDelete.event_type_ids.length})`
+                    : workflowToDelete.event_type_ids && workflowToDelete.event_type_ids.length === 1
+                      ? '1 Event Type'
+                      : 'All Event Types'}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="font-medium text-gray-700">Actions:</span>
