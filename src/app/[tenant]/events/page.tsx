@@ -420,7 +420,7 @@ export default function EventsPage() {
           <EventFilters
             filters={filters}
             onFiltersChange={setFilters}
-            coreTasks={coreTasks}
+            coreTasks={[]}
             eventCounts={eventCounts}
           />
 
@@ -481,7 +481,6 @@ export default function EventsPage() {
             <EventTimelineView
               events={sortedEvents}
               tenantSubdomain={tenantSubdomain}
-              coreTasks={coreTasks}
             />
           )}
 
