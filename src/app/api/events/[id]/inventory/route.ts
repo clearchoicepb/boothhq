@@ -62,10 +62,10 @@ export async function GET(
       .order('created_at', { ascending: false })
 
     if (assignedError) {
-      return NextResponse.json({
-        error: 'Failed to fetch assigned inventory',
-        details: assignedError.message
-      }, { status: 500 })
+      // Log the error but continue - inventory_assignments table may have RLS issues
+      // or be empty. We can still show available inventory.
+      log.error({ assignedError }, 'Failed to fetch assigned inventory (continuing with empty array)')
+      // Don't return error - just use empty array for assigned items
     }
 
     // Transform assignments into inventory items with quantity info
