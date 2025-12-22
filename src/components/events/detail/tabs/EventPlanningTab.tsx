@@ -1,9 +1,9 @@
 /**
  * Event Planning Tab
- * Consolidates: Core Tasks + Logistics + Equipment + Tasks
+ * Consolidates: Logistics + Equipment + Tasks + Forms
  *
  * This tab groups all planning-related activities in one place.
- * Design tasks are now managed through the unified tasks system.
+ * Tasks are managed through the unified Tasks system.
  */
 
 'use client'
@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { EventLogistics } from '../../event-logistics'
 import { EventInventoryAssignments } from '@/components/inventory/EventInventoryAssignments'
 import { TasksSection } from '@/components/tasks-section'
-import { EventCoreTasksChecklist } from '@/components/event-core-tasks-checklist'
 import { EventFormsSection } from '@/components/event-forms/EventFormsSection'
 
 interface EventPlanningTabProps {
@@ -26,7 +25,7 @@ interface EventPlanningTabProps {
   onTasksRefresh?: () => void
 }
 
-type Section = 'core-tasks' | 'logistics' | 'equipment' | 'tasks' | 'forms'
+type Section = 'logistics' | 'equipment' | 'tasks' | 'forms'
 
 export function EventPlanningTab({
   eventId,
@@ -37,7 +36,7 @@ export function EventPlanningTab({
   onTasksRefresh
 }: EventPlanningTabProps) {
   const [expandedSections, setExpandedSections] = useState<Set<Section>>(
-    new Set(['core-tasks', 'forms', 'tasks']) // Expand core tasks, forms, and tasks by default
+    new Set(['forms', 'tasks']) // Expand forms and tasks by default
   )
 
   const toggleSection = (section: Section) => {
@@ -56,36 +55,6 @@ export function EventPlanningTab({
 
   return (
     <div className="space-y-4">
-      {/* Core Tasks Checklist */}
-      <div className="bg-white rounded-lg shadow">
-        <button
-          onClick={() => toggleSection('core-tasks')}
-          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <ListTodo className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div className="text-left">
-              <h2 className="text-lg font-semibold text-gray-900">Core Tasks Checklist</h2>
-              <p className="text-sm text-gray-500">Essential tasks for event success</p>
-            </div>
-          </div>
-          {isSectionExpanded('core-tasks') ? (
-            <ChevronUp className="h-5 w-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          )}
-        </button>
-        {isSectionExpanded('core-tasks') && (
-          <div className="px-6 pb-6 border-t border-gray-100">
-            <div className="pt-4">
-              <EventCoreTasksChecklist eventId={eventId} />
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Client Forms */}
       <div className="bg-white rounded-lg shadow">
         <button

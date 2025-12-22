@@ -143,25 +143,3 @@ export interface TenantUserBasic {
   role: string
 }
 
-// =============================================================================
-// Event Core Task Types
-// =============================================================================
-
-/** Core task template embedded in task completion */
-export interface CoreTaskTemplateRef {
-  id: string
-  task_name: string
-  task_description?: string | null
-}
-
-/** Event core task completion data */
-export interface EventCoreTaskCompletion {
-  id: string
-  core_task_template_id: string
-  task_name: string
-  task_description: string | null
-  is_completed: boolean
-  completed_at: string | null
-  completed_by: string | null
-  core_task_template?: CoreTaskTemplateRef
-}

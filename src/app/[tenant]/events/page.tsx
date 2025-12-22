@@ -22,24 +22,14 @@ import { EventPreviewModal } from '@/components/events/event-preview-modal'
 import toast from 'react-hot-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEvents } from '@/hooks/useEvents'
-import { useCoreTaskTemplates } from '@/hooks/useCoreTaskTemplates'
 import { useEventsTaskStatus } from '@/hooks/useEventsTaskStatus'
 import { useEventsFilters, type SortOption } from '@/hooks/useEventsFilters'
 import { eventsService } from '@/lib/api/services/eventsService'
 import { tasksService } from '@/lib/api/services/tasksService'
 import type { Event, EventDate } from '@/types/events'
-import type { EventCoreTaskCompletion } from '@/types/api-responses'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('events')
-
-interface CoreTask {
-  id: string
-  tenant_id: string
-  task_name: string
-  display_order: number
-  is_active: boolean
-}
 
 /**
  * Explodes events with multiple dates into separate rows for dashboard display.
@@ -95,7 +85,6 @@ export default function EventsPage() {
   // ✨ REACT QUERY HOOKS - Automatic caching and background refetching!
   const queryClient = useQueryClient()
   const { data: events = [], isLoading: eventsLoading } = useEvents()
-  const { data: coreTasks = [] } = useCoreTaskTemplates()
   const eventIds = useMemo(() => events.map(e => e.id), [events])
   const { data: taskStatus = {} } = useEventsTaskStatus(eventIds)
 
@@ -111,9 +100,9 @@ export default function EventsPage() {
     setSortBy,
     eventCounts,
     getIncompleteTasks
-  } = useEventsFilters({ 
-    events: explodedEvents, 
-    coreTasks,
+  } = useEventsFilters({
+    events: explodedEvents,
+    coreTasks: [], // Legacy parameter - Core Tasks replaced by unified Tasks system
     currentUserId: session?.user?.id // Pass current user ID for "My Events" filter
   })
 
@@ -139,7 +128,7 @@ export default function EventsPage() {
 
   // Expanded rows state (for inline tasks)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [eventTaskCompletions, setEventTaskCompletions] = useState<Record<string, EventCoreTaskCompletion[]>>({})
+  const [eventTasks, setEventTasks] = useState<Record<string, any[]>>({})
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set())
 
   // Bulk selection state
@@ -201,7 +190,7 @@ export default function EventsPage() {
 
       // Tasks are per event, not per date, so fetch using original event ID
       // But store under displayId so each row has its own task display
-      if (!eventTaskCompletions[displayId]) {
+      if (!eventTasks[displayId]) {
         await fetchEventTasks(displayId, originalEventId)
       }
     }
@@ -216,7 +205,7 @@ export default function EventsPage() {
     try {
       // Fetch tasks where entity_type = 'event' and entity_id = eventId
       const tasks = await tasksService.getByEntity('event', originalEventId)
-      setEventTaskCompletions(prev => ({
+      setEventTasks(prev => ({
         ...prev,
         [displayId]: tasks
       }))
@@ -794,7 +783,7 @@ export default function EventsPage() {
                             ) : (
                               <EventInlineTasks
                                 eventId={originalEventId}
-                                tasks={eventTaskCompletions[displayId] || []}
+                                tasks={eventTasks[displayId] || []}
                                 onTaskUpdate={handleTaskUpdate}
                               />
                             )}

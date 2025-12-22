@@ -76,32 +76,9 @@ export async function POST(
       }
     }
 
-    // Copy core task completions (but mark as incomplete)
-    const { data: originalTaskCompletions, error: taskCompletionsError } = await supabase
-      .from('event_core_task_completion')
-      .select('*')
-      .eq('event_id', eventId)
-
-    if (taskCompletionsError) {
-      log.error({ error: taskCompletionsError, eventId }, 'Failed to fetch task completions for duplication')
-      duplicateWarnings.push('Could not duplicate task checklist')
-    } else if (originalTaskCompletions && originalTaskCompletions.length > 0) {
-      const duplicateTaskCompletions = originalTaskCompletions.map(task => ({
-        event_id: newEvent.id,
-        core_task_template_id: task.core_task_template_id,
-        is_completed: false, // Reset to incomplete
-        completed_at: null,
-        completed_by: null,
-        created_at: undefined,
-        updated_at: undefined
-      }))
-
-      const { error: insertTasksError } = await supabase.from('event_core_task_completion').insert(duplicateTaskCompletions)
-      if (insertTasksError) {
-        log.error({ error: insertTasksError, newEventId: newEvent.id }, 'Failed to insert duplicated task completions')
-        duplicateWarnings.push('Could not duplicate task checklist')
-      }
-    }
+    // Note: Tasks are now managed through workflows and the unified Tasks table
+    // When the event is created with an event_type_id, workflows will automatically
+    // create the appropriate tasks for the new event
 
     // Return success with any warnings about partial failures
     return NextResponse.json({

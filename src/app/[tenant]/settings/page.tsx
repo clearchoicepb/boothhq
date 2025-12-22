@@ -122,13 +122,6 @@ const settingsStructure: SettingsCategory[] = [
         href: '/add-ons',
       },
       {
-        id: 'core-tasks',
-        title: 'Core Event Tasks',
-        description: 'Event readiness checklist items',
-        icon: CheckCircle2,
-        href: '/core-tasks',
-      },
-      {
         id: 'task-templates',
         title: 'Task Templates',
         description: 'Reusable task templates',

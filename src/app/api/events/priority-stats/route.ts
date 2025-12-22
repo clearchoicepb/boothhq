@@ -1,8 +1,10 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { isTaskCompleted } from '@/lib/utils/event-readiness'
 
 const log = createLogger('api:events')
+
 /**
  * GET /api/events/priority-stats
  *
@@ -10,13 +12,16 @@ const log = createLogger('api:events')
  * - Next 10 Days: Events in next 10 days with task completion %
  * - Next 45 Days with Tasks: Events with incomplete tasks
  * - All Upcoming: Total future events
+ *
+ * Now uses the unified Tasks table instead of Core Tasks.
  */
 export async function GET(request: NextRequest) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
+
     // Calculate date ranges
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -42,55 +47,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
     }
 
-    // Fetch core task templates to count total tasks
-    const { data: coreTasks, error: tasksError } = await supabase
-      .from('core_task_templates')
-      .select('id')
-      .eq('tenant_id', dataSourceTenantId)
-      .eq('is_active', true)
-
-    if (tasksError) {
-      log.error({ tasksError }, 'Error fetching core tasks')
-    }
-
-    const totalTasksPerEvent = coreTasks?.length || 0
-
-    // Fetch task completions for all upcoming events
+    // Fetch tasks for all events from the unified tasks table
     const eventIds = events?.map(e => e.id) || []
-    let eventTaskCompletions: Record<string, any[]> = {}
+    let eventTasks: Record<string, { total: number; completed: number }> = {}
 
     if (eventIds.length > 0) {
-      const { data: taskCompletionsData, error: completionsError } = await supabase
-        .from('event_core_task_completion')
-        .select('event_id, core_task_template_id, is_completed')
-        .in('event_id', eventIds)
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, status, entity_id')
+        .eq('tenant_id', dataSourceTenantId)
+        .eq('entity_type', 'event')
+        .in('entity_id', eventIds)
 
-      if (completionsError) {
-        log.error({ completionsError }, 'Error fetching task completions')
+      if (tasksError) {
+        log.error({ tasksError }, 'Error fetching tasks')
       }
 
-      // Group completion data by event_id
-      if (taskCompletionsData) {
-        taskCompletionsData.forEach(task => {
-          if (!eventTaskCompletions[task.event_id]) {
-            eventTaskCompletions[task.event_id] = []
+      // Group tasks by event_id and calculate completion
+      if (tasksData) {
+        tasksData.forEach(task => {
+          if (task.entity_id) {
+            if (!eventTasks[task.entity_id]) {
+              eventTasks[task.entity_id] = { total: 0, completed: 0 }
+            }
+            eventTasks[task.entity_id].total++
+            if (isTaskCompleted(task.status)) {
+              eventTasks[task.entity_id].completed++
+            }
           }
-          eventTaskCompletions[task.event_id].push(task)
         })
       }
     }
 
-    // Helper function to count completed tasks for an event
-    const getCompletedTaskCount = (eventId: string): number => {
-      const completions = eventTaskCompletions[eventId] || []
-      return completions.filter((tc: any) => tc.is_completed).length
+    // Helper function to get task stats for an event
+    const getTaskStats = (eventId: string) => {
+      return eventTasks[eventId] || { total: 0, completed: 0 }
     }
 
     // Helper function to check if event has incomplete tasks
     const hasIncompleteTasks = (eventId: string): boolean => {
-      if (totalTasksPerEvent === 0) return false
-      const completedCount = getCompletedTaskCount(eventId)
-      return completedCount < totalTasksPerEvent
+      const stats = getTaskStats(eventId)
+      if (stats.total === 0) return false
+      return stats.completed < stats.total
     }
 
     // Calculate Next 10 Days stats
@@ -100,10 +98,10 @@ export async function GET(request: NextRequest) {
     }) || []
 
     const next10DaysTasks = next10DaysEvents.reduce((acc, event) => {
-      const completed = getCompletedTaskCount(event.id)
+      const stats = getTaskStats(event.id)
       return {
-        complete: acc.complete + completed,
-        total: acc.total + totalTasksPerEvent
+        complete: acc.complete + stats.completed,
+        total: acc.total + stats.total
       }
     }, { complete: 0, total: 0 })
 
@@ -119,9 +117,8 @@ export async function GET(request: NextRequest) {
 
     const next45DaysWithIncomplete = next45DaysEvents.filter(e => hasIncompleteTasks(e.id))
     const totalIncompleteTasks = next45DaysWithIncomplete.reduce((acc, event) => {
-      const completed = getCompletedTaskCount(event.id)
-      const incomplete = totalTasksPerEvent - completed
-      return acc + incomplete
+      const stats = getTaskStats(event.id)
+      return acc + (stats.total - stats.completed)
     }, 0)
 
     // Calculate All Upcoming stats (filter to future events only)

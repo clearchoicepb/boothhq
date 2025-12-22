@@ -6,7 +6,8 @@ import type { FilterState, CoreTask } from '@/types/events'
 
 interface AdvancedFiltersPanelProps {
   filters: FilterState
-  coreTasks: CoreTask[]
+  /** @deprecated Core Tasks system has been replaced by unified Tasks. This prop will be empty. */
+  coreTasks?: CoreTask[]
   onUpdateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void
   onUpdateMultipleFilters: (updates: Partial<FilterState>) => void
 }
@@ -16,7 +17,7 @@ interface AdvancedFiltersPanelProps {
  */
 export function AdvancedFiltersPanel({
   filters,
-  coreTasks,
+  coreTasks = [],
   onUpdateFilter,
   onUpdateMultipleFilters
 }: AdvancedFiltersPanelProps) {

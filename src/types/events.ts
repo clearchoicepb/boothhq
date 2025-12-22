@@ -428,7 +428,10 @@ export interface EventCounts {
   next45Days: number
 }
 
-/** Core task data for filter checkboxes */
+/**
+ * Core task data for filter checkboxes
+ * @deprecated Core Tasks system has been replaced by the unified Tasks system
+ */
 export interface CoreTask {
   id: string
   task_name: string
@@ -438,6 +441,7 @@ export interface CoreTask {
 export interface EventFiltersProps {
   filters: FilterState
   onFiltersChange: (filters: FilterState) => void
-  coreTasks: CoreTask[]
+  /** @deprecated Core Tasks system has been replaced by the unified Tasks system */
+  coreTasks?: CoreTask[]
   eventCounts: EventCounts
 }
