@@ -130,9 +130,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data || [])
   } catch (error) {
-    log.error({ error }, '[workflows/route.ts] Error')
+    log.error({ error }, '[workflows/route.ts] Unexpected error in GET')
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV !== 'production' && error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
@@ -264,9 +268,13 @@ export async function POST(request: NextRequest) {
       workflow: completeWorkflow,
     })
   } catch (error) {
-    log.error({ error }, '[workflows/route.ts] Error')
+    log.error({ error }, '[workflows/route.ts] Unexpected error in POST')
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV !== 'production' && error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
