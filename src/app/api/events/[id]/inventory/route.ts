@@ -8,13 +8,14 @@ const log = createLogger('api:events')
 // GET /api/events/[id]/inventory - Get all inventory assigned to an event or available inventory
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId } = context
+    const params = await routeContext.params
     const eventId = params.id
     const { searchParams } = new URL(request.url)
     const includeAvailable = searchParams.get('include_available') === 'true'
@@ -388,7 +389,7 @@ export async function GET(
 // POST /api/events/[id]/inventory - Assign inventory item to event
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
@@ -399,6 +400,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const params = await routeContext.params
     const eventId = params.id
     const body = await request.json()
     const { 
@@ -546,13 +548,14 @@ export async function POST(
 // DELETE /api/events/[id]/inventory - Remove inventory assignment from event
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  routeContext: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getTenantContext()
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId } = context
+    const params = await routeContext.params
     const eventId = params.id
     const { searchParams } = new URL(request.url)
     const assignmentIds = searchParams.get('assignment_ids')?.split(',') || []
