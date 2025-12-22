@@ -135,13 +135,14 @@ export async function POST(request: NextRequest) {
     // Replace merge fields in template
     const processedContent = replaceMergeFields(template_content, mergeData)
 
-    // Generate contract number (RLS handles tenant filtering)
-    const { count: contractCount } = await supabase
+    // Generate contract number based on event_id (format: {event_id}-{sequence})
+    const { count: eventContractCount } = await supabase
       .from('contracts')
       .select('*', { count: 'exact', head: true })
+      .eq('event_id', event_id)
 
-    log.debug({ contractCount }, 'Contract count')
-    const contractNumber = `CON-${String((contractCount || 0) + 1).padStart(5, '0')}`
+    log.debug({ eventContractCount, event_id }, 'Contract count for event')
+    const contractNumber = `${event_id}-${(eventContractCount || 0) + 1}`
     log.debug({ contractNumber }, 'Generated contract number')
 
     // Calculate expiration date
