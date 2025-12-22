@@ -135,18 +135,29 @@ export async function POST(request: NextRequest) {
     // Replace merge fields in template
     const processedContent = replaceMergeFields(template_content, mergeData)
 
-    // Generate contract number (RLS handles tenant filtering)
-    const { count: contractCount } = await supabase
+    // Generate contract number based on event_id (format: {event_id}-{sequence})
+    const { count: eventContractCount } = await supabase
       .from('contracts')
       .select('*', { count: 'exact', head: true })
+      .eq('event_id', event_id)
 
-    log.debug({ contractCount }, 'Contract count')
-    const contractNumber = `CON-${String((contractCount || 0) + 1).padStart(5, '0')}`
+    log.debug({ eventContractCount, event_id }, 'Contract count for event')
+    const contractNumber = `${event_id}-${(eventContractCount || 0) + 1}`
     log.debug({ contractNumber }, 'Generated contract number')
 
     // Calculate expiration date
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expires_days)
+
+    // Validate recipient email exists (database column is NOT NULL)
+    const recipientEmail = mergeData.contact_email || signer_email
+    if (!recipientEmail) {
+      log.debug({}, 'No recipient email found - event contact has no email')
+      return NextResponse.json(
+        { error: 'Cannot generate agreement: No recipient email found. Please ensure the event has a contact with an email address.' },
+        { status: 400 }
+      )
+    }
 
     // Create contract using actual database schema column names
     // Note: Database uses template_name (not title), recipient_email (not signer_email), etc.
@@ -156,8 +167,8 @@ export async function POST(request: NextRequest) {
       content: processedContent,
       status: 'draft',
       template_name: title, // Database uses 'template_name' not 'title'
-      recipient_email: mergeData.contact_email || null, // Database uses 'recipient_email' not 'signer_email'
-      recipient_name: mergeData.contact_full_name || null // Database uses 'recipient_name' not 'signer_name'
+      recipient_email: recipientEmail, // Database column is NOT NULL
+      recipient_name: mergeData.contact_full_name || signer_name || null // Database uses 'recipient_name' not 'signer_name'
     }
     
     // Add optional fields
@@ -185,9 +196,19 @@ export async function POST(request: NextRequest) {
     log.debug({ hasContract: !!contract, error: contractError }, 'Insert result')
 
     if (contractError) {
-      log.error({ contractError }, 'Error creating contract')
+      log.error({
+        contractError,
+        code: contractError.code,
+        message: contractError.message,
+        details: contractError.details,
+        hint: contractError.hint
+      }, 'Error creating contract')
       return NextResponse.json(
-        { error: 'Failed to create contract' },
+        {
+          error: 'Failed to create contract',
+          details: contractError.message,
+          code: contractError.code
+        },
         { status: 500 }
       )
     }

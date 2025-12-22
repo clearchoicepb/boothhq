@@ -92,11 +92,13 @@ export function GenerateAgreementModal({
         })
       })
 
+      const responseData = await response.json()
+
       if (!response.ok) {
-        throw new Error('Failed to create agreement')
+        throw new Error(responseData.error || 'Failed to create agreement')
       }
 
-      const newContract = await response.json()
+      const newContract = responseData
       setContract(newContract)
       setStep('created')
       
