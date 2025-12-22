@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     log.debug({ event_id }, 'Fetching event with ID')
     log.debug({ dataSourceTenantId }, 'Using tenant_id')
     
-    // Note: RLS handles tenant filtering automatically via app.current_tenant_id
+    // Note: Service role bypasses RLS; tenant filtering is done at application layer
     // Specify the exact foreign key relationship since events has multiple contacts relationships
     const { data: event, error: eventError } = await supabase
       .from('events')
