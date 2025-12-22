@@ -148,6 +148,16 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expires_days)
 
+    // Validate recipient email exists (database column is NOT NULL)
+    const recipientEmail = mergeData.contact_email || signer_email
+    if (!recipientEmail) {
+      log.debug({}, 'No recipient email found - event contact has no email')
+      return NextResponse.json(
+        { error: 'Cannot generate agreement: No recipient email found. Please ensure the event has a contact with an email address.' },
+        { status: 400 }
+      )
+    }
+
     // Create contract using actual database schema column names
     // Note: Database uses template_name (not title), recipient_email (not signer_email), etc.
     const insertData: any = {
@@ -156,8 +166,8 @@ export async function POST(request: NextRequest) {
       content: processedContent,
       status: 'draft',
       template_name: title, // Database uses 'template_name' not 'title'
-      recipient_email: mergeData.contact_email || null, // Database uses 'recipient_email' not 'signer_email'
-      recipient_name: mergeData.contact_full_name || null // Database uses 'recipient_name' not 'signer_name'
+      recipient_email: recipientEmail, // Database column is NOT NULL
+      recipient_name: mergeData.contact_full_name || signer_name || null // Database uses 'recipient_name' not 'signer_name'
     }
     
     // Add optional fields
@@ -185,9 +195,19 @@ export async function POST(request: NextRequest) {
     log.debug({ hasContract: !!contract, error: contractError }, 'Insert result')
 
     if (contractError) {
-      log.error({ contractError }, 'Error creating contract')
+      log.error({
+        contractError,
+        code: contractError.code,
+        message: contractError.message,
+        details: contractError.details,
+        hint: contractError.hint
+      }, 'Error creating contract')
       return NextResponse.json(
-        { error: 'Failed to create contract' },
+        {
+          error: 'Failed to create contract',
+          details: contractError.message,
+          code: contractError.code
+        },
         { status: 500 }
       )
     }
