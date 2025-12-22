@@ -140,32 +140,9 @@ export async function POST(
       }
     }
 
-    // Initialize core task completions for new event (don't copy old completion status)
-    const { data: coreTaskTemplates, error: coreTasksError } = await supabase
-      .from('core_task_templates')
-      .select('id')
-      .eq('tenant_id', dataSourceTenantId)
-      .eq('is_active', true)
-
-    if (coreTasksError) {
-      log.error({ error: coreTasksError, tenantId: dataSourceTenantId }, 'Failed to fetch core task templates')
-      cloneWarnings.push('Could not initialize task checklist')
-    } else if (coreTaskTemplates && coreTaskTemplates.length > 0) {
-      const taskCompletions = coreTaskTemplates.map(template => ({
-        tenant_id: dataSourceTenantId,
-        event_id: newEvent.id,
-        core_task_template_id: template.id,
-        is_completed: false,
-        completed_at: null,
-        completed_by: null
-      }))
-
-      const { error: insertTasksError } = await supabase.from('event_core_task_completion').insert(taskCompletions)
-      if (insertTasksError) {
-        log.error({ error: insertTasksError, newEventId: newEvent.id }, 'Failed to insert core task completions')
-        cloneWarnings.push('Could not initialize task checklist')
-      }
-    }
+    // Note: Tasks are now managed through workflows and the unified Tasks table
+    // When the event is created with an event_type_id, workflows will automatically
+    // create the appropriate tasks for the new event
 
     // Return success with any warnings about partial failures
     return NextResponse.json({

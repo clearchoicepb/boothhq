@@ -3,12 +3,15 @@
  *
  * Manages filtering, sorting, and statistics for events list.
  * Extracts complex filter logic from Events Dashboard component.
+ *
+ * Updated to use Tasks-based readiness instead of Core Tasks.
  */
 
 import { useMemo, useState } from 'react'
 import { parseLocalDate, isDateToday } from '@/lib/utils/date-utils'
+import { getEventReadiness, getIncompleteEventTasks } from '@/hooks/useEventReadiness'
 import type { FilterState } from '@/components/events/event-filters'
-import type { Event } from '@/types/events'
+import type { Event, EventTask } from '@/types/events'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('hooks')
@@ -16,7 +19,7 @@ const log = createLogger('hooks')
 // Re-export Event as FilterableEvent for clarity (they are the same)
 export type FilterableEvent = Event
 
-// Core task template interface
+// Core task template interface - kept for backward compatibility
 interface CoreTask {
   id: string
   task_name: string
@@ -104,31 +107,12 @@ export function useEventsFilters({
 
   /**
    * Get incomplete tasks for an event
+   * Now uses the Tasks table via event.event_tasks instead of Core Tasks
    */
   const getIncompleteTasks = (event: FilterableEvent): string[] => {
-    // If no core tasks defined, no tasks can be incomplete
-    if (coreTasks.length === 0) {
-      return []
-    }
-
-    // If event has no task_completions array, ALL tasks are incomplete
-    if (!event.task_completions || event.task_completions.length === 0) {
-      return coreTasks.map(task => task.id)
-    }
-
-    // Get completed task IDs
-    const completedTaskIds = new Set(
-      event.task_completions
-        .filter(tc => tc.is_completed)
-        .map(tc => tc.core_task_template_id)
-    )
-
-    // Find tasks that are either not started or marked incomplete
-    const incompleteTasks = coreTasks
-      .filter(task => !completedTaskIds.has(task.id))
-      .map(task => task.id)
-
-    return incompleteTasks
+    // Use the new Tasks-based calculation
+    const incompleteTasks = getIncompleteEventTasks(event)
+    return incompleteTasks.map(task => task.id)
   }
 
   /**
@@ -215,16 +199,17 @@ export function useEventsFilters({
       }
 
       // Next 45 days with incomplete tasks
-      if (daysUntil >= 0 && daysUntil <= 45 && coreTasks.length > 0) {
-        const incompleteTasks = getIncompleteTasks(event)
-        if (incompleteTasks.length > 0) {
+      // Now uses Tasks-based calculation - no longer requires coreTasks.length check
+      if (daysUntil >= 0 && daysUntil <= 45) {
+        const readiness = getEventReadiness(event)
+        if (readiness.hasTasks && !readiness.isReady) {
           counts.next45Days++
         }
       }
     })
 
     return counts
-  }, [events, coreTasks])
+  }, [events])
 
   /**
    * Apply all filters to events
@@ -288,10 +273,10 @@ export function useEventsFilters({
         }
       }
 
-      // Task filter
+      // Task filter - now uses Tasks-based readiness
       if (filters.taskFilter === 'incomplete') {
-        const incompleteTasks = getIncompleteTasks(event)
-        const hasIncomplete = incompleteTasks.length > 0
+        const readiness = getEventReadiness(event)
+        const hasIncomplete = readiness.hasTasks && !readiness.isReady
         const matchesTaskDateRange = isWithinTaskDateRange(event)
         const matchesSpecificTasks = matchesSelectedTasks(event)
 
@@ -333,7 +318,7 @@ export function useEventsFilters({
 
       return true
     })
-  }, [events, filters, coreTasks, currentUserId])
+  }, [events, filters, currentUserId])
 
   /**
    * Sort filtered events based on selected sort option

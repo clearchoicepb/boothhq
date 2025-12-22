@@ -13,7 +13,6 @@ import { usePermissions } from '@/lib/permissions'
 import toast from 'react-hot-toast'
 import { EventFilesList } from '@/components/events/event-files-list'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { CoreTasksBanner } from '@/components/events/core-tasks-banner'
 import { useEventData } from '@/hooks/useEventData'
 import { getNextEventDate } from '@/lib/utils/event-utils'
 import { useEventReferences } from '@/hooks/useEventReferences'
@@ -270,12 +269,6 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
 
           {/* Sticky Event Context Bar */}
           <StickyEventContext event={eventForComponents!} />
-
-          {/* Core Tasks Banner */}
-          <CoreTasksBanner
-            eventId={eventId}
-            onViewTasks={() => setActiveTab('planning')}
-          />
 
           {/* Tabs */}
           <div className="relative z-0">

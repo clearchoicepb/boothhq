@@ -4,23 +4,23 @@ import { useState } from 'react'
 import { EventTimelineCard } from './event-timeline-card'
 import { EventPreviewModal } from './event-preview-modal'
 import { getDaysUntil } from '@/lib/utils/date-utils'
+import { calculateTaskProgress } from '@/hooks/useEventReadiness'
 import type { Event, EventDate, CoreTask } from '@/types/events'
 
 interface EventTimelineViewProps {
   events: Event[]
   tenantSubdomain: string
-  coreTasks: CoreTask[]
+  /** @deprecated No longer needed - readiness is calculated from event.task_readiness */
+  coreTasks?: CoreTask[]
 }
 
 export function EventTimelineView({
   events,
   tenantSubdomain,
-  coreTasks
+  coreTasks // Kept for backward compatibility but not used
 }: EventTimelineViewProps) {
   const [previewEventId, setPreviewEventId] = useState<string | null>(null)
   const [previewEventDate, setPreviewEventDate] = useState<EventDate | null>(null)
-
-  const totalTasksPerEvent = coreTasks.length
 
   // Handler for opening preview modal with event date
   const handleOpenPreview = (event: Event) => {
@@ -40,19 +40,9 @@ export function EventTimelineView({
   }
 
   // Helper function to calculate task progress for an event
+  // Now uses the new Tasks-based readiness from event.task_readiness
   const getTaskProgress = (event: Event) => {
-    if (totalTasksPerEvent === 0) {
-      return { completed: 0, total: 0, percentage: 100 }
-    }
-
-    const completedTasks = event.task_completions?.filter(tc => tc.is_completed).length || 0
-    const percentage = Math.round((completedTasks / totalTasksPerEvent) * 100)
-
-    return {
-      completed: completedTasks,
-      total: totalTasksPerEvent,
-      percentage
-    }
+    return calculateTaskProgress(event)
   }
 
   // Group events into timeline sections

@@ -1,6 +1,8 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { calculateEventReadiness } from '@/lib/utils/event-readiness'
+import type { TaskForReadiness } from '@/lib/utils/event-readiness'
 
 const log = createLogger('api:events')
 
@@ -72,6 +74,17 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
+    // Fetch tasks for this event from the unified tasks table
+    const { data: tasksData } = await supabase
+      .from('tasks')
+      .select('id, status, entity_id, title, description, priority, due_date, assigned_to, completed_at')
+      .eq('tenant_id', dataSourceTenantId)
+      .eq('entity_type', 'event')
+      .eq('entity_id', eventId)
+
+    const eventTasks = tasksData || []
+    const taskReadiness = calculateEventReadiness(eventTasks as TaskForReadiness[])
+
     // Helper to get company name from contact_accounts
     const getContactCompany = (contact: any) => {
       if (!contact?.contact_accounts) return null
@@ -101,7 +114,13 @@ export async function GET(
         `${data.event_planner.first_name} ${data.event_planner.last_name}`.trim() : null,
       opportunity_name: data.opportunities?.name || null,
       event_category: data.event_categories || null,
-      event_type: data.event_types || null
+      event_type: data.event_types || null,
+      // Tasks-based readiness
+      tasks_ready: taskReadiness.isReady,
+      task_readiness: taskReadiness,
+      event_tasks: eventTasks,
+      // Legacy field for backward compatibility
+      core_tasks_ready: taskReadiness.isReady
     }
 
     return NextResponse.json(transformedData)

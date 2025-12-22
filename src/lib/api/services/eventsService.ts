@@ -155,20 +155,6 @@ class EventsService {
   }
 
   /**
-   * Get event core tasks
-   */
-  async getCoreTasks(eventId: string): Promise<any[]> {
-    return apiClient.get<any[]>(`/api/events/${eventId}/core-tasks`)
-  }
-
-  /**
-   * Initialize core tasks for an event
-   */
-  async initializeCoreTasks(eventId: string): Promise<void> {
-    return apiClient.post(`/api/events/${eventId}/core-tasks/initialize`)
-  }
-
-  /**
    * Get event logistics
    */
   async getLogistics(eventId: string): Promise<any> {

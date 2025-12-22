@@ -1,25 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle2, Circle, Loader2, CheckCheck } from 'lucide-react'
+import { CheckCircle2, Circle, Loader2, CheckCheck, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
+import { isTaskCompleted } from '@/lib/utils/event-readiness'
+import type { EventTask } from '@/types/events'
 
 const log = createLogger('events')
 
-interface Task {
-  id: string // This is the completion_id
-  core_task_template_id: string
-  task_name: string
-  task_description: string | null
-  is_completed: boolean
-  completed_at: string | null
-  completed_by: string | null
-  core_task_template?: {
-    id: string
-    task_name: string
-    task_description?: string | null
-  }
+/**
+ * Task interface for inline display
+ * Compatible with the unified tasks table
+ */
+interface Task extends EventTask {
+  title: string
+  description?: string | null
+  priority?: string
+  due_date?: string | null
 }
 
 interface EventInlineTasksProps {
@@ -29,6 +27,14 @@ interface EventInlineTasksProps {
   onAllTasksComplete?: () => void
 }
 
+/**
+ * EventInlineTasks Component
+ *
+ * Displays tasks for an event in an expandable inline format.
+ * Updated to work with the unified Tasks table instead of Core Tasks.
+ *
+ * A task is considered "completed" if status is 'completed' or 'approved'.
+ */
 export function EventInlineTasks({
   eventId,
   tasks,
@@ -45,37 +51,42 @@ export function EventInlineTasks({
     setLocalTasks(tasks)
   }, [tasks])
 
-  const completedCount = localTasks.filter(t => t.is_completed).length
+  const completedCount = localTasks.filter(t => isTaskCompleted(t.status)).length
   const allTasksComplete = completedCount === localTasks.length && localTasks.length > 0
 
-  const handleTaskToggle = async (completionId: string, currentStatus: boolean) => {
-    const newStatus = !currentStatus
+  const handleTaskToggle = async (taskId: string, currentStatus: string) => {
+    const isCurrentlyCompleted = isTaskCompleted(currentStatus)
+    const newStatus = isCurrentlyCompleted ? 'pending' : 'completed'
 
     // INSTANT OPTIMISTIC UPDATE - Update UI immediately
     setLocalTasks(prev =>
       prev.map(t =>
-        t.id === completionId
-          ? { ...t, is_completed: newStatus, completed_at: newStatus ? new Date().toISOString() : null }
+        t.id === taskId
+          ? {
+              ...t,
+              status: newStatus,
+              completed_at: newStatus === 'completed' ? new Date().toISOString() : null
+            }
           : t
       )
     )
 
     // Show immediate visual feedback with toast
     toast.success(
-      newStatus ? '✓ Task completed!' : '○ Task marked incomplete',
-      { duration: 2000, icon: newStatus ? '✅' : '⭕' }
+      newStatus === 'completed' ? '✓ Task completed!' : '○ Task marked incomplete',
+      { duration: 2000, icon: newStatus === 'completed' ? '✅' : '⭕' }
     )
 
-    // Mark as updating for spinner (optional, can be removed for cleaner UX)
-    setUpdatingTasks(prev => new Set(prev).add(completionId))
+    // Mark as updating for spinner
+    setUpdatingTasks(prev => new Set(prev).add(taskId))
 
     try {
-      const response = await fetch(`/api/events/${eventId}/core-tasks`, {
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          completion_id: completionId,
-          is_completed: newStatus
+          status: newStatus,
+          completed_at: newStatus === 'completed' ? new Date().toISOString() : null
         })
       })
 
@@ -88,9 +99,9 @@ export function EventInlineTasks({
 
       // Check if all tasks are now complete
       const updatedTasks = localTasks.map(t =>
-        t.id === completionId ? { ...t, is_completed: newStatus } : t
+        t.id === taskId ? { ...t, status: newStatus } : t
       )
-      const allComplete = updatedTasks.every(t => t.is_completed)
+      const allComplete = updatedTasks.every(t => isTaskCompleted(t.status))
       if (allComplete && onAllTasksComplete) {
         onAllTasksComplete()
       }
@@ -101,15 +112,15 @@ export function EventInlineTasks({
       // ROLLBACK optimistic update on error
       setLocalTasks(prev =>
         prev.map(t =>
-          t.id === completionId
-            ? { ...t, is_completed: currentStatus, completed_at: t.completed_at }
+          t.id === taskId
+            ? { ...t, status: currentStatus, completed_at: tasks.find(orig => orig.id === taskId)?.completed_at }
             : t
         )
       )
     } finally {
       setUpdatingTasks(prev => {
         const newSet = new Set(prev)
-        newSet.delete(completionId)
+        newSet.delete(taskId)
         return newSet
       })
     }
@@ -118,15 +129,15 @@ export function EventInlineTasks({
   const handleMarkAllComplete = async () => {
     setMarkingReady(true)
 
-    const incompleteTasks = localTasks.filter(t => !t.is_completed)
+    const incompleteTasks = localTasks.filter(t => !isTaskCompleted(t.status))
     const now = new Date().toISOString()
 
     // INSTANT OPTIMISTIC UPDATE - Mark all as complete immediately
     setLocalTasks(prev =>
       prev.map(t => ({
         ...t,
-        is_completed: true,
-        completed_at: t.is_completed ? t.completed_at : now
+        status: 'completed',
+        completed_at: isTaskCompleted(t.status) ? t.completed_at : now
       }))
     )
 
@@ -135,12 +146,12 @@ export function EventInlineTasks({
 
     try {
       const promises = incompleteTasks.map(task =>
-        fetch(`/api/events/${eventId}/core-tasks`, {
+        fetch(`/api/tasks/${task.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            completion_id: task.id,
-            is_completed: true
+            status: 'completed',
+            completed_at: now
           })
         })
       )
@@ -171,7 +182,7 @@ export function EventInlineTasks({
   if (tasks.length === 0) {
     return (
       <div className="py-4 px-6 bg-gray-50 border-t border-gray-200">
-        <p className="text-sm text-gray-500 text-center">No tasks configured for this event</p>
+        <p className="text-sm text-gray-500 text-center">No tasks assigned to this event</p>
       </div>
     )
   }
@@ -231,25 +242,29 @@ export function EventInlineTasks({
       <div className="space-y-2">
         {localTasks.map(task => {
           const isUpdating = updatingTasks.has(task.id)
+          const isCompleted = isTaskCompleted(task.status)
+          const isPriorityHigh = task.priority === 'high' || task.priority === 'urgent'
 
           return (
             <div
               key={task.id}
               className={`flex items-start gap-3 p-3 bg-white rounded-lg border transition-all duration-300 ${
-                task.is_completed
+                isCompleted
                   ? 'border-green-200 bg-green-50/50'
+                  : isPriorityHigh
+                  ? 'border-orange-200 bg-orange-50/50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               {/* Checkbox */}
               <button
-                onClick={() => handleTaskToggle(task.id, task.is_completed)}
+                onClick={() => handleTaskToggle(task.id, task.status)}
                 disabled={isUpdating}
                 className="flex-shrink-0 mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#347dc4] focus:ring-offset-2 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isUpdating ? (
                   <Loader2 className="h-5 w-5 text-[#347dc4] animate-spin" />
-                ) : task.is_completed ? (
+                ) : isCompleted ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600 animate-in zoom-in duration-200" />
                 ) : (
                   <Circle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -258,23 +273,38 @@ export function EventInlineTasks({
 
               {/* Task Content */}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium transition-all duration-300 ${
-                  task.is_completed ? 'text-gray-500 line-through' : 'text-gray-900'
-                }`}>
-                  {task.core_task_template?.task_name || task.task_name || 'Unnamed Task'}
-                </p>
-                {(task.core_task_template?.task_description || task.task_description) && (
-                  <p className={`text-xs mt-1 transition-all duration-300 ${
-                    task.is_completed ? 'text-gray-400' : 'text-gray-600'
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-medium transition-all duration-300 ${
+                    isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
                   }`}>
-                    {task.core_task_template?.task_description || task.task_description}
+                    {task.title || 'Unnamed Task'}
+                  </p>
+                  {isPriorityHigh && !isCompleted && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-700">
+                      <AlertCircle className="h-3 w-3" />
+                      {task.priority}
+                    </span>
+                  )}
+                </div>
+                {task.description && (
+                  <p className={`text-xs mt-1 transition-all duration-300 ${
+                    isCompleted ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {task.description}
                   </p>
                 )}
-                {task.is_completed && task.completed_at && (
-                  <p className="text-xs text-gray-400 mt-1 animate-in fade-in duration-300">
-                    Completed {new Date(task.completed_at).toLocaleDateString()}
-                  </p>
-                )}
+                <div className="flex items-center gap-3 mt-1">
+                  {task.due_date && (
+                    <p className={`text-xs ${isCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Due: {new Date(task.due_date).toLocaleDateString()}
+                    </p>
+                  )}
+                  {isCompleted && task.completed_at && (
+                    <p className="text-xs text-gray-400 animate-in fade-in duration-300">
+                      Completed {new Date(task.completed_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )
