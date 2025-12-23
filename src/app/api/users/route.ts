@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       job_title,
       department, // Legacy single department (deprecated)
       departments, // New multi-department support
+      manager_of_departments, // Departments where user is a manager
       employee_type,
       pay_rate,
       payroll_info,
@@ -232,6 +233,11 @@ export async function POST(request: NextRequest) {
     } else if (department) {
       // Legacy: if single department provided, convert to array
       insertData.departments = [department]
+    }
+
+    // Handle manager_of_departments array
+    if (manager_of_departments && Array.isArray(manager_of_departments)) {
+      insertData.manager_of_departments = manager_of_departments
     }
 
     const { data: user, error: userError } = await tenantSupabase
