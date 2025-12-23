@@ -46,6 +46,8 @@ interface Task {
   completed_at: string | null
   created_at: string
   updated_at: string
+  parent_task_id?: string | null // Subtask hierarchy
+  subtask_progress?: { total: number; completed: number } // For badge display
   assigned_to_user?: {
     id: string
     first_name: string
@@ -91,11 +93,11 @@ export function TasksSection({ entityType, entityId, projectId, onRefresh }: Tas
     try {
       setLoading(true)
       // Use projectId for project tasks, entityType/entityId for others
-      let url = '/api/tasks?'
+      let url = '/api/tasks?excludeSubtasks=true&includeSubtaskProgress=true'
       if (projectId) {
-        url += `projectId=${projectId}`
+        url += `&projectId=${projectId}`
       } else if (entityType && entityId) {
-        url += `entityType=${entityType}&entityId=${entityId}`
+        url += `&entityType=${entityType}&entityId=${entityId}`
       }
       const response = await fetch(url)
       if (response.ok) {
@@ -255,6 +257,11 @@ export function TasksSection({ entityType, entityId, projectId, onRefresh }: Tas
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
             {task.priority}
           </span>
+          {task.subtask_progress && task.subtask_progress.total > 0 && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+              {task.subtask_progress.completed}/{task.subtask_progress.total}
+            </span>
+          )}
           {task.event_date && !isEventWithDates && (
             <span className="text-xs text-blue-600 font-medium">
               📅 {new Date(task.event_date.event_date).toLocaleDateString()}

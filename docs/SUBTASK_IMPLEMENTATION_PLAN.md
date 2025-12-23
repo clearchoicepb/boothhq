@@ -340,5 +340,15 @@ Implement optional parent status auto-update:
 - [x] Phase 3: API Updates
 - [x] Phase 4: Service Layer Updates
 - [x] Phase 5: Hook Updates
-- [ ] Phase 6: UI Components
-- [ ] Phase 7: Status Rollup Logic (Progress indicator only)
+- [x] Phase 6: UI Components
+- [x] Phase 7: Status Rollup Logic (Progress indicator only)
+
+### Phase 6 Components Summary
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `SubtaskList` | `src/components/subtask-list.tsx` | Main container with progress display |
+| `SubtaskRow` | `src/components/subtask-list.tsx` | Individual subtask with status toggle |
+| `AddSubtaskModal` | `src/components/subtask-list.tsx` | Modal for creating new subtasks |
+| Task Detail Modal | `src/components/task-detail-modal.tsx` | Integration point for SubtaskList |
+| Tasks Section | `src/components/tasks-section.tsx` | Progress badge display (X/Y format) |
