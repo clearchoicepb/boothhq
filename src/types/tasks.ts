@@ -69,6 +69,10 @@ export interface Task {
   // Migration tracking
   migrated_from_table: string | null
   migrated_from_id: string | null
+
+  // Subtask hierarchy (added 2025-12-23)
+  parent_task_id: string | null // NULL = top-level task, NOT NULL = subtask
+  display_order: number // Order within parent's subtasks, default 0
 }
 
 /**
@@ -98,6 +102,19 @@ export interface TaskWithRelations extends Task {
     name: string
     target_date: string | null
   } | null
+  // Subtasks (populated when fetching a parent task with its children)
+  subtasks?: TaskWithRelations[]
+  // Subtask progress (computed, for display in list views)
+  subtask_progress?: SubtaskProgress
+}
+
+/**
+ * Subtask progress for parent task display
+ * Shows "X/Y done" badge in task lists
+ */
+export interface SubtaskProgress {
+  total: number
+  completed: number // status = 'completed' or 'approved'
 }
 
 /**
@@ -135,6 +152,10 @@ export interface TaskInsert {
   department?: DepartmentId | null
   taskType?: UnifiedTaskType | string | null
   taskTemplateId?: string | null
+
+  // Subtask creation (added 2025-12-23)
+  parentTaskId?: string | null // If provided, creates as subtask of this task
+  displayOrder?: number // Order within parent's subtasks
 
   // Design-specific fields
   quantity?: number
@@ -186,6 +207,10 @@ export interface TaskUpdate {
   // Timeline
   assigned_at?: string | null
   started_at?: string | null
+
+  // Subtask updates (added 2025-12-23)
+  parent_task_id?: string | null // Move to different parent or promote to top-level
+  display_order?: number // Reorder within parent
 }
 
 /**
@@ -206,6 +231,11 @@ export interface TaskFilters {
   search?: string
   page?: number
   limit?: number
+
+  // Subtask filters (added 2025-12-23)
+  parentTaskId?: string // Filter to subtasks of a specific parent
+  excludeSubtasks?: boolean // If true, only return top-level tasks (parent_task_id IS NULL)
+  includeSubtaskProgress?: boolean // If true, compute subtask_progress for each task
 }
 
 /**
@@ -444,4 +474,37 @@ export function enrichTaskWithUrgency(task: TaskWithRelations): TaskWithUrgency 
     urgency: calculateTaskUrgency(task.due_date),
     days_until_due: getDaysUntilDue(task.due_date),
   }
+}
+
+/**
+ * Calculate subtask progress from an array of subtasks
+ */
+export function calculateSubtaskProgress(subtasks: Task[]): SubtaskProgress {
+  const total = subtasks.length
+  const completed = subtasks.filter(
+    (st) => st.status === 'completed' || st.status === 'approved'
+  ).length
+  return { total, completed }
+}
+
+/**
+ * Check if a task is a subtask (has a parent)
+ */
+export function isSubtask(task: Task): boolean {
+  return task.parent_task_id !== null
+}
+
+/**
+ * Check if a task has subtasks
+ */
+export function hasSubtasks(task: TaskWithRelations): boolean {
+  return (task.subtasks && task.subtasks.length > 0) ||
+         (task.subtask_progress && task.subtask_progress.total > 0)
+}
+
+/**
+ * Format subtask progress for display (e.g., "3/5 done")
+ */
+export function formatSubtaskProgress(progress: SubtaskProgress): string {
+  return `${progress.completed}/${progress.total} done`
 }
