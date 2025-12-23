@@ -170,8 +170,10 @@ export function SubtaskList({
         parentTaskId={parentTaskId}
         parentDueDate={parentDueDate}
         users={users}
-        onSuccess={() => {
-          setIsAddModalOpen(false)
+        onSuccess={(keepOpen) => {
+          if (!keepOpen) {
+            setIsAddModalOpen(false)
+          }
           refetch()
           onSubtaskChange?.()
         }}
@@ -416,7 +418,7 @@ interface AddSubtaskModalProps {
   parentTaskId: string
   parentDueDate?: string | null
   users: any[]
-  onSuccess: () => void
+  onSuccess: (keepOpen?: boolean) => void
 }
 
 function AddSubtaskModal({
@@ -438,7 +440,19 @@ function AddSubtaskModal({
   })
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      assignedTo: '',
+      dueDate: parentDueDate
+        ? new Date(parentDueDate).toISOString().split('T')[0]
+        : '',
+      status: 'pending',
+    })
+    setError('')
+  }
+
+  const handleSubmit = async (e: React.FormEvent, keepOpen = false) => {
     e.preventDefault()
     if (!formData.title.trim()) {
       setError('Title is required')
@@ -453,33 +467,16 @@ function AddSubtaskModal({
         dueDate: formData.dueDate || null,
         status: formData.status,
       })
-      // Reset form
-      setFormData({
-        title: '',
-        assignedTo: '',
-        dueDate: parentDueDate
-          ? new Date(parentDueDate).toISOString().split('T')[0]
-          : '',
-        status: 'pending',
-      })
-      setError('')
-      onSuccess()
+      resetForm()
+      onSuccess(keepOpen)
     } catch (err: any) {
       setError(err.message || 'Failed to create subtask')
     }
   }
 
-  // Reset form when modal opens
+  // Reset form when modal closes
   const handleClose = () => {
-    setFormData({
-      title: '',
-      assignedTo: '',
-      dueDate: parentDueDate
-        ? new Date(parentDueDate).toISOString().split('T')[0]
-        : '',
-      status: 'pending',
-    })
-    setError('')
+    resetForm()
     onClose()
   }
 
@@ -579,6 +576,19 @@ function AddSubtaskModal({
             disabled={isPending}
           >
             Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={(e) => handleSubmit(e, true)}
+            disabled={isPending || !formData.title.trim()}
+            className="border-blue-300 text-blue-600 hover:bg-blue-50"
+          >
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Save + Add Another'
+            )}
           </Button>
           <Button
             type="submit"
