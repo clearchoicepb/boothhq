@@ -20,6 +20,12 @@ interface ProjectInfo {
   name: string
 }
 
+// Parent task data structure for subtasks
+interface ParentTaskInfo {
+  id: string
+  title: string
+}
+
 export async function GET(request: Request) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
@@ -127,28 +133,58 @@ export async function GET(request: Request) {
       }
     }
 
-    // Attach event and project info to tasks
+    // Fetch parent task data for subtasks
+    const parentTaskIds = (tasks || [])
+      .filter(t => t.parent_task_id)
+      .map(t => t.parent_task_id!)
+
+    const uniqueParentTaskIds = [...new Set(parentTaskIds)]
+    const parentTasksMap: Record<string, ParentTaskInfo> = {}
+
+    if (uniqueParentTaskIds.length > 0) {
+      const { data: parentTasks } = await supabase
+        .from('tasks')
+        .select('id, title')
+        .eq('tenant_id', dataSourceTenantId)
+        .in('id', uniqueParentTaskIds)
+
+      if (parentTasks) {
+        parentTasks.forEach((task: ParentTaskInfo) => {
+          parentTasksMap[task.id] = task
+        })
+      }
+    }
+
+    // Attach event, project, and parent task info to tasks
     const tasksWithEntities = (tasks || []).map(task => {
+      // Start with base task and add parent task info if it's a subtask
+      let enrichedTask = {
+        ...task,
+        parent_task: task.parent_task_id && parentTasksMap[task.parent_task_id]
+          ? parentTasksMap[task.parent_task_id]
+          : null
+      }
+
+      // Add event info
       if (task.entity_type === 'event' && task.entity_id && eventsMap[task.entity_id]) {
-        return {
-          ...task,
+        enrichedTask = {
+          ...enrichedTask,
           event: eventsMap[task.entity_id]
         }
       }
       // Support both legacy entity_type/entity_id pattern AND new project_id FK
       if (task.project_id && projectsMap[task.project_id]) {
-        return {
-          ...task,
+        enrichedTask = {
+          ...enrichedTask,
           project: projectsMap[task.project_id]
         }
-      }
-      if (task.entity_type === 'project' && task.entity_id && projectsMap[task.entity_id]) {
-        return {
-          ...task,
+      } else if (task.entity_type === 'project' && task.entity_id && projectsMap[task.entity_id]) {
+        enrichedTask = {
+          ...enrichedTask,
           project: projectsMap[task.entity_id]
         }
       }
-      return task
+      return enrichedTask
     })
 
     return NextResponse.json({ tasks: tasksWithEntities })

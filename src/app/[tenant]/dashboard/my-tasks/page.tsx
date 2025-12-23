@@ -21,7 +21,8 @@ import {
   DollarSign,
   Settings as SettingsIcon,
   Search,
-  ExternalLink
+  ExternalLink,
+  CornerDownRight
 } from 'lucide-react'
 import { getDepartmentById, type DepartmentId } from '@/lib/departments'
 import toast from 'react-hot-toast'
@@ -43,6 +44,8 @@ interface Task {
   project_id?: string  // Direct FK for project tasks
   created_at: string
   completed_at?: string
+  // Subtask hierarchy
+  parent_task_id?: string | null
   // Event data from API join
   event?: {
     id: string
@@ -54,6 +57,11 @@ interface Task {
     id: string
     name: string
   }
+  // Parent task data from API join (for subtasks)
+  parent_task?: {
+    id: string
+    title: string
+  } | null
 }
 
 interface EntityData {
@@ -568,8 +576,17 @@ function TaskList({
             onClick={() => onOpenTask(task)}
             className={`bg-white rounded shadow-sm hover:shadow transition-all p-1.5 cursor-pointer border border-transparent hover:border-blue-200 ${
               isCompleted ? 'opacity-40' : ''
-            } ${isOverdue ? 'border-l-2 border-l-red-500' : ''}`}
+            } ${isOverdue ? 'border-l-2 border-l-red-500' : ''} ${task.parent_task_id ? 'ml-4 border-l-2 border-l-gray-200' : ''}`}
           >
+            {/* Subtask Indicator */}
+            {task.parent_task && (
+              <div className="flex items-center gap-1 mb-1 ml-5">
+                <CornerDownRight className="h-3 w-3 text-gray-400" />
+                <span className="text-xs text-gray-500">
+                  Subtask of: <span className="font-medium text-gray-600">{task.parent_task.title}</span>
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {/* Complete Checkbox */}
               <button
