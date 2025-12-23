@@ -22,9 +22,12 @@ import {
   Settings as SettingsIcon,
   Search,
   ExternalLink,
-  CornerDownRight
+  CornerDownRight,
+  ChevronDown,
+  ChevronRight,
+  User
 } from 'lucide-react'
-import { getDepartmentById, type DepartmentId } from '@/lib/departments'
+import { getDepartmentById, DEPARTMENTS, type DepartmentId } from '@/lib/departments'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
 
@@ -62,6 +65,14 @@ interface Task {
     id: string
     title: string
   } | null
+  // For department view: assignee info and nested subtasks
+  assigned_to_user?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string
+  } | null
+  subtasks?: Task[]
 }
 
 interface EntityData {
@@ -125,30 +136,68 @@ export default function MyTasksPage() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
+  // Phase 3: Manager department tabs
+  const [viewTab, setViewTab] = useState<string>('my-tasks') // 'my-tasks' or department id
+  const [managerOfDepartments, setManagerOfDepartments] = useState<string[]>([])
+  const [loadingManagerData, setLoadingManagerData] = useState(true)
+
+  // Fetch user's manager_of_departments on mount
+  useEffect(() => {
+    const fetchManagerData = async () => {
+      try {
+        const res = await fetch('/api/users/me')
+        if (res.ok) {
+          const userData = await res.json()
+          setManagerOfDepartments(userData.manager_of_departments || [])
+        }
+      } catch (error) {
+        log.error({ error }, 'Error fetching manager data')
+      } finally {
+        setLoadingManagerData(false)
+      }
+    }
+    fetchManagerData()
+  }, [])
+
   useEffect(() => {
     fetchMyTasks()
-  }, [filterDepartment, filterPriority])
+  }, [filterDepartment, filterPriority, viewTab])
 
   const fetchMyTasks = async () => {
     try {
       setLoading(true)
       let url = '/api/tasks/my-tasks'
       const params = new URLSearchParams()
-      
-      if (filterDepartment) params.append('department', filterDepartment)
+
+      // Phase 3: Add viewDepartment param for department tabs
+      if (viewTab !== 'my-tasks') {
+        params.append('viewDepartment', viewTab)
+      } else {
+        // Only apply filters in my-tasks view
+        if (filterDepartment) params.append('department', filterDepartment)
+      }
       if (filterPriority) params.append('priority', filterPriority)
-      
+
       if (params.toString()) url += `?${params.toString()}`
-      
+
       const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to fetch tasks')
-      
+      if (!res.ok) {
+        if (res.status === 403) {
+          toast.error('Access denied - not a manager of this department')
+          setViewTab('my-tasks')
+          return
+        }
+        throw new Error('Failed to fetch tasks')
+      }
+
       const data = await res.json()
       const fetchedTasks = data.tasks || data || []
       setTasks(fetchedTasks)
-      
-      // Fetch entity data for all tasks
-      await fetchEntityData(fetchedTasks)
+
+      // Fetch entity data for all tasks (only for my-tasks view)
+      if (viewTab === 'my-tasks') {
+        await fetchEntityData(fetchedTasks)
+      }
     } catch (error) {
       log.error({ error }, 'Error fetching tasks')
       toast.error('Failed to load tasks')
@@ -397,6 +446,18 @@ export default function MyTasksPage() {
     )
   }
 
+  // Get department name for tab display
+  const getDepartmentName = (deptId: string) => {
+    try {
+      return DEPARTMENTS[deptId as DepartmentId]?.name || deptId
+    } catch {
+      return deptId
+    }
+  }
+
+  // Check if we're in department view mode
+  const isDepartmentView = viewTab !== 'my-tasks'
+
   return (
     <AppLayout>
       <div className="min-h-screen bg-gray-50 p-3">
@@ -405,10 +466,51 @@ export default function MyTasksPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center">
             <ListTodo className="h-5 w-5 mr-2 text-blue-600" />
-            My Tasks
+            {isDepartmentView ? `${getDepartmentName(viewTab)} Tasks` : 'My Tasks'}
           </h1>
-          <p className="text-xs text-gray-600 mt-0.5">What's next for you today</p>
+          <p className="text-xs text-gray-600 mt-0.5">
+            {isDepartmentView
+              ? `All tasks for the ${getDepartmentName(viewTab)} department`
+              : "What's next for you today"
+            }
+          </p>
         </div>
+
+        {/* View Tabs - My Tasks vs Department Tabs */}
+        {managerOfDepartments.length > 0 && !loadingManagerData && (
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="flex items-center border-b border-gray-200 overflow-x-auto">
+              <button
+                onClick={() => setViewTab('my-tasks')}
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  viewTab === 'my-tasks'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <ListTodo className="h-4 w-4 inline mr-1" />
+                My Tasks
+              </button>
+              {managerOfDepartments.map(deptId => {
+                const DeptIcon = DEPARTMENT_ICONS[deptId] || ListTodo
+                return (
+                  <button
+                    key={deptId}
+                    onClick={() => setViewTab(deptId)}
+                    className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                      viewTab === deptId
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <DeptIcon className="h-4 w-4 inline mr-1" />
+                    {getDepartmentName(deptId)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Search & Filters */}
         <div className="bg-white rounded-lg shadow-sm p-2 space-y-2">
@@ -424,23 +526,25 @@ export default function MyTasksPage() {
             />
           </div>
 
-          {/* Filter Row */}
+          {/* Filter Row - only show department filter in my-tasks view */}
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-3.5 w-3.5 text-gray-400" />
-            
-            <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-              className="px-2 py-0.5 text-xs border border-gray-300 rounded"
-            >
-              <option value="">All Departments</option>
-              <option value="sales">Sales</option>
-              <option value="design">Design</option>
-              <option value="operations">Operations</option>
-              <option value="customer_success">Customer Success</option>
-              <option value="accounting">Accounting</option>
-              <option value="admin">Administration</option>
-            </select>
+
+            {!isDepartmentView && (
+              <select
+                value={filterDepartment}
+                onChange={(e) => setFilterDepartment(e.target.value)}
+                className="px-2 py-0.5 text-xs border border-gray-300 rounded"
+              >
+                <option value="">All Departments</option>
+                <option value="sales">Sales</option>
+                <option value="design">Design</option>
+                <option value="operations">Operations</option>
+                <option value="customer_success">Customer Success</option>
+                <option value="accounting">Accounting</option>
+                <option value="admin">Administration</option>
+              </select>
+            )}
 
             <select
               value={filterPriority}
@@ -456,17 +560,17 @@ export default function MyTasksPage() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Status Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'completed')}>
           <TabsList className="w-full justify-start bg-white border-b border-gray-200 rounded-none h-auto p-0">
-            <TabsTrigger 
-              value="active" 
+            <TabsTrigger
+              value="active"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-3 py-2 text-xs"
             >
               Active Tasks ({activeTasks.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="completed" 
+            <TabsTrigger
+              value="completed"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-3 py-2 text-xs"
             >
               Completed Tasks ({completedTasks.length})
@@ -474,33 +578,63 @@ export default function MyTasksPage() {
           </TabsList>
 
           <TabsContent value="active" className="mt-2">
-            <TaskList
-              tasks={filteredTasks}
-              searchQuery={searchQuery}
-              onToggleComplete={handleToggleComplete}
-              onOpenTask={setSelectedTask}
-              onOpenEntity={handleOpenEntity}
-              getDepartmentIcon={getDepartmentIcon}
-              getDepartmentLabel={getDepartmentLabel}
-              getTaskDisplayTitle={getTaskDisplayTitle}
-              getDaysUntil={getDaysUntil}
-              getEventDateDisplay={getEventDateDisplay}
-            />
+            {isDepartmentView ? (
+              <DepartmentTaskList
+                tasks={filteredTasks}
+                searchQuery={searchQuery}
+                onToggleComplete={handleToggleComplete}
+                onOpenTask={setSelectedTask}
+                onOpenEntity={handleOpenEntity}
+                getDepartmentIcon={getDepartmentIcon}
+                getDepartmentLabel={getDepartmentLabel}
+                getTaskDisplayTitle={getTaskDisplayTitle}
+                getDaysUntil={getDaysUntil}
+                getEventDateDisplay={getEventDateDisplay}
+              />
+            ) : (
+              <TaskList
+                tasks={filteredTasks}
+                searchQuery={searchQuery}
+                onToggleComplete={handleToggleComplete}
+                onOpenTask={setSelectedTask}
+                onOpenEntity={handleOpenEntity}
+                getDepartmentIcon={getDepartmentIcon}
+                getDepartmentLabel={getDepartmentLabel}
+                getTaskDisplayTitle={getTaskDisplayTitle}
+                getDaysUntil={getDaysUntil}
+                getEventDateDisplay={getEventDateDisplay}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="completed" className="mt-2">
-            <TaskList
-              tasks={filteredTasks}
-              searchQuery={searchQuery}
-              onToggleComplete={handleToggleComplete}
-              onOpenTask={setSelectedTask}
-              onOpenEntity={handleOpenEntity}
-              getDepartmentIcon={getDepartmentIcon}
-              getDepartmentLabel={getDepartmentLabel}
-              getTaskDisplayTitle={getTaskDisplayTitle}
-              getDaysUntil={getDaysUntil}
-              getEventDateDisplay={getEventDateDisplay}
-            />
+            {isDepartmentView ? (
+              <DepartmentTaskList
+                tasks={filteredTasks}
+                searchQuery={searchQuery}
+                onToggleComplete={handleToggleComplete}
+                onOpenTask={setSelectedTask}
+                onOpenEntity={handleOpenEntity}
+                getDepartmentIcon={getDepartmentIcon}
+                getDepartmentLabel={getDepartmentLabel}
+                getTaskDisplayTitle={getTaskDisplayTitle}
+                getDaysUntil={getDaysUntil}
+                getEventDateDisplay={getEventDateDisplay}
+              />
+            ) : (
+              <TaskList
+                tasks={filteredTasks}
+                searchQuery={searchQuery}
+                onToggleComplete={handleToggleComplete}
+                onOpenTask={setSelectedTask}
+                onOpenEntity={handleOpenEntity}
+                getDepartmentIcon={getDepartmentIcon}
+                getDepartmentLabel={getDepartmentLabel}
+                getTaskDisplayTitle={getTaskDisplayTitle}
+                getDaysUntil={getDaysUntil}
+                getEventDateDisplay={getEventDateDisplay}
+              />
+            )}
           </TabsContent>
         </Tabs>
         </div>
@@ -666,6 +800,251 @@ function TaskList({
                 </div>
               </div>
             </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Department Task List component for manager view with assignees and collapsible subtasks
+function DepartmentTaskList({
+  tasks,
+  searchQuery,
+  onToggleComplete,
+  onOpenTask,
+  onOpenEntity,
+  getDepartmentIcon,
+  getDepartmentLabel,
+  getTaskDisplayTitle,
+  getDaysUntil,
+  getEventDateDisplay
+}: {
+  tasks: Task[]
+  searchQuery: string
+  onToggleComplete: (e: React.MouseEvent, taskId: string, currentStatus: string) => void
+  onOpenTask: (task: Task) => void
+  onOpenEntity: (e: React.MouseEvent, task: Task) => void
+  getDepartmentIcon: (deptId?: string) => any
+  getDepartmentLabel: (deptId?: string) => string
+  getTaskDisplayTitle: (task: Task) => string
+  getDaysUntil: (dueDate: string) => number
+  getEventDateDisplay: (task: Task) => string | null
+}) {
+  // Track expanded state for each task (open by default)
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => new Set(tasks.map(t => t.id)))
+
+  // Update expanded state when tasks change
+  useEffect(() => {
+    setExpandedTasks(new Set(tasks.map(t => t.id)))
+  }, [tasks])
+
+  const toggleExpanded = (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation()
+    setExpandedTasks(prev => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
+  }
+
+  const getAssigneeName = (task: Task) => {
+    if (task.assigned_to_user) {
+      const { first_name, last_name, email } = task.assigned_to_user
+      if (first_name || last_name) {
+        return `${first_name || ''} ${last_name || ''}`.trim()
+      }
+      return email
+    }
+    return 'Unassigned'
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+        <ListTodo className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+        <h3 className="text-sm font-medium text-gray-900 mb-1">No tasks found</h3>
+        <p className="text-xs text-gray-600">
+          {searchQuery ? "No tasks match your search" : "No tasks in this department"}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      {tasks.map(task => {
+        const priorityConfig = PRIORITY_CONFIG[task.priority || 'low']
+        const isCompleted = task.status === 'completed'
+        const daysUntil = task.due_date ? getDaysUntil(task.due_date) : null
+        const isOverdue = daysUntil !== null && daysUntil < 0 && !isCompleted
+        const hasSubtasks = task.subtasks && task.subtasks.length > 0
+        const isExpanded = expandedTasks.has(task.id)
+        const completedSubtasks = task.subtasks?.filter(s => s.status === 'completed').length || 0
+        const totalSubtasks = task.subtasks?.length || 0
+
+        return (
+          <div key={task.id} className="space-y-0.5">
+            {/* Main Task */}
+            <div
+              onClick={() => onOpenTask(task)}
+              className={`bg-white rounded shadow-sm hover:shadow transition-all p-2 cursor-pointer border border-transparent hover:border-blue-200 ${
+                isCompleted ? 'opacity-40' : ''
+              } ${isOverdue ? 'border-l-2 border-l-red-500' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                {/* Expand/Collapse Toggle */}
+                {hasSubtasks && (
+                  <button
+                    onClick={(e) => toggleExpanded(e, task.id)}
+                    className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+                    title={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
+
+                {/* Complete Checkbox */}
+                <button
+                  onClick={(e) => onToggleComplete(e, task.id, task.status)}
+                  className="flex-shrink-0"
+                  title={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-gray-300 hover:text-blue-600" />
+                  )}
+                </button>
+
+                {/* Task Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    {/* Title */}
+                    <h3 className={`text-sm font-medium text-gray-900 truncate flex-1 ${isCompleted ? 'line-through' : ''}`}>
+                      {task.title}
+                    </h3>
+
+                    {/* Assignee */}
+                    <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-600">
+                      <User className="h-3 w-3" />
+                      <span>{getAssigneeName(task)}</span>
+                    </div>
+
+                    {/* Subtask Count */}
+                    {hasSubtasks && (
+                      <span className="flex-shrink-0 text-xs text-gray-500">
+                        {completedSubtasks}/{totalSubtasks} subtasks
+                      </span>
+                    )}
+
+                    {/* Priority */}
+                    <span className={`flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${priorityConfig.bgColor} ${priorityConfig.color}`}>
+                      {priorityConfig.label}
+                    </span>
+
+                    {/* Due Date */}
+                    {task.due_date && (
+                      <div className={`flex-shrink-0 flex items-center text-xs font-medium ${
+                        isOverdue ? 'text-red-600' :
+                        daysUntil !== null && daysUntil === 0 ? 'text-orange-600' :
+                        daysUntil !== null && daysUntil <= 3 ? 'text-yellow-600' :
+                        'text-gray-600'
+                      }`}>
+                        <Clock className="h-3 w-3 mr-0.5" />
+                        {isOverdue && '⚠️ '}
+                        {daysUntil === 0 ? 'Today' :
+                         daysUntil === 1 ? 'Tomorrow' :
+                         daysUntil === -1 ? 'Yesterday' :
+                         daysUntil && daysUntil < 0 ? `${Math.abs(daysUntil)}d ago` :
+                         daysUntil && daysUntil > 0 ? `${daysUntil}d` :
+                         ''}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Subtasks (collapsible, open by default) */}
+            {hasSubtasks && isExpanded && (
+              <div className="ml-6 pl-4 border-l-2 border-gray-200 space-y-0.5">
+                {task.subtasks!.map(subtask => {
+                  const subPriorityConfig = PRIORITY_CONFIG[subtask.priority || 'low']
+                  const subIsCompleted = subtask.status === 'completed'
+                  const subDaysUntil = subtask.due_date ? getDaysUntil(subtask.due_date) : null
+                  const subIsOverdue = subDaysUntil !== null && subDaysUntil < 0 && !subIsCompleted
+
+                  return (
+                    <div
+                      key={subtask.id}
+                      onClick={() => onOpenTask(subtask)}
+                      className={`bg-gray-50 rounded shadow-sm hover:shadow transition-all p-1.5 cursor-pointer border border-transparent hover:border-blue-200 ${
+                        subIsCompleted ? 'opacity-40' : ''
+                      } ${subIsOverdue ? 'border-l-2 border-l-red-500' : ''}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {/* Complete Checkbox */}
+                        <button
+                          onClick={(e) => onToggleComplete(e, subtask.id, subtask.status)}
+                          className="flex-shrink-0"
+                          title={subIsCompleted ? "Mark as incomplete" : "Mark as complete"}
+                        >
+                          {subIsCompleted ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Circle className="h-3.5 w-3.5 text-gray-300 hover:text-blue-600" />
+                          )}
+                        </button>
+
+                        {/* Subtask Content */}
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <CornerDownRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                          <h4 className={`text-xs font-medium text-gray-700 truncate flex-1 ${subIsCompleted ? 'line-through' : ''}`}>
+                            {subtask.title}
+                          </h4>
+
+                          {/* Subtask Assignee */}
+                          <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-500">
+                            <User className="h-2.5 w-2.5" />
+                            <span>{getAssigneeName(subtask)}</span>
+                          </div>
+
+                          {/* Priority */}
+                          <span className={`flex-shrink-0 inline-flex items-center px-1 py-0.5 rounded text-xs ${subPriorityConfig.bgColor} ${subPriorityConfig.color}`}>
+                            {subPriorityConfig.label}
+                          </span>
+
+                          {/* Due Date */}
+                          {subtask.due_date && (
+                            <div className={`flex-shrink-0 flex items-center text-xs ${
+                              subIsOverdue ? 'text-red-600' :
+                              subDaysUntil !== null && subDaysUntil === 0 ? 'text-orange-600' :
+                              'text-gray-500'
+                            }`}>
+                              <Clock className="h-2.5 w-2.5 mr-0.5" />
+                              {subDaysUntil === 0 ? 'Today' :
+                               subDaysUntil === 1 ? 'Tmrw' :
+                               subDaysUntil && subDaysUntil < 0 ? `${Math.abs(subDaysUntil)}d ago` :
+                               subDaysUntil && subDaysUntil > 0 ? `${subDaysUntil}d` :
+                               ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )
       })}

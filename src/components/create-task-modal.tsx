@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { Loader2, FileText } from 'lucide-react'
+import { Loader2, FileText, Users } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import { useTaskTemplates } from '@/hooks/useTaskTemplates'
 import type { EventDate } from '@/types/events'
@@ -33,6 +33,32 @@ const UNIFIED_TASK_TYPES: UnifiedTaskType[] = [
   'project',
   'misc',
 ]
+
+// Task types that map directly to departments
+const TASK_TYPE_TO_DEPARTMENT: Partial<Record<UnifiedTaskType, string>> = {
+  design: 'design',
+  operations: 'operations',
+  sales: 'sales',
+  admin: 'admin',
+}
+
+// Department display names
+const DEPARTMENT_LABELS: Record<string, string> = {
+  design: 'Design',
+  operations: 'Operations',
+  sales: 'Sales',
+  admin: 'Admin',
+}
+
+// User type for filtering
+interface UserWithDepartments {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  departments?: string[] | null
+  department?: string | null // Legacy field
+}
 
 interface CreateTaskModalProps {
   isOpen: boolean
@@ -65,6 +91,7 @@ export function CreateTaskModal({
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [taskType, setTaskType] = useState<UnifiedTaskType | ''>(defaultTaskType || '')
+  const [department, setDepartment] = useState<string | null>(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [formData, setFormData] = useState({
     title: '',
@@ -75,6 +102,42 @@ export function CreateTaskModal({
     status: 'pending',
     dueDate: '',
   })
+
+  // Auto-set department when task type changes (Phase 1)
+  useEffect(() => {
+    if (taskType && TASK_TYPE_TO_DEPARTMENT[taskType]) {
+      setDepartment(TASK_TYPE_TO_DEPARTMENT[taskType] as string)
+    } else {
+      setDepartment(null)
+    }
+    // Clear assignee if they're not in the new department
+    setFormData(prev => ({ ...prev, assignedTo: '' }))
+  }, [taskType])
+
+  // Filter users by department (Phase 2)
+  // Check both departments[] array AND legacy department field
+  const filteredUsers = useMemo(() => {
+    const allUsers = users as UserWithDepartments[]
+
+    if (!department) {
+      // No department filter - show all users
+      return allUsers
+    }
+
+    return allUsers.filter(user => {
+      // Check new departments array first
+      if (user.departments && Array.isArray(user.departments)) {
+        if (user.departments.includes(department)) {
+          return true
+        }
+      }
+      // Fall back to legacy department field
+      if (user.department === department) {
+        return true
+      }
+      return false
+    })
+  }, [users, department])
 
   // Fetch templates filtered by unified task type
   const { data: templates = [] } = useTaskTemplates({
@@ -95,6 +158,8 @@ export function CreateTaskModal({
         dueDate: '',
       })
       setTaskType(defaultTaskType || '')
+      // Department will be auto-set by the taskType effect
+      setDepartment(defaultTaskType ? (TASK_TYPE_TO_DEPARTMENT[defaultTaskType] || null) : null)
       setSelectedTemplateId('')
       setError('')
       setErrors({})
@@ -174,6 +239,7 @@ export function CreateTaskModal({
           entityId,
           projectId, // Direct FK for project tasks
           taskType: taskType || null, // Unified task type
+          department: department, // Auto-set from task type (Phase 1)
           taskTemplateId: selectedTemplateId || null,
         }),
       })
@@ -318,18 +384,26 @@ export function CreateTaskModal({
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               </div>
             ) : (
-              <select
-                value={formData.assignedTo}
-                onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              >
-                <option value="">Unassigned</option>
-                {users.map((user: { id: string; first_name: string; last_name: string }) => (
-                  <option key={user.id} value={user.id}>
-                    {user.first_name} {user.last_name}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  value={formData.assignedTo}
+                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                >
+                  <option value="">Unassigned</option>
+                  {filteredUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name}
+                    </option>
+                  ))}
+                </select>
+                {department && (
+                  <p className="text-xs text-blue-600 mt-1 flex items-center">
+                    <Users className="h-3 w-3 mr-1" />
+                    Showing {DEPARTMENT_LABELS[department] || department} team ({filteredUsers.length})
+                  </p>
+                )}
+              </>
             )}
           </div>
 

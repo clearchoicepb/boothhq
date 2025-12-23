@@ -26,6 +26,14 @@ interface ParentTaskInfo {
   title: string
 }
 
+// Assigned user data structure for department view
+interface AssignedUserInfo {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  email: string
+}
+
 export async function GET(request: Request) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
@@ -42,13 +50,54 @@ export async function GET(request: Request) {
     const department = searchParams.get('department')
     const priority = searchParams.get('priority')
     const sortBy = searchParams.get('sortBy') || 'due_date'
+    const viewDepartment = searchParams.get('viewDepartment') // Phase 3: Department manager view
 
-    // Build query to fetch tasks assigned to current user
-    let query = supabase
-      .from('tasks')
-      .select('*')
-      .eq('tenant_id', dataSourceTenantId)
-      .eq('assigned_to', session.user.id)
+    // If viewDepartment is specified, verify user has manager access
+    let isDepartmentView = false
+    if (viewDepartment) {
+      // Fetch user's manager_of_departments from the database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('manager_of_departments')
+        .eq('id', session.user.id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (userError) {
+        log.error({ error: userError }, '[MyTasks] Error fetching user data')
+        return NextResponse.json({ error: 'Failed to verify permissions' }, { status: 500 })
+      }
+
+      const managerOfDepartments = userData?.manager_of_departments || []
+      if (!managerOfDepartments.includes(viewDepartment)) {
+        log.warn({ userId: session.user.id, viewDepartment }, '[MyTasks] User not manager of requested department')
+        return NextResponse.json({ error: 'Access denied - not a manager of this department' }, { status: 403 })
+      }
+
+      isDepartmentView = true
+    }
+
+    // Build query based on view mode
+    let query
+    if (isDepartmentView && viewDepartment) {
+      // Department view: fetch ALL tasks for the department with assignee info
+      query = supabase
+        .from('tasks')
+        .select(`
+          *,
+          assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email)
+        `)
+        .eq('tenant_id', dataSourceTenantId)
+        .eq('department', viewDepartment)
+        .is('parent_task_id', null) // Only top-level tasks, subtasks fetched separately
+    } else {
+      // Regular my-tasks view: fetch tasks assigned to current user
+      query = supabase
+        .from('tasks')
+        .select('*')
+        .eq('tenant_id', dataSourceTenantId)
+        .eq('assigned_to', session.user.id)
+    }
 
     // Apply filters
     if (status === 'active') {
@@ -155,6 +204,30 @@ export async function GET(request: Request) {
       }
     }
 
+    // For department view, fetch subtasks for each parent task
+    let subtasksMap: Record<string, any[]> = {}
+    if (isDepartmentView && tasks && tasks.length > 0) {
+      const parentIds = tasks.map(t => t.id)
+      const { data: subtasks } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email)
+        `)
+        .eq('tenant_id', dataSourceTenantId)
+        .in('parent_task_id', parentIds)
+        .order('display_order', { ascending: true })
+
+      if (subtasks) {
+        subtasks.forEach(subtask => {
+          if (!subtasksMap[subtask.parent_task_id]) {
+            subtasksMap[subtask.parent_task_id] = []
+          }
+          subtasksMap[subtask.parent_task_id].push(subtask)
+        })
+      }
+    }
+
     // Attach event, project, and parent task info to tasks
     const tasksWithEntities = (tasks || []).map(task => {
       // Start with base task and add parent task info if it's a subtask
@@ -162,7 +235,9 @@ export async function GET(request: Request) {
         ...task,
         parent_task: task.parent_task_id && parentTasksMap[task.parent_task_id]
           ? parentTasksMap[task.parent_task_id]
-          : null
+          : null,
+        // For department view, include subtasks nested under parent
+        subtasks: isDepartmentView ? (subtasksMap[task.id] || []) : undefined
       }
 
       // Add event info
@@ -187,7 +262,11 @@ export async function GET(request: Request) {
       return enrichedTask
     })
 
-    return NextResponse.json({ tasks: tasksWithEntities })
+    return NextResponse.json({
+      tasks: tasksWithEntities,
+      viewMode: isDepartmentView ? 'department' : 'myTasks',
+      department: viewDepartment || null
+    })
   } catch (error: any) {
     log.error({ error }, '[MyTasks] Error')
     return NextResponse.json(

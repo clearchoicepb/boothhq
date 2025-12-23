@@ -8,18 +8,28 @@
  * Supports unified task type selection and template filtering
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
 import { useCreateTask, useCreateTaskFromTemplate } from '@/hooks/useTaskActions'
 import { useTaskTemplates } from '@/hooks/useTaskTemplates'
 import { useUsers } from '@/hooks/useUsers'
 import { DEPARTMENTS, DEPARTMENT_TASK_TYPES, type DepartmentId } from '@/lib/departments'
-import { Plus, FileText, Loader2 } from 'lucide-react'
+import { Plus, FileText, Loader2, Users } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
 import type { UnifiedTaskType } from '@/types/tasks'
 
 const log = createLogger('dashboards')
+
+// User type for filtering
+interface UserWithDepartments {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  departments?: string[] | null
+  department?: string | null // Legacy field
+}
 
 // Display labels for unified task types
 const UNIFIED_TASK_TYPE_LABELS: Record<UnifiedTaskType, string> = {
@@ -83,6 +93,26 @@ export function AddTaskModal({
 
   // Fetch users for assignment dropdown
   const { data: users = [], isLoading: loadingUsers } = useUsers()
+
+  // Filter users by department (Phase 2)
+  // Check both departments[] array AND legacy department field
+  const filteredUsers = useMemo(() => {
+    const allUsers = users as UserWithDepartments[]
+
+    return allUsers.filter(user => {
+      // Check new departments array first
+      if (user.departments && Array.isArray(user.departments)) {
+        if (user.departments.includes(departmentId)) {
+          return true
+        }
+      }
+      // Fall back to legacy department field
+      if (user.department === departmentId) {
+        return true
+      }
+      return false
+    })
+  }, [users, departmentId])
 
   // Fetch templates filtered by unified task type
   const { data: templates = [] } = useTaskTemplates({
@@ -348,20 +378,26 @@ export function AddTaskModal({
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           ) : (
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
-              style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-              disabled={isSubmitting}
-            >
-              <option value="">Unassigned</option>
-              {users.map((user: { id: string; first_name: string; last_name: string }) => (
-                <option key={user.id} value={user.id}>
-                  {user.first_name} {user.last_name}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+                style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
+                disabled={isSubmitting}
+              >
+                <option value="">Unassigned</option>
+                {filteredUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.first_name} {user.last_name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-blue-600 mt-1 flex items-center">
+                <Users className="h-3 w-3 mr-1" />
+                Showing {department.name} team ({filteredUsers.length})
+              </p>
+            </>
           )}
         </div>
 
