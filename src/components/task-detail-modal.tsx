@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2 } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import { SubtaskList } from '@/components/subtask-list'
+import { TaskNotes } from '@/components/task-notes'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('components')
@@ -317,6 +318,13 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
             parentDueDate={task.due_date}
             onSubtaskChange={onUpdate}
           />
+        )}
+
+        {/* Progress Notes Section - only show for top-level tasks */}
+        {!task.parent_task_id && (
+          <div className="pt-4 border-t">
+            <TaskNotes taskId={task.id} />
+          </div>
         )}
 
         <div className="flex justify-between items-center pt-4 border-t">
