@@ -448,3 +448,195 @@ export function useTaskActions() {
     bulkDelete,
   }
 }
+
+// =========================================================================
+// SUBTASK HOOKS (added 2025-12-23)
+// =========================================================================
+
+/**
+ * Hook for creating a subtask
+ *
+ * @example
+ * const { createSubtask, isPending } = useCreateSubtask()
+ *
+ * await createSubtask({
+ *   parentTaskId: 'task-123',
+ *   title: 'Review documentation',
+ *   priority: 'medium'
+ * })
+ */
+export function useCreateSubtask() {
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: ({
+      parentTaskId,
+      ...data
+    }: {
+      parentTaskId: string
+    } & Omit<TaskInsert, 'parentTaskId'>) =>
+      tasksService.createSubtask(parentTaskId, data),
+    onSuccess: (newSubtask, variables) => {
+      // Invalidate parent task query to refetch with new subtask
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.parentTaskId],
+      })
+      // Invalidate subtasks list
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', 'subtasks', variables.parentTaskId],
+      })
+      // Invalidate general task lists (for progress updates)
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+
+      toast.success('Subtask created')
+    },
+    onError: (error: any) => {
+      log.error({ error }, 'Failed to create subtask')
+      toast.error(error.message || 'Failed to create subtask')
+    },
+  })
+
+  return {
+    createSubtask: mutation.mutateAsync,
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+  }
+}
+
+/**
+ * Hook for reordering subtasks within a parent
+ *
+ * @example
+ * const { reorderSubtasks, isPending } = useReorderSubtasks()
+ *
+ * await reorderSubtasks({
+ *   parentTaskId: 'task-123',
+ *   subtaskIds: ['subtask-3', 'subtask-1', 'subtask-2']
+ * })
+ */
+export function useReorderSubtasks() {
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: ({
+      subtaskIds,
+    }: {
+      parentTaskId: string
+      subtaskIds: string[]
+    }) => tasksService.reorderSubtasks(subtaskIds),
+    onSuccess: (_, variables) => {
+      // Invalidate subtasks list to show new order
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', 'subtasks', variables.parentTaskId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.parentTaskId],
+      })
+
+      toast.success('Subtasks reordered')
+    },
+    onError: (error: any) => {
+      log.error({ error }, 'Failed to reorder subtasks')
+      toast.error(error.message || 'Failed to reorder subtasks')
+    },
+  })
+
+  return {
+    reorderSubtasks: mutation.mutateAsync,
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+  }
+}
+
+/**
+ * Hook for updating a subtask's status (with parent cache invalidation)
+ *
+ * @example
+ * const { updateSubtaskStatus, isPending } = useUpdateSubtaskStatus()
+ *
+ * await updateSubtaskStatus({
+ *   subtaskId: 'subtask-123',
+ *   parentTaskId: 'task-456',
+ *   status: 'completed'
+ * })
+ */
+export function useUpdateSubtaskStatus() {
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: ({
+      subtaskId,
+      status,
+    }: {
+      subtaskId: string
+      parentTaskId: string
+      status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+    }) => tasksService.updateStatus(subtaskId, status),
+    onMutate: async ({ subtaskId, parentTaskId, status }) => {
+      // Optimistically update subtasks list
+      await queryClient.cancelQueries({
+        queryKey: ['tasks', 'subtasks', parentTaskId],
+      })
+
+      const previousSubtasks = queryClient.getQueryData<TaskWithRelations[]>([
+        'tasks',
+        'subtasks',
+        parentTaskId,
+      ])
+
+      if (previousSubtasks) {
+        queryClient.setQueryData(
+          ['tasks', 'subtasks', parentTaskId],
+          previousSubtasks.map((st) =>
+            st.id === subtaskId
+              ? {
+                  ...st,
+                  status,
+                  completed_at:
+                    status === 'completed' ? new Date().toISOString() : null,
+                }
+              : st
+          )
+        )
+      }
+
+      return { previousSubtasks }
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate parent task to update progress
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.parentTaskId],
+      })
+      // Invalidate task lists for progress badge updates
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'with-progress'] })
+
+      const statusMessages = {
+        pending: 'Subtask marked as pending',
+        in_progress: 'Subtask in progress',
+        completed: 'Subtask completed!',
+        cancelled: 'Subtask cancelled',
+      }
+      toast.success(statusMessages[variables.status])
+    },
+    onError: (error: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousSubtasks) {
+        queryClient.setQueryData(
+          ['tasks', 'subtasks', variables.parentTaskId],
+          context.previousSubtasks
+        )
+      }
+      log.error({ error }, 'Failed to update subtask status')
+      toast.error(error.message || 'Failed to update subtask status')
+    },
+  })
+
+  return {
+    updateSubtaskStatus: mutation.mutateAsync,
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+  }
+}

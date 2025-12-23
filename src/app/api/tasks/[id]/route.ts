@@ -9,11 +9,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-  const context = await getTenantContext()
-  if (context instanceof NextResponse) return context
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+    const { supabase, dataSourceTenantId } = context
     const { id } = await params
+    const { searchParams } = new URL(request.url)
+
+    // Query params for subtasks (added 2025-12-23)
+    const includeSubtasks = searchParams.get('includeSubtasks') === 'true'
+
     const { data: task, error } = await supabase
       .from('tasks')
       .select(`
@@ -44,7 +49,41 @@ export async function GET(
       eventData = event
     }
 
-    return NextResponse.json({ ...task, event: eventData })
+    // Fetch subtasks if requested (added 2025-12-23)
+    let subtasks: any[] = []
+    let subtaskProgress = null
+    if (includeSubtasks) {
+      const { data: subtaskData } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          assigned_to_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email, department, department_role),
+          created_by_user:users!tasks_created_by_fkey(id, first_name, last_name, email)
+        `)
+        .eq('parent_task_id', id)
+        .eq('tenant_id', dataSourceTenantId)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true })
+
+      if (subtaskData) {
+        subtasks = subtaskData
+        // Compute progress
+        const completed = subtaskData.filter(
+          (st: any) => st.status === 'completed' || st.status === 'approved'
+        ).length
+        subtaskProgress = {
+          total: subtaskData.length,
+          completed,
+        }
+      }
+    }
+
+    return NextResponse.json({
+      ...task,
+      event: eventData,
+      subtasks: includeSubtasks ? subtasks : undefined,
+      subtask_progress: subtaskProgress,
+    })
   } catch (error) {
     log.error({ error }, 'Error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -95,6 +134,9 @@ export async function PATCH(
       submittedForApprovalAt,
       approvedAt,
       approvedBy,
+      // Subtask fields (added 2025-12-23)
+      parentTaskId,
+      displayOrder,
     } = body
 
     // Fetch current task to get previous status for workflow triggers
@@ -155,6 +197,10 @@ export async function PATCH(
     if (submittedForApprovalAt !== undefined) updateData.submitted_for_approval_at = submittedForApprovalAt
     if (approvedAt !== undefined) updateData.approved_at = approvedAt
     if (approvedBy !== undefined) updateData.approved_by = approvedBy
+
+    // Subtask fields (added 2025-12-23)
+    if (parentTaskId !== undefined) updateData.parent_task_id = parentTaskId
+    if (displayOrder !== undefined) updateData.display_order = displayOrder
 
     // Status handling with automatic timestamp updates
     if (status !== undefined) {

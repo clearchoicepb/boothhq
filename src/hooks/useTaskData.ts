@@ -208,3 +208,94 @@ export function useTaskStats(
     staleTime: 60000, // 1 minute
   })
 }
+
+// =========================================================================
+// SUBTASK HOOKS (added 2025-12-23)
+// =========================================================================
+
+/**
+ * Hook for fetching subtasks of a parent task
+ *
+ * @param parentTaskId - Parent task ID
+ * @param enabled - Whether to enable the query (default: true)
+ *
+ * @example
+ * const { data: subtasks, isLoading } = useSubtasks(taskId)
+ */
+export function useSubtasks(
+  parentTaskId: string | null,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['tasks', 'subtasks', parentTaskId],
+    queryFn: () => tasksService.getSubtasks(parentTaskId!),
+    enabled: enabled && !!parentTaskId,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching a task with its subtasks included
+ *
+ * @param taskId - Task ID
+ * @param enabled - Whether to enable the query (default: true)
+ *
+ * @example
+ * const { data: task } = useTaskWithSubtasks(taskId)
+ * // task.subtasks contains the subtask array
+ * // task.subtask_progress contains { total, completed }
+ */
+export function useTaskWithSubtasks(
+  taskId: string | null,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['tasks', taskId, 'with-subtasks'],
+    queryFn: () => tasksService.getById(taskId!, { includeSubtasks: true }),
+    enabled: enabled && !!taskId,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching top-level tasks only (excludes subtasks)
+ *
+ * @param options - Filter options
+ * @param enabled - Whether to enable the query (default: true)
+ *
+ * @example
+ * const { data: tasks } = useTopLevelTasks({ department: 'design' })
+ */
+export function useTopLevelTasks(
+  options: Omit<TaskListOptions, 'excludeSubtasks'> = {},
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['tasks', 'top-level', options],
+    queryFn: () => tasksService.getTopLevelTasks(options),
+    enabled,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching tasks with subtask progress (for badge display)
+ *
+ * @param options - Filter options
+ * @param enabled - Whether to enable the query (default: true)
+ *
+ * @example
+ * const { data: tasks } = useTasksWithProgress({ department: 'design' })
+ * // Each task has subtask_progress: { total, completed }
+ */
+export function useTasksWithProgress(
+  options: Omit<TaskListOptions, 'includeSubtaskProgress'> = {},
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['tasks', 'with-progress', options],
+    queryFn: () => tasksService.getTasksWithProgress(options),
+    enabled,
+    staleTime: 30000,
+  })
+}

@@ -337,8 +337,8 @@ Implement optional parent status auto-update:
 
 - [x] Phase 1: Database Migration
 - [x] Phase 2: Type Updates
-- [ ] Phase 3: API Updates
-- [ ] Phase 4: Service Layer Updates
-- [ ] Phase 5: Hook Updates
+- [x] Phase 3: API Updates
+- [x] Phase 4: Service Layer Updates
+- [x] Phase 5: Hook Updates
 - [ ] Phase 6: UI Components
 - [ ] Phase 7: Status Rollup Logic (Progress indicator only)
