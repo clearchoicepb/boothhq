@@ -92,6 +92,11 @@ class TasksService {
     if (options.sort_by) params.append('sort_by', options.sort_by)
     if (options.sort_order) params.append('sort_order', options.sort_order)
 
+    // Subtask filters (added 2025-12-23)
+    if (options.parentTaskId) params.append('parentTaskId', options.parentTaskId)
+    if (options.excludeSubtasks) params.append('excludeSubtasks', 'true')
+    if (options.includeSubtaskProgress) params.append('includeSubtaskProgress', 'true')
+
     const queryString = params.toString()
     const url = `/api/tasks${queryString ? `?${queryString}` : ''}`
 
@@ -102,9 +107,18 @@ class TasksService {
    * Get a single task by ID
    *
    * @param id - Task ID
+   * @param options - Optional parameters
    */
-  async getById(id: string): Promise<TaskWithRelations> {
-    return apiClient.get<TaskWithRelations>(`/api/tasks/${id}`)
+  async getById(
+    id: string,
+    options: { includeSubtasks?: boolean } = {}
+  ): Promise<TaskWithRelations> {
+    const params = new URLSearchParams()
+    if (options.includeSubtasks) params.append('includeSubtasks', 'true')
+    const queryString = params.toString()
+    return apiClient.get<TaskWithRelations>(
+      `/api/tasks/${id}${queryString ? `?${queryString}` : ''}`
+    )
   }
 
   /**
@@ -401,6 +415,98 @@ class TasksService {
    */
   async bulkDelete(taskIds: string[]): Promise<void> {
     return apiClient.post('/api/tasks/bulk-delete', { taskIds })
+  }
+
+  // =========================================================================
+  // SUBTASK METHODS (added 2025-12-23)
+  // =========================================================================
+
+  /**
+   * Get subtasks of a parent task
+   *
+   * @param parentTaskId - Parent task ID
+   * @returns Array of subtasks ordered by display_order
+   *
+   * @example
+   * const subtasks = await tasksService.getSubtasks('task-123')
+   */
+  async getSubtasks(parentTaskId: string): Promise<TaskWithRelations[]> {
+    return this.list({
+      parentTaskId,
+      sort_by: 'created_at',
+      sort_order: 'asc',
+    })
+  }
+
+  /**
+   * Create a subtask under a parent task
+   *
+   * @param parentTaskId - Parent task ID
+   * @param data - Subtask data (title required, others optional)
+   * @returns Created subtask with relations
+   *
+   * @example
+   * const subtask = await tasksService.createSubtask('task-123', {
+   *   title: 'Review documentation',
+   *   priority: 'medium'
+   * })
+   */
+  async createSubtask(
+    parentTaskId: string,
+    data: Omit<TaskInsert, 'parentTaskId'>
+  ): Promise<TaskWithRelations> {
+    return this.create({
+      ...data,
+      parentTaskId,
+    })
+  }
+
+  /**
+   * Reorder subtasks within a parent
+   *
+   * @param subtaskIds - Array of subtask IDs in desired order
+   * @returns Updated subtasks
+   *
+   * @example
+   * await tasksService.reorderSubtasks(['subtask-3', 'subtask-1', 'subtask-2'])
+   */
+  async reorderSubtasks(subtaskIds: string[]): Promise<void> {
+    // Update each subtask with its new display_order
+    await Promise.all(
+      subtaskIds.map((id, index) =>
+        this.update(id, { display_order: index })
+      )
+    )
+  }
+
+  /**
+   * Get top-level tasks only (exclude subtasks)
+   * Useful for main task lists
+   *
+   * @param filters - Additional filters
+   */
+  async getTopLevelTasks(
+    filters: Omit<TaskListOptions, 'excludeSubtasks'> = {}
+  ): Promise<TaskWithRelations[]> {
+    return this.list({
+      ...filters,
+      excludeSubtasks: true,
+    })
+  }
+
+  /**
+   * Get tasks with subtask progress included
+   * Useful for displaying badges in task lists
+   *
+   * @param filters - Additional filters
+   */
+  async getTasksWithProgress(
+    filters: Omit<TaskListOptions, 'includeSubtaskProgress'> = {}
+  ): Promise<TaskWithRelations[]> {
+    return this.list({
+      ...filters,
+      includeSubtaskProgress: true,
+    })
   }
 }
 

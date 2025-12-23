@@ -32,6 +32,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '100')
 
+    // Subtask filters (added 2025-12-23)
+    const parentTaskId = searchParams.get('parentTaskId')
+    const excludeSubtasks = searchParams.get('excludeSubtasks') === 'true'
+    const includeSubtaskProgress = searchParams.get('includeSubtaskProgress') === 'true'
+
     // Build query with relations
     let query = supabase
       .from('tasks')
@@ -96,6 +101,15 @@ export async function GET(request: NextRequest) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
+    // Subtask filters (added 2025-12-23)
+    if (parentTaskId) {
+      // Get subtasks of a specific parent
+      query = query.eq('parent_task_id', parentTaskId)
+    } else if (excludeSubtasks) {
+      // Only top-level tasks (exclude subtasks from main list)
+      query = query.is('parent_task_id', null)
+    }
+
     // Apply sorting
     const ascending = sortOrder === 'asc'
     if (sortBy === 'due_date') {
@@ -122,6 +136,44 @@ export async function GET(request: NextRequest) {
         error: 'Failed to fetch tasks',
         details: error.message
       }, { status: 500 })
+    }
+
+    // If includeSubtaskProgress is requested, compute progress for each task
+    if (includeSubtaskProgress && tasks && tasks.length > 0) {
+      // Get all task IDs that might have subtasks
+      const taskIds = tasks.map((t: any) => t.id)
+
+      // Fetch subtask counts grouped by parent
+      const { data: subtaskCounts } = await supabase
+        .from('tasks')
+        .select('parent_task_id, status')
+        .in('parent_task_id', taskIds)
+        .eq('tenant_id', dataSourceTenantId)
+
+      if (subtaskCounts) {
+        // Group by parent and compute progress
+        const progressMap = new Map<string, { total: number; completed: number }>()
+
+        for (const subtask of subtaskCounts) {
+          const parentId = subtask.parent_task_id
+          if (!progressMap.has(parentId)) {
+            progressMap.set(parentId, { total: 0, completed: 0 })
+          }
+          const progress = progressMap.get(parentId)!
+          progress.total++
+          if (subtask.status === 'completed' || subtask.status === 'approved') {
+            progress.completed++
+          }
+        }
+
+        // Attach progress to each task
+        for (const task of tasks) {
+          const progress = progressMap.get(task.id)
+          if (progress) {
+            (task as any).subtask_progress = progress
+          }
+        }
+      }
     }
 
     return NextResponse.json(tasks || [])
@@ -153,12 +205,40 @@ export async function POST(request: NextRequest) {
       dueDate,
       department,
       taskType,
+      // Subtask fields (added 2025-12-23)
+      parentTaskId,
+      displayOrder,
     } = body
 
     if (!title) {
       return NextResponse.json({
         error: 'Missing required field: title'
       }, { status: 400 })
+    }
+
+    // If creating a subtask, fetch parent task for inheritance
+    let parentTask: any = null
+    let inheritedDueDate = dueDate
+    if (parentTaskId) {
+      const { data: parent, error: parentError } = await supabase
+        .from('tasks')
+        .select('id, tenant_id, due_date, entity_type, entity_id, event_date_id, project_id, department')
+        .eq('id', parentTaskId)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (parentError || !parent) {
+        return NextResponse.json({
+          error: 'Parent task not found'
+        }, { status: 404 })
+      }
+
+      parentTask = parent
+
+      // Inherit due_date from parent if not explicitly provided
+      if (!dueDate && parent.due_date) {
+        inheritedDueDate = parent.due_date
+      }
     }
 
     // Import here to avoid circular dependency issues
@@ -182,23 +262,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // For subtasks, inherit entity linkage from parent if not explicitly provided
+    const finalEntityType = parentTask ? (entityType || parentTask.entity_type) : entityType
+    const finalEntityId = parentTask ? (entityId || parentTask.entity_id) : entityId
+    const finalEventDateId = parentTask ? (eventDateId || parentTask.event_date_id) : eventDateId
+    const finalProjectId = parentTask ? (projectId || parentTask.project_id) : projectId
+
     const { data: task, error: createError } = await supabase
       .from('tasks')
       .insert({
         tenant_id: dataSourceTenantId,
         title,
         description,
-        assigned_to: assignedTo || null,
+        assigned_to: assignedTo || null, // Subtasks unassigned by default per design decision
         created_by: session.user.id,
-        entity_type: entityType || null,
-        entity_id: entityId || null,
-        event_date_id: eventDateId || null,
-        project_id: projectId || null, // Direct FK for project tasks
+        entity_type: finalEntityType || null,
+        entity_id: finalEntityId || null,
+        event_date_id: finalEventDateId || null,
+        project_id: finalProjectId || null,
         status,
         priority,
-        due_date: dueDate || null,
+        due_date: inheritedDueDate || null, // Inherit from parent if not provided
         department: taskDepartment || null,
         task_type: taskType || null,
+        // Subtask fields (added 2025-12-23)
+        parent_task_id: parentTaskId || null,
+        display_order: displayOrder ?? 0,
       })
       .select(`
         *,

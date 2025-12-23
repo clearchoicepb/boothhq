@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2 } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
+import { SubtaskList } from '@/components/subtask-list'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('components')
@@ -23,6 +24,7 @@ interface Task {
   completed_at: string | null
   created_at: string
   updated_at: string
+  parent_task_id?: string | null // For detecting if this is a subtask
   assigned_to_user?: {
     id: string
     first_name: string
@@ -307,6 +309,15 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
             </div>
           )}
         </div>
+
+        {/* Subtasks Section - only show for top-level tasks */}
+        {!task.parent_task_id && (
+          <SubtaskList
+            parentTaskId={task.id}
+            parentDueDate={task.due_date}
+            onSubtaskChange={onUpdate}
+          />
+        )}
 
         <div className="flex justify-between items-center pt-4 border-t">
           <Button
