@@ -295,30 +295,22 @@ Implement optional parent status auto-update:
 
 ---
 
-## 5. Open Questions for Decision
+## 5. Design Decisions (APPROVED 2025-12-23)
 
 1. **Should subtask completion auto-update parent status?**
-   - [ ] Yes, auto-complete parent when all subtasks done
-   - [ ] No, parent status is independent
-   - [ ] Show progress only (e.g., "3/5 done")
+   - [x] **Show progress only (e.g., "3/5 done")** - Parent status is independent
 
 2. **Can subtasks have their own subtasks (nested hierarchy)?**
-   - [ ] Yes, allow unlimited nesting
-   - [ ] No, only one level deep
-   - [ ] Limit to 2-3 levels
+   - [x] **No, only one level deep** - Enforced via database constraint
 
 3. **Should subtasks inherit assignee from parent by default?**
-   - [ ] Yes, default to parent's assignee
-   - [ ] No, always unassigned by default
+   - [x] **No, always unassigned by default**
 
 4. **Subtask display in task lists:**
-   - [ ] Show as expandable children under parent
-   - [ ] Show subtask count badge only
-   - [ ] Flatten all tasks including subtasks
+   - [x] **Show subtask count badge only**
 
 5. **Should subtasks inherit due date from parent?**
-   - [ ] Yes, default to parent's due date
-   - [ ] No, subtasks have no default due date
+   - [x] **Yes, default to parent's due date** - Applied in API layer during creation
 
 ---
 
@@ -333,11 +325,20 @@ Implement optional parent status auto-update:
 
 ---
 
-## Approval Requested
+## Approval Status
 
-Please review this plan and:
-1. Answer the open questions in Section 5
-2. Confirm the self-referential approach
-3. Approve to proceed with implementation
+**APPROVED: 2025-12-23**
 
-Once approved, I'll begin with Phase 1 (database migration).
+- [x] Open questions answered (Section 5)
+- [x] Self-referential approach confirmed
+- [x] Proceeding with implementation
+
+### Implementation Progress
+
+- [x] Phase 1: Database Migration
+- [ ] Phase 2: Type Updates
+- [ ] Phase 3: API Updates
+- [ ] Phase 4: Service Layer Updates
+- [ ] Phase 5: Hook Updates
+- [ ] Phase 6: UI Components
+- [ ] Phase 7: Status Rollup Logic (Progress indicator only)
