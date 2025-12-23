@@ -1,15 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2 } from 'lucide-react'
+import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2, Users } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import { SubtaskList } from '@/components/subtask-list'
 import { TaskNotes } from '@/components/task-notes'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('components')
+
+// Department display names
+const DEPARTMENT_LABELS: Record<string, string> = {
+  design: 'Design',
+  operations: 'Operations',
+  sales: 'Sales',
+  admin: 'Admin',
+}
+
+// User type for filtering
+interface UserWithDepartments {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  departments?: string[] | null
+  department?: string | null // Legacy field
+}
 
 interface Task {
   id: string
@@ -19,6 +37,7 @@ interface Task {
   created_by: string
   entity_type: string | null
   entity_id: string | null
+  department?: string | null // Task department for filtering assignees
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   due_date: string | null
@@ -60,6 +79,32 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
     status: task.status,
     dueDate: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
   })
+
+  // Filter users by task department (Phase 2)
+  // Check both departments[] array AND legacy department field
+  const filteredUsers = useMemo(() => {
+    const allUsers = users as UserWithDepartments[]
+    const taskDepartment = task.department
+
+    if (!taskDepartment) {
+      // No department filter - show all users
+      return allUsers
+    }
+
+    return allUsers.filter(user => {
+      // Check new departments array first
+      if (user.departments && Array.isArray(user.departments)) {
+        if (user.departments.includes(taskDepartment)) {
+          return true
+        }
+      }
+      // Fall back to legacy department field
+      if (user.department === taskDepartment) {
+        return true
+      }
+      return false
+    })
+  }, [users, task.department])
 
   // Clear field error when user types
   const handleTitleChange = (value: string) => {
@@ -231,18 +276,26 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               </div>
             ) : (
-              <select
-                value={formData.assignedTo}
-                onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              >
-                <option value="">Unassigned</option>
-                {users.map((user: { id: string; first_name: string; last_name: string }) => (
-                  <option key={user.id} value={user.id}>
-                    {user.first_name} {user.last_name}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  value={formData.assignedTo}
+                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                >
+                  <option value="">Unassigned</option>
+                  {filteredUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name}
+                    </option>
+                  ))}
+                </select>
+                {task.department && (
+                  <p className="text-xs text-blue-600 mt-1 flex items-center">
+                    <Users className="h-3 w-3 mr-1" />
+                    Showing {DEPARTMENT_LABELS[task.department] || task.department} team ({filteredUsers.length})
+                  </p>
+                )}
+              </>
             )}
           </div>
 

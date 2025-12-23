@@ -76,6 +76,7 @@ export async function PUT(
       job_title,
       department, // Legacy single department (deprecated)
       departments, // New multi-department support
+      manager_of_departments, // Departments where user is a manager
       employee_type,
       pay_rate,
       payroll_info,
@@ -112,6 +113,13 @@ export async function PUT(
     } else if (department !== undefined) {
       // Legacy: if single department provided, convert to array
       updateData.departments = [department]
+    }
+
+    // Handle manager_of_departments array
+    if (manager_of_departments !== undefined) {
+      updateData.manager_of_departments = Array.isArray(manager_of_departments)
+        ? manager_of_departments
+        : []
     }
 
     if (employee_type !== undefined) updateData.employee_type = employee_type
