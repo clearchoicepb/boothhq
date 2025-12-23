@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, MapPin, Building2, Eye, Download, X } from 'lucide-react'
+import { Calendar, MapPin, Building2, Eye, Download, X, CheckCircle2 } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
 import { getWeekRange, isDateInRange, formatDateShort, getDaysUntil, isDateToday, toDateInputValue, type DateRange } from '@/lib/utils/date-utils'
 import { getEventPriority } from '@/lib/utils/event-priority'
@@ -87,6 +87,14 @@ interface GroupedStaffByType {
 function formatStaffName(firstName: string, lastName: string): string {
   const lastInitial = lastName ? lastName.charAt(0).toUpperCase() + '.' : ''
   return `${firstName} ${lastInitial}`.trim()
+}
+
+// Get readiness color based on percentage
+function getReadinessColor(percentage: number): { text: string; bg: string; bar: string } {
+  if (percentage === 100) return { text: 'text-green-700', bg: 'bg-green-50', bar: 'bg-green-500' }
+  if (percentage >= 75) return { text: 'text-blue-700', bg: 'bg-blue-50', bar: 'bg-blue-500' }
+  if (percentage >= 50) return { text: 'text-yellow-700', bg: 'bg-yellow-50', bar: 'bg-yellow-500' }
+  return { text: 'text-red-700', bg: 'bg-red-50', bar: 'bg-red-500' }
 }
 
 // Get display name for staff type
@@ -639,6 +647,9 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Readiness
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Staffing Details
                   </th>
                 </tr>
@@ -733,6 +744,40 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                         )}
                       </td>
 
+                      {/* Readiness */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const readiness = event.task_readiness
+                          if (!readiness || !readiness.hasTasks) {
+                            return (
+                              <span className="text-xs text-gray-400 italic">No tasks</span>
+                            )
+                          }
+
+                          const colors = getReadinessColor(readiness.percentage)
+                          const isReady = readiness.percentage === 100
+
+                          return (
+                            <div className={`inline-flex items-center gap-1.5 ${isCompleted ? 'opacity-50' : ''}`}>
+                              {isReady && (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                              )}
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full ${colors.bar} transition-all duration-300`}
+                                    style={{ width: `${readiness.percentage}%` }}
+                                  />
+                                </div>
+                                <span className={`text-xs font-medium ${colors.text}`}>
+                                  {readiness.completed}/{readiness.total}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </td>
+
                       {/* Staffing Details */}
                       <td className="px-6 py-4 align-middle">
                         {(() => {
@@ -813,6 +858,36 @@ export function WeeklyEventsTable({ tenantSubdomain }: WeeklyEventsTableProps) {
                       <span className={isCompleted ? 'line-through' : ''}>{location}</span>
                     </div>
                   </div>
+
+                  {/* Readiness */}
+                  {(() => {
+                    const readiness = event.task_readiness
+                    if (!readiness || !readiness.hasTasks) {
+                      return null
+                    }
+
+                    const colors = getReadinessColor(readiness.percentage)
+                    const isReady = readiness.percentage === 100
+
+                    return (
+                      <div className={`mt-2 flex items-center gap-2 ${isCompleted ? 'opacity-50' : ''}`}>
+                        {isReady && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                        )}
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${colors.bar} transition-all duration-300`}
+                              style={{ width: `${readiness.percentage}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-medium ${colors.text}`}>
+                            {readiness.completed}/{readiness.total} tasks
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Staffing Details */}
                   {(() => {
