@@ -170,10 +170,8 @@ export function SubtaskList({
         parentTaskId={parentTaskId}
         parentDueDate={parentDueDate}
         users={users}
-        onSuccess={(keepOpen) => {
-          if (!keepOpen) {
-            setIsAddModalOpen(false)
-          }
+        onSuccess={() => {
+          setIsAddModalOpen(false)
           refetch()
           onSubtaskChange?.()
         }}
@@ -418,7 +416,7 @@ interface AddSubtaskModalProps {
   parentTaskId: string
   parentDueDate?: string | null
   users: any[]
-  onSuccess: (keepOpen?: boolean) => void
+  onSuccess: () => void
 }
 
 function AddSubtaskModal({
@@ -452,7 +450,8 @@ function AddSubtaskModal({
     setError('')
   }
 
-  const saveSubtask = async (keepOpen: boolean) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!formData.title.trim()) {
       setError('Title is required')
       return
@@ -467,19 +466,10 @@ function AddSubtaskModal({
         status: formData.status,
       })
       resetForm()
-      onSuccess(keepOpen)
+      onSuccess()
     } catch (err: any) {
       setError(err.message || 'Failed to create subtask')
     }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    saveSubtask(false)
-  }
-
-  const handleSaveAndAddAnother = () => {
-    saveSubtask(true)
   }
 
   // Reset form when modal closes
@@ -584,19 +574,6 @@ function AddSubtaskModal({
             disabled={isPending}
           >
             Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSaveAndAddAnother}
-            disabled={isPending || !formData.title.trim()}
-            className="border-blue-300 text-blue-600 hover:bg-blue-50"
-          >
-            {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Save + Add Another'
-            )}
           </Button>
           <Button
             type="submit"
