@@ -353,7 +353,54 @@ export interface TaskTemplate {
 }
 
 /**
- * Task comment for collaboration
+ * Task note for progress updates
+ * These are append-only (no edit/delete) for audit trail
+ * Only supported on parent tasks, not subtasks
+ */
+export interface TaskNote {
+  id: string
+  tenant_id: string
+  task_id: string
+  author_id: string
+  content: string
+  created_at: string
+  updated_at: string
+  // Populated via join
+  author?: {
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+  }
+}
+
+/**
+ * Input for creating a new task note
+ */
+export interface TaskNoteInsert {
+  content: string
+}
+
+/**
+ * Task note with author information (for display)
+ */
+export interface TaskNoteWithAuthor extends TaskNote {
+  author: {
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+  }
+}
+
+/**
+ * Maximum content length for task notes
+ */
+export const TASK_NOTE_MAX_LENGTH = 4000
+
+/**
+ * @deprecated Use TaskNote instead
+ * Task comment for collaboration (legacy interface)
  */
 export interface TaskComment {
   id: string

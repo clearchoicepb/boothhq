@@ -42,6 +42,31 @@
  */
 export const queryKeys = {
   /**
+   * Tasks and related resources
+   */
+  tasks: {
+    /**
+     * All tasks list
+     * @returns ['tasks']
+     */
+    list: () => ['tasks'] as const,
+
+    /**
+     * Single task detail
+     * @param taskId - Task UUID
+     * @returns ['tasks', taskId]
+     */
+    detail: (taskId: string) => ['tasks', taskId] as const,
+
+    /**
+     * Task notes (progress updates)
+     * @param taskId - Task UUID
+     * @returns ['task-notes', taskId]
+     */
+    notes: (taskId: string) => ['task-notes', taskId] as const,
+  },
+
+  /**
    * Events and related resources
    */
   events: {
