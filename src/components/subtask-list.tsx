@@ -452,8 +452,7 @@ function AddSubtaskModal({
     setError('')
   }
 
-  const handleSubmit = async (e: React.FormEvent, keepOpen = false) => {
-    e.preventDefault()
+  const saveSubtask = async (keepOpen: boolean) => {
     if (!formData.title.trim()) {
       setError('Title is required')
       return
@@ -472,6 +471,15 @@ function AddSubtaskModal({
     } catch (err: any) {
       setError(err.message || 'Failed to create subtask')
     }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    saveSubtask(false)
+  }
+
+  const handleSaveAndAddAnother = () => {
+    saveSubtask(true)
   }
 
   // Reset form when modal closes
@@ -580,7 +588,7 @@ function AddSubtaskModal({
           <Button
             type="button"
             variant="outline"
-            onClick={(e) => handleSubmit(e, true)}
+            onClick={handleSaveAndAddAnother}
             disabled={isPending || !formData.title.trim()}
             className="border-blue-300 text-blue-600 hover:bg-blue-50"
           >
