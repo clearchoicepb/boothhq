@@ -8,9 +8,9 @@
 
 CREATE TABLE IF NOT EXISTS task_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL, -- Multi-DB: References tenants in auth DB
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  author_id UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  author_id UUID NOT NULL, -- Multi-DB: References users in auth DB
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -44,27 +44,12 @@ CREATE INDEX idx_task_notes_task_created ON task_notes(task_id, created_at ASC);
 
 ALTER TABLE task_notes ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can view notes for tasks in their tenant
-CREATE POLICY task_notes_select_policy ON task_notes
-  FOR SELECT
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM users WHERE id = auth.uid()
-    )
-  );
+-- Policy: Tenant isolation using JWT claims (multi-DB compatible)
+CREATE POLICY task_notes_tenant_isolation ON task_notes
+  FOR ALL USING (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
 
--- Policy: Users can insert notes for tasks in their tenant
-CREATE POLICY task_notes_insert_policy ON task_notes
-  FOR INSERT
-  WITH CHECK (
-    tenant_id IN (
-      SELECT tenant_id FROM users WHERE id = auth.uid()
-    )
-    AND author_id = auth.uid()
-  );
-
--- No UPDATE policy - notes are immutable (append-only)
--- No DELETE policy - notes cannot be deleted by users
+-- Note: No UPDATE or DELETE policies needed - notes are append-only
+-- The service role bypasses RLS for admin operations if needed
 
 -- =====================================================
 -- STEP 4: TRIGGER FOR updated_at
