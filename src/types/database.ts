@@ -559,6 +559,10 @@ export interface Database {
           state: string | null
           postal_code: string | null
           country: string | null
+          // Coordinate fields for distance/mileage calculations
+          latitude: number | null
+          longitude: number | null
+          place_id: string | null // Google Place ID
           contact_name: string | null
           contact_phone: string | null
           contact_email: string | null
@@ -577,6 +581,10 @@ export interface Database {
           state?: string | null
           postal_code?: string | null
           country?: string | null
+          // Coordinate fields for distance/mileage calculations
+          latitude?: number | null
+          longitude?: number | null
+          place_id?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_email?: string | null
@@ -595,6 +603,10 @@ export interface Database {
           state?: string | null
           postal_code?: string | null
           country?: string | null
+          // Coordinate fields for distance/mileage calculations
+          latitude?: number | null
+          longitude?: number | null
+          place_id?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_email?: string | null

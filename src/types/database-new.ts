@@ -74,6 +74,26 @@ export interface Database {
           last_login_at: string | null
           created_at: string
           updated_at: string
+          // Home address fields
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          state: string | null
+          zip_code: string | null
+          country: string | null
+          // Home address coordinates for mileage calculations
+          home_latitude: number | null
+          home_longitude: number | null
+          // Employment fields
+          job_title: string | null
+          employee_type: 'W2' | '1099' | 'International' | null
+          pay_rate: number | null
+          hire_date: string | null
+          termination_date: string | null
+          // Emergency contact
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
           // Department fields
           department: string | null // Legacy single department (deprecated)
           department_role: string | null // member, supervisor, manager
@@ -95,6 +115,26 @@ export interface Database {
           last_login_at?: string | null
           created_at?: string
           updated_at?: string
+          // Home address fields
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          country?: string | null
+          // Home address coordinates for mileage calculations
+          home_latitude?: number | null
+          home_longitude?: number | null
+          // Employment fields
+          job_title?: string | null
+          employee_type?: 'W2' | '1099' | 'International' | null
+          pay_rate?: number | null
+          hire_date?: string | null
+          termination_date?: string | null
+          // Emergency contact
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           // Department fields
           department?: string | null
           department_role?: string | null
@@ -116,6 +156,26 @@ export interface Database {
           last_login_at?: string | null
           created_at?: string
           updated_at?: string
+          // Home address fields
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          country?: string | null
+          // Home address coordinates for mileage calculations
+          home_latitude?: number | null
+          home_longitude?: number | null
+          // Employment fields
+          job_title?: string | null
+          employee_type?: 'W2' | '1099' | 'International' | null
+          pay_rate?: number | null
+          hire_date?: string | null
+          termination_date?: string | null
+          // Emergency contact
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           // Department fields
           department?: string | null
           department_role?: string | null
