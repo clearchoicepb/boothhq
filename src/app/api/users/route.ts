@@ -74,6 +74,9 @@ export async function POST(request: NextRequest) {
       city,
       state,
       zip_code,
+      country,
+      home_latitude,
+      home_longitude,
       job_title,
       department, // Legacy single department (deprecated)
       departments, // New multi-department support
@@ -217,6 +220,9 @@ export async function POST(request: NextRequest) {
       city,
       state,
       zip_code,
+      country: country || 'US',
+      home_latitude,
+      home_longitude,
       job_title,
       employee_type,
       pay_rate,
