@@ -149,6 +149,11 @@ export function EventPreviewModal({
                           : formatTime(selectedEventDate.start_time) || formatTime(selectedEventDate.end_time)}
                       </p>
                     )}
+                    {selectedEventDate?.setup_time && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Setup: {formatTime(selectedEventDate.setup_time)}
+                      </p>
+                    )}
                   </div>
                 </div>
 

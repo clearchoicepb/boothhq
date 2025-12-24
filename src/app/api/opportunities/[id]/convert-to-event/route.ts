@@ -280,6 +280,7 @@ export async function POST(
           event_date: date.event_date,
           start_time: date.start_time,
           end_time: date.end_time,
+          setup_time: date.setup_time || null,
           notes: date.notes || null,
           status: 'scheduled',
           created_at: new Date().toISOString(),
