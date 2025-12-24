@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all upcoming events that are not cancelled or completed
+    // Join locations table for proper address display
     let eventsQuery = supabase
       .from('events')
       .select(`
@@ -76,8 +77,16 @@ export async function GET(request: NextRequest) {
         end_date,
         status,
         location,
+        location_id,
         account_id,
-        accounts!events_account_id_fkey(id, name)
+        accounts!events_account_id_fkey(id, name),
+        locations!events_location_id_fkey(id, name, address_line1, city, state),
+        event_dates(
+          id,
+          event_date,
+          location_id,
+          locations(id, name, address_line1, city, state)
+        )
       `)
       .eq('tenant_id', dataSourceTenantId)
       .not('status', 'in', '("cancelled","completed")')
@@ -130,6 +139,29 @@ export async function GET(request: NextRequest) {
       assignmentsByEvent[assignment.event_id].push(assignment)
     })
 
+    /**
+     * Get the display location for an event
+     * Priority: 1) First event_date's location, 2) Event's location_id, 3) Event's location text field
+     */
+    const getEventLocation = (event: any): string | null => {
+      // Check event_dates first (for per-date locations)
+      const eventDates = event.event_dates as any[]
+      if (eventDates && eventDates.length > 0) {
+        const firstDate = eventDates[0]
+        if (firstDate.locations?.name) {
+          return firstDate.locations.name
+        }
+      }
+
+      // Check event-level location via location_id
+      if (event.locations?.name) {
+        return event.locations.name
+      }
+
+      // Fall back to text location field
+      return event.location || null
+    }
+
     // Transform events with staffing info
     const staffingItems: EventStaffingItem[] = events.map(event => {
       const assignments = assignmentsByEvent[event.id] || []
@@ -173,7 +205,7 @@ export async function GET(request: NextRequest) {
         start_date: event.start_date,
         end_date: event.end_date,
         status: event.status,
-        location: event.location,
+        location: getEventLocation(event),
         account: event.accounts ? {
           id: (event.accounts as any).id,
           name: (event.accounts as any).name
