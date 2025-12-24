@@ -67,6 +67,7 @@ interface EventWithDates {
     event_date: string
     start_time: string | null
     end_time: string | null
+    setup_time: string | null
     location_id: string | null
     notes: string | null
   }>
@@ -79,6 +80,7 @@ interface EventDateForm {
   event_date: string
   start_time: string
   end_time: string
+  setup_time?: string
   location_id?: string
   notes?: string
 }
@@ -113,7 +115,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
   })
 
   const [eventDates, setEventDates] = useState<EventDateForm[]>([
-    { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }
+    { event_date: '', start_time: '', end_time: '', setup_time: '', location_id: '', notes: '' }
   ])
 
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -151,6 +153,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           event_date: ed.event_date || '',
           start_time: ed.start_time || '',
           end_time: ed.end_time || '',
+          setup_time: ed.setup_time || '',
           location_id: ed.location_id || '',
           notes: ed.notes || ''
         })))
@@ -160,6 +163,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
           event_date: '',
           start_time: '',
           end_time: '',
+          setup_time: '',
           location_id: '',
           notes: ''
         }])
@@ -187,6 +191,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_date: '',
         start_time: '',
         end_time: '',
+        setup_time: '',
         location_id: '',
         notes: ''
       }])
@@ -322,7 +327,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
   }
 
   const addEventDate = () => {
-    setEventDates(prev => [...prev, { event_date: '', start_time: '', end_time: '', location_id: '', notes: '' }])
+    setEventDates(prev => [...prev, { event_date: '', start_time: '', end_time: '', setup_time: '', location_id: '', notes: '' }])
   }
 
   const removeEventDate = (index: number) => {
@@ -760,7 +765,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Date *
@@ -804,6 +809,19 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
                   {errors[`end_time_${index}`] && (
                     <p className="text-red-500 text-xs mt-1">{errors[`end_time_${index}`]}</p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Setup Time
+                  </label>
+                  <Input
+                    type="time"
+                    value={date.setup_time || ''}
+                    onChange={(e) => handleEventDateChange(index, 'setup_time', e.target.value)}
+                    placeholder="Optional"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Crew arrival</p>
                 </div>
 
                 <div>

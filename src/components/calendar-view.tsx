@@ -13,6 +13,7 @@ interface CalendarEvent {
   date: string
   start_time?: string
   end_time?: string
+  setup_time?: string
   location?: string
   type: 'event' | 'opportunity'
   status: string
@@ -247,6 +248,13 @@ export function EventDetailModal({ event, isOpen, onClose, tenantSubdomain }: Ev
             <Clock className="h-4 w-4 mr-2" />
             {formatTime(event.start_time)}
             {event.end_time && ` - ${formatTime(event.end_time)}`}
+          </div>
+        )}
+
+        {event.setup_time && (
+          <div className="flex items-center text-sm text-gray-500">
+            <Clock className="h-4 w-4 mr-2" />
+            Setup: {formatTime(event.setup_time)}
           </div>
         )}
 

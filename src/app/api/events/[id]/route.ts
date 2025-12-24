@@ -55,6 +55,7 @@ export async function GET(
           event_date,
           start_time,
           end_time,
+          setup_time,
           location_id,
           notes,
           status,
@@ -252,6 +253,7 @@ export async function PUT(
             event_date: date.event_date,
             start_time: date.start_time || null,
             end_time: date.end_time || null,
+            setup_time: date.setup_time || null,
             location_id: date.location_id || null,
             notes: date.notes || null,
             status: 'scheduled'

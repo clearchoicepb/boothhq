@@ -258,6 +258,7 @@ export interface CalendarEvent {
   event_date: string
   start_time?: string | null
   end_time?: string | null
+  setup_time?: string | null
   status: string
   event_type?: string
   event_id?: string  // Reference to parent event for multi-date events
