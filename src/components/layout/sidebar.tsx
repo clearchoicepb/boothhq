@@ -11,7 +11,8 @@ import {
   MessageSquare,
   LifeBuoy,
   Package,
-  BarChart3
+  BarChart3,
+  UserCheck
 } from 'lucide-react'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
@@ -105,6 +106,14 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
 
         {/* Operations Section */}
         <SidebarSection title="Operations" sectionKey="operations" defaultExpanded>
+          {permissions.events?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/staffing`}
+              icon={<UserCheck className="h-5 w-5" />}
+              label="Staffing"
+              onClick={onNavigate}
+            />
+          )}
           {permissions.events?.view !== false && (
             <SidebarNavItem
               href={`/${tenantSubdomain}/inventory`}
