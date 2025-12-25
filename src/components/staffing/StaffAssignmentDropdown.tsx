@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAvailableUsers } from '@/hooks/useAvailableUsers'
 import { useStaffRoles } from '@/hooks/useStaffRoles'
-import { ChevronDown, AlertTriangle, Check, Loader2, User } from 'lucide-react'
+import { useStaffDistance, DISTANCE_FILTER_OPTIONS, type DistanceFilterValue, type StaffSortOption } from '@/hooks/useStaffDistance'
+import { formatDistance, getDistanceColorClass } from '@/lib/utils/distance-utils'
+import { ChevronDown, AlertTriangle, Check, Loader2, User, MapPin, Filter, ArrowUpDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { DepartmentId } from '@/lib/departments'
 
@@ -15,12 +17,19 @@ interface StaffAssignment {
   last_name: string
 }
 
+interface LocationCoordinates {
+  latitude: number | null
+  longitude: number | null
+}
+
 interface StaffAssignmentDropdownProps {
   eventId: string
   roleType: 'event_manager' | 'designer'
   department: DepartmentId
   currentAssignment: StaffAssignment | null
   onAssigned: () => void
+  /** Event location coordinates for distance calculation */
+  locationCoordinates?: LocationCoordinates | null
 }
 
 /**
@@ -32,21 +41,46 @@ export function StaffAssignmentDropdown({
   roleType,
   department,
   currentAssignment,
-  onAssigned
+  onAssigned,
+  locationCoordinates
 }: StaffAssignmentDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
   // Fetch available users when dropdown opens
   const {
-    data: users,
+    data: rawUsers,
     isLoading: usersLoading
   } = useAvailableUsers(isOpen ? eventId : null, isOpen ? department : null)
 
   // Fetch staff roles to get the correct role ID
   const { data: staffRoles } = useStaffRoles(true)
+
+  // Use staff distance hook for distance calculations
+  const {
+    displayUsers,
+    locationHasCoordinates,
+    maxDistance,
+    setMaxDistance,
+    sortBy,
+    setSortBy,
+  } = useStaffDistance(rawUsers || [], { location: locationCoordinates })
+
+  // Merge availability data with distance data
+  const users = useMemo(() => {
+    if (!rawUsers) return []
+    return displayUsers.map(userWithDistance => {
+      const originalUser = rawUsers.find(u => u.id === userWithDistance.id)
+      return {
+        ...userWithDistance,
+        is_available: originalUser?.is_available ?? true,
+        conflicts: originalUser?.conflicts ?? []
+      }
+    })
+  }, [displayUsers, rawUsers])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -175,7 +209,7 @@ export function StaffAssignmentDropdown({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 left-0 mt-1 w-72 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-auto">
+        <div className="absolute z-50 left-0 mt-1 w-80 bg-white border border-gray-200 rounded-md shadow-lg">
           {usersLoading ? (
             <div className="p-4 text-center">
               <Loader2 className="h-5 w-5 animate-spin mx-auto text-gray-400" />
@@ -189,41 +223,85 @@ export function StaffAssignmentDropdown({
               </p>
             </div>
           ) : (
-            <ul className="py-1">
-              {users.map((user) => (
-                <li key={user.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectUser(user.id)}
-                    className={`
-                      w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors
-                      ${!user.is_available ? 'text-gray-500' : 'text-gray-900'}
-                    `}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {!user.is_available && (
-                          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                        )}
-                        <div>
-                          <p className={`text-sm font-medium ${!user.is_available ? 'text-gray-500' : 'text-gray-900'}`}>
-                            {user.first_name} {user.last_name}
-                          </p>
-                          {!user.is_available && user.conflicts.length > 0 && (
-                            <p className="text-xs text-amber-600 truncate max-w-48">
-                              {user.conflicts[0].event_title}
+            <>
+              {/* Distance Filter Controls - Only show if location has coordinates */}
+              {locationHasCoordinates && (
+                <div className="p-2 border-b border-gray-100 bg-gray-50">
+                  <div className="flex gap-2">
+                    <select
+                      value={maxDistance ?? ''}
+                      onChange={(e) => setMaxDistance(e.target.value === '' ? null : Number(e.target.value) as DistanceFilterValue)}
+                      className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
+                      title="Filter by distance"
+                    >
+                      {DISTANCE_FILTER_OPTIONS.map(option => (
+                        <option key={option.label} value={option.value ?? ''}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as StaffSortOption)}
+                      className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
+                      title="Sort by"
+                    >
+                      <option value="name">Sort: Name</option>
+                      <option value="distance">Sort: Nearest</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <ul className="py-1 max-h-56 overflow-auto">
+                {users.map((user) => (
+                  <li key={user.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectUser(user.id)}
+                      className={`
+                        w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors
+                        ${!user.is_available ? 'text-gray-500' : 'text-gray-900'}
+                      `}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {!user.is_available && (
+                            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${!user.is_available ? 'text-gray-500' : 'text-gray-900'}`}>
+                              {user.first_name} {user.last_name}
                             </p>
+                            {!user.is_available && user.conflicts.length > 0 && (
+                              <p className="text-xs text-amber-600 truncate">
+                                {user.conflicts[0].event_title}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Distance badge */}
+                          {locationHasCoordinates && user.distance != null && (
+                            <span className={`text-xs font-medium flex items-center gap-0.5 ${getDistanceColorClass(user.distance)}`}>
+                              <MapPin className="h-3 w-3" />
+                              {formatDistance(user.distance)}
+                            </span>
+                          )}
+                          {locationHasCoordinates && user.distance == null && !user.hasCoordinates && (
+                            <span className="text-xs text-gray-400">No addr</span>
+                          )}
+                          {/* Availability badge */}
+                          {user.is_available && !locationHasCoordinates && (
+                            <span className="text-xs text-green-600 font-medium">Available</span>
                           )}
                         </div>
                       </div>
-                      {user.is_available && (
-                        <span className="text-xs text-green-600 font-medium">Available</span>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}

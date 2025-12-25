@@ -13,21 +13,42 @@ export async function GET(request: NextRequest) {
     if (context instanceof NextResponse) return context
 
     const { supabase, dataSourceTenantId, session } = context
+    const { searchParams } = new URL(request.url)
+    const department = searchParams.get('department')
+    const active = searchParams.get('active')
+
     // Query Tenant DB for users (users table is now in Tenant DB)
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
-    // Get all users for the current tenant, sorted alphabetically by first name
-    const { data: users, error } = await supabase
+
+    // Build query for users
+    let query = supabase
       .from('users')
       .select('*')
       .eq('tenant_id', dataSourceTenantId)
       .order('first_name', { ascending: true })
+
+    // Filter by status if active=true
+    if (active === 'true') {
+      query = query.eq('status', 'active')
+    }
+
+    const { data: users, error } = await query
 
     if (error) {
       log.error({ error }, 'Error fetching users')
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
     }
 
-    return NextResponse.json(users || [])
+    // Filter by department if specified (post-query since departments is an array)
+    let filteredUsers = users || []
+    if (department) {
+      filteredUsers = filteredUsers.filter(user => {
+        const userDepts: string[] = user.departments || []
+        return userDepts.includes(department)
+      })
+    }
+
+    return NextResponse.json(filteredUsers)
   } catch (error) {
     log.error({ error }, 'Error in GET /api/users')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

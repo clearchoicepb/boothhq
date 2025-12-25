@@ -50,6 +50,7 @@ export async function GET(
         opportunities!events_opportunity_id_fkey(name),
         event_categories(id, name, slug, color, icon),
         event_types(id, name, slug),
+        locations!events_location_id_fkey(id, name, address_line1, city, state, latitude, longitude),
         event_dates(
           id,
           event_date,
@@ -59,7 +60,7 @@ export async function GET(
           location_id,
           notes,
           status,
-          locations(id, name, address_line1, city, state)
+          locations(id, name, address_line1, city, state, latitude, longitude)
         )
       `)
       .eq('id', eventId)
