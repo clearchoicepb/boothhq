@@ -1,12 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAvailableUsers } from '@/hooks/useAvailableUsers'
 import { useStaffRoles } from '@/hooks/useStaffRoles'
-import { useStaffDistance, DISTANCE_FILTER_OPTIONS, type DistanceFilterValue, type StaffSortOption } from '@/hooks/useStaffDistance'
-import { formatDistance, getDistanceColorClass } from '@/lib/utils/distance-utils'
-import { ChevronDown, AlertTriangle, Check, Loader2, User, MapPin, Filter, ArrowUpDown } from 'lucide-react'
+import { ChevronDown, AlertTriangle, Check, Loader2, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { DepartmentId } from '@/lib/departments'
 
@@ -17,19 +15,12 @@ interface StaffAssignment {
   last_name: string
 }
 
-interface LocationCoordinates {
-  latitude: number | null
-  longitude: number | null
-}
-
 interface StaffAssignmentDropdownProps {
   eventId: string
   roleType: 'event_manager' | 'designer'
   department: DepartmentId
   currentAssignment: StaffAssignment | null
   onAssigned: () => void
-  /** Event location coordinates for distance calculation */
-  locationCoordinates?: LocationCoordinates | null
 }
 
 /**
@@ -41,12 +32,10 @@ export function StaffAssignmentDropdown({
   roleType,
   department,
   currentAssignment,
-  onAssigned,
-  locationCoordinates
+  onAssigned
 }: StaffAssignmentDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
@@ -59,28 +48,8 @@ export function StaffAssignmentDropdown({
   // Fetch staff roles to get the correct role ID
   const { data: staffRoles } = useStaffRoles(true)
 
-  // Use staff distance hook for distance calculations
-  const {
-    displayUsers,
-    locationHasCoordinates,
-    maxDistance,
-    setMaxDistance,
-    sortBy,
-    setSortBy,
-  } = useStaffDistance(rawUsers || [], { location: locationCoordinates })
-
-  // Merge availability data with distance data
-  const users = useMemo(() => {
-    if (!rawUsers) return []
-    return displayUsers.map(userWithDistance => {
-      const originalUser = rawUsers.find(u => u.id === userWithDistance.id)
-      return {
-        ...userWithDistance,
-        is_available: originalUser?.is_available ?? true,
-        conflicts: originalUser?.conflicts ?? []
-      }
-    })
-  }, [displayUsers, rawUsers])
+  // Use rawUsers directly - no distance calculations needed
+  const users = rawUsers || []
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -223,37 +192,7 @@ export function StaffAssignmentDropdown({
               </p>
             </div>
           ) : (
-            <>
-              {/* Distance Filter Controls - Only show if location has coordinates */}
-              {locationHasCoordinates && (
-                <div className="p-2 border-b border-gray-100 bg-gray-50">
-                  <div className="flex gap-2">
-                    <select
-                      value={maxDistance ?? ''}
-                      onChange={(e) => setMaxDistance(e.target.value === '' ? null : Number(e.target.value) as DistanceFilterValue)}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
-                      title="Filter by distance"
-                    >
-                      {DISTANCE_FILTER_OPTIONS.map(option => (
-                        <option key={option.label} value={option.value ?? ''}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as StaffSortOption)}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
-                      title="Sort by"
-                    >
-                      <option value="name">Sort: Name</option>
-                      <option value="distance">Sort: Nearest</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <ul className="py-1 max-h-56 overflow-auto">
+            <ul className="py-1 max-h-56 overflow-auto">
                 {users.map((user) => (
                   <li key={user.id}>
                     <button
@@ -280,28 +219,15 @@ export function StaffAssignmentDropdown({
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* Distance badge */}
-                          {locationHasCoordinates && user.distance != null && (
-                            <span className={`text-xs font-medium flex items-center gap-0.5 ${getDistanceColorClass(user.distance)}`}>
-                              <MapPin className="h-3 w-3" />
-                              {formatDistance(user.distance)}
-                            </span>
-                          )}
-                          {locationHasCoordinates && user.distance == null && !user.hasCoordinates && (
-                            <span className="text-xs text-gray-400">No addr</span>
-                          )}
-                          {/* Availability badge */}
-                          {user.is_available && !locationHasCoordinates && (
-                            <span className="text-xs text-green-600 font-medium">Available</span>
-                          )}
-                        </div>
+                        {/* Availability badge */}
+                        {user.is_available && (
+                          <span className="text-xs text-green-600 font-medium flex-shrink-0">Available</span>
+                        )}
                       </div>
                     </button>
                   </li>
                 ))}
-              </ul>
-            </>
+            </ul>
           )}
         </div>
       )}
