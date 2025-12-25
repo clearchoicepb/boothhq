@@ -1,7 +1,14 @@
-import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User, Calendar, Clock } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronRight, Briefcase, Users as UsersIcon, User, Calendar, Clock, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
+import { calculateDistance, formatDistance, getDistanceColorClass } from '@/lib/utils/distance-utils'
 import type { StaffAssignmentWithJoins, StaffUser, StaffRole, EventDate, SelectedDateTime } from '@/types/events'
+
+interface EventLocation {
+  latitude: number | null
+  longitude: number | null
+  name?: string
+}
 
 interface EventStaffListProps {
   staffAssignments: StaffAssignmentWithJoins[]
@@ -29,6 +36,8 @@ interface EventStaffListProps {
   onStartAdding: () => void
   onCancelAdding: () => void
   canEdit: boolean
+  /** Optional event location for distance calculation */
+  eventLocation?: EventLocation | null
 }
 
 /**
@@ -58,7 +67,26 @@ export function EventStaffList({
   onStartAdding,
   onCancelAdding,
   canEdit,
+  eventLocation,
 }: EventStaffListProps) {
+  // Check if location has coordinates for distance calculation
+  const locationHasCoords = eventLocation?.latitude != null && eventLocation?.longitude != null
+
+  // Helper to get distance for a staff member
+  const getStaffDistance = (staff: StaffAssignmentWithJoins): number | null => {
+    if (!locationHasCoords || !staff.users) return null
+
+    const user = staff.users as any
+    if (user.home_latitude == null || user.home_longitude == null) return null
+
+    return calculateDistance(
+      user.home_latitude,
+      user.home_longitude,
+      eventLocation!.latitude!,
+      eventLocation!.longitude!
+    )
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -172,31 +200,42 @@ export function EventStaffList({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {operationsStaff.map((staff) => (
-                    <div key={staff.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center gap-3">
-                        <User className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
-                          </p>
-                          <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
-                          {staff.notes && (
-                            <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
-                          )}
+                  {operationsStaff.map((staff) => {
+                    const distance = getStaffDistance(staff)
+                    return (
+                      <div key={staff.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3 flex-1">
+                          <User className="h-5 w-5 text-gray-400" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-gray-900">
+                                {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
+                              </p>
+                              {locationHasCoords && distance != null && (
+                                <span className={`text-xs flex items-center gap-1 ${getDistanceColorClass(distance)}`}>
+                                  <MapPin className="h-3 w-3" />
+                                  {formatDistance(distance)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
+                            {staff.notes && (
+                              <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
+                            )}
+                          </div>
                         </div>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRemoveStaff(staff.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
                       </div>
-                      {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onRemoveStaff(staff.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -230,56 +269,67 @@ export function EventStaffList({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {eventStaff.map((staff) => (
-                    <div key={staff.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center gap-3 flex-1">
-                        <User className="h-5 w-5 text-gray-400" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
-                          </p>
-                          <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
+                  {eventStaff.map((staff) => {
+                    const distance = getStaffDistance(staff)
+                    return (
+                      <div key={staff.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3 flex-1">
+                          <User className="h-5 w-5 text-gray-400" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-gray-900">
+                                {staff.users ? `${staff.users.first_name} ${staff.users.last_name}` : 'Unknown'}
+                              </p>
+                              {locationHasCoords && distance != null && (
+                                <span className={`text-xs flex items-center gap-1 ${getDistanceColorClass(distance)}`}>
+                                  <MapPin className="h-3 w-3" />
+                                  {formatDistance(distance)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">{staff.staff_roles?.name}</p>
 
-                          {/* Date and Time Display */}
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
-                            {staff.event_dates && (
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>
-                                  {formatDate(staff.event_dates.event_date, {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                            {(staff.start_time || staff.end_time) && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <span>
-                                  {formatTime(staff.start_time) || '--:--'} - {formatTime(staff.end_time) || '--:--'}
-                                </span>
-                              </div>
+                            {/* Date and Time Display */}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                              {staff.event_dates && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>
+                                    {formatDate(staff.event_dates.event_date, {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                              {(staff.start_time || staff.end_time) && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>
+                                    {formatTime(staff.start_time) || '--:--'} - {formatTime(staff.end_time) || '--:--'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {staff.notes && (
+                              <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
                             )}
                           </div>
-
-                          {staff.notes && (
-                            <p className="text-xs text-gray-600 mt-1">{staff.notes}</p>
-                          )}
                         </div>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRemoveStaff(staff.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
                       </div>
-                      {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onRemoveStaff(staff.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

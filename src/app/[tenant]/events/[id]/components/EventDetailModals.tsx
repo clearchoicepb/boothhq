@@ -111,6 +111,29 @@ export function EventDetailModals({
   // Destructure references for locations
   const { locations } = references
 
+  // Get event location for distance calculations
+  // Priority: First event date's location > event's location_id
+  const eventLocation = (() => {
+    // Try to get location from first event date
+    const firstEventDate = eventDates?.[0]
+    const locationId = firstEventDate?.location_id || event?.location_id
+
+    if (!locationId || !locations?.length) {
+      return null
+    }
+
+    const location = locations.find((loc: any) => loc.id === locationId)
+    if (!location) {
+      return null
+    }
+
+    return {
+      latitude: location.latitude ?? null,
+      longitude: location.longitude ?? null,
+      name: location.name,
+    }
+  })()
+
   // Event date editing handlers (using context methods)
   const handleStartEditEventDate = () => {
     if (detailModals.selectedEventDate) {
@@ -309,6 +332,7 @@ export function EventDetailModals({
         users={users}
         staffRoles={staffRoles}
         eventDates={eventDates}
+        eventLocation={eventLocation}
       />
 
       {/* Create Task Modal */}
