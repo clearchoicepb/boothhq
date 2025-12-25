@@ -4,11 +4,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { formatDate, formatTime } from '@/lib/utils/date-utils'
+import { formatDate } from '@/lib/utils/date-utils'
 import { formatDistance, getDistanceColorClass } from '@/lib/utils/distance-utils'
 import { useStaffDistance, DISTANCE_FILTER_OPTIONS, type DistanceFilterValue, type StaffSortOption } from '@/hooks/useStaffDistance'
 import { useStaffRoles } from '@/hooks/useStaffRoles'
-import { MapPin, Loader2, Calendar, Clock, Users } from 'lucide-react'
+import { useAvailableUsers } from '@/hooks/useAvailableUsers'
+import { MapPin, Loader2, Calendar, Clock, Users, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface EventDate {
@@ -61,16 +62,6 @@ async function fetchEventDetails(eventId: string) {
   return response.json()
 }
 
-/**
- * Fetch available staff for event assignment
- */
-async function fetchAvailableStaff() {
-  const response = await fetch('/api/users?department=event_staff&active=true')
-  if (!response.ok) {
-    throw new Error('Failed to fetch staff')
-  }
-  return response.json()
-}
 
 /**
  * Modal for assigning event staff to events from the Staffing module
@@ -105,16 +96,11 @@ export function EventStaffAssignmentModal({
     staleTime: 60 * 1000,
   })
 
-  // Fetch available staff
+  // Fetch available staff with conflict detection
   const {
     data: rawUsers = [],
     isLoading: usersLoading
-  } = useQuery({
-    queryKey: ['staff-for-assignment'],
-    queryFn: fetchAvailableStaff,
-    enabled: isOpen,
-    staleTime: 60 * 1000,
-  })
+  } = useAvailableUsers(isOpen ? eventId : null, isOpen ? 'event_staff' : null)
 
   // Fetch staff roles
   const { data: staffRoles = [], isLoading: rolesLoading } = useStaffRoles(isOpen)
@@ -287,8 +273,12 @@ export function EventStaffAssignmentModal({
   const isLoading = eventLoading || usersLoading || rolesLoading
   const isFormValid = selectedUserId && selectedStaffRoleId && selectedDateTimes.length > 0
 
-  // Get selected user for distance display
+  // Get selected user for distance display and conflict check
   const selectedUser = displayUsers.find(u => u.id === selectedUserId)
+
+  // Check if selected user has conflicts (cast to access conflict properties)
+  const selectedUserWithConflicts = rawUsers.find(u => u.id === selectedUserId)
+  const hasConflicts = selectedUserWithConflicts && !selectedUserWithConflicts.is_available
 
   return (
     <Modal
@@ -362,17 +352,28 @@ export function EventStaffAssignmentModal({
                 if (errors.user) setErrors(prev => ({ ...prev, user: '' }))
               }}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
-                errors.user ? 'border-red-500' : 'border-gray-300'
+                errors.user ? 'border-red-500' : hasConflicts ? 'border-amber-500 text-red-600' : 'border-gray-300'
               }`}
             >
               <option value="">-- Select Staff Member --</option>
-              {displayUsers.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.first_name} {user.last_name}
-                  {locationHasCoordinates && user.distance != null && ` (${formatDistance(user.distance)})`}
-                  {locationHasCoordinates && user.distance == null && !user.hasCoordinates && ' (No address)'}
-                </option>
-              ))}
+              {displayUsers.map(user => {
+                // Find conflict info from rawUsers
+                const userWithConflicts = rawUsers.find(u => u.id === user.id)
+                const userHasConflict = userWithConflicts && !userWithConflicts.is_available
+
+                return (
+                  <option
+                    key={user.id}
+                    value={user.id}
+                    className={userHasConflict ? 'text-red-600' : ''}
+                  >
+                    {userHasConflict ? '⚠ ' : ''}{user.first_name} {user.last_name}
+                    {userHasConflict && ' - SCHEDULED'}
+                    {locationHasCoordinates && user.distance != null && ` (${formatDistance(user.distance)})`}
+                    {locationHasCoordinates && user.distance == null && !user.hasCoordinates && ' (No address)'}
+                  </option>
+                )
+              })}
             </select>
 
             {/* Show selected user's distance prominently */}
@@ -380,6 +381,25 @@ export function EventStaffAssignmentModal({
               <div className={`flex items-center gap-1 mt-1 text-xs ${getDistanceColorClass(selectedUser.distance)}`}>
                 <MapPin className="h-3 w-3" />
                 <span>{formatDistance(selectedUser.distance)} from event location</span>
+              </div>
+            )}
+
+            {/* Show conflict warning when a staff member with conflicts is selected */}
+            {hasConflicts && selectedUserWithConflicts && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-700">
+                    <p className="font-medium">Already scheduled on:</p>
+                    <ul className="mt-1 list-disc list-inside">
+                      {selectedUserWithConflicts.conflicts.map((conflict, idx) => (
+                        <li key={idx}>
+                          {conflict.event_title} ({formatDate(conflict.event_date, { month: 'short', day: 'numeric' })})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
             )}
 
