@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAvailableUsers } from '@/hooks/useAvailableUsers'
 import { useStaffRoles } from '@/hooks/useStaffRoles'
-import { ChevronDown, AlertTriangle, Check, Loader2, User } from 'lucide-react'
+import { ChevronDown, Check, Loader2, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { DepartmentId } from '@/lib/departments'
 
@@ -25,7 +25,7 @@ interface StaffAssignmentDropdownProps {
 
 /**
  * Inline dropdown for assigning staff to events
- * Shows availability status and allows quick assignment with instant save
+ * Allows quick assignment with instant save
  */
 export function StaffAssignmentDropdown({
   eventId,
@@ -193,40 +193,19 @@ export function StaffAssignmentDropdown({
             </div>
           ) : (
             <ul className="py-1 max-h-56 overflow-auto">
-                {users.map((user) => (
-                  <li key={user.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectUser(user.id)}
-                      className={`
-                        w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors
-                        ${!user.is_available ? 'text-gray-500' : 'text-gray-900'}
-                      `}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {!user.is_available && (
-                            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <p className={`text-sm font-medium truncate ${!user.is_available ? 'text-gray-500' : 'text-gray-900'}`}>
-                              {user.first_name} {user.last_name}
-                            </p>
-                            {!user.is_available && user.conflicts.length > 0 && (
-                              <p className="text-xs text-amber-600 truncate">
-                                {user.conflicts[0].event_title}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {/* Availability badge */}
-                        {user.is_available && (
-                          <span className="text-xs text-green-600 font-medium flex-shrink-0">Available</span>
-                        )}
-                      </div>
-                    </button>
-                  </li>
-                ))}
+              {users.map((user) => (
+                <li key={user.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectUser(user.id)}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-gray-900"
+                  >
+                    <p className="text-sm font-medium truncate">
+                      {user.first_name} {user.last_name}
+                    </p>
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
         </div>
