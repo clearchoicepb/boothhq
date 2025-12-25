@@ -39,6 +39,9 @@ export function LocationForm({
     state: '',
     postal_code: '',
     country: 'US',
+    latitude: null as number | null,
+    longitude: null as number | null,
+    place_id: null as string | null,
     contact_name: '',
     contact_phone: '',
     contact_email: '',
@@ -60,6 +63,9 @@ export function LocationForm({
         state: location.state || '',
         postal_code: location.postal_code || '',
         country: location.country || 'US',
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
+        place_id: location.place_id ?? null,
         contact_name: location.contact_name || '',
         contact_phone: location.contact_phone || '',
         contact_email: location.contact_email || '',
@@ -76,6 +82,9 @@ export function LocationForm({
         state: '',
         postal_code: '',
         country: 'US',
+        latitude: null,
+        longitude: null,
+        place_id: null,
         contact_name: '',
         contact_phone: '',
         contact_email: '',
@@ -104,7 +113,11 @@ export function LocationForm({
       city: addressData.city || '',
       state: addressData.state || '',
       postal_code: addressData.postal_code || '',
-      country: addressData.country || 'US'
+      country: addressData.country || 'US',
+      // Capture coordinates from Google Places autocomplete
+      latitude: addressData.latitude ?? null,
+      longitude: addressData.longitude ?? null,
+      place_id: addressData.place_id ?? null
     }))
   }
 
@@ -206,7 +219,10 @@ export function LocationForm({
               city: formData.city,
               state: formData.state,
               postal_code: formData.postal_code,
-              country: formData.country
+              country: formData.country,
+              latitude: formData.latitude,
+              longitude: formData.longitude,
+              place_id: formData.place_id
             }}
           />
         </div>

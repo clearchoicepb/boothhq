@@ -1,6 +1,18 @@
+export interface AddressFieldMap {
+  address_line1: string
+  address_line2: string
+  city: string
+  state: string
+  postal_code: string
+  country: string
+  latitude: string
+  longitude: string
+  place_id?: string
+}
+
 export interface FieldConfig {
   name: string
-  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect' | 'departmentWithManager'
+  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect' | 'departmentWithManager' | 'address'
   label: string
   required?: boolean
   placeholder?: string
@@ -11,6 +23,7 @@ export interface FieldConfig {
   conditional?: ConditionalRule
   managerField?: string // For 'departmentWithManager' type: field name for manager array
   helpText?: string // Optional help text displayed below the field
+  addressFields?: AddressFieldMap // For 'address' type: maps AddressData fields to form field names
 }
 
 export interface SelectOption {

@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { PhotoUpload } from '@/components/ui/photo-upload'
+import { AddressInput, AddressData } from '@/components/ui/address-input'
 import { 
   FieldConfig, 
   FormConfig, 
@@ -189,10 +190,17 @@ export function BaseForm<T extends Record<string, any>>({
       // Filter data to only include fields defined in the form config
       // This prevents sending extra database fields like id, created_at, etc.
       // Also include any managerField references (e.g., manager_of_departments)
+      // And addressFields mappings (for address type fields)
       const formFieldNames = config.fields.flatMap(f => {
         const names = [f.name]
         // Include managerField if defined (used by departmentWithManager type)
         if (f.managerField) names.push(f.managerField)
+        // Include all addressFields mappings (for address type)
+        if (f.addressFields) {
+          Object.values(f.addressFields).forEach(fieldName => {
+            if (fieldName) names.push(fieldName)
+          })
+        }
         return names
       })
       const filteredData = Object.keys(state.data).reduce((acc, key) => {
@@ -510,6 +518,60 @@ export function BaseForm<T extends Record<string, any>>({
                 })}
               </div>
             </div>
+          )
+
+        case 'address':
+          // Address field with Google Places autocomplete
+          // Uses addressFields config to map AddressData to form fields
+          // e.g., { address_line1: 'address_line_1', latitude: 'home_latitude' }
+          const addressFieldMap = field.addressFields || {
+            address_line1: 'address_line_1',
+            address_line2: 'address_line_2',
+            city: 'city',
+            state: 'state',
+            postal_code: 'zip_code',
+            country: 'country',
+            latitude: 'home_latitude',
+            longitude: 'home_longitude',
+            place_id: 'place_id'
+          }
+
+          // Build initial address from current form data
+          const initialAddress: AddressData = {
+            address_line1: state.data[addressFieldMap.address_line1] || '',
+            address_line2: state.data[addressFieldMap.address_line2] || '',
+            city: state.data[addressFieldMap.city] || '',
+            state: state.data[addressFieldMap.state] || '',
+            postal_code: state.data[addressFieldMap.postal_code] || '',
+            country: state.data[addressFieldMap.country] || 'US',
+            latitude: state.data[addressFieldMap.latitude] ?? null,
+            longitude: state.data[addressFieldMap.longitude] ?? null,
+            place_id: state.data[addressFieldMap.place_id] ?? null
+          }
+
+          return (
+            <AddressInput
+              initialAddress={initialAddress}
+              onAddressChange={(addressData: AddressData) => {
+                // Map AddressData fields to form fields using addressFieldMap
+                setState(prev => ({
+                  ...prev,
+                  data: {
+                    ...prev.data,
+                    [addressFieldMap.address_line1]: addressData.address_line1 || '',
+                    [addressFieldMap.address_line2]: addressData.address_line2 || '',
+                    [addressFieldMap.city]: addressData.city || '',
+                    [addressFieldMap.state]: addressData.state || '',
+                    [addressFieldMap.postal_code]: addressData.postal_code || '',
+                    [addressFieldMap.country]: addressData.country || 'US',
+                    [addressFieldMap.latitude]: addressData.latitude ?? null,
+                    [addressFieldMap.longitude]: addressData.longitude ?? null,
+                    // Only include place_id if the mapping exists
+                    ...(addressFieldMap.place_id ? { [addressFieldMap.place_id]: addressData.place_id ?? null } : {})
+                  } as Partial<T>
+                }))
+              }}
+            />
           )
 
         default:

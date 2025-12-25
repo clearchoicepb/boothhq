@@ -14,7 +14,8 @@
     "test:dual-database": "npx ts-node scripts/test-dual-database-setup.ts",
     "db:test": "npx ts-node scripts/test-dual-database-setup.ts",
     "db:migrate-data": "npx ts-node scripts/migrate-existing-data.ts",
-    "verify:tenant-id": "npx ts-node scripts/verify-tenant-id-usage.ts"
+    "verify:tenant-id": "npx ts-node scripts/verify-tenant-id-usage.ts",
+    "backfill:coordinates": "npx tsx scripts/backfill-coordinates.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

@@ -16,6 +16,10 @@ export interface AddressData {
   state: string
   postal_code: string
   country: string
+  // Coordinate fields for mileage calculations (captured from Google Places)
+  latitude?: number | null
+  longitude?: number | null
+  place_id?: string | null
 }
 
 export interface AddressInputProps {
@@ -39,7 +43,10 @@ const AddressInput = forwardRef<HTMLDivElement, AddressInputProps>(
       city: '',
       state: '',
       postal_code: '',
-      country: 'US'
+      country: 'US',
+      latitude: null,
+      longitude: null,
+      place_id: null
     })
     const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false)
     const [googleMapsError, setGoogleMapsError] = useState(false)
@@ -58,7 +65,10 @@ const AddressInput = forwardRef<HTMLDivElement, AddressInputProps>(
             city: initialAddress.city || '',
             state: initialAddress.state || '',
             postal_code: initialAddress.postal_code || '',
-            country: initialAddress.country || 'US'
+            country: initialAddress.country || 'US',
+            latitude: initialAddress.latitude ?? null,
+            longitude: initialAddress.longitude ?? null,
+            place_id: initialAddress.place_id ?? null
           })
         }
       }
@@ -96,7 +106,10 @@ const AddressInput = forwardRef<HTMLDivElement, AddressInputProps>(
         city: '',
         state: '',
         postal_code: '',
-        country: 'US'
+        country: 'US',
+        latitude: null,
+        longitude: null,
+        place_id: null
       }
 
       let streetNumber = ''
@@ -126,6 +139,19 @@ const AddressInput = forwardRef<HTMLDivElement, AddressInputProps>(
       // If no street address, use the place name
       if (!parsed.address_line1 && place.name) {
         parsed.address_line1 = place.name
+      }
+
+      // Extract coordinates from geometry
+      if (place.geometry?.location) {
+        // Google Maps location object has lat() and lng() methods
+        const location = place.geometry.location
+        parsed.latitude = typeof location.lat === 'function' ? location.lat() : location.lat
+        parsed.longitude = typeof location.lng === 'function' ? location.lng() : location.lng
+      }
+
+      // Extract Google Place ID
+      if (place.place_id) {
+        parsed.place_id = place.place_id
       }
 
       return parsed

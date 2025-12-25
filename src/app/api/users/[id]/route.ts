@@ -73,6 +73,9 @@ export async function PUT(
       city,
       state,
       zip_code,
+      country,
+      home_latitude,
+      home_longitude,
       job_title,
       department, // Legacy single department (deprecated)
       departments, // New multi-department support
@@ -105,6 +108,9 @@ export async function PUT(
     if (city !== undefined) updateData.city = city
     if (state !== undefined) updateData.state = state
     if (zip_code !== undefined) updateData.zip_code = zip_code
+    if (country !== undefined) updateData.country = country
+    if (home_latitude !== undefined) updateData.home_latitude = home_latitude
+    if (home_longitude !== undefined) updateData.home_longitude = home_longitude
     if (job_title !== undefined) updateData.job_title = job_title
 
     // Handle departments: prefer new departments array, fall back to legacy department

@@ -104,41 +104,24 @@ export const userFormConfig: FormConfig<any> = {
       gridCols: 1,
       placeholder: 'Required for new users, leave blank to keep current password'
     },
-    // Address Information
+    // Address Information - uses Google Places autocomplete with coordinate capture
     {
-      name: 'address_line_1',
-      type: 'text',
-      label: 'Address Line 1',
+      name: 'home_address',
+      type: 'address',
+      label: 'Home Address',
       section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'address_line_2',
-      type: 'text',
-      label: 'Address Line 2',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'city',
-      type: 'text',
-      label: 'City',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'state',
-      type: 'text',
-      label: 'State',
-      section: 'Address Information',
-      gridCols: 1
-    },
-    {
-      name: 'zip_code',
-      type: 'text',
-      label: 'Zip Code',
-      section: 'Address Information',
-      gridCols: 1
+      gridCols: 2,
+      addressFields: {
+        address_line1: 'address_line_1',
+        address_line2: 'address_line_2',
+        city: 'city',
+        state: 'state',
+        postal_code: 'zip_code',
+        country: 'country',
+        latitude: 'home_latitude',
+        longitude: 'home_longitude'
+        // Note: place_id not stored for users, only for locations
+      }
     },
     // Emergency Contact
     {
@@ -167,11 +150,7 @@ export const userFormConfig: FormConfig<any> = {
     {
       title: 'Address Information',
       fields: [
-        'address_line_1',
-        'address_line_2',
-        'city',
-        'state',
-        'zip_code'
+        'home_address'
       ]
     },
     {
