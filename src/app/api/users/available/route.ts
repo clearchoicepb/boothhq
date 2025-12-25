@@ -22,6 +22,8 @@ export interface AvailableUser {
   first_name: string
   last_name: string
   email: string
+  home_latitude: number | null
+  home_longitude: number | null
   is_available: boolean
   conflicts: Conflict[]
 }
@@ -97,7 +99,7 @@ export async function GET(request: NextRequest) {
     // Step 2: Get all active users in the specified department
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('id, first_name, last_name, email, departments')
+      .select('id, first_name, last_name, email, departments, home_latitude, home_longitude')
       .eq('tenant_id', dataSourceTenantId)
       .eq('status', 'active')
       .order('first_name', { ascending: true })
@@ -194,6 +196,8 @@ export async function GET(request: NextRequest) {
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
+        home_latitude: user.home_latitude ?? null,
+        home_longitude: user.home_longitude ?? null,
         is_available: conflicts.length === 0,
         conflicts
       }

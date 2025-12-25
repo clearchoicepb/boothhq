@@ -15,6 +15,14 @@ interface StaffAssignment {
 }
 
 /**
+ * Location coordinates for distance calculation
+ */
+interface LocationCoordinates {
+  latitude: number | null
+  longitude: number | null
+}
+
+/**
  * Event staffing item returned by this API
  */
 export interface EventStaffingItem {
@@ -24,6 +32,7 @@ export interface EventStaffingItem {
   end_date: string | null
   status: string
   location: string | null
+  location_coordinates: LocationCoordinates | null
   account: {
     id: string
     name: string
@@ -80,12 +89,12 @@ export async function GET(request: NextRequest) {
         location_id,
         account_id,
         accounts!events_account_id_fkey(id, name),
-        locations!events_location_id_fkey(id, name, address_line1, city, state),
+        locations!events_location_id_fkey(id, name, address_line1, city, state, latitude, longitude),
         event_dates(
           id,
           event_date,
           location_id,
-          locations(id, name, address_line1, city, state)
+          locations(id, name, address_line1, city, state, latitude, longitude)
         )
       `)
       .eq('tenant_id', dataSourceTenantId)
@@ -140,26 +149,41 @@ export async function GET(request: NextRequest) {
     })
 
     /**
-     * Get the display location for an event
+     * Get the display location and coordinates for an event
      * Priority: 1) First event_date's location, 2) Event's location_id, 3) Event's location text field
      */
-    const getEventLocation = (event: any): string | null => {
+    const getEventLocation = (event: any): { name: string | null; coordinates: LocationCoordinates | null } => {
       // Check event_dates first (for per-date locations)
       const eventDates = event.event_dates as any[]
       if (eventDates && eventDates.length > 0) {
         const firstDate = eventDates[0]
         if (firstDate.locations?.name) {
-          return firstDate.locations.name
+          return {
+            name: firstDate.locations.name,
+            coordinates: {
+              latitude: firstDate.locations.latitude ?? null,
+              longitude: firstDate.locations.longitude ?? null
+            }
+          }
         }
       }
 
       // Check event-level location via location_id
       if (event.locations?.name) {
-        return event.locations.name
+        return {
+          name: event.locations.name,
+          coordinates: {
+            latitude: event.locations.latitude ?? null,
+            longitude: event.locations.longitude ?? null
+          }
+        }
       }
 
-      // Fall back to text location field
-      return event.location || null
+      // Fall back to text location field (no coordinates available)
+      return {
+        name: event.location || null,
+        coordinates: null
+      }
     }
 
     // Transform events with staffing info
@@ -199,13 +223,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const locationData = getEventLocation(event)
+
       return {
         id: event.id,
         title: event.title,
         start_date: event.start_date,
         end_date: event.end_date,
         status: event.status,
-        location: getEventLocation(event),
+        location: locationData.name,
+        location_coordinates: locationData.coordinates,
         account: event.accounts ? {
           id: (event.accounts as any).id,
           name: (event.accounts as any).name

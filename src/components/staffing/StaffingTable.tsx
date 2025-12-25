@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useEventStaffing, type StaffingNeedsFilter } from '@/hooks/useEventStaffing'
 import { StaffAssignmentDropdown } from './StaffAssignmentDropdown'
+import { EventStaffAssignmentModal } from './EventStaffAssignmentModal'
 import { formatDateShort } from '@/lib/utils/date-utils'
 import { Calendar, MapPin, Building2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -65,6 +67,13 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
   const params = useParams()
   const tenantSubdomain = params.tenant as string
 
+  // Modal state for event staff assignment
+  const [selectedEvent, setSelectedEvent] = useState<{
+    id: string
+    title: string
+    location: string | null
+  } | null>(null)
+
   const {
     data: events,
     isLoading,
@@ -74,6 +83,19 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
     needs: getRoleFilter(roleType),
     daysAhead: daysAhead ?? undefined
   })
+
+  const handleOpenAssignModal = (event: { id: string; title: string; location: string | null }) => {
+    setSelectedEvent(event)
+  }
+
+  const handleCloseAssignModal = () => {
+    setSelectedEvent(null)
+  }
+
+  const handleStaffAssigned = () => {
+    refetch()
+    setSelectedEvent(null)
+  }
 
   if (isLoading) {
     return (
@@ -134,19 +156,19 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                 Event
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
                 Client
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                 Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                 Location
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
                 {roleType === 'event_staff' ? 'Staff Count' : 'Assignment'}
               </th>
             </tr>
@@ -209,11 +231,17 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                         <Users className="h-3 w-3 mr-1" />
                         {event.event_staff_count} assigned
                       </span>
-                      <Link href={`/${tenantSubdomain}/events/${event.id}?tab=staff`}>
-                        <Button size="sm" variant="outline">
-                          + Assign Staff
-                        </Button>
-                      </Link>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenAssignModal({
+                          id: event.id,
+                          title: event.title,
+                          location: event.location
+                        })}
+                      >
+                        + Assign Staff
+                      </Button>
                     </div>
                   ) : (
                     <StaffAssignmentDropdown
@@ -226,6 +254,7 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                           : event.graphic_designer
                       }
                       onAssigned={() => refetch()}
+                      locationCoordinates={event.location_coordinates}
                     />
                   )}
                 </td>
@@ -283,11 +312,17 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                     <Users className="h-3 w-3 mr-1" />
                     {event.event_staff_count} assigned
                   </span>
-                  <Link href={`/${tenantSubdomain}/events/${event.id}?tab=staff`}>
-                    <Button size="sm" variant="outline">
-                      + Assign Staff
-                    </Button>
-                  </Link>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenAssignModal({
+                      id: event.id,
+                      title: event.title,
+                      location: event.location
+                    })}
+                  >
+                    + Assign Staff
+                  </Button>
                 </div>
               ) : (
                 <StaffAssignmentDropdown
@@ -300,12 +335,25 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                       : event.graphic_designer
                   }
                   onAssigned={() => refetch()}
+                  locationCoordinates={event.location_coordinates}
                 />
               )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Event Staff Assignment Modal */}
+      {selectedEvent && (
+        <EventStaffAssignmentModal
+          isOpen={!!selectedEvent}
+          onClose={handleCloseAssignModal}
+          onAssigned={handleStaffAssigned}
+          eventId={selectedEvent.id}
+          eventTitle={selectedEvent.title}
+          eventLocation={selectedEvent.location}
+        />
+      )}
     </div>
   )
 }

@@ -46,7 +46,7 @@ export default function StaffingPage() {
       <div className="min-h-screen bg-white">
         {/* Header */}
         <div className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="max-w-[1600px] mx-auto px-6 py-6">
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Event Staffing</h1>
               <p className="text-sm text-gray-600">Assign staff to upcoming events</p>
@@ -54,7 +54,7 @@ export default function StaffingPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="event_managers" className="flex items-center gap-2">
