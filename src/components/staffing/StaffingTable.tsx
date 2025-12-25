@@ -254,7 +254,6 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                           : event.graphic_designer
                       }
                       onAssigned={() => refetch()}
-                      locationCoordinates={event.location_coordinates}
                     />
                   )}
                 </td>
@@ -335,7 +334,6 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                       : event.graphic_designer
                   }
                   onAssigned={() => refetch()}
-                  locationCoordinates={event.location_coordinates}
                 />
               )}
             </div>
