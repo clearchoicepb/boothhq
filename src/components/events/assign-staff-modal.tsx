@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
+import { formatDistance, getDistanceColorClass } from '@/lib/utils/distance-utils'
+import { useStaffDistance, DISTANCE_FILTER_OPTIONS, type DistanceFilterValue, type StaffSortOption } from '@/hooks/useStaffDistance'
+import { MapPin } from 'lucide-react'
 import type { EventDate } from '@/types/events'
 
 interface StaffRole {
@@ -17,6 +20,14 @@ interface User {
   first_name: string
   last_name: string
   email?: string
+  home_latitude?: number | null
+  home_longitude?: number | null
+}
+
+interface EventLocation {
+  latitude: number | null
+  longitude: number | null
+  name?: string
 }
 
 interface DateTimeSelection {
@@ -41,6 +52,8 @@ interface AssignStaffModalProps {
   users: User[]
   staffRoles: StaffRole[]
   eventDates: EventDate[]
+  /** Optional event location for distance calculation */
+  eventLocation?: EventLocation | null
 }
 
 export function AssignStaffModal({
@@ -58,9 +71,20 @@ export function AssignStaffModal({
   setStaffNotes,
   users,
   staffRoles,
-  eventDates
+  eventDates,
+  eventLocation
 }: AssignStaffModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Use staff distance hook for distance calculations
+  const {
+    displayUsers,
+    locationHasCoordinates,
+    maxDistance,
+    setMaxDistance,
+    sortBy,
+    setSortBy,
+  } = useStaffDistance(users, { location: eventLocation })
 
   const selectedRole = staffRoles.find(r => r.id === selectedStaffRoleId)
   const isEventStaffRole = selectedRole?.type === 'event_staff'
@@ -164,6 +188,38 @@ export function AssignStaffModal({
           <label htmlFor="staff-member-select" className="block text-sm font-medium text-gray-700 mb-2">
             Staff Member <span className="text-red-500">*</span>
           </label>
+
+          {/* Distance Filter & Sort Controls - only show if location has coordinates */}
+          {locationHasCoordinates && (
+            <div className="flex gap-2 mb-2">
+              <select
+                id="distance-filter"
+                name="distance-filter"
+                title="Filter by distance"
+                value={maxDistance ?? ''}
+                onChange={(e) => setMaxDistance(e.target.value === '' ? null : Number(e.target.value) as DistanceFilterValue)}
+                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
+              >
+                {DISTANCE_FILTER_OPTIONS.map(option => (
+                  <option key={option.label} value={option.value ?? ''}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                id="sort-by"
+                name="sort-by"
+                title="Sort by"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as StaffSortOption)}
+                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
+              >
+                <option value="name">Sort: Name</option>
+                <option value="distance">Sort: Nearest</option>
+              </select>
+            </div>
+          )}
+
           <select
             id="staff-member-select"
             name="staff-member"
@@ -174,13 +230,30 @@ export function AssignStaffModal({
               errors.user ? 'border-red-500' : 'border-gray-300'
             }`}
           >
-            <option value="">-- Select User --</option>
-            {users.map(user => (
+            <option value="">-- Select Staff Member --</option>
+            {displayUsers.map(user => (
               <option key={user.id} value={user.id}>
-                {user.first_name} {user.last_name} {user.email ? `(${user.email})` : ''}
+                {user.first_name} {user.last_name}
+                {locationHasCoordinates && user.distance != null && ` (${formatDistance(user.distance)})`}
+                {locationHasCoordinates && user.distance == null && !user.hasCoordinates && ' (No address)'}
               </option>
             ))}
           </select>
+
+          {/* Show selected user's distance prominently */}
+          {selectedUserId && locationHasCoordinates && (() => {
+            const selectedUser = displayUsers.find(u => u.id === selectedUserId)
+            if (selectedUser?.distance != null) {
+              return (
+                <div className={`flex items-center gap-1 mt-1 text-xs ${getDistanceColorClass(selectedUser.distance)}`}>
+                  <MapPin className="h-3 w-3" />
+                  <span>{formatDistance(selectedUser.distance)} from event location</span>
+                </div>
+              )
+            }
+            return null
+          })()}
+
           {errors.user && (
             <p className="text-sm text-red-600 mt-1">{errors.user}</p>
           )}

@@ -80,6 +80,29 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
     } as Event
   }, [event, eventDates])
 
+  // Get event location for distance calculations
+  const eventLocation = useMemo(() => {
+    // Try to get location from first event date > event's location_id
+    const firstEventDate = eventDates?.[0]
+    const locationId = firstEventDate?.location_id || event?.location_id
+    const locations = references.locations
+
+    if (!locationId || !locations?.length) {
+      return null
+    }
+
+    const location = locations.find((loc: any) => loc.id === locationId)
+    if (!location) {
+      return null
+    }
+
+    return {
+      latitude: location.latitude ?? null,
+      longitude: location.longitude ?? null,
+      name: location.name,
+    }
+  }, [eventDates, event?.location_id, references.locations])
+
   // Destructure for easier access - Context
   const { modals: contextModals, detailModals, editing: contextEditing } = context
 
@@ -453,6 +476,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                         staff.resetAddStaffForm()
                       }}
                       canEdit={canManageEvents}
+                      eventLocation={eventLocation}
                     />
                   </div>
                 </div>
