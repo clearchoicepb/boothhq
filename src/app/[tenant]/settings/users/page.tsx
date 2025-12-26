@@ -47,6 +47,12 @@ interface User {
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
   emergency_contact_relationship: string | null
+  // Payroll fields
+  user_type: 'staff' | 'white_label' | null
+  pay_type: 'hourly' | 'flat_rate' | null
+  default_flat_rate: number | null
+  mileage_enabled: boolean | null
+  mileage_rate: number | null
 }
 
 export default function UsersSettingsPage() {

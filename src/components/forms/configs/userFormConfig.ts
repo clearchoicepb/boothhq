@@ -81,14 +81,94 @@ export const userFormConfig: FormConfig<any> = {
       ],
       gridCols: 1
     },
+    // User Type: Staff vs White Label
+    {
+      name: 'user_type',
+      type: 'select',
+      label: 'User Type',
+      section: 'Pay Configuration',
+      options: [
+        { value: 'staff', label: 'Staff' },
+        { value: 'white_label', label: 'White Label Partner' }
+      ],
+      gridCols: 1,
+      helpText: 'White Label partners are paid flat rate per event'
+    },
+    // Pay Type: Hourly vs Flat Rate (for Staff only)
+    {
+      name: 'pay_type',
+      type: 'select',
+      label: 'Default Pay Type',
+      section: 'Pay Configuration',
+      options: [
+        { value: 'hourly', label: 'Hourly' },
+        { value: 'flat_rate', label: 'Flat Rate' }
+      ],
+      gridCols: 1,
+      conditional: {
+        field: 'user_type',
+        operator: 'equals',
+        value: 'staff'
+      }
+    },
+    // Hourly Rate (shown for Staff + Hourly)
     {
       name: 'pay_rate',
-      type: 'number',
-      label: 'Pay Rate',
+      type: 'currency',
+      label: 'Hourly Rate',
+      section: 'Pay Configuration',
       validation: {
         min: 0
       },
-      gridCols: 1
+      gridCols: 1,
+      conditional: {
+        field: 'pay_type',
+        operator: 'equals',
+        value: 'hourly'
+      }
+    },
+    // Default Flat Rate (shown for Staff + Flat Rate OR White Label)
+    // Note: Always visible so it works for white_label users too
+    {
+      name: 'default_flat_rate',
+      type: 'currency',
+      label: 'Default Flat Rate',
+      section: 'Pay Configuration',
+      validation: {
+        min: 0
+      },
+      gridCols: 1,
+      helpText: 'Default amount per event. Can be overridden when assigning to events.'
+    },
+    // Mileage Section (Staff only)
+    {
+      name: 'mileage_enabled',
+      type: 'checkbox',
+      label: 'Calculate mileage for this user',
+      section: 'Mileage',
+      gridCols: 2,
+      conditional: {
+        field: 'user_type',
+        operator: 'equals',
+        value: 'staff'
+      },
+      helpText: 'Mileage is only calculated for hourly events, not flat rate events'
+    },
+    {
+      name: 'mileage_rate',
+      type: 'currency',
+      label: 'Mileage Rate (per mile)',
+      section: 'Mileage',
+      validation: {
+        min: 0
+      },
+      gridCols: 1,
+      conditional: {
+        field: 'mileage_enabled',
+        operator: 'equals',
+        value: true
+      },
+      helpText: 'IRS standard rate for 2024 is $0.67/mile'
     },
     {
       name: 'hire_date',
@@ -148,6 +228,22 @@ export const userFormConfig: FormConfig<any> = {
   ],
   sections: [
     {
+      title: 'Pay Configuration',
+      fields: [
+        'user_type',
+        'pay_type',
+        'pay_rate',
+        'default_flat_rate'
+      ]
+    },
+    {
+      title: 'Mileage',
+      fields: [
+        'mileage_enabled',
+        'mileage_rate'
+      ]
+    },
+    {
       title: 'Address Information',
       fields: [
         'home_address'
@@ -167,6 +263,10 @@ export const userFormConfig: FormConfig<any> = {
     status: 'active',
     employee_type: 'W2',
     departments: [],
-    manager_of_departments: []
+    manager_of_departments: [],
+    user_type: 'staff',
+    pay_type: 'hourly',
+    mileage_enabled: false,
+    mileage_rate: 0.50
   }
 }

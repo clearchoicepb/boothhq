@@ -34,10 +34,16 @@ interface User {
   email?: string
   home_latitude?: number | null
   home_longitude?: number | null
+  // Payroll fields
+  user_type?: 'staff' | 'white_label' | null
+  pay_type?: 'hourly' | 'flat_rate' | null
+  pay_rate?: number | null
+  default_flat_rate?: number | null
 }
 
 interface DateTimeSelection {
   dateId: string
+  arrivalTime: string  // Staff-specific arrival time
   startTime: string
   endTime: string
 }
@@ -84,6 +90,10 @@ export function EventStaffAssignmentModal({
   const [staffNotes, setStaffNotes] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Pay override state
+  const [payTypeOverride, setPayTypeOverride] = useState<'default' | 'flat_rate'>('default')
+  const [flatRateAmount, setFlatRateAmount] = useState<string>('')
 
   // Fetch event details (dates and location)
   const {
@@ -158,8 +168,49 @@ export function EventStaffAssignmentModal({
       setSelectedDateTimes([])
       setStaffNotes('')
       setErrors({})
+      setPayTypeOverride('default')
+      setFlatRateAmount('')
     }
   }, [isOpen])
+
+  // Get selected user's pay info from rawUsers (which contains payroll fields from API)
+  const selectedUserPayInfo = useMemo(() => {
+    if (!selectedUserId) return null
+    // rawUsers comes from useAvailableUsers which fetches payroll fields
+    const user = rawUsers.find(u => u.id === selectedUserId)
+    if (!user) return null
+
+    // Access payroll fields - cast to any to access fields that may not be in the base User interface
+    const userData = user as any
+    return {
+      userType: (userData.user_type as 'staff' | 'white_label') || 'staff',
+      payType: (userData.pay_type as 'hourly' | 'flat_rate') || 'hourly',
+      payRate: userData.pay_rate ?? null,
+      defaultFlatRate: userData.default_flat_rate ?? null
+    }
+  }, [selectedUserId, rawUsers])
+
+  // When user changes, reset pay override and optionally pre-fill flat rate
+  useEffect(() => {
+    if (!selectedUserId) return
+
+    // Reset pay override to default when user changes
+    setPayTypeOverride('default')
+
+    // Find the user to get their pay info
+    const user = rawUsers.find(u => u.id === selectedUserId) as any
+    if (!user) return
+
+    const userType = user.user_type || 'staff'
+    const defaultFlatRate = user.default_flat_rate
+
+    // For white_label users, pre-fill with default if it exists
+    if (userType === 'white_label' && defaultFlatRate) {
+      setFlatRateAmount(defaultFlatRate.toString())
+    } else {
+      setFlatRateAmount('')
+    }
+  }, [selectedUserId, rawUsers])
 
   // Auto-select first event_staff role if only one exists
   useEffect(() => {
@@ -167,6 +218,17 @@ export function EventStaffAssignmentModal({
       setSelectedStaffRoleId(eventStaffRoles[0].id)
     }
   }, [eventStaffRoles, selectedStaffRoleId])
+
+  // Normalize time string to HH:MM format (remove seconds if present)
+  const normalizeTime = (time: string | null | undefined): string => {
+    if (!time) return '09:00'
+    // Handle HH:MM:SS format from database
+    const parts = time.split(':')
+    if (parts.length >= 2) {
+      return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
+    }
+    return time
+  }
 
   const handleToggleDate = (dateId: string, checked: boolean) => {
     if (errors.dates) {
@@ -179,8 +241,9 @@ export function EventStaffAssignmentModal({
         ...selectedDateTimes,
         {
           dateId,
-          startTime: eventDate?.start_time || '09:00',
-          endTime: eventDate?.end_time || '17:00'
+          arrivalTime: normalizeTime(eventDate?.setup_time || eventDate?.start_time),
+          startTime: normalizeTime(eventDate?.start_time),
+          endTime: normalizeTime(eventDate?.end_time)
         }
       ])
     } else {
@@ -188,7 +251,7 @@ export function EventStaffAssignmentModal({
     }
   }
 
-  const handleUpdateDateTime = (dateId: string, field: 'startTime' | 'endTime', value: string) => {
+  const handleUpdateDateTime = (dateId: string, field: 'arrivalTime' | 'startTime' | 'endTime', value: string) => {
     setSelectedDateTimes(
       selectedDateTimes.map(dt =>
         dt.dateId === dateId ? { ...dt, [field]: value } : dt
@@ -199,6 +262,7 @@ export function EventStaffAssignmentModal({
   const handleSelectAll = () => {
     const allDateTimes = eventDates.map(eventDate => ({
       dateId: eventDate.id,
+      arrivalTime: eventDate.setup_time || eventDate.start_time || '09:00',
       startTime: eventDate.start_time || '09:00',
       endTime: eventDate.end_time || '17:00'
     }))
@@ -223,6 +287,18 @@ export function EventStaffAssignmentModal({
       newErrors.dates = 'Please select at least one event date'
     }
 
+    // Validate flat rate amount when required
+    if (selectedUserPayInfo) {
+      const isWhiteLabel = selectedUserPayInfo.userType === 'white_label'
+      const isFlatRateOverride = payTypeOverride === 'flat_rate'
+
+      if (isWhiteLabel || isFlatRateOverride) {
+        if (!flatRateAmount || parseFloat(flatRateAmount) <= 0) {
+          newErrors.flatRate = 'Please enter a flat rate amount'
+        }
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -233,6 +309,11 @@ export function EventStaffAssignmentModal({
     setIsSaving(true)
 
     try {
+      // Determine pay type override value
+      const isWhiteLabel = selectedUserPayInfo?.userType === 'white_label'
+      const payTypeOverrideValue = isWhiteLabel ? 'flat_rate' : (payTypeOverride === 'flat_rate' ? 'flat_rate' : null)
+      const flatRateValue = (isWhiteLabel || payTypeOverride === 'flat_rate') ? parseFloat(flatRateAmount) : null
+
       // Create one assignment per selected date
       for (const dateTime of selectedDateTimes) {
         const response = await fetch('/api/event-staff', {
@@ -243,9 +324,13 @@ export function EventStaffAssignmentModal({
             user_id: selectedUserId,
             staff_role_id: selectedStaffRoleId,
             event_date_id: dateTime.dateId,
+            arrival_time: dateTime.arrivalTime || null,
             start_time: dateTime.startTime || null,
             end_time: dateTime.endTime || null,
-            notes: staffNotes || null
+            notes: staffNotes || null,
+            // Payroll fields
+            pay_type_override: payTypeOverrideValue,
+            flat_rate_amount: flatRateValue
           })
         })
 
@@ -485,7 +570,22 @@ export function EventStaffAssignmentModal({
                           </label>
 
                           {isSelected && dateTime && (
-                            <div className="mt-2 grid grid-cols-2 gap-2">
+                            <div className="mt-2 grid grid-cols-3 gap-2">
+                              <div>
+                                <label htmlFor={`arrival-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
+                                  <Clock className="h-3 w-3 inline mr-1" />
+                                  Arrival
+                                </label>
+                                <input
+                                  id={`arrival-time-${eventDate.id}`}
+                                  name={`arrival-time-${eventDate.id}`}
+                                  title="Arrival Time"
+                                  type="time"
+                                  value={dateTime.arrivalTime}
+                                  onChange={(e) => handleUpdateDateTime(eventDate.id, 'arrivalTime', e.target.value)}
+                                  className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
                               <div>
                                 <label htmlFor={`start-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
                                   <Clock className="h-3 w-3 inline mr-1" />
@@ -529,6 +629,98 @@ export function EventStaffAssignmentModal({
               <p className="text-sm text-red-600 mt-2">{errors.dates}</p>
             )}
           </div>
+
+          {/* Pay Configuration - shown when staff is selected */}
+          {selectedUserId && selectedUserPayInfo && (
+            <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Pay for this event
+              </label>
+
+              {selectedUserPayInfo.userType === 'white_label' ? (
+                // White Label users: Always flat rate, just need amount
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">White Label Partner - Flat rate per event</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={flatRateAmount}
+                      onChange={(e) => setFlatRateAmount(e.target.value)}
+                      placeholder="Enter flat rate amount"
+                      className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                        errors.flatRate ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                  </div>
+                  {errors.flatRate && (
+                    <p className="text-sm text-red-600 mt-1">{errors.flatRate}</p>
+                  )}
+                </div>
+              ) : (
+                // Staff users: Can choose default or flat rate
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      id="pay-default"
+                      name="pay-type"
+                      checked={payTypeOverride === 'default'}
+                      onChange={() => setPayTypeOverride('default')}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="pay-default" className="text-sm text-gray-700">
+                      Use Default ({selectedUserPayInfo.payType === 'hourly'
+                        ? `Hourly @ $${selectedUserPayInfo.payRate?.toFixed(2) || '0.00'}/hr`
+                        : `Flat Rate @ $${selectedUserPayInfo.defaultFlatRate?.toFixed(2) || '0.00'}`
+                      })
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      id="pay-flat"
+                      name="pay-type"
+                      checked={payTypeOverride === 'flat_rate'}
+                      onChange={() => setPayTypeOverride('flat_rate')}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="pay-flat" className="text-sm text-gray-700">
+                      Flat Rate for this event
+                    </label>
+                  </div>
+
+                  {payTypeOverride === 'flat_rate' && (
+                    <div className="ml-7">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={flatRateAmount}
+                          onChange={(e) => setFlatRateAmount(e.target.value)}
+                          placeholder="Enter flat rate amount"
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                            errors.flatRate ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Flat rate events do not include mileage reimbursement.
+                      </p>
+                      {errors.flatRate && (
+                        <p className="text-sm text-red-600 mt-1">{errors.flatRate}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div>

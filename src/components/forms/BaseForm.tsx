@@ -365,6 +365,27 @@ export function BaseForm<T extends Record<string, any>>({
             />
           )
 
+        case 'currency':
+          return (
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <Input
+                value={value || ''}
+                onChange={(e) => {
+                  const newValue = e.target.value ? parseFloat(e.target.value) : null
+                  handleFieldChange(field.name, newValue)
+                }}
+                type="number"
+                step="0.01"
+                min={field.validation?.min ?? 0}
+                max={field.validation?.max}
+                placeholder={field.placeholder}
+                className={cn('pl-7', hasError ? 'border-red-500' : '')}
+                required={field.required}
+              />
+            </div>
+          )
+
         case 'email':
           return (
             <Input
@@ -593,6 +614,9 @@ export function BaseForm<T extends Record<string, any>>({
           </label>
         )}
         {fieldElement}
+        {field.helpText && !hasError && (
+          <p className="text-xs text-gray-500">{field.helpText}</p>
+        )}
         {hasError && (
           <p className="text-sm text-red-600">{error}</p>
         )}

@@ -21,6 +21,9 @@ export async function PUT(
     if (body.start_time !== undefined) updateData.start_time = body.start_time
     if (body.end_time !== undefined) updateData.end_time = body.end_time
     if (body.notes !== undefined) updateData.notes = body.notes
+    if (body.arrival_time !== undefined) updateData.arrival_time = body.arrival_time
+    if (body.pay_type_override !== undefined) updateData.pay_type_override = body.pay_type_override
+    if (body.flat_rate_amount !== undefined) updateData.flat_rate_amount = body.flat_rate_amount
 
     updateData.updated_at = new Date().toISOString()
 

@@ -109,7 +109,13 @@ export async function POST(request: NextRequest) {
       emergency_contact_name,
       emergency_contact_phone,
       emergency_contact_relationship,
-      tenant_id
+      tenant_id,
+      // Payroll fields
+      user_type,
+      pay_type,
+      default_flat_rate,
+      mileage_enabled,
+      mileage_rate
     } = body
 
     // Validate required fields
@@ -251,7 +257,13 @@ export async function POST(request: NextRequest) {
       hire_date,
       emergency_contact_name,
       emergency_contact_phone,
-      emergency_contact_relationship
+      emergency_contact_relationship,
+      // Payroll fields
+      user_type: user_type || 'staff',
+      pay_type: pay_type || 'hourly',
+      default_flat_rate,
+      mileage_enabled: mileage_enabled ?? false,
+      mileage_rate: mileage_rate ?? 0.50
     }
 
     // Handle departments: prefer new departments array, fall back to legacy department
