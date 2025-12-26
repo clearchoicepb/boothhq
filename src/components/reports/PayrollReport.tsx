@@ -20,6 +20,7 @@ interface PayrollPeriod {
 }
 
 interface EventPayrollDetail {
+  assignmentId: string
   eventId: string
   eventName: string
   eventDate: string
@@ -132,6 +133,18 @@ async function saveReimbursement(
     body: JSON.stringify({ userId, periodStart, periodEnd, amount, notes })
   })
   if (!response.ok) throw new Error('Failed to save reimbursement')
+}
+
+async function saveFlatRateAmount(
+  assignmentId: string,
+  amount: number
+): Promise<void> {
+  const response = await fetch(`/api/event-staff/${assignmentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flat_rate_amount: amount })
+  })
+  if (!response.ok) throw new Error('Failed to save flat rate')
 }
 
 // ============================================
@@ -324,12 +337,40 @@ interface FlatRateModalProps {
   onClose: () => void
   staff: StaffPayrollEntry | null
   period: PayrollPeriod | null
+  onSave: (assignmentId: string, amount: number) => Promise<void>
 }
 
-function FlatRateModal({ isOpen, onClose, staff, period }: FlatRateModalProps) {
+function FlatRateModal({ isOpen, onClose, staff, period, onSave }: FlatRateModalProps) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
   if (!staff || !period) return null
 
   const flatRateEvents = staff.events.filter(e => e.payType === 'flat_rate')
+
+  const handleEditClick = (event: EventPayrollDetail) => {
+    setEditingId(event.assignmentId)
+    setEditAmount((event.flatRateAmount || 0).toString())
+  }
+
+  const handleSave = async (assignmentId: string) => {
+    setIsSaving(true)
+    try {
+      await onSave(assignmentId, parseFloat(editAmount) || 0)
+      setEditingId(null)
+      setEditAmount('')
+    } catch (error) {
+      toast.error('Failed to save flat rate')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditingId(null)
+    setEditAmount('')
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Flat Rate Events - ${staff.firstName} ${staff.lastName}`}>
@@ -343,21 +384,66 @@ function FlatRateModal({ isOpen, onClose, staff, period }: FlatRateModalProps) {
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Date</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Location</th>
               <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Amount</th>
+              <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 w-16"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {flatRateEvents.map((event, idx) => (
-              <tr key={idx}>
+            {flatRateEvents.map((event) => (
+              <tr key={event.assignmentId}>
                 <td className="px-4 py-2 text-sm text-gray-900">{event.eventName}</td>
                 <td className="px-4 py-2 text-sm text-gray-600">{formatDate(event.eventDate)}</td>
                 <td className="px-4 py-2 text-sm text-gray-600">{event.locationName}</td>
-                <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(event.flatRateAmount || 0)}</td>
+                <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                  {editingId === event.assignmentId ? (
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    formatCurrency(event.flatRateAmount || 0)
+                  )}
+                </td>
+                <td className="px-4 py-2 text-center">
+                  {editingId === event.assignmentId ? (
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => handleSave(event.assignmentId)}
+                        disabled={isSaving}
+                        className="text-green-600 hover:text-green-800 text-xs font-medium"
+                      >
+                        {isSaving ? '...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                        className="text-gray-500 hover:text-gray-700 text-xs"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleEditClick(event)}
+                      className="text-gray-400 hover:text-blue-600"
+                      title="Edit flat rate"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
-              <td colSpan={3} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">TOTAL</td>
+              <td colSpan={4} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">TOTAL</td>
               <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">{formatCurrency(staff.flatRatePay)}</td>
             </tr>
           </tfoot>
@@ -512,6 +598,12 @@ export function PayrollReport() {
     )
 
     toast.success('Reimbursement saved')
+    runPayroll() // Refresh data
+  }
+
+  const handleSaveFlatRate = async (assignmentId: string, amount: number) => {
+    await saveFlatRateAmount(assignmentId, amount)
+    toast.success('Flat rate updated')
     runPayroll() // Refresh data
   }
 
@@ -756,6 +848,7 @@ export function PayrollReport() {
         onClose={() => setFlatRateModal({ isOpen: false, staff: null })}
         staff={flatRateModal.staff}
         period={selectedPeriod}
+        onSave={handleSaveFlatRate}
       />
       <ReimbursementModal
         isOpen={reimbursementModal.isOpen}

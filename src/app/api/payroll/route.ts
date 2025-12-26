@@ -282,6 +282,7 @@ export async function GET(request: NextRequest) {
         )
 
         const detail: EventPayrollDetail = {
+          assignmentId: assignment.id,
           eventId: assignment.event_id,
           eventName: event?.title || 'Unknown Event',
           eventDate: eventDate?.event_date || '',

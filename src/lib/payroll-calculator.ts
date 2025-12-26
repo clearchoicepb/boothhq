@@ -22,6 +22,7 @@ export interface PayrollPeriod {
 }
 
 export interface EventPayrollDetail {
+  assignmentId: string // For updating flat rate amounts
   eventId: string
   eventName: string
   eventDate: Date | string

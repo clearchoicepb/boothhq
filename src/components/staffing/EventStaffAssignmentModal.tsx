@@ -173,31 +173,44 @@ export function EventStaffAssignmentModal({
     }
   }, [isOpen])
 
-  // Get selected user's pay info
+  // Get selected user's pay info from rawUsers (which contains payroll fields from API)
   const selectedUserPayInfo = useMemo(() => {
     if (!selectedUserId) return null
-    const user = rawUsers.find(u => u.id === selectedUserId) as User | undefined
+    // rawUsers comes from useAvailableUsers which fetches payroll fields
+    const user = rawUsers.find(u => u.id === selectedUserId)
     if (!user) return null
+
+    // Access payroll fields - cast to any to access fields that may not be in the base User interface
+    const userData = user as any
     return {
-      userType: user.user_type || 'staff',
-      payType: user.pay_type || 'hourly',
-      payRate: user.pay_rate,
-      defaultFlatRate: user.default_flat_rate
+      userType: (userData.user_type as 'staff' | 'white_label') || 'staff',
+      payType: (userData.pay_type as 'hourly' | 'flat_rate') || 'hourly',
+      payRate: userData.pay_rate ?? null,
+      defaultFlatRate: userData.default_flat_rate ?? null
     }
   }, [selectedUserId, rawUsers])
 
-  // When user changes, reset pay override and set default flat rate
+  // When user changes, reset pay override and optionally pre-fill flat rate
   useEffect(() => {
-    if (selectedUserPayInfo) {
-      setPayTypeOverride('default')
-      // Pre-fill flat rate for white_label users
-      if (selectedUserPayInfo.userType === 'white_label' && selectedUserPayInfo.defaultFlatRate) {
-        setFlatRateAmount(selectedUserPayInfo.defaultFlatRate.toString())
-      } else {
-        setFlatRateAmount('')
-      }
+    if (!selectedUserId) return
+
+    // Reset pay override to default when user changes
+    setPayTypeOverride('default')
+
+    // Find the user to get their pay info
+    const user = rawUsers.find(u => u.id === selectedUserId) as any
+    if (!user) return
+
+    const userType = user.user_type || 'staff'
+    const defaultFlatRate = user.default_flat_rate
+
+    // For white_label users, pre-fill with default if it exists
+    if (userType === 'white_label' && defaultFlatRate) {
+      setFlatRateAmount(defaultFlatRate.toString())
+    } else {
+      setFlatRateAmount('')
     }
-  }, [selectedUserId, selectedUserPayInfo])
+  }, [selectedUserId, rawUsers])
 
   // Auto-select first event_staff role if only one exists
   useEffect(() => {
@@ -205,6 +218,17 @@ export function EventStaffAssignmentModal({
       setSelectedStaffRoleId(eventStaffRoles[0].id)
     }
   }, [eventStaffRoles, selectedStaffRoleId])
+
+  // Normalize time string to HH:MM format (remove seconds if present)
+  const normalizeTime = (time: string | null | undefined): string => {
+    if (!time) return '09:00'
+    // Handle HH:MM:SS format from database
+    const parts = time.split(':')
+    if (parts.length >= 2) {
+      return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
+    }
+    return time
+  }
 
   const handleToggleDate = (dateId: string, checked: boolean) => {
     if (errors.dates) {
@@ -217,9 +241,9 @@ export function EventStaffAssignmentModal({
         ...selectedDateTimes,
         {
           dateId,
-          arrivalTime: eventDate?.setup_time || eventDate?.start_time || '09:00',
-          startTime: eventDate?.start_time || '09:00',
-          endTime: eventDate?.end_time || '17:00'
+          arrivalTime: normalizeTime(eventDate?.setup_time || eventDate?.start_time),
+          startTime: normalizeTime(eventDate?.start_time),
+          endTime: normalizeTime(eventDate?.end_time)
         }
       ])
     } else {
