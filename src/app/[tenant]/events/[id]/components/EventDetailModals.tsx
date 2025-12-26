@@ -96,7 +96,12 @@ export function EventDetailModals({
     editingStaffId,
     setEditingStaffId,
     fetchStaff: refetchStaff,
-    resetAddStaffForm
+    resetAddStaffForm,
+    // Payroll state
+    payTypeOverride,
+    setPayTypeOverride,
+    flatRateAmount,
+    setFlatRateAmount
   } = staff
 
   // Event date editing from context (consolidated from useEventEditing hook)
@@ -247,6 +252,12 @@ export function EventDetailModals({
       } else {
         log.debug({ assignmentCount: selectedDateTimes.length }, 'Processing EVENT_STAFF role')
 
+        // Determine pay type override value
+        const selectedUser = users.find((u: { id: string }) => u.id === selectedUserId) as any
+        const isWhiteLabel = selectedUser?.user_type === 'white_label'
+        const payTypeOverrideValue = isWhiteLabel ? 'flat_rate' : (payTypeOverride === 'flat_rate' ? 'flat_rate' : null)
+        const flatRateValue = (isWhiteLabel || payTypeOverride === 'flat_rate') ? parseFloat(flatRateAmount) || null : null
+
         // For Event Staff roles: create one record per selected date
         for (const dateTime of selectedDateTimes) {
           const requestBody = {
@@ -254,9 +265,13 @@ export function EventDetailModals({
             user_id: selectedUserId,
             staff_role_id: selectedStaffRoleId,
             event_date_id: dateTime.dateId,
+            arrival_time: dateTime.arrivalTime || null,
             start_time: dateTime.startTime || null,
             end_time: dateTime.endTime || null,
-            notes: staffNotes || null
+            notes: staffNotes || null,
+            // Payroll fields
+            pay_type_override: payTypeOverrideValue,
+            flat_rate_amount: flatRateValue
           }
 
           log.debug({ dateId: dateTime.dateId, requestBody }, 'Creating staff assignment')
@@ -333,6 +348,10 @@ export function EventDetailModals({
         staffRoles={staffRoles}
         eventDates={eventDates}
         eventLocation={eventLocation}
+        payTypeOverride={payTypeOverride}
+        setPayTypeOverride={setPayTypeOverride}
+        flatRateAmount={flatRateAmount}
+        setFlatRateAmount={setFlatRateAmount}
       />
 
       {/* Create Task Modal */}

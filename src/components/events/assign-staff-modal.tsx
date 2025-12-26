@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime } from '@/lib/utils/date-utils'
 import { formatDistance, getDistanceColorClass } from '@/lib/utils/distance-utils'
 import { useStaffDistance, DISTANCE_FILTER_OPTIONS, type DistanceFilterValue, type StaffSortOption } from '@/hooks/useStaffDistance'
-import { MapPin } from 'lucide-react'
+import { MapPin, Clock } from 'lucide-react'
 import type { EventDate } from '@/types/events'
 
 interface StaffRole {
@@ -22,6 +22,11 @@ interface User {
   email?: string
   home_latitude?: number | null
   home_longitude?: number | null
+  // Payroll fields
+  user_type?: 'staff' | 'white_label' | null
+  pay_type?: 'hourly' | 'flat_rate' | null
+  pay_rate?: number | null
+  default_flat_rate?: number | null
 }
 
 interface EventLocation {
@@ -32,6 +37,7 @@ interface EventLocation {
 
 interface DateTimeSelection {
   dateId: string
+  arrivalTime: string
   startTime: string
   endTime: string
 }
@@ -54,6 +60,11 @@ interface AssignStaffModalProps {
   eventDates: EventDate[]
   /** Optional event location for distance calculation */
   eventLocation?: EventLocation | null
+  // Payroll props
+  payTypeOverride: 'default' | 'flat_rate'
+  setPayTypeOverride: (value: 'default' | 'flat_rate') => void
+  flatRateAmount: string
+  setFlatRateAmount: (value: string) => void
 }
 
 export function AssignStaffModal({
@@ -72,9 +83,27 @@ export function AssignStaffModal({
   users,
   staffRoles,
   eventDates,
-  eventLocation
+  eventLocation,
+  payTypeOverride,
+  setPayTypeOverride,
+  flatRateAmount,
+  setFlatRateAmount
 }: AssignStaffModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Get selected user's pay info
+  const selectedUserPayInfo = useMemo(() => {
+    if (!selectedUserId) return null
+    const user = users.find(u => u.id === selectedUserId)
+    if (!user) return null
+
+    return {
+      userType: (user.user_type as 'staff' | 'white_label') || 'staff',
+      payType: (user.pay_type as 'hourly' | 'flat_rate') || 'hourly',
+      payRate: user.pay_rate ?? null,
+      defaultFlatRate: user.default_flat_rate ?? null
+    }
+  }, [selectedUserId, users])
 
   // Use staff distance hook for distance calculations
   const {
@@ -112,6 +141,18 @@ export function AssignStaffModal({
       newErrors.dates = 'Please select at least one event date'
     }
 
+    // Validate flat rate amount when required
+    if (selectedUserPayInfo) {
+      const isWhiteLabel = selectedUserPayInfo.userType === 'white_label'
+      const isFlatRateOverride = payTypeOverride === 'flat_rate'
+
+      if (isWhiteLabel || isFlatRateOverride) {
+        if (!flatRateAmount || parseFloat(flatRateAmount) <= 0) {
+          newErrors.flatRate = 'Please enter a flat rate amount'
+        }
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -125,6 +166,17 @@ export function AssignStaffModal({
   // Check if form is valid for button state
   const isFormValid = selectedUserId && selectedStaffRoleId && (!isEventStaffRole || selectedDateTimes.length > 0)
 
+  // Normalize time string to HH:MM format (remove seconds if present)
+  const normalizeTime = (time: string | null | undefined): string => {
+    if (!time) return '09:00'
+    // Handle HH:MM:SS format from database
+    const parts = time.split(':')
+    if (parts.length >= 2) {
+      return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
+    }
+    return time
+  }
+
   const handleToggleDate = (dateId: string, checked: boolean) => {
     // Clear dates error when user makes a selection
     if (errors.dates) {
@@ -137,8 +189,9 @@ export function AssignStaffModal({
         ...selectedDateTimes,
         {
           dateId,
-          startTime: eventDate?.start_time || '09:00',
-          endTime: eventDate?.end_time || '17:00'
+          arrivalTime: normalizeTime(eventDate?.setup_time || eventDate?.start_time),
+          startTime: normalizeTime(eventDate?.start_time),
+          endTime: normalizeTime(eventDate?.end_time)
         }
       ])
     } else {
@@ -146,7 +199,7 @@ export function AssignStaffModal({
     }
   }
 
-  const handleUpdateDateTime = (dateId: string, field: 'startTime' | 'endTime', value: string) => {
+  const handleUpdateDateTime = (dateId: string, field: 'arrivalTime' | 'startTime' | 'endTime', value: string) => {
     setSelectedDateTimes(
       selectedDateTimes.map(dt =>
         dt.dateId === dateId ? { ...dt, [field]: value } : dt
@@ -335,41 +388,51 @@ export function AssignStaffModal({
                         </label>
 
                         {isSelected && dateTime && (
-                          <div className="mt-2 space-y-2">
-                            {eventDate.setup_time && (
-                              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                                Setup starts at: <span className="font-medium text-gray-900">{formatTime(eventDate.setup_time)}</span>
-                              </div>
-                            )}
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label htmlFor={`start-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
-                                  Start Time
-                                </label>
-                                <input
-                                  id={`start-time-${eventDate.id}`}
-                                  name={`start-time-${eventDate.id}`}
-                                  title="Start Time"
-                                  type="time"
-                                  value={dateTime.startTime}
-                                  onChange={(e) => handleUpdateDateTime(eventDate.id, 'startTime', e.target.value)}
-                                  className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                />
-                              </div>
-                              <div>
-                                <label htmlFor={`end-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
-                                  End Time
-                                </label>
-                                <input
-                                  id={`end-time-${eventDate.id}`}
-                                  name={`end-time-${eventDate.id}`}
-                                  title="End Time"
-                                  type="time"
-                                  value={dateTime.endTime}
-                                  onChange={(e) => handleUpdateDateTime(eventDate.id, 'endTime', e.target.value)}
-                                  className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                />
-                              </div>
+                          <div className="mt-2 grid grid-cols-3 gap-2">
+                            <div>
+                              <label htmlFor={`arrival-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                Arrival
+                              </label>
+                              <input
+                                id={`arrival-time-${eventDate.id}`}
+                                name={`arrival-time-${eventDate.id}`}
+                                title="Arrival Time"
+                                type="time"
+                                value={dateTime.arrivalTime}
+                                onChange={(e) => handleUpdateDateTime(eventDate.id, 'arrivalTime', e.target.value)}
+                                className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor={`start-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                Start
+                              </label>
+                              <input
+                                id={`start-time-${eventDate.id}`}
+                                name={`start-time-${eventDate.id}`}
+                                title="Start Time"
+                                type="time"
+                                value={dateTime.startTime}
+                                onChange={(e) => handleUpdateDateTime(eventDate.id, 'startTime', e.target.value)}
+                                className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor={`end-time-${eventDate.id}`} className="block text-xs text-gray-600 mb-1">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                End
+                              </label>
+                              <input
+                                id={`end-time-${eventDate.id}`}
+                                name={`end-time-${eventDate.id}`}
+                                title="End Time"
+                                type="time"
+                                value={dateTime.endTime}
+                                onChange={(e) => handleUpdateDateTime(eventDate.id, 'endTime', e.target.value)}
+                                className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
                             </div>
                           </div>
                         )}
@@ -381,6 +444,98 @@ export function AssignStaffModal({
             </div>
             {errors.dates && (
               <p className="text-sm text-red-600 mt-2">{errors.dates}</p>
+            )}
+          </div>
+        )}
+
+        {/* Pay Configuration - shown when staff is selected */}
+        {selectedUserId && selectedUserPayInfo && (
+          <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Pay for this event
+            </label>
+
+            {selectedUserPayInfo.userType === 'white_label' ? (
+              // White Label users: Always flat rate, just need amount
+              <div>
+                <p className="text-xs text-gray-500 mb-2">White Label Partner - Flat rate per event</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={flatRateAmount}
+                    onChange={(e) => setFlatRateAmount(e.target.value)}
+                    placeholder="Enter flat rate amount"
+                    className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                      errors.flatRate ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
+                {errors.flatRate && (
+                  <p className="text-sm text-red-600 mt-1">{errors.flatRate}</p>
+                )}
+              </div>
+            ) : (
+              // Staff users: Can choose default or flat rate
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    id="pay-default"
+                    name="pay-type"
+                    checked={payTypeOverride === 'default'}
+                    onChange={() => setPayTypeOverride('default')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="pay-default" className="text-sm text-gray-700">
+                    Use Default ({selectedUserPayInfo.payType === 'hourly'
+                      ? `Hourly @ $${selectedUserPayInfo.payRate?.toFixed(2) || '0.00'}/hr`
+                      : `Flat Rate @ $${selectedUserPayInfo.defaultFlatRate?.toFixed(2) || '0.00'}`
+                    })
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    id="pay-flat"
+                    name="pay-type"
+                    checked={payTypeOverride === 'flat_rate'}
+                    onChange={() => setPayTypeOverride('flat_rate')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="pay-flat" className="text-sm text-gray-700">
+                    Flat Rate for this event
+                  </label>
+                </div>
+
+                {payTypeOverride === 'flat_rate' && (
+                  <div className="ml-7">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={flatRateAmount}
+                        onChange={(e) => setFlatRateAmount(e.target.value)}
+                        placeholder="Enter flat rate amount"
+                        className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                          errors.flatRate ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Flat rate events do not include mileage reimbursement.
+                    </p>
+                    {errors.flatRate && (
+                      <p className="text-sm text-red-600 mt-1">{errors.flatRate}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

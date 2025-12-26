@@ -20,7 +20,11 @@ export function useEventStaff(eventId: string) {
   const [selectedStaffRoleId, setSelectedStaffRoleId] = useState<string>('')
   const [staffRole, setStaffRole] = useState<string>('')
   const [staffNotes, setStaffNotes] = useState<string>('')
-  const [selectedDateTimes, setSelectedDateTimes] = useState<Array<{dateId: string, startTime: string, endTime: string}>>([])
+  const [selectedDateTimes, setSelectedDateTimes] = useState<Array<{dateId: string, arrivalTime: string, startTime: string, endTime: string}>>([])
+
+  // Payroll state
+  const [payTypeOverride, setPayTypeOverride] = useState<'default' | 'flat_rate'>('default')
+  const [flatRateAmount, setFlatRateAmount] = useState<string>('')
 
   // UI state
   const [operationsTeamExpanded, setOperationsTeamExpanded] = useState(true)
@@ -86,6 +90,8 @@ export function useEventStaff(eventId: string) {
     setStaffRole('')
     setStaffNotes('')
     setSelectedDateTimes([])
+    setPayTypeOverride('default')
+    setFlatRateAmount('')
   }, [])
 
   /**
@@ -120,6 +126,12 @@ export function useEventStaff(eventId: string) {
     selectedDateTimes,
     setSelectedDateTimes,
     resetAddStaffForm,
+
+    // Payroll state
+    payTypeOverride,
+    setPayTypeOverride,
+    flatRateAmount,
+    setFlatRateAmount,
 
     // UI state
     operationsTeamExpanded,
