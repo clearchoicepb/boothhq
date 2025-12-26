@@ -16,6 +16,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { FinancialsTab } from '@/components/reports/financials'
+import { PayrollReport } from '@/components/reports/PayrollReport'
 
 type DateRange = '7d' | '30d' | '90d' | '180d' | '365d' | 'all'
 
@@ -609,15 +610,7 @@ export default function ReportsPage() {
         )}
 
         {activeTab === 'operations' && (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
-              <Calendar className="h-8 w-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Operations Reports Coming Soon</h3>
-            <p className="text-sm text-gray-500">
-              Track event performance, resource utilization, and operational metrics
-            </p>
-          </div>
+          <PayrollReport />
         )}
 
         {activeTab === 'financials' && <FinancialsTab />}

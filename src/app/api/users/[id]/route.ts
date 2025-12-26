@@ -89,7 +89,13 @@ export async function PUT(
       emergency_contact_phone,
       emergency_contact_relationship,
       permissions,
-      avatar_url
+      avatar_url,
+      // Payroll fields
+      user_type,
+      pay_type,
+      default_flat_rate,
+      mileage_enabled,
+      mileage_rate
     } = body
 
     // Query Tenant DB for user updates
@@ -138,6 +144,13 @@ export async function PUT(
     if (emergency_contact_relationship !== undefined) updateData.emergency_contact_relationship = emergency_contact_relationship
     if (permissions !== undefined) updateData.permissions = permissions
     if (avatar_url !== undefined) updateData.avatar_url = avatar_url
+
+    // Payroll fields
+    if (user_type !== undefined) updateData.user_type = user_type
+    if (pay_type !== undefined) updateData.pay_type = pay_type
+    if (default_flat_rate !== undefined) updateData.default_flat_rate = default_flat_rate
+    if (mileage_enabled !== undefined) updateData.mileage_enabled = mileage_enabled
+    if (mileage_rate !== undefined) updateData.mileage_rate = mileage_rate
 
     // Add status if provided
     if (body.status) {

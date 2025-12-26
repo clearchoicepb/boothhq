@@ -15,7 +15,7 @@ interface Conflict {
 }
 
 /**
- * Available user with conflict information
+ * Available user with conflict information and payroll data
  */
 export interface AvailableUser {
   id: string
@@ -26,6 +26,11 @@ export interface AvailableUser {
   home_longitude: number | null
   is_available: boolean
   conflicts: Conflict[]
+  // Payroll fields
+  user_type: 'staff' | 'white_label' | null
+  pay_type: 'hourly' | 'flat_rate' | null
+  pay_rate: number | null
+  default_flat_rate: number | null
 }
 
 /**
@@ -96,10 +101,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Event has no dates' }, { status: 400 })
     }
 
-    // Step 2: Get all active users in the specified department
+    // Step 2: Get all active users in the specified department (including payroll fields)
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('id, first_name, last_name, email, departments, home_latitude, home_longitude')
+      .select('id, first_name, last_name, email, departments, home_latitude, home_longitude, user_type, pay_type, pay_rate, default_flat_rate')
       .eq('tenant_id', dataSourceTenantId)
       .eq('status', 'active')
       .order('first_name', { ascending: true })
@@ -188,7 +193,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Step 4: Build the response
+    // Step 4: Build the response (including payroll fields)
     const availableUsers: AvailableUser[] = filteredUsers.map(user => {
       const conflicts = userConflicts[user.id] || []
       return {
@@ -199,7 +204,12 @@ export async function GET(request: NextRequest) {
         home_latitude: user.home_latitude ?? null,
         home_longitude: user.home_longitude ?? null,
         is_available: conflicts.length === 0,
-        conflicts
+        conflicts,
+        // Payroll fields
+        user_type: user.user_type ?? null,
+        pay_type: user.pay_type ?? null,
+        pay_rate: user.pay_rate ?? null,
+        default_flat_rate: user.default_flat_rate ?? null
       }
     })
 

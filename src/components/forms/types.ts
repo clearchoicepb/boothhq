@@ -12,7 +12,7 @@ export interface AddressFieldMap {
 
 export interface FieldConfig {
   name: string
-  type: 'text' | 'email' | 'number' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect' | 'departmentWithManager' | 'address'
+  type: 'text' | 'email' | 'number' | 'currency' | 'select' | 'textarea' | 'date' | 'datetime' | 'phone' | 'url' | 'password' | 'checkbox' | 'multiSelect' | 'departmentWithManager' | 'address'
   label: string
   required?: boolean
   placeholder?: string
