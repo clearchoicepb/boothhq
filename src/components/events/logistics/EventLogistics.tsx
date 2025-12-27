@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FileDown, Phone, MapPin, Edit2, Save, X, Calendar, Clock, Users, Package, FileText, Loader2 } from 'lucide-react'
+import { FileDown, Phone, MapPin, Edit2, Save, X, Calendar, Clock, Users, Package, FileText, Loader2, Link2, Check } from 'lucide-react'
 import { useEventLogistics } from '@/hooks/useEventLogistics'
 import { Button } from '@/components/ui/button'
 import { generateLogisticsPdf, getLogisticsPdfFilename } from '@/lib/pdf'
@@ -260,6 +260,29 @@ export function EventLogistics({ eventId, eventDateId: propEventDateId }: EventL
   // PDF export state
   const [isExporting, setIsExporting] = useState(false)
 
+  // Public link state
+  const [isCopyingLink, setIsCopyingLink] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  // Handle copy public link
+  const handleCopyPublicLink = async () => {
+    if (!logistics?.event_date_id) return
+    setIsCopyingLink(true)
+    try {
+      const res = await fetch(`/api/event-dates/${logistics.event_date_id}/public-link`)
+      if (!res.ok) throw new Error('Failed to get public link')
+      const data = await res.json()
+      const fullUrl = `${window.location.origin}${data.public_url}`
+      await navigator.clipboard.writeText(fullUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy public link:', error)
+    } finally {
+      setIsCopyingLink(false)
+    }
+  }
+
   // Handle PDF export
   const handleExportPdf = async () => {
     if (!logistics) return
@@ -456,20 +479,38 @@ export function EventLogistics({ eventId, eventDateId: propEventDateId }: EventL
               </div>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-white/10 border-white/30 text-white hover:bg-white/20 print:hidden"
-            onClick={handleExportPdf}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <FileDown className="h-4 w-4 mr-2" />
-            )}
-            {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 print:hidden"
+              onClick={handleCopyPublicLink}
+              disabled={isCopyingLink || !logistics?.event_date_id}
+            >
+              {isCopyingLink ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : linkCopied ? (
+                <Check className="h-4 w-4 mr-2" />
+              ) : (
+                <Link2 className="h-4 w-4 mr-2" />
+              )}
+              {linkCopied ? 'Copied!' : 'Copy Link'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 print:hidden"
+              onClick={handleExportPdf}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              {isExporting ? 'Exporting...' : 'Export PDF'}
+            </Button>
+          </div>
         </div>
       </div>
 
