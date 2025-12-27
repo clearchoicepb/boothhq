@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const { supabase, dataSourceTenantId, session } = context
     // Get Gmail OAuth credentials from environment or settings
     const clientId = process.env.GOOGLE_CLIENT_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/gmail/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL}/api/integrations/gmail/callback`
 
     if (!clientId) {
       return NextResponse.json(
