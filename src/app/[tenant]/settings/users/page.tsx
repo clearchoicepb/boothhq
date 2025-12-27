@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
 import { useSettings } from '@/lib/settings-context'
 import { ROLES, ROLES_WITH_LABELS, type UserRole } from '@/lib/roles'
-import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Building, Shield, Key } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, EyeOff, User, Mail, Phone, Shield, Key, Archive, ArchiveRestore } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -53,6 +53,8 @@ interface User {
   default_flat_rate: number | null
   mileage_enabled: boolean | null
   mileage_rate: number | null
+  // Archive field
+  archived_at: string | null
 }
 
 export default function UsersSettingsPage() {
@@ -74,13 +76,16 @@ export default function UsersSettingsPage() {
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivingUser, setArchivingUser] = useState<string | null>(null)
 
   const tenantSubdomain = useParams().tenant as string
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/users')
+      const url = showArchived ? '/api/users?include_archived=true' : '/api/users'
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setUsers(data)
@@ -96,7 +101,7 @@ export default function UsersSettingsPage() {
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, [showArchived])
 
   const handleView = async (user: User) => {
     setViewingUser(user)
@@ -120,7 +125,7 @@ export default function UsersSettingsPage() {
   }
 
   const handleDelete = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return
+    if (!confirm('Are you sure you want to permanently delete this user? This action cannot be undone. Consider archiving instead.')) return
 
     try {
       const response = await fetch(`/api/users/${userId}`, {
@@ -129,6 +134,7 @@ export default function UsersSettingsPage() {
 
       if (response.ok) {
         await fetchUsers()
+        toast.success('User deleted successfully')
       } else {
         const error = await response.json()
         toast.error(`Error: ${error.message || 'Failed to delete user'}`)
@@ -136,6 +142,56 @@ export default function UsersSettingsPage() {
     } catch (error) {
       log.error({ error }, 'Error deleting user')
       toast.error('Failed to delete user')
+    }
+  }
+
+  const handleArchive = async (userId: string) => {
+    if (!confirm('Are you sure you want to archive this user? They will be hidden from staff lists and assignment dropdowns but their historical data will be preserved.')) return
+
+    setArchivingUser(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' }),
+      })
+
+      if (response.ok) {
+        await fetchUsers()
+        toast.success('User archived successfully')
+      } else {
+        const error = await response.json()
+        toast.error(`Error: ${error.error || 'Failed to archive user'}`)
+      }
+    } catch (error) {
+      log.error({ error }, 'Error archiving user')
+      toast.error('Failed to archive user')
+    } finally {
+      setArchivingUser(null)
+    }
+  }
+
+  const handleUnarchive = async (userId: string) => {
+    setArchivingUser(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unarchive' }),
+      })
+
+      if (response.ok) {
+        await fetchUsers()
+        toast.success('User restored successfully')
+      } else {
+        const error = await response.json()
+        toast.error(`Error: ${error.error || 'Failed to restore user'}`)
+      }
+    } catch (error) {
+      log.error({ error }, 'Error restoring user')
+      toast.error('Failed to restore user')
+    } finally {
+      setArchivingUser(null)
     }
   }
 
@@ -306,7 +362,21 @@ export default function UsersSettingsPage() {
     return roleObj ? roleObj.label : role
   }
 
-  const getStatusBadge = (status: string) => {
+  const getArchivedBadge = () => {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+        <Archive className="w-3 h-3 mr-1" />
+        Archived
+      </span>
+    )
+  }
+
+  const getStatusBadge = (status: string, isArchived: boolean = false) => {
+    // If user is archived, show archived badge instead of status
+    if (isArchived) {
+      return getArchivedBadge()
+    }
+
     switch (status) {
       case 'active':
         return (
@@ -362,7 +432,7 @@ export default function UsersSettingsPage() {
               </div>
 
       {/* Filters and Bulk Actions */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <div className="flex-1">
           <Input
             placeholder="Search users..."
@@ -384,6 +454,18 @@ export default function UsersSettingsPage() {
             ))}
           </Select>
         </div>
+        <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <span className="flex items-center gap-1">
+            <Archive className="w-4 h-4 text-gray-500" />
+            Show archived
+          </span>
+        </label>
       </div>
 
       {/* Bulk Actions Bar */}
@@ -401,6 +483,7 @@ export default function UsersSettingsPage() {
               >
                 <option value="">Bulk Change...</option>
                 <option value="archive">Archive</option>
+                <option value="unarchive">Unarchive (Restore)</option>
                 <option value="deactivate">Deactivate</option>
                 <option value="reactivate">Reactivate</option>
                 <option value="delete">Delete</option>
@@ -441,98 +524,132 @@ export default function UsersSettingsPage() {
         </div>
 
         <ul className="divide-y divide-gray-200">
-          {filteredUsers.map((user) => (
-            <li key={user.id} className="px-6 py-4 hover:bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.has(user.id)}
-                      onChange={() => handleToggleUser(user.id)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex-shrink-0">
-                    {user.avatar_url ? (
-                      <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src={user.avatar_url}
-                        alt={`${user.first_name} ${user.last_name}`}
+          {filteredUsers.map((user) => {
+            const isArchived = !!user.archived_at
+            return (
+              <li
+                key={user.id}
+                className={`px-6 py-4 hover:bg-gray-50 ${isArchived ? 'bg-gray-50 opacity-75' : ''}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.has(user.id)}
+                        onChange={() => handleToggleUser(user.id)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                        <User className="h-5 w-5 text-gray-600" />
-                      </div>
-                    )}
                     </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {user.first_name} {user.last_name}
-                      </p>
-                      {getStatusBadge(user.status)}
-                    </div>
-                    <div className="flex items-center space-x-4 mt-1">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Mail className="w-4 h-4 mr-1" />
-                        {user.email}
-                      </div>
-                      {user.phone && (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Phone className="w-4 h-4 mr-1" />
-                          {user.phone}
+                    <div className="flex-shrink-0">
+                      {user.avatar_url ? (
+                        <img
+                          className={`h-10 w-10 rounded-full object-cover ${isArchived ? 'grayscale' : ''}`}
+                          src={user.avatar_url}
+                          alt={`${user.first_name} ${user.last_name}`}
+                        />
+                      ) : (
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isArchived ? 'bg-gray-200' : 'bg-gray-300'}`}>
+                          <User className={`h-5 w-5 ${isArchived ? 'text-gray-400' : 'text-gray-600'}`} />
                         </div>
                       )}
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Shield className="w-4 h-4 mr-1" />
-                        {getRoleLabel(user.role)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <p className={`text-sm font-medium truncate ${isArchived ? 'text-gray-500' : 'text-gray-900'}`}>
+                          {user.first_name} {user.last_name}
+                        </p>
+                        {getStatusBadge(user.status, isArchived)}
+                      </div>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <div className={`flex items-center text-sm ${isArchived ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <Mail className="w-4 h-4 mr-1" />
+                          {user.email}
+                        </div>
+                        {user.phone && (
+                          <div className={`flex items-center text-sm ${isArchived ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <Phone className="w-4 h-4 mr-1" />
+                            {user.phone}
+                          </div>
+                        )}
+                        <div className={`flex items-center text-sm ${isArchived ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <Shield className="w-4 h-4 mr-1" />
+                          {getRoleLabel(user.role)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                    </div>
-                <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                    size="sm"
-                    onClick={() => handleView(user)}
-                      >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                      </Button>
-                      <Button
-                        variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(user)}
-                      >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setResetPasswordUser(user)
-                          setNewPassword('')
-                        }}
-                        className="text-orange-600 hover:text-orange-700 hover:border-orange-300"
-                      >
-                        <Key className="w-4 h-4 mr-1" />
-                        Reset Password
-                      </Button>
-                      <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(user.id)}
-                    className="text-red-600 hover:text-red-700 hover:border-red-300"
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
-                      </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleView(user)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                    {!isArchived && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(user)}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setResetPasswordUser(user)
+                            setNewPassword('')
+                          }}
+                          className="text-orange-600 hover:text-orange-700 hover:border-orange-300"
+                        >
+                          <Key className="w-4 h-4 mr-1" />
+                          Reset Password
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleArchive(user.id)}
+                          disabled={archivingUser === user.id}
+                          className="text-amber-600 hover:text-amber-700 hover:border-amber-300"
+                        >
+                          <Archive className="w-4 h-4 mr-1" />
+                          {archivingUser === user.id ? 'Archiving...' : 'Archive'}
+                        </Button>
+                      </>
+                    )}
+                    {isArchived && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUnarchive(user.id)}
+                          disabled={archivingUser === user.id}
+                          className="text-green-600 hover:text-green-700 hover:border-green-300"
+                        >
+                          <ArchiveRestore className="w-4 h-4 mr-1" />
+                          {archivingUser === user.id ? 'Restoring...' : 'Restore'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(user.id)}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
         
         {filteredUsers.length === 0 && (
@@ -540,20 +657,27 @@ export default function UsersSettingsPage() {
             <User className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || roleFilter !== 'all' 
+              {searchTerm || roleFilter !== 'all'
                 ? 'Try adjusting your search or filter criteria.'
-                : 'Get started by adding your first user.'
+                : showArchived
+                  ? 'No archived users found.'
+                  : 'Get started by adding your first user.'
               }
             </p>
-            {!searchTerm && roleFilter === 'all' && (
+            {!showArchived && !searchTerm && roleFilter === 'all' && (
+              <p className="mt-2 text-xs text-gray-400">
+                Toggle &quot;Show archived&quot; to view archived staff members.
+              </p>
+            )}
+            {!searchTerm && roleFilter === 'all' && !showArchived && (
               <div className="mt-6">
                 <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700">
                   <Plus className="w-4 h-4 mr-2" />
                   Add User
                 </Button>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

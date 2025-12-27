@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const department = searchParams.get('department')
     const active = searchParams.get('active')
+    const includeArchived = searchParams.get('include_archived') === 'true'
 
     // Query Tenant DB for users (users table is now in Tenant DB)
     const { getTenantDatabaseClient } = await import('@/lib/supabase-client')
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
     // Filter by status if active=true
     if (active === 'true') {
       query = query.eq('status', 'active')
+    }
+
+    // Filter out archived users by default (unless include_archived=true)
+    if (!includeArchived) {
+      query = query.is('archived_at', null)
     }
 
     const { data: users, error } = await query

@@ -101,12 +101,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Event has no dates' }, { status: 400 })
     }
 
-    // Step 2: Get all active users in the specified department (including payroll fields)
+    // Step 2: Get all active, non-archived users in the specified department (including payroll fields)
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, first_name, last_name, email, departments, home_latitude, home_longitude, user_type, pay_type, pay_rate, default_flat_rate')
       .eq('tenant_id', dataSourceTenantId)
       .eq('status', 'active')
+      .is('archived_at', null) // Exclude archived users from assignment dropdowns
       .order('first_name', { ascending: true })
 
     if (usersError) {

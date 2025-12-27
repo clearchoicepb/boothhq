@@ -273,3 +273,77 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+/**
+ * PATCH /api/users/[id]
+ * Archive or unarchive a user (soft delete)
+ * Body: { action: 'archive' | 'unarchive' }
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const context = await getTenantContext()
+    if (context instanceof NextResponse) return context
+
+    const { supabase, dataSourceTenantId, session } = context
+    const { id } = await params
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Only admins can archive/unarchive users
+    if (!isAdmin(session.user.role as UserRole)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // Prevent users from archiving themselves
+    if (session.user.id === id) {
+      return NextResponse.json({ error: 'Cannot archive your own account' }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const { action } = body
+
+    if (action !== 'archive' && action !== 'unarchive') {
+      return NextResponse.json({ error: 'Invalid action. Use "archive" or "unarchive"' }, { status: 400 })
+    }
+
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+
+    if (action === 'archive') {
+      updateData.archived_at = new Date().toISOString()
+      log.debug({ id }, 'Archiving user')
+    } else {
+      updateData.archived_at = null
+      log.debug({ id }, 'Unarchiving user')
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', id)
+      .eq('tenant_id', dataSourceTenantId)
+      .select()
+      .single()
+
+    if (error) {
+      log.error({ error }, `Error ${action}ing user`)
+      return NextResponse.json({ error: `Failed to ${action} user` }, { status: 500 })
+    }
+
+    // Remove password from response
+    const { password_hash: pwdHash, ...userWithoutPassword } = user
+    return NextResponse.json({
+      message: `User ${action}d successfully`,
+      user: userWithoutPassword
+    })
+  } catch (error) {
+    log.error({ error }, 'Error in PATCH /api/users/[id]')
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
