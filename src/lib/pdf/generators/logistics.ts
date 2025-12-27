@@ -135,7 +135,7 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   // Venue Information Section
   addSection('Venue Information')
   if (logistics.location) {
-    addField('Venue Name:', logistics.location.name)
+    addField('Venue Name:', logistics.location.name || 'Not specified')
     const address = formatAddress(logistics.location)
     if (address) {
       addField('Address:', address.replace(/\n/g, ', '))
@@ -193,8 +193,8 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     doc.text(`Phone: ${logistics.venue_contact_phone || logistics.location?.contact_phone}`, leftX, yPos)
     yPos += 9
   }
-  if (logistics.venue_contact_email || logistics.location?.contact_email) {
-    doc.text(`Email: ${logistics.venue_contact_email || logistics.location?.contact_email}`, leftX, yPos)
+  if (logistics.venue_contact_email) {
+    doc.text(`Email: ${logistics.venue_contact_email}`, leftX, yPos)
     yPos += 9
   }
 
@@ -237,7 +237,7 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     logistics.packages.forEach(pkg => {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
-      const pkgText = doc.splitTextToSize(`• ${pkg.name} (${pkg.type})`, columnWidth - 20)
+      const pkgText = doc.splitTextToSize(`• ${pkg.name}`, columnWidth - 20)
       doc.text(pkgText, leftX, yPos)
       yPos += pkgText.length * 9
     })
@@ -306,11 +306,26 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
         doc.setTextColor('#000000')
         yPos += 9
       }
-      if (staff.email) {
+      // Add schedule if available (arrival, start-end)
+      if (staff.arrival_time || staff.start_time || staff.end_time) {
         doc.setFont('helvetica', 'normal')
-        const emailText = doc.splitTextToSize(staff.email, columnWidth - 20)
-        doc.text(emailText, leftX + 5, yPos)
-        yPos += emailText.length * 9
+        doc.setTextColor('#6b7280')
+        let scheduleText = '  '
+        if (staff.arrival_time) {
+          scheduleText += `Arrival: ${formatTime(staff.arrival_time || undefined)}`
+          if (staff.start_time || staff.end_time) scheduleText += ' | '
+        }
+        if (staff.start_time || staff.end_time) {
+          scheduleText += `Shift: ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        }
+        doc.text(scheduleText, leftX + 5, yPos)
+        doc.setTextColor('#000000')
+        yPos += 9
+      }
+      if (staff.phone) {
+        doc.setFont('helvetica', 'normal')
+        doc.text(`  ${staff.phone}`, leftX + 5, yPos)
+        yPos += 9
       }
       yPos += 3
     })
@@ -345,11 +360,26 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
         doc.setTextColor('#000000')
         yPos += 9
       }
-      if (staff.email) {
+      // Add schedule if available (arrival, start-end)
+      if (staff.arrival_time || staff.start_time || staff.end_time) {
         doc.setFont('helvetica', 'normal')
-        const emailText = doc.splitTextToSize(staff.email, columnWidth - 20)
-        doc.text(emailText, rightX + 5, yPos)
-        yPos += emailText.length * 9
+        doc.setTextColor('#6b7280')
+        let scheduleText = '  '
+        if (staff.arrival_time) {
+          scheduleText += `Arrival: ${formatTime(staff.arrival_time || undefined)}`
+          if (staff.start_time || staff.end_time) scheduleText += ' | '
+        }
+        if (staff.start_time || staff.end_time) {
+          scheduleText += `Shift: ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        }
+        doc.text(scheduleText, rightX + 5, yPos)
+        doc.setTextColor('#000000')
+        yPos += 9
+      }
+      if (staff.phone) {
+        doc.setFont('helvetica', 'normal')
+        doc.text(`  ${staff.phone}`, rightX + 5, yPos)
+        yPos += 9
       }
       yPos += 3
     })

@@ -1,37 +1,45 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
 
-const log = createLogger('api:events')
+const log = createLogger('api:events:logistics')
+
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const context = await getTenantContext()
   if (context instanceof NextResponse) return context
 
-  const { supabase, dataSourceTenantId, session } = context
+  const { supabase, dataSourceTenantId } = context
+
   try {
     const { id: eventId } = await params
-    // Fetch event with related data (including old location TEXT field for fallback)
-    const { data: event, error: eventError} = await supabase
+
+    // Get optional event_date_id from query params for multi-date support
+    const searchParams = request.nextUrl.searchParams
+    const eventDateId = searchParams.get('event_date_id')
+
+    // Fetch event with related data
+    const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
         id,
+        title,
+        event_type,
         location,
-        load_in_time,
         load_in_notes,
         venue_contact_name,
         venue_contact_phone,
-        venue_contact_email,
         event_planner_name,
         event_planner_phone,
-        event_planner_email,
         start_date,
         end_date,
         description,
-        opportunity_id,
+        primary_contact_id,
+        account_id,
         account:accounts (
+          id,
           name
         )
       `)
@@ -41,16 +49,55 @@ export async function GET(
 
     if (eventError) throw eventError
 
-    // Fetch event dates with location
-    const { data: eventDates, error: datesError } = await supabase
+    // Fetch primary contact if exists
+    let clientContact: { name: string; phone: string | null } | null = null
+    if (event.primary_contact_id) {
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('first_name, last_name, phone')
+        .eq('id', event.primary_contact_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (contact) {
+        clientContact = {
+          name: `${contact.first_name} ${contact.last_name}`.trim(),
+          phone: contact.phone
+        }
+      }
+    }
+
+    // If no primary contact, try to get first contact from account
+    if (!clientContact && event.account_id) {
+      const { data: contacts } = await supabase
+        .from('contacts')
+        .select('first_name, last_name, phone')
+        .eq('account_id', event.account_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .limit(1)
+
+      if (contacts && contacts.length > 0) {
+        const contact = contacts[0]
+        clientContact = {
+          name: `${contact.first_name} ${contact.last_name}`.trim(),
+          phone: contact.phone
+        }
+      }
+    }
+
+    // Fetch event dates with location - filter by event_date_id if provided
+    let eventDatesQuery = supabase
       .from('event_dates')
       .select(`
+        id,
         event_date,
         setup_time,
         start_time,
         end_time,
         notes,
+        location_id,
         location:locations (
+          id,
           name,
           address_line1,
           address_line2,
@@ -60,54 +107,64 @@ export async function GET(
           country,
           contact_name,
           contact_phone,
-          contact_email,
           notes
         )
       `)
       .eq('event_id', eventId)
       .eq('tenant_id', dataSourceTenantId)
+
+    if (eventDateId) {
+      eventDatesQuery = eventDatesQuery.eq('id', eventDateId)
+    }
+
+    const { data: eventDates, error: datesError } = await eventDatesQuery
       .order('event_date', { ascending: true })
 
     if (datesError) throw datesError
 
-    // Get first event date
-    const primaryEventDate = eventDates?.[0]
+    // Get the specific or first event date
+    const targetEventDate = eventDates?.[0]
 
-    // Fetch packages and add-ons from opportunity line items
-    let packages: any[] = []
-    if (event.opportunity_id) {
-      const { data: lineItems } = await supabase
-        .from('opportunity_line_items')
-        .select(`
-          id,
-          item_type,
-          package:packages (
-            id,
-            name,
-            category
-          )
-        `)
-        .eq('opportunity_id', event.opportunity_id)
-        .eq('tenant_id', dataSourceTenantId)
-
-      packages = lineItems?.map(item => {
-        // Handle Supabase join result - can be array or object depending on DB types
-        const pkgData = item.package as unknown
-        const pkg = Array.isArray(pkgData) ? pkgData[0] : pkgData as { id: string; name: string; category: string } | null
-        return {
-          id: item.id,
-          name: pkg?.name || 'Custom Item',
-          type: item.item_type
-        }
-      }) || []
-    }
-
-    // Fetch custom items (backdrops, wraps, etc.)
-    const { data: customItems } = await supabase
-      .from('event_custom_items')
-      .select('id, item_name, item_type')
+    // Fetch packages and add-ons from INVOICES (not opportunities)
+    // Get all invoices for this event, then get their line items
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('id')
       .eq('event_id', eventId)
       .eq('tenant_id', dataSourceTenantId)
+
+    let packages: { id: string; name: string; description?: string }[] = []
+    let addOns: { id: string; name: string; description?: string }[] = []
+
+    if (invoices && invoices.length > 0) {
+      const invoiceIds = invoices.map(inv => inv.id)
+
+      const { data: lineItems } = await supabase
+        .from('invoice_line_items')
+        .select('id, name, description, item_type')
+        .in('invoice_id', invoiceIds)
+        .neq('item_type', 'discount') // Exclude discounts
+        .order('sort_order', { ascending: true })
+
+      if (lineItems) {
+        // Separate packages from add-ons
+        packages = lineItems
+          .filter(item => item.item_type === 'package')
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || undefined
+          }))
+
+        addOns = lineItems
+          .filter(item => item.item_type === 'add_on' || item.item_type === 'custom')
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || undefined
+          }))
+      }
+    }
 
     // Fetch booth assignments (equipment)
     const { data: boothAssignments } = await supabase
@@ -115,10 +172,6 @@ export async function GET(
       .select(`
         id,
         status,
-        assigned_date,
-        checked_out_at,
-        checked_in_at,
-        condition_notes,
         booth:booths (
           booth_name,
           booth_type,
@@ -129,18 +182,22 @@ export async function GET(
       .eq('tenant_id', dataSourceTenantId)
       .order('assigned_date', { ascending: true })
 
-    // Fetch staff assignments
-    log.debug({ eventId, tenantId: session.user.tenantId }, 'Fetching staff')
+    // Fetch staff assignments - exclude Graphic Designers
+    // Include arrival_time, start_time, and end_time for staff schedule display
     const { data: staffAssignments, error: staffError } = await supabase
       .from('event_staff_assignments')
       .select(`
         id,
         notes,
         event_date_id,
+        arrival_time,
+        start_time,
+        end_time,
         users!event_staff_assignments_user_id_fkey (
           first_name,
           last_name,
-          email
+          email,
+          phone
         ),
         staff_roles!event_staff_assignments_staff_role_id_fkey (
           name,
@@ -153,15 +210,12 @@ export async function GET(
 
     if (staffError) {
       log.error({ staffError }, '[LOGISTICS-API] Staff query error')
-    } else {
-      log.debug({ count: staffAssignments?.length || 0 }, 'Staff query success, found records')
-      log.debug({ staffAssignments }, 'Raw staff data')
     }
 
     // Build location object - prefer event_dates location, fall back to old TEXT field
-    // Handle Supabase join result - can be array or object
-    const eventDateLocation = primaryEventDate?.location as unknown
+    const eventDateLocation = targetEventDate?.location as unknown
     let locationData: {
+      id?: string
       name: string | null
       address_line1: string | null
       address_line2: string | null
@@ -171,7 +225,6 @@ export async function GET(
       country: string | null
       contact_name: string | null
       contact_phone: string | null
-      contact_email: string | null
       notes: string | null
     } | null = Array.isArray(eventDateLocation) ? eventDateLocation[0] : eventDateLocation as typeof locationData
 
@@ -187,85 +240,203 @@ export async function GET(
         country: null,
         contact_name: null,
         contact_phone: null,
-        contact_email: null,
         notes: null
       }
     }
 
-    // Build logistics object
-    const staffArray = staffAssignments?.map(sa => {
-      // Handle Supabase join result - can be array or object
+    // Process staff - filter out Graphic Designers
+    const eventStaff: Array<{
+      id: string
+      name: string
+      phone: string | null
+      role: string | null
+      role_type: string | null
+      arrival_time: string | null
+      start_time: string | null
+      end_time: string | null
+    }> = []
+
+    const eventManagers: Array<{
+      id: string
+      name: string
+      phone: string | null
+      role: string | null
+      arrival_time: string | null
+      start_time: string | null
+      end_time: string | null
+    }> = []
+
+    // Legacy staff array for PDF generator
+    const legacyStaff: Array<{
+      id: string
+      name: string
+      email?: string
+      phone?: string | null
+      role?: string
+      role_type?: string
+      notes?: string
+      is_event_day: boolean
+      arrival_time?: string | null
+      start_time?: string | null
+      end_time?: string | null
+    }> = []
+
+    staffAssignments?.forEach(sa => {
       const usersData = sa.users as unknown
-      const user = Array.isArray(usersData) ? usersData[0] : usersData as { first_name: string; last_name: string; email: string } | null
+      const user = Array.isArray(usersData) ? usersData[0] : usersData as {
+        first_name: string
+        last_name: string
+        email: string
+        phone: string | null
+      } | null
+
       const rolesData = sa.staff_roles as unknown
-      const staffRole = Array.isArray(rolesData) ? rolesData[0] : rolesData as { name: string; type: string } | null
-      return {
+      const staffRole = Array.isArray(rolesData) ? rolesData[0] : rolesData as {
+        name: string
+        type: string
+      } | null
+
+      // Skip Graphic Designers
+      const roleName = staffRole?.name?.toLowerCase() || ''
+      if (roleName.includes('graphic') || roleName.includes('designer')) {
+        return
+      }
+
+      const staffMember = {
         id: sa.id,
         name: user ? `${user.first_name} ${user.last_name}`.trim() : 'Unknown',
+        phone: user?.phone || null,
+        role: staffRole?.name || null,
+        role_type: staffRole?.type || null,
+        arrival_time: sa.arrival_time || null,
+        start_time: sa.start_time || null,
+        end_time: sa.end_time || null
+      }
+
+      // Categorize: operations type or "Manager" in name = Event Manager
+      if (staffRole?.type === 'operations' || roleName.includes('manager')) {
+        eventManagers.push(staffMember)
+      } else if (staffRole?.type === 'event_staff') {
+        eventStaff.push(staffMember)
+      }
+
+      // Add to legacy array for PDF generator
+      legacyStaff.push({
+        id: sa.id,
+        name: staffMember.name,
         email: user?.email,
+        phone: user?.phone,
         role: staffRole?.name,
         role_type: staffRole?.type,
-        notes: sa.notes,
-        is_event_day: !!sa.event_date_id
+        notes: sa.notes || undefined,
+        is_event_day: staffRole?.type === 'event_staff',
+        arrival_time: sa.arrival_time,
+        start_time: sa.start_time,
+        end_time: sa.end_time
+      })
+    })
+
+    // Process equipment
+    const equipment = boothAssignments?.map(ba => {
+      const boothData = ba.booth as unknown
+      const booth = Array.isArray(boothData) ? boothData[0] : boothData as {
+        booth_name: string
+        booth_type: string
+        serial_number: string
+      } | null
+
+      return {
+        id: ba.id,
+        name: booth?.booth_name || 'Unknown Booth',
+        type: booth?.booth_type || null,
+        serial_number: booth?.serial_number || null
       }
     }) || []
 
-    log.debug({ staffArray }, 'Transformed staff array')
-
-    // Cast account as single object (many-to-one relationship)
-    // Handle Supabase join result - can be array or object
+    // Get account name
     const accountData = event.account as unknown
-    const account = Array.isArray(accountData) ? accountData[0] : accountData as { name: string } | null
+    const account = Array.isArray(accountData) ? accountData[0] : accountData as { id: string; name: string } | null
 
+    // Build logistics response object
     const logistics = {
-      client_name: account?.name,
-      event_date: primaryEventDate?.event_date,
-      load_in_time: event.load_in_time,
-      load_in_notes: event.load_in_notes,
-      setup_time: primaryEventDate?.setup_time,
-      start_time: primaryEventDate?.start_time ||
+      // Section 1: Header
+      event_title: event.title,
+      event_type: event.event_type,
+      client_name: account?.name || null,
+      client_contact: clientContact,
+
+      // Section 2: Schedule
+      event_date: targetEventDate?.event_date || null,
+      event_date_id: targetEventDate?.id || null,
+      setup_time: targetEventDate?.setup_time || null,
+      start_time: targetEventDate?.start_time ||
         (event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
-          hour12: true
-        }) : undefined),
-      end_time: primaryEventDate?.end_time ||
+          hour12: false
+        }) : null),
+      end_time: targetEventDate?.end_time ||
         (event.end_date ? new Date(event.end_date).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
-          hour12: true
-        }) : undefined),
+          hour12: false
+        }) : null),
+
+      // Section 3: Location
       location: locationData,
-      venue_contact_name: event.venue_contact_name,
-      venue_contact_phone: event.venue_contact_phone,
-      venue_contact_email: event.venue_contact_email,
-      event_planner_name: event.event_planner_name,
-      event_planner_phone: event.event_planner_phone,
-      event_planner_email: event.event_planner_email,
-      event_notes: event.description || primaryEventDate?.notes,
+
+      // Section 4: Contacts
+      onsite_contact: {
+        name: event.venue_contact_name || locationData?.contact_name || null,
+        phone: event.venue_contact_phone || locationData?.contact_phone || null
+      },
+      event_planner: {
+        name: event.event_planner_name || null,
+        phone: event.event_planner_phone || null
+      },
+
+      // Section 5: Arrival Instructions
+      load_in_notes: event.load_in_notes || null,
+      parking_instructions: locationData?.notes || null,
+
+      // Section 6: Event Scope
       packages,
-      custom_items: customItems || [],
-      equipment: boothAssignments?.map(ba => {
-        // Handle Supabase join result - can be array or object
-        const boothData = ba.booth as unknown
-        const booth = Array.isArray(boothData) ? boothData[0] : boothData as { booth_name: string; booth_type: string; serial_number: string } | null
-        return {
-          id: ba.id,
-          name: booth?.booth_name,
-          type: booth?.booth_type,
-          serial_number: booth?.serial_number,
-          status: ba.status,
-          checked_out_at: ba.checked_out_at,
-          checked_in_at: ba.checked_in_at,
-          condition_notes: ba.condition_notes
-        }
-      }) || [],
-      staff: staffArray
+      add_ons: addOns,
+      equipment,
+
+      // Section 7: Staff
+      event_staff: eventStaff,
+      event_managers: eventManagers,
+
+      // Section 8: Notes
+      event_notes: event.description || targetEventDate?.notes || null,
+
+      // Multi-date info
+      all_event_dates: eventDates?.map(ed => ({
+        id: ed.id,
+        event_date: ed.event_date
+      })) || [],
+
+      // ===== Legacy fields for PDF generator compatibility =====
+      load_in_time: targetEventDate?.setup_time || null,
+      venue_contact_name: event.venue_contact_name || locationData?.contact_name || null,
+      venue_contact_phone: event.venue_contact_phone || locationData?.contact_phone || null,
+      venue_contact_email: null, // Not available in current schema
+      event_planner_name: event.event_planner_name || null,
+      event_planner_phone: event.event_planner_phone || null,
+      event_planner_email: null, // Not available in current schema
+      staff: legacyStaff,
+      custom_items: addOns.map(addon => ({
+        id: addon.id,
+        item_name: addon.name,
+        item_type: 'add_on'
+      }))
     }
 
     return NextResponse.json({ logistics })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     log.error({ error }, 'Error fetching event logistics')
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

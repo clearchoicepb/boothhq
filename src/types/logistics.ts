@@ -2,13 +2,23 @@
  * Logistics Types
  *
  * Type definitions for event logistics data and components.
+ * Restructured for 8-section layout with mobile-friendly features.
  */
+
+/**
+ * Contact with name and phone
+ */
+export interface LogisticsContact {
+  name: string | null
+  phone: string | null
+}
 
 /**
  * Location data within logistics
  */
 export interface LogisticsLocation {
-  name: string
+  id?: string
+  name: string | null
   address_line1?: string | null
   address_line2?: string | null
   city?: string | null
@@ -17,12 +27,61 @@ export interface LogisticsLocation {
   country?: string | null
   contact_name?: string | null
   contact_phone?: string | null
-  contact_email?: string | null
   notes?: string | null
 }
 
 /**
- * Package item in logistics
+ * Package or add-on item (no pricing)
+ */
+export interface LogisticsLineItem {
+  id: string
+  name: string
+  description?: string
+}
+
+/**
+ * Equipment item
+ */
+export interface LogisticsEquipment {
+  id: string
+  name: string
+  type: string | null
+  serial_number: string | null
+}
+
+/**
+ * Staff member with phone and schedule
+ */
+export interface LogisticsStaffMember {
+  id: string
+  name: string
+  phone: string | null
+  role: string | null
+  role_type?: string | null
+  arrival_time?: string | null
+  start_time?: string | null
+  end_time?: string | null
+}
+
+/**
+ * Legacy staff member format (for PDF generator compatibility)
+ */
+export interface LogisticsStaff {
+  id: string
+  name: string
+  email?: string
+  phone?: string | null
+  role?: string
+  role_type?: string
+  notes?: string
+  is_event_day: boolean
+  arrival_time?: string | null
+  start_time?: string | null
+  end_time?: string | null
+}
+
+/**
+ * Legacy package format (for PDF generator compatibility)
  */
 export interface LogisticsPackage {
   id: string
@@ -31,7 +90,7 @@ export interface LogisticsPackage {
 }
 
 /**
- * Custom item in logistics
+ * Legacy custom item format (for PDF generator compatibility)
  */
 export interface LogisticsCustomItem {
   id: string
@@ -40,55 +99,68 @@ export interface LogisticsCustomItem {
 }
 
 /**
- * Equipment item in logistics
+ * Event date option for multi-date events
  */
-export interface LogisticsEquipment {
+export interface LogisticsEventDate {
   id: string
-  name: string
-  type: string
-  serial_number?: string
-  status: string
-  checked_out_at?: string
-  checked_in_at?: string
-  condition_notes?: string
+  event_date: string
 }
 
 /**
- * Staff member in logistics
- */
-export interface LogisticsStaff {
-  id: string
-  name: string
-  email?: string
-  role?: string
-  role_type?: string
-  notes?: string
-  is_event_day: boolean
-}
-
-/**
- * Complete logistics data structure
+ * Complete logistics data structure (matches API response)
+ * Includes backwards-compatible fields for PDF generator
  */
 export interface LogisticsData {
-  client_name?: string
-  event_date?: string
-  load_in_time?: string
-  load_in_notes?: string
-  setup_time?: string
-  start_time?: string
-  end_time?: string
-  location?: LogisticsLocation
-  venue_contact_name?: string
-  venue_contact_phone?: string
-  venue_contact_email?: string
-  event_planner_name?: string
-  event_planner_phone?: string
-  event_planner_email?: string
-  event_notes?: string
-  packages?: LogisticsPackage[]
-  custom_items?: LogisticsCustomItem[]
-  equipment?: LogisticsEquipment[]
-  staff?: LogisticsStaff[]
+  // Section 1: Header
+  event_title: string | null
+  event_type: string | null
+  client_name: string | null
+  client_contact: LogisticsContact | null
+
+  // Section 2: Schedule
+  event_date: string | null
+  event_date_id: string | null
+  setup_time: string | null
+  start_time: string | null
+  end_time: string | null
+
+  // Section 3: Location
+  location: LogisticsLocation | null
+
+  // Section 4: Contacts
+  onsite_contact: LogisticsContact
+  event_planner: LogisticsContact
+
+  // Section 5: Arrival Instructions
+  load_in_notes: string | null
+  parking_instructions: string | null
+
+  // Section 6: Event Scope
+  packages: LogisticsLineItem[]
+  add_ons: LogisticsLineItem[]
+  equipment: LogisticsEquipment[]
+
+  // Section 7: Staff
+  event_staff: LogisticsStaffMember[]
+  event_managers: LogisticsStaffMember[]
+
+  // Section 8: Notes
+  event_notes: string | null
+
+  // Multi-date support
+  all_event_dates: LogisticsEventDate[]
+
+  // ===== Legacy fields for PDF generator compatibility =====
+  // These mirror the new fields in the format expected by the original PDF generator
+  load_in_time?: string | null // Same as setup_time
+  venue_contact_name?: string | null
+  venue_contact_phone?: string | null
+  venue_contact_email?: string | null
+  event_planner_name?: string | null
+  event_planner_phone?: string | null
+  event_planner_email?: string | null
+  staff?: LogisticsStaff[] // Combined staff array with role_type
+  custom_items?: LogisticsCustomItem[] // Same as add_ons in legacy format
 }
 
 /**
@@ -96,123 +168,18 @@ export interface LogisticsData {
  */
 export interface EventLogisticsProps {
   eventId: string
-  tenant: string
+  eventDateId?: string // Optional - for multi-date events
 }
 
 /**
- * Contact information for editing
+ * Editor state for inline editing
  */
-export interface ContactInfo {
-  name: string
-  phone: string
-  email: string
-}
-
-/**
- * Props for LogisticsHeader component
- */
-export interface LogisticsHeaderProps {
-  clientName?: string
-  isExporting: boolean
-  onExportPdf: () => void
-}
-
-/**
- * Props for LogisticsSchedule component
- */
-export interface LogisticsScheduleProps {
-  eventDate?: string
-  setupTime?: string
-  loadInTime?: string
-  startTime?: string
-  endTime?: string
-  loadInTimeEditor: {
-    isEditing: boolean
-    editedValue: string
-    isSaving: boolean
-    startEdit: () => void
-    saveEdit: () => void
-    cancelEdit: () => void
-    setEditedValue: (value: string) => void
-  }
-}
-
-/**
- * Props for LogisticsVenue component
- */
-export interface LogisticsVenueProps {
-  location?: LogisticsLocation
+export interface FieldEditor<T = string> {
   isEditing: boolean
-  editedLocationId: string | null
-  savingLocation: boolean
-  onEdit: () => void
-  onSave: (locationId: string | null, location?: LogisticsLocation) => Promise<void>
-  onCancel: () => void
-}
-
-/**
- * Props for LogisticsLoadIn component
- */
-export interface LogisticsLoadInProps {
-  loadInNotes?: string
-  locationNotes?: string
-  notesEditor: {
-    isEditing: boolean
-    editedValue: string
-    isSaving: boolean
-    startEdit: () => void
-    saveEdit: () => void
-    cancelEdit: () => void
-    setEditedValue: (value: string) => void
-  }
-}
-
-/**
- * Props for LogisticsContacts component
- */
-export interface LogisticsContactsProps {
-  venueContactName?: string
-  venueContactPhone?: string
-  venueContactEmail?: string
-  locationContact?: {
-    name?: string
-    phone?: string
-    email?: string
-  }
-  eventPlannerName?: string
-  eventPlannerPhone?: string
-  eventPlannerEmail?: string
-  venueContactEditor: {
-    isEditing: boolean
-    editedValue: ContactInfo
-    isSaving: boolean
-    startEdit: () => void
-    saveEdit: () => void
-    cancelEdit: () => void
-    setEditedValue: (value: ContactInfo) => void
-  }
-  eventPlannerEditor: {
-    isEditing: boolean
-    editedValue: ContactInfo
-    isSaving: boolean
-    startEdit: () => void
-    saveEdit: () => void
-    cancelEdit: () => void
-    setEditedValue: (value: ContactInfo) => void
-  }
-}
-
-/**
- * Props for LogisticsPackages component
- */
-export interface LogisticsPackagesProps {
-  packages?: LogisticsPackage[]
-  customItems?: LogisticsCustomItem[]
-}
-
-/**
- * Props for LogisticsStaff component
- */
-export interface LogisticsStaffProps {
-  staff?: LogisticsStaff[]
+  editedValue: T
+  isSaving: boolean
+  startEdit: () => void
+  saveEdit: () => void
+  cancelEdit: () => void
+  setEditedValue: (value: T) => void
 }
