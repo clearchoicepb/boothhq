@@ -1,215 +1,653 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { FileDown, Phone, MapPin, Edit2, Save, X, Calendar, Clock, Users, Package, FileText } from 'lucide-react'
 import { useEventLogistics } from '@/hooks/useEventLogistics'
-import { useFieldEditor } from '@/hooks/useFieldEditor'
-import { usePdfExport } from '@/hooks/usePdfExport'
-import { useLogisticsEditing } from '@/hooks/useLogisticsEditing'
-import { generateLogisticsPdf, getLogisticsPdfFilename } from '@/lib/pdf'
-import type { EventLogisticsProps, ContactInfo } from '@/types/logistics'
+import { Button } from '@/components/ui/button'
+import type { EventLogisticsProps, LogisticsContact, LogisticsStaffMember } from '@/types/logistics'
 
-import { LogisticsHeader } from './LogisticsHeader'
-import { LogisticsSchedule } from './LogisticsSchedule'
-import { LogisticsVenue } from './LogisticsVenue'
-import { LogisticsLoadIn } from './LogisticsLoadIn'
-import { LogisticsContacts } from './LogisticsContacts'
-import { LogisticsPackages } from './LogisticsPackages'
-import { LogisticsStaff } from './LogisticsStaff'
+/**
+ * Format time string to 12-hour format (e.g., "6:00 PM")
+ */
+function formatTime(time: string | null | undefined): string {
+  if (!time) return ''
+
+  // Handle HH:MM:SS or HH:MM format
+  const parts = time.split(':')
+  if (parts.length < 2) return time
+
+  const hours = parseInt(parts[0], 10)
+  const minutes = parts[1]
+
+  if (isNaN(hours)) return time
+
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 || 12
+
+  return `${displayHours}:${minutes} ${period}`
+}
+
+/**
+ * Format date to full format (e.g., "Saturday, January 18, 2025")
+ */
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
+
+  const date = new Date(dateStr + 'T00:00:00') // Prevent timezone issues
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+/**
+ * Format phone number for tel: link (strip non-digits, add +1 if needed)
+ */
+function formatPhoneForLink(phone: string | null | undefined): string {
+  if (!phone) return ''
+  const digits = phone.replace(/\D/g, '')
+  return digits.length === 10 ? `+1${digits}` : `+${digits}`
+}
+
+/**
+ * Build Google Maps URL from location data
+ */
+function buildMapsUrl(location: {
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+  name?: string | null
+}): string {
+  const parts = [
+    location.address_line1,
+    location.address_line2,
+    location.city,
+    location.state,
+    location.postal_code
+  ].filter(Boolean)
+
+  const address = parts.join(', ')
+  if (!address && location.name) {
+    return `https://maps.google.com/?q=${encodeURIComponent(location.name)}`
+  }
+  return `https://maps.google.com/?q=${encodeURIComponent(address)}`
+}
+
+/**
+ * Format full address for display
+ */
+function formatAddress(location: {
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+}): string {
+  const line1 = location.address_line1 || ''
+  const line2 = location.address_line2 || ''
+  const cityStateZip = [location.city, location.state].filter(Boolean).join(', ')
+  const withZip = location.postal_code ? `${cityStateZip} ${location.postal_code}` : cityStateZip
+
+  return [line1, line2, withZip].filter(Boolean).join('\n')
+}
+
+/**
+ * Clickable phone number component
+ */
+function PhoneLink({ phone, className = '' }: { phone: string | null | undefined; className?: string }) {
+  if (!phone) return <span className="text-gray-400 italic">Not provided</span>
+
+  return (
+    <a
+      href={`tel:${formatPhoneForLink(phone)}`}
+      className={`text-[#347dc4] hover:underline inline-flex items-center gap-1 ${className}`}
+    >
+      <Phone className="h-3 w-3" />
+      {phone}
+    </a>
+  )
+}
+
+/**
+ * Contact display with name and clickable phone
+ */
+function ContactDisplay({
+  label,
+  contact
+}: {
+  label: string
+  contact: LogisticsContact | null | undefined
+}) {
+  if (!contact?.name && !contact?.phone) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 py-2">
+      <span className="font-medium text-gray-700">{label}:</span>
+      <span className="text-gray-900">{contact?.name || 'Unknown'}</span>
+      {contact?.phone && (
+        <>
+          <span className="text-gray-400">•</span>
+          <PhoneLink phone={contact.phone} />
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Staff member display with clickable phone
+ */
+function StaffMemberDisplay({ staff }: { staff: LogisticsStaffMember }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 py-1">
+      <span className="text-gray-900">{staff.name}</span>
+      {staff.phone && (
+        <>
+          <span className="text-gray-400">•</span>
+          <PhoneLink phone={staff.phone} />
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Section header component
+ */
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+  return (
+    <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
+      <Icon className="h-5 w-5 text-[#347dc4]" />
+      {title}
+    </h3>
+  )
+}
+
+/**
+ * Event type badge component
+ */
+function EventTypeBadge({ type }: { type: string | null | undefined }) {
+  if (!type) return null
+
+  // Format type for display (e.g., "corporate_event" -> "Corporate Event")
+  const formatted = type
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+
+  return (
+    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-[#347dc4]/10 text-[#347dc4]">
+      {formatted}
+    </span>
+  )
+}
 
 /**
  * EventLogistics Component
  *
- * Main orchestrator component for event logistics display and editing.
- * Composes child components and manages shared state/hooks.
+ * Main component for displaying event logistics with 8 sections.
+ * Supports multi-date events and inline editing for notes fields.
  */
-export function EventLogistics({ eventId }: EventLogisticsProps) {
-  // Fetch logistics data
-  const { logistics, loading } = useEventLogistics(eventId)
+export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
+  const { logistics, loading, invalidateLogistics } = useEventLogistics(eventId, eventDateId)
 
-  // Location editing
-  const {
-    isEditingLocation,
-    editedLocationId,
-    savingLocation,
-    handleEditLocation,
-    handleSaveLocation,
-    handleCancelEditLocation,
-    invalidateLogistics
-  } = useLogisticsEditing({ eventId })
+  // Editable state for Load-In Notes
+  const [isEditingLoadIn, setIsEditingLoadIn] = useState(false)
+  const [loadInNotes, setLoadInNotes] = useState('')
+  const [savingLoadIn, setSavingLoadIn] = useState(false)
 
-  // PDF export
-  const { exportPdf, isExporting } = usePdfExport({
-    filename: () => getLogisticsPdfFilename(logistics?.client_name),
-    generator: async () => {
-      if (!logistics) throw new Error('No logistics data')
-      return generateLogisticsPdf(logistics)
+  // Editable state for Event Notes
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [eventNotes, setEventNotes] = useState('')
+  const [savingNotes, setSavingNotes] = useState(false)
+
+  // Sync local state with fetched data
+  useEffect(() => {
+    if (logistics) {
+      setLoadInNotes(logistics.load_in_notes || '')
+      setEventNotes(logistics.event_notes || '')
     }
-  })
+  }, [logistics])
 
-  // Field editors for inline editing
-  const notesEditor = useFieldEditor({
-    initialValue: logistics?.load_in_notes || '',
-    onSave: async (value) => {
+  // Save Load-In Notes
+  const saveLoadInNotes = async () => {
+    setSavingLoadIn(true)
+    try {
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ load_in_notes: value })
+        body: JSON.stringify({ load_in_notes: loadInNotes })
       })
-      if (res.ok) invalidateLogistics()
+      if (res.ok) {
+        invalidateLogistics()
+        setIsEditingLoadIn(false)
+      }
+    } finally {
+      setSavingLoadIn(false)
     }
-  })
+  }
 
-  const loadInTimeEditor = useFieldEditor({
-    initialValue: logistics?.load_in_time || '',
-    onSave: async (value) => {
+  // Save Event Notes
+  const saveEventNotes = async () => {
+    setSavingNotes(true)
+    try {
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ load_in_time: value })
+        body: JSON.stringify({ description: eventNotes })
       })
-      if (res.ok) invalidateLogistics()
+      if (res.ok) {
+        invalidateLogistics()
+        setIsEditingNotes(false)
+      }
+    } finally {
+      setSavingNotes(false)
     }
-  })
-
-  const venueContactEditor = useFieldEditor<ContactInfo>({
-    initialValue: {
-      name: logistics?.venue_contact_name || '',
-      phone: logistics?.venue_contact_phone || '',
-      email: logistics?.venue_contact_email || ''
-    },
-    onSave: async (value) => {
-      const res = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          venue_contact_name: value.name,
-          venue_contact_phone: value.phone,
-          venue_contact_email: value.email
-        })
-      })
-      if (res.ok) invalidateLogistics()
-    }
-  })
-
-  const eventPlannerEditor = useFieldEditor<ContactInfo>({
-    initialValue: {
-      name: logistics?.event_planner_name || '',
-      phone: logistics?.event_planner_phone || '',
-      email: logistics?.event_planner_email || ''
-    },
-    onSave: async (value) => {
-      const res = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_planner_name: value.name,
-          event_planner_phone: value.phone,
-          event_planner_email: value.email
-        })
-      })
-      if (res.ok) invalidateLogistics()
-    }
-  })
+  }
 
   // Loading state
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
           <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
         </div>
       </div>
     )
   }
 
-  // Empty state
-  const hasNoData = !logistics?.event_date && !logistics?.location
+  if (!logistics) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <p className="text-gray-600">No logistics information available</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Event details will appear here once configured
+        </p>
+      </div>
+    )
+  }
+
+  const hasSchedule = logistics.event_date || logistics.setup_time || logistics.start_time || logistics.end_time
+  const hasLocation = logistics.location?.name || logistics.location?.address_line1
+  const hasContacts = logistics.onsite_contact?.name || logistics.event_planner?.name || logistics.client_contact?.name
+  const hasScope = logistics.packages.length > 0 || logistics.add_ons.length > 0 || logistics.equipment.length > 0
+  const hasStaff = logistics.event_staff.length > 0 || logistics.event_managers.length > 0
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 max-w-5xl mx-auto">
-      {/* Document Header */}
-      <LogisticsHeader
-        clientName={logistics?.client_name}
-        isExporting={isExporting}
-        onExportPdf={exportPdf}
-      />
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* ========== SECTION 1: HEADER ========== */}
+      <div className="bg-gradient-to-r from-[#347dc4] to-[#2d6ba8] px-6 py-5 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">
+              {logistics.event_title || 'Event Logistics'}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {logistics.event_type && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20">
+                  {logistics.event_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </span>
+              )}
+              {logistics.client_name && (
+                <span className="text-white/90">
+                  Client: <strong>{logistics.client_name}</strong>
+                </span>
+              )}
+            </div>
+            {logistics.client_contact?.name && (
+              <div className="mt-2 text-sm text-white/80">
+                Contact: {logistics.client_contact.name}
+                {logistics.client_contact.phone && (
+                  <a
+                    href={`tel:${formatPhoneForLink(logistics.client_contact.phone)}`}
+                    className="ml-2 text-white hover:underline"
+                  >
+                    {logistics.client_contact.phone}
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-white/10 border-white/30 text-white hover:bg-white/20 print:hidden"
+            onClick={() => window.print()}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Print / PDF
+          </Button>
+        </div>
+      </div>
 
-      <div className="space-y-8">
-        {/* Event Schedule */}
-        <LogisticsSchedule
-          eventDate={logistics?.event_date}
-          setupTime={logistics?.setup_time}
-          loadInTime={logistics?.load_in_time}
-          startTime={logistics?.start_time}
-          endTime={logistics?.end_time}
-          loadInTimeEditor={loadInTimeEditor}
-        />
-
-        {/* Venue Information */}
-        <LogisticsVenue
-          location={logistics?.location}
-          isEditing={isEditingLocation}
-          editedLocationId={editedLocationId}
-          savingLocation={savingLocation}
-          onEdit={handleEditLocation}
-          onSave={handleSaveLocation}
-          onCancel={handleCancelEditLocation}
-        />
-
-        {/* Load-In Details */}
-        <LogisticsLoadIn
-          loadInNotes={logistics?.load_in_notes}
-          locationNotes={logistics?.location?.notes}
-          notesEditor={notesEditor}
-        />
-
-        {/* On-Site Contacts */}
-        <LogisticsContacts
-          venueContactName={logistics?.venue_contact_name}
-          venueContactPhone={logistics?.venue_contact_phone}
-          venueContactEmail={logistics?.venue_contact_email}
-          locationContact={{
-            name: logistics?.location?.contact_name,
-            phone: logistics?.location?.contact_phone,
-            email: logistics?.location?.contact_email
-          }}
-          eventPlannerName={logistics?.event_planner_name}
-          eventPlannerPhone={logistics?.event_planner_phone}
-          eventPlannerEmail={logistics?.event_planner_email}
-          venueContactEditor={venueContactEditor}
-          eventPlannerEditor={eventPlannerEditor}
-        />
-
-        {/* Client Package & Items */}
-        <LogisticsPackages
-          packages={logistics?.packages}
-          customItems={logistics?.custom_items}
-        />
-
-        {/* Event Staff */}
-        <LogisticsStaff staff={logistics?.staff} />
-
-        {/* Additional Notes */}
-        {logistics?.event_notes && (
-          <section className="pb-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 uppercase tracking-wide">
-              Additional Notes
-            </h3>
-            <div className="pl-4">
-              <p className="text-sm text-gray-900 whitespace-pre-wrap border-l-2 border-gray-300 pl-4">
-                {logistics.event_notes}
-              </p>
+      <div className="p-6 space-y-8">
+        {/* ========== SECTION 2: EVENT SCHEDULE ========== */}
+        {hasSchedule && (
+          <section>
+            <SectionHeader icon={Calendar} title="Event Schedule" />
+            <div className="bg-gray-50 rounded-lg p-4">
+              {logistics.event_date && (
+                <p className="text-lg font-semibold text-gray-900 mb-3">
+                  {formatDate(logistics.event_date)}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                {logistics.setup_time && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">Setup:</span>
+                    <span className="font-medium">{formatTime(logistics.setup_time)}</span>
+                  </div>
+                )}
+                {logistics.start_time && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">Start:</span>
+                    <span className="font-medium">{formatTime(logistics.start_time)}</span>
+                  </div>
+                )}
+                {logistics.end_time && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">End:</span>
+                    <span className="font-medium">{formatTime(logistics.end_time)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         )}
 
-        {/* Empty State */}
-        {hasNoData && (
-          <section className="text-center py-12">
-            <p className="text-gray-600">No logistics information available yet</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Event dates, times, and venue details will appear here once configured
+        {/* ========== SECTION 3: EVENT LOCATION ========== */}
+        {hasLocation && (
+          <section>
+            <SectionHeader icon={MapPin} title="Event Location" />
+            <div className="bg-gray-50 rounded-lg p-4">
+              {logistics.location?.name && (
+                <p className="text-lg font-semibold text-gray-900 mb-2">
+                  {logistics.location.name}
+                </p>
+              )}
+              {logistics.location?.address_line1 && (
+                <a
+                  href={buildMapsUrl(logistics.location)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-start gap-2 text-[#347dc4] hover:underline"
+                >
+                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span className="whitespace-pre-line">
+                    {formatAddress(logistics.location)}
+                  </span>
+                </a>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ========== SECTION 4: EVENT CONTACTS ========== */}
+        {hasContacts && (
+          <section>
+            <SectionHeader icon={Phone} title="Event Contacts" />
+            <div className="bg-gray-50 rounded-lg p-4 divide-y divide-gray-200">
+              <ContactDisplay label="Onsite Contact" contact={logistics.onsite_contact} />
+              <ContactDisplay label="Event Planner" contact={logistics.event_planner} />
+              <ContactDisplay label="Client" contact={logistics.client_contact} />
+            </div>
+          </section>
+        )}
+
+        {/* ========== SECTION 5: ARRIVAL INSTRUCTIONS ========== */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <SectionHeader icon={FileText} title="Arrival Instructions" />
+          </div>
+
+          {/* Load-In Notes - Editable */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Load-In Notes</label>
+              {!isEditingLoadIn && (
+                <button
+                  onClick={() => setIsEditingLoadIn(true)}
+                  className="text-[#347dc4] hover:text-[#2d6ba8] text-sm flex items-center gap-1 print:hidden"
+                >
+                  <Edit2 className="h-3 w-3" />
+                  Edit
+                </button>
+              )}
+            </div>
+            {isEditingLoadIn ? (
+              <div className="space-y-2 print:hidden">
+                <textarea
+                  value={loadInNotes}
+                  onChange={(e) => setLoadInNotes(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                  placeholder="Enter load-in instructions, security info, check-in procedures..."
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={saveLoadInNotes}
+                    disabled={savingLoadIn}
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    {savingLoadIn ? 'Saving...' : 'Save'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setLoadInNotes(logistics.load_in_notes || '')
+                      setIsEditingLoadIn(false)
+                    }}
+                    disabled={savingLoadIn}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-4">
+                {loadInNotes ? (
+                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{loadInNotes}</p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No load-in notes provided</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Parking Instructions - Display Only */}
+          {logistics.parking_instructions && (
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-2">
+                Parking & Venue Instructions
+              </label>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                  {logistics.parking_instructions}
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ========== SECTION 6: EVENT SCOPE ========== */}
+        {hasScope && (
+          <section>
+            <SectionHeader icon={Package} title="Event Scope" />
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Packages */}
+              {logistics.packages.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Packages</h4>
+                  <ul className="space-y-2">
+                    {logistics.packages.map(pkg => (
+                      <li key={pkg.id} className="text-sm text-gray-700">
+                        • {pkg.name}
+                        {pkg.description && (
+                          <span className="text-gray-500 ml-1">({pkg.description})</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Add-Ons */}
+              {logistics.add_ons.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Add-Ons</h4>
+                  <ul className="space-y-2">
+                    {logistics.add_ons.map(addon => (
+                      <li key={addon.id} className="text-sm text-gray-700">
+                        • {addon.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Equipment */}
+              {logistics.equipment.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 md:col-span-2">
+                  <h4 className="font-medium text-gray-900 mb-3">Equipment</h4>
+                  <ul className="space-y-2">
+                    {logistics.equipment.map(equip => (
+                      <li key={equip.id} className="text-sm text-gray-700">
+                        • {equip.name}
+                        {equip.type && <span className="text-gray-500"> ({equip.type})</span>}
+                        {equip.serial_number && (
+                          <span className="text-gray-400 ml-2">SN: {equip.serial_number}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ========== SECTION 7: EVENT STAFF ========== */}
+        {hasStaff && (
+          <section>
+            <SectionHeader icon={Users} title="Event Staff" />
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Event Staff */}
+              {logistics.event_staff.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Event Staff</h4>
+                  <div className="space-y-1">
+                    {logistics.event_staff.map(staff => (
+                      <StaffMemberDisplay key={staff.id} staff={staff} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Event Managers */}
+              {logistics.event_managers.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Event Managers</h4>
+                  <div className="space-y-1">
+                    {logistics.event_managers.map(manager => (
+                      <StaffMemberDisplay key={manager.id} staff={manager} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ========== SECTION 8: NOTES ========== */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <SectionHeader icon={FileText} title="Event Notes" />
+            {!isEditingNotes && (
+              <button
+                onClick={() => setIsEditingNotes(true)}
+                className="text-[#347dc4] hover:text-[#2d6ba8] text-sm flex items-center gap-1 print:hidden"
+              >
+                <Edit2 className="h-3 w-3" />
+                Edit
+              </button>
+            )}
+          </div>
+
+          {isEditingNotes ? (
+            <div className="space-y-2 print:hidden">
+              <textarea
+                value={eventNotes}
+                onChange={(e) => setEventNotes(e.target.value)}
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                placeholder="Add notes for the onsite team..."
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={saveEventNotes}
+                  disabled={savingNotes}
+                >
+                  <Save className="h-3 w-3 mr-1" />
+                  {savingNotes ? 'Saving...' : 'Save'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEventNotes(logistics.event_notes || '')
+                    setIsEditingNotes(false)
+                  }}
+                  disabled={savingNotes}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
+              {eventNotes ? (
+                <p className="text-sm text-gray-900 whitespace-pre-wrap">{eventNotes}</p>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No event notes</p>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Multi-date selector (if applicable) */}
+        {logistics.all_event_dates.length > 1 && (
+          <section className="border-t pt-6 print:hidden">
+            <p className="text-sm text-gray-600 mb-2">
+              This event has multiple dates. Currently viewing:
             </p>
+            <div className="flex flex-wrap gap-2">
+              {logistics.all_event_dates.map(ed => (
+                <a
+                  key={ed.id}
+                  href={`?event_date_id=${ed.id}`}
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    ed.id === logistics.event_date_id
+                      ? 'bg-[#347dc4] text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {formatDate(ed.event_date)}
+                </a>
+              ))}
+            </div>
           </section>
         )}
       </div>
