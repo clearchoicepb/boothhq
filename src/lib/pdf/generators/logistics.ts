@@ -122,8 +122,8 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     })
     addField('Date:', eventDate)
   }
-  if (logistics.load_in_time) {
-    addField('Setup Time:', formatTime(logistics.load_in_time))
+  if (logistics.setup_time || logistics.load_in_time) {
+    addField('Setup Time:', formatTime(logistics.setup_time || logistics.load_in_time || undefined))
   }
   if (logistics.start_time) {
     addField('Start Time:', formatTime(logistics.start_time))
@@ -180,17 +180,17 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   const rightX = margin + columnWidth + 10
   const contactsStartY = yPos
 
-  // Left column - Venue Contact
+  // Left column - Onsite Contact
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('VENUE CONTACT', leftX, yPos)
+  doc.text('ONSITE CONTACT', leftX, yPos)
   yPos += 10
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Name: ${logistics.venue_contact_name || logistics.location?.contact_name || 'Not specified'}`, leftX, yPos)
+  doc.text(`Name: ${logistics.onsite_contact?.name || logistics.venue_contact_name || logistics.location?.contact_name || 'Not specified'}`, leftX, yPos)
   yPos += 9
-  if (logistics.venue_contact_phone || logistics.location?.contact_phone) {
-    doc.text(`Phone: ${logistics.venue_contact_phone || logistics.location?.contact_phone}`, leftX, yPos)
+  if (logistics.onsite_contact?.phone || logistics.venue_contact_phone || logistics.location?.contact_phone) {
+    doc.text(`Phone: ${logistics.onsite_contact?.phone || logistics.venue_contact_phone || logistics.location?.contact_phone}`, leftX, yPos)
     yPos += 9
   }
   if (logistics.venue_contact_email) {
@@ -208,10 +208,10 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   yPos += 10
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Name: ${logistics.event_planner_name || 'Not specified'}`, rightX, yPos)
+  doc.text(`Name: ${logistics.event_planner?.name || logistics.event_planner_name || 'Not specified'}`, rightX, yPos)
   yPos += 9
-  if (logistics.event_planner_phone) {
-    doc.text(`Phone: ${logistics.event_planner_phone}`, rightX, yPos)
+  if (logistics.event_planner?.phone || logistics.event_planner_phone) {
+    doc.text(`Phone: ${logistics.event_planner?.phone || logistics.event_planner_phone}`, rightX, yPos)
     yPos += 9
   }
   if (logistics.event_planner_email) {
@@ -252,17 +252,23 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
 
   const packagesHeight = yPos - packagesStartY
 
-  // Right column - Custom Items
+  // Right column - Add-Ons
   yPos = packagesStartY
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('ADD-ONS & CUSTOM ITEMS', rightX, yPos)
+  doc.text('ADD-ONS', rightX, yPos)
   yPos += 10
-  if (logistics.custom_items && logistics.custom_items.length > 0) {
-    logistics.custom_items.forEach(item => {
+  // Use new add_ons field, fall back to legacy custom_items
+  const addOnsItems = logistics.add_ons && logistics.add_ons.length > 0
+    ? logistics.add_ons
+    : (logistics.custom_items || [])
+  if (addOnsItems.length > 0) {
+    addOnsItems.forEach(item => {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
-      const itemText = doc.splitTextToSize(`• ${item.item_name} (${item.item_type})`, columnWidth - 20)
+      // Support both new format (name) and legacy format (item_name)
+      const itemName = 'name' in item ? item.name : (item as { item_name: string }).item_name
+      const itemText = doc.splitTextToSize(`• ${itemName}`, columnWidth - 20)
       doc.text(itemText, rightX, yPos)
       yPos += itemText.length * 9
     })
@@ -281,8 +287,13 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   checkPageBreak(150)
   addSection('Event Staff')
 
-  const operationsStaff = logistics.staff?.filter(s => s.role_type === 'operations') || []
-  const eventStaff = logistics.staff?.filter(s => s.role_type === 'event_staff') || []
+  // Use new event_managers/event_staff arrays, fall back to legacy staff array with role_type filtering
+  const operationsStaff = logistics.event_managers && logistics.event_managers.length > 0
+    ? logistics.event_managers
+    : (logistics.staff?.filter(s => s.role_type === 'operations') || [])
+  const eventStaff = logistics.event_staff && logistics.event_staff.length > 0
+    ? logistics.event_staff
+    : (logistics.staff?.filter(s => s.role_type === 'event_staff') || [])
 
   const staffStartY = yPos
   const brandColorHex = `rgb(${PDF_BRAND_COLOR.join(',')})`
