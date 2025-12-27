@@ -215,10 +215,27 @@ function EventTypeBadge({ type }: { type: string | null | undefined }) {
 export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
   const { logistics, loading, invalidateLogistics } = useEventLogistics(eventId, eventDateId)
 
+  // Editable state for Onsite Contact
+  const [isEditingOnsiteContact, setIsEditingOnsiteContact] = useState(false)
+  const [onsiteContactName, setOnsiteContactName] = useState('')
+  const [onsiteContactPhone, setOnsiteContactPhone] = useState('')
+  const [savingOnsiteContact, setSavingOnsiteContact] = useState(false)
+
+  // Editable state for Event Planner
+  const [isEditingEventPlanner, setIsEditingEventPlanner] = useState(false)
+  const [eventPlannerName, setEventPlannerName] = useState('')
+  const [eventPlannerPhone, setEventPlannerPhone] = useState('')
+  const [savingEventPlanner, setSavingEventPlanner] = useState(false)
+
   // Editable state for Load-In Notes
   const [isEditingLoadIn, setIsEditingLoadIn] = useState(false)
   const [loadInNotes, setLoadInNotes] = useState('')
   const [savingLoadIn, setSavingLoadIn] = useState(false)
+
+  // Editable state for Parking Instructions
+  const [isEditingParking, setIsEditingParking] = useState(false)
+  const [parkingInstructions, setParkingInstructions] = useState('')
+  const [savingParking, setSavingParking] = useState(false)
 
   // Editable state for Event Notes
   const [isEditingNotes, setIsEditingNotes] = useState(false)
@@ -246,10 +263,57 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
   // Sync local state with fetched data
   useEffect(() => {
     if (logistics) {
+      setOnsiteContactName(logistics.onsite_contact?.name || '')
+      setOnsiteContactPhone(logistics.onsite_contact?.phone || '')
+      setEventPlannerName(logistics.event_planner?.name || '')
+      setEventPlannerPhone(logistics.event_planner?.phone || '')
       setLoadInNotes(logistics.load_in_notes || '')
+      setParkingInstructions(logistics.parking_instructions || '')
       setEventNotes(logistics.event_notes || '')
     }
   }, [logistics])
+
+  // Save Onsite Contact
+  const saveOnsiteContact = async () => {
+    setSavingOnsiteContact(true)
+    try {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venue_contact_name: onsiteContactName,
+          venue_contact_phone: onsiteContactPhone
+        })
+      })
+      if (res.ok) {
+        invalidateLogistics()
+        setIsEditingOnsiteContact(false)
+      }
+    } finally {
+      setSavingOnsiteContact(false)
+    }
+  }
+
+  // Save Event Planner
+  const saveEventPlanner = async () => {
+    setSavingEventPlanner(true)
+    try {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_planner_name: eventPlannerName,
+          event_planner_phone: eventPlannerPhone
+        })
+      })
+      if (res.ok) {
+        invalidateLogistics()
+        setIsEditingEventPlanner(false)
+      }
+    } finally {
+      setSavingEventPlanner(false)
+    }
+  }
 
   // Save Load-In Notes
   const saveLoadInNotes = async () => {
@@ -266,6 +330,31 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
       }
     } finally {
       setSavingLoadIn(false)
+    }
+  }
+
+  // Save Parking Instructions (saved to location notes)
+  const saveParkingInstructions = async () => {
+    setSavingParking(true)
+    try {
+      // Update the location notes if we have a location_id
+      const locationId = logistics?.location?.id
+      if (locationId) {
+        const res = await fetch(`/api/locations/${locationId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: parkingInstructions })
+        })
+        if (res.ok) {
+          invalidateLogistics()
+          setIsEditingParking(false)
+        }
+      } else {
+        // No location - just close the editor
+        setIsEditingParking(false)
+      }
+    } finally {
+      setSavingParking(false)
     }
   }
 
@@ -313,7 +402,7 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
 
   const hasSchedule = logistics.event_date || logistics.setup_time || logistics.start_time || logistics.end_time
   const hasLocation = logistics.location?.name || logistics.location?.address_line1
-  const hasContacts = logistics.onsite_contact?.name || logistics.event_planner?.name || logistics.client_contact?.name
+  // hasContacts removed - section always shows now
   const hasScope = logistics.packages.length > 0 || logistics.add_ons.length > 0 || logistics.equipment.length > 0
   const hasStaff = logistics.event_staff.length > 0 || logistics.event_managers.length > 0
 
@@ -435,16 +524,168 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
         )}
 
         {/* ========== SECTION 4: EVENT CONTACTS ========== */}
-        {hasContacts && (
-          <section>
-            <SectionHeader icon={Phone} title="Event Contacts" />
-            <div className="bg-gray-50 rounded-lg p-4 divide-y divide-gray-200">
-              <ContactDisplay label="Onsite Contact" contact={logistics.onsite_contact} />
-              <ContactDisplay label="Event Planner" contact={logistics.event_planner} />
-              <ContactDisplay label="Client" contact={logistics.client_contact} />
+        <section>
+          <SectionHeader icon={Phone} title="Event Contacts" />
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            {/* Onsite Contact - Always visible, editable */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">Onsite Contact</label>
+                {!isEditingOnsiteContact && (
+                  <button
+                    onClick={() => setIsEditingOnsiteContact(true)}
+                    className="text-[#347dc4] hover:text-[#2d6ba8] text-sm flex items-center gap-1 print:hidden"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    Edit
+                  </button>
+                )}
+              </div>
+              {isEditingOnsiteContact ? (
+                <div className="space-y-2 print:hidden">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={onsiteContactName}
+                      onChange={(e) => setOnsiteContactName(e.target.value)}
+                      placeholder="Contact name"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                    />
+                    <input
+                      type="tel"
+                      value={onsiteContactPhone}
+                      onChange={(e) => setOnsiteContactPhone(e.target.value)}
+                      placeholder="Phone number"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveOnsiteContact} disabled={savingOnsiteContact}>
+                      <Save className="h-3 w-3 mr-1" />
+                      {savingOnsiteContact ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setOnsiteContactName(logistics.onsite_contact?.name || '')
+                        setOnsiteContactPhone(logistics.onsite_contact?.phone || '')
+                        setIsEditingOnsiteContact(false)
+                      }}
+                      disabled={savingOnsiteContact}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-2">
+                  {onsiteContactName ? (
+                    <>
+                      <span className="text-gray-900">{onsiteContactName}</span>
+                      {onsiteContactPhone && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <PhoneLink phone={onsiteContactPhone} />
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-400 italic">No onsite contact provided</span>
+                  )}
+                </div>
+              )}
             </div>
-          </section>
-        )}
+
+            {/* Event Planner - Always visible, editable */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">Event Planner</label>
+                {!isEditingEventPlanner && (
+                  <button
+                    onClick={() => setIsEditingEventPlanner(true)}
+                    className="text-[#347dc4] hover:text-[#2d6ba8] text-sm flex items-center gap-1 print:hidden"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    {eventPlannerName ? 'Edit' : 'Add'}
+                  </button>
+                )}
+              </div>
+              {isEditingEventPlanner ? (
+                <div className="space-y-2 print:hidden">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={eventPlannerName}
+                      onChange={(e) => setEventPlannerName(e.target.value)}
+                      placeholder="Planner name"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                    />
+                    <input
+                      type="tel"
+                      value={eventPlannerPhone}
+                      onChange={(e) => setEventPlannerPhone(e.target.value)}
+                      placeholder="Phone number"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveEventPlanner} disabled={savingEventPlanner}>
+                      <Save className="h-3 w-3 mr-1" />
+                      {savingEventPlanner ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEventPlannerName(logistics.event_planner?.name || '')
+                        setEventPlannerPhone(logistics.event_planner?.phone || '')
+                        setIsEditingEventPlanner(false)
+                      }}
+                      disabled={savingEventPlanner}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-2">
+                  {eventPlannerName ? (
+                    <>
+                      <span className="text-gray-900">{eventPlannerName}</span>
+                      {eventPlannerPhone && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <PhoneLink phone={eventPlannerPhone} />
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-400 italic">No Event Planner listed</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Client Contact - Display only */}
+            {logistics.client_contact?.name && (
+              <div className="border-t border-gray-200 pt-4">
+                <label className="text-sm font-medium text-gray-700 block mb-2">Client</label>
+                <div className="flex flex-wrap items-center gap-x-2">
+                  <span className="text-gray-900">{logistics.client_contact.name}</span>
+                  {logistics.client_contact.phone && (
+                    <>
+                      <span className="text-gray-400">•</span>
+                      <PhoneLink phone={logistics.client_contact.phone} />
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* ========== SECTION 5: ARRIVAL INSTRUCTIONS ========== */}
         <section>
@@ -509,20 +750,61 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
             )}
           </div>
 
-          {/* Parking Instructions - Display Only */}
+          {/* Parking Instructions - Editable */}
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-2">
-              Parking Instructions
-            </label>
-            <div className="bg-gray-50 rounded-lg p-4">
-              {logistics.parking_instructions ? (
-                <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                  {logistics.parking_instructions}
-                </p>
-              ) : (
-                <p className="text-sm text-gray-400 italic">No parking instructions provided</p>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Parking Instructions</label>
+              {!isEditingParking && (
+                <button
+                  onClick={() => setIsEditingParking(true)}
+                  className="text-[#347dc4] hover:text-[#2d6ba8] text-sm flex items-center gap-1 print:hidden"
+                >
+                  <Edit2 className="h-3 w-3" />
+                  Edit
+                </button>
               )}
             </div>
+            {isEditingParking ? (
+              <div className="space-y-2 print:hidden">
+                <textarea
+                  value={parkingInstructions}
+                  onChange={(e) => setParkingInstructions(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#347dc4] focus:border-transparent"
+                  placeholder="Enter parking instructions, venue access info..."
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={saveParkingInstructions}
+                    disabled={savingParking}
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    {savingParking ? 'Saving...' : 'Save'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setParkingInstructions(logistics.parking_instructions || '')
+                      setIsEditingParking(false)
+                    }}
+                    disabled={savingParking}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-4">
+                {parkingInstructions ? (
+                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{parkingInstructions}</p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No parking instructions provided</p>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
