@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileDown, Phone, MapPin, Edit2, Save, X, Calendar, Clock, Users, Package, FileText } from 'lucide-react'
+import { FileDown, Phone, MapPin, Edit2, Save, X, Calendar, Clock, Users, Package, FileText, Loader2 } from 'lucide-react'
 import { useEventLogistics } from '@/hooks/useEventLogistics'
 import { Button } from '@/components/ui/button'
+import { generateLogisticsPdf, getLogisticsPdfFilename } from '@/lib/pdf'
 import type { EventLogisticsProps, LogisticsContact, LogisticsStaffMember } from '@/types/logistics'
 
 /**
@@ -214,6 +215,24 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
   const [eventNotes, setEventNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
 
+  // PDF export state
+  const [isExporting, setIsExporting] = useState(false)
+
+  // Handle PDF export
+  const handleExportPdf = async () => {
+    if (!logistics) return
+    setIsExporting(true)
+    try {
+      const doc = await generateLogisticsPdf(logistics)
+      const filename = getLogisticsPdfFilename(logistics.client_name || undefined)
+      doc.save(filename)
+    } catch (error) {
+      console.error('Failed to generate PDF:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Sync local state with fetched data
   useEffect(() => {
     if (logistics) {
@@ -327,10 +346,15 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
             variant="outline"
             size="sm"
             className="bg-white/10 border-white/30 text-white hover:bg-white/20 print:hidden"
-            onClick={() => window.print()}
+            onClick={handleExportPdf}
+            disabled={isExporting}
           >
-            <FileDown className="h-4 w-4 mr-2" />
-            Print / PDF
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4 mr-2" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export PDF'}
           </Button>
         </div>
       </div>
