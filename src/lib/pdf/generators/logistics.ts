@@ -2,7 +2,6 @@
  * Logistics PDF Generator
  *
  * Generates PDF documents for event logistics sheets.
- * Updated to work with new 8-section logistics data structure.
  */
 
 import jsPDF from 'jspdf'
@@ -12,7 +11,7 @@ import { PDF_BRAND_COLOR, formatTime as sharedFormatTime } from '../utils'
 /**
  * Format a location into a multi-line address string
  */
-function formatAddress(location: LogisticsLocation | null | undefined): string | null {
+function formatAddress(location: LogisticsLocation | undefined): string | null {
   if (!location) return null
 
   const parts: string[] = []
@@ -35,8 +34,7 @@ function formatAddress(location: LogisticsLocation | null | undefined): string |
 /**
  * Format time for PDF display (wrapper for shared utility)
  */
-function formatTime(time: string | null | undefined): string {
-  if (!time) return ''
+function formatTime(time: string | undefined): string {
   return sharedFormatTime(time) || time || ''
 }
 
@@ -94,20 +92,8 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor('#000000')
-  doc.text(logistics.event_title || 'Event Logistics', margin, yPos)
+  doc.text('Event Logistics', margin, yPos)
   yPos += 18
-
-  // Event type badge
-  if (logistics.event_type) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(`rgb(${PDF_BRAND_COLOR.join(',')})`)
-    const formattedType = logistics.event_type
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase())
-    doc.text(formattedType, margin, yPos)
-    yPos += 12
-  }
 
   // Client name
   if (logistics.client_name) {
@@ -118,25 +104,17 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     yPos += 12
   }
 
-  // Client contact
-  if (logistics.client_contact?.name) {
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor('#6b7280')
-    let contactText = `Contact: ${logistics.client_contact.name}`
-    if (logistics.client_contact.phone) {
-      contactText += ` | ${logistics.client_contact.phone}`
-    }
-    doc.text(contactText, margin, yPos)
-    yPos += 15
-  } else {
-    yPos += 5
-  }
+  // Subtitle
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor('#6b7280')
+  doc.text('Operational Details & Schedule', margin, yPos)
+  yPos += 15
 
   // Event Schedule Section
   addSection('Event Schedule')
   if (logistics.event_date) {
-    const eventDate = new Date(logistics.event_date + 'T00:00:00').toLocaleDateString('en-US', {
+    const eventDate = new Date(logistics.event_date).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -144,8 +122,8 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     })
     addField('Date:', eventDate)
   }
-  if (logistics.setup_time) {
-    addField('Setup Time:', formatTime(logistics.setup_time))
+  if (logistics.load_in_time) {
+    addField('Setup Time:', formatTime(logistics.load_in_time))
   }
   if (logistics.start_time) {
     addField('Start Time:', formatTime(logistics.start_time))
@@ -154,12 +132,10 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     addField('End Time:', formatTime(logistics.end_time))
   }
 
-  // Event Location Section
-  addSection('Event Location')
+  // Venue Information Section
+  addSection('Venue Information')
   if (logistics.location) {
-    if (logistics.location.name) {
-      addField('Venue Name:', logistics.location.name)
-    }
+    addField('Venue Name:', logistics.location.name || 'Not specified')
     const address = formatAddress(logistics.location)
     if (address) {
       addField('Address:', address.replace(/\n/g, ', '))
@@ -168,26 +144,57 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     addField('Venue:', 'Not specified')
   }
 
-  // Event Contacts Section (2 column layout)
+  // Load-In Details Section
+  addSection('Load-In Details')
+  if (logistics.load_in_notes) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor('#374151')
+    doc.text('Operations Notes:', margin + 10, yPos)
+    yPos += 10
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor('#000000')
+    const notesLines = doc.splitTextToSize(logistics.load_in_notes, contentWidth - 20)
+    doc.text(notesLines, margin + 20, yPos)
+    yPos += notesLines.length * 9 + 8
+  }
+  if (logistics.location?.notes) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor('#374151')
+    doc.text('Venue Instructions:', margin + 10, yPos)
+    yPos += 10
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor('#000000')
+    const venueNotesLines = doc.splitTextToSize(logistics.location.notes, contentWidth - 20)
+    doc.text(venueNotesLines, margin + 20, yPos)
+    yPos += venueNotesLines.length * 9 + 8
+  }
+
+  // On-Site Contacts Section (2 column layout)
   checkPageBreak(150)
-  addSection('Event Contacts')
+  addSection('On-Site Contacts')
 
   const columnWidth = contentWidth / 2
   const leftX = margin + 10
   const rightX = margin + columnWidth + 10
   const contactsStartY = yPos
 
-  // Left column - Onsite Contact
+  // Left column - Venue Contact
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('ONSITE CONTACT', leftX, yPos)
+  doc.text('VENUE CONTACT', leftX, yPos)
   yPos += 10
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Name: ${logistics.onsite_contact?.name || 'Not specified'}`, leftX, yPos)
+  doc.text(`Name: ${logistics.venue_contact_name || logistics.location?.contact_name || 'Not specified'}`, leftX, yPos)
   yPos += 9
-  if (logistics.onsite_contact?.phone) {
-    doc.text(`Phone: ${logistics.onsite_contact.phone}`, leftX, yPos)
+  if (logistics.venue_contact_phone || logistics.location?.contact_phone) {
+    doc.text(`Phone: ${logistics.venue_contact_phone || logistics.location?.contact_phone}`, leftX, yPos)
+    yPos += 9
+  }
+  if (logistics.venue_contact_email) {
+    doc.text(`Email: ${logistics.venue_contact_email}`, leftX, yPos)
     yPos += 9
   }
 
@@ -201,54 +208,30 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   yPos += 10
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Name: ${logistics.event_planner?.name || 'Not specified'}`, rightX, yPos)
+  doc.text(`Name: ${logistics.event_planner_name || 'Not specified'}`, rightX, yPos)
   yPos += 9
-  if (logistics.event_planner?.phone) {
-    doc.text(`Phone: ${logistics.event_planner.phone}`, rightX, yPos)
+  if (logistics.event_planner_phone) {
+    doc.text(`Phone: ${logistics.event_planner_phone}`, rightX, yPos)
+    yPos += 9
+  }
+  if (logistics.event_planner_email) {
+    doc.text(`Email: ${logistics.event_planner_email}`, rightX, yPos)
     yPos += 9
   }
 
   // Move yPos to the bottom of whichever column is taller
   yPos = Math.max(yPos, contactsStartY + leftColumnHeight) + 8
 
-  // Arrival Instructions Section
-  checkPageBreak(100)
-  addSection('Arrival Instructions')
-  if (logistics.load_in_notes) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor('#374151')
-    doc.text('Load-In Notes:', margin + 10, yPos)
-    yPos += 10
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor('#000000')
-    const notesLines = doc.splitTextToSize(logistics.load_in_notes, contentWidth - 20)
-    doc.text(notesLines, margin + 20, yPos)
-    yPos += notesLines.length * 9 + 8
-  }
-  if (logistics.parking_instructions) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor('#374151')
-    doc.text('Parking & Venue Instructions:', margin + 10, yPos)
-    yPos += 10
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor('#000000')
-    const parkingLines = doc.splitTextToSize(logistics.parking_instructions, contentWidth - 20)
-    doc.text(parkingLines, margin + 20, yPos)
-    yPos += parkingLines.length * 9 + 8
-  }
-
-  // Event Scope Section (packages, add-ons, equipment)
+  // Client Package & Items Section (2 column layout)
   checkPageBreak(150)
-  addSection('Event Scope')
+  addSection('Client Package & Items')
 
-  const scopeStartY = yPos
+  const packagesStartY = yPos
 
   // Left column - Packages
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('PACKAGES', leftX, yPos)
+  doc.text('BOOTH TYPE & PACKAGES', leftX, yPos)
   yPos += 10
   if (logistics.packages && logistics.packages.length > 0) {
     logistics.packages.forEach(pkg => {
@@ -267,21 +250,21 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     yPos += 9
   }
 
-  const packagesHeight = yPos - scopeStartY
+  const packagesHeight = yPos - packagesStartY
 
-  // Right column - Add-Ons
-  yPos = scopeStartY
+  // Right column - Custom Items
+  yPos = packagesStartY
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('ADD-ONS', rightX, yPos)
+  doc.text('ADD-ONS & CUSTOM ITEMS', rightX, yPos)
   yPos += 10
-  if (logistics.add_ons && logistics.add_ons.length > 0) {
-    logistics.add_ons.forEach(addon => {
+  if (logistics.custom_items && logistics.custom_items.length > 0) {
+    logistics.custom_items.forEach(item => {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
-      const addonText = doc.splitTextToSize(`• ${addon.name}`, columnWidth - 20)
-      doc.text(addonText, rightX, yPos)
-      yPos += addonText.length * 9
+      const itemText = doc.splitTextToSize(`• ${item.item_name} (${item.item_type})`, columnWidth - 20)
+      doc.text(itemText, rightX, yPos)
+      yPos += itemText.length * 9
     })
   } else {
     doc.setFontSize(8)
@@ -292,51 +275,49 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
     yPos += 9
   }
 
-  yPos = Math.max(yPos, scopeStartY + packagesHeight) + 8
-
-  // Equipment
-  if (logistics.equipment && logistics.equipment.length > 0) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text('EQUIPMENT', leftX, yPos)
-    yPos += 10
-    logistics.equipment.forEach(equip => {
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      let equipText = `• ${equip.name}`
-      if (equip.type) equipText += ` (${equip.type})`
-      if (equip.serial_number) equipText += ` - SN: ${equip.serial_number}`
-      const equipLines = doc.splitTextToSize(equipText, contentWidth - 20)
-      doc.text(equipLines, leftX, yPos)
-      yPos += equipLines.length * 9
-    })
-    yPos += 8
-  }
+  yPos = Math.max(yPos, packagesStartY + packagesHeight) + 8
 
   // Event Staff Section (2 column layout)
   checkPageBreak(150)
   addSection('Event Staff')
 
+  const operationsStaff = logistics.staff?.filter(s => s.role_type === 'operations') || []
+  const eventStaff = logistics.staff?.filter(s => s.role_type === 'event_staff') || []
+
   const staffStartY = yPos
   const brandColorHex = `rgb(${PDF_BRAND_COLOR.join(',')})`
 
-  // Left column - Event Staff
+  // Left column - Operations Team
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('EVENT STAFF', leftX, yPos)
+  doc.text('OPERATIONS TEAM', leftX, yPos)
   yPos += 10
-  if (logistics.event_staff && logistics.event_staff.length > 0) {
-    logistics.event_staff.forEach(staff => {
+  if (operationsStaff.length > 0) {
+    operationsStaff.forEach(staff => {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor('#000000')
       doc.text(`• ${staff.name}`, leftX, yPos)
       yPos += 9
-      if (staff.phone) {
+      if (staff.role) {
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(brandColorHex)
-        doc.text(`  ${staff.phone}`, leftX + 5, yPos)
+        doc.text(`  ${staff.role}`, leftX + 5, yPos)
         doc.setTextColor('#000000')
+        yPos += 9
+      }
+      // Add schedule if available
+      if (staff.start_time || staff.end_time) {
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor('#6b7280')
+        const scheduleText = `  ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        doc.text(scheduleText, leftX + 5, yPos)
+        doc.setTextColor('#000000')
+        yPos += 9
+      }
+      if (staff.phone) {
+        doc.setFont('helvetica', 'normal')
+        doc.text(`  ${staff.phone}`, leftX + 5, yPos)
         yPos += 9
       }
       yPos += 3
@@ -352,24 +333,38 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
 
   const staffLeftHeight = yPos - staffStartY
 
-  // Right column - Event Managers
+  // Right column - Event Day Staff
   yPos = staffStartY
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('EVENT MANAGERS', rightX, yPos)
+  doc.text('EVENT DAY STAFF', rightX, yPos)
   yPos += 10
-  if (logistics.event_managers && logistics.event_managers.length > 0) {
-    logistics.event_managers.forEach(manager => {
+  if (eventStaff.length > 0) {
+    eventStaff.forEach(staff => {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor('#000000')
-      doc.text(`• ${manager.name}`, rightX, yPos)
+      doc.text(`• ${staff.name}`, rightX, yPos)
       yPos += 9
-      if (manager.phone) {
+      if (staff.role) {
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(brandColorHex)
-        doc.text(`  ${manager.phone}`, rightX + 5, yPos)
+        doc.text(`  ${staff.role}`, rightX + 5, yPos)
         doc.setTextColor('#000000')
+        yPos += 9
+      }
+      // Add schedule if available
+      if (staff.start_time || staff.end_time) {
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor('#6b7280')
+        const scheduleText = `  ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        doc.text(scheduleText, rightX + 5, yPos)
+        doc.setTextColor('#000000')
+        yPos += 9
+      }
+      if (staff.phone) {
+        doc.setFont('helvetica', 'normal')
+        doc.text(`  ${staff.phone}`, rightX + 5, yPos)
         yPos += 9
       }
       yPos += 3
@@ -385,10 +380,10 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
 
   yPos = Math.max(yPos, staffStartY + staffLeftHeight) + 8
 
-  // Event Notes Section
+  // Additional Notes Section
   if (logistics.event_notes) {
     checkPageBreak(100)
-    addSection('Event Notes')
+    addSection('Additional Notes')
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor('#000000')
@@ -405,7 +400,7 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
  * @param clientName - The client name for the filename
  * @returns Formatted filename string
  */
-export function getLogisticsPdfFilename(clientName?: string | null): string {
+export function getLogisticsPdfFilename(clientName?: string): string {
   const safeName = clientName?.replace(/\s+/g, '_') || 'Document'
   const dateStr = new Date().toISOString().split('T')[0]
   return `Event_Logistics_${safeName}_${dateStr}.pdf`

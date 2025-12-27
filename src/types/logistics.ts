@@ -50,7 +50,7 @@ export interface LogisticsEquipment {
 }
 
 /**
- * Staff member with phone
+ * Staff member with phone and schedule
  */
 export interface LogisticsStaffMember {
   id: string
@@ -58,6 +58,42 @@ export interface LogisticsStaffMember {
   phone: string | null
   role: string | null
   role_type?: string | null
+  start_time?: string | null
+  end_time?: string | null
+}
+
+/**
+ * Legacy staff member format (for PDF generator compatibility)
+ */
+export interface LogisticsStaff {
+  id: string
+  name: string
+  email?: string
+  phone?: string | null
+  role?: string
+  role_type?: string
+  notes?: string
+  is_event_day: boolean
+  start_time?: string | null
+  end_time?: string | null
+}
+
+/**
+ * Legacy package format (for PDF generator compatibility)
+ */
+export interface LogisticsPackage {
+  id: string
+  name: string
+  type: string
+}
+
+/**
+ * Legacy custom item format (for PDF generator compatibility)
+ */
+export interface LogisticsCustomItem {
+  id: string
+  item_name: string
+  item_type: string
 }
 
 /**
@@ -70,6 +106,7 @@ export interface LogisticsEventDate {
 
 /**
  * Complete logistics data structure (matches API response)
+ * Includes backwards-compatible fields for PDF generator
  */
 export interface LogisticsData {
   // Section 1: Header
@@ -110,6 +147,18 @@ export interface LogisticsData {
 
   // Multi-date support
   all_event_dates: LogisticsEventDate[]
+
+  // ===== Legacy fields for PDF generator compatibility =====
+  // These mirror the new fields in the format expected by the original PDF generator
+  load_in_time?: string | null // Same as setup_time
+  venue_contact_name?: string | null
+  venue_contact_phone?: string | null
+  venue_contact_email?: string | null
+  event_planner_name?: string | null
+  event_planner_phone?: string | null
+  event_planner_email?: string | null
+  staff?: LogisticsStaff[] // Combined staff array with role_type
+  custom_items?: LogisticsCustomItem[] // Same as add_ons in legacy format
 }
 
 /**

@@ -139,17 +139,27 @@ function ContactDisplay({
 }
 
 /**
- * Staff member display with clickable phone
+ * Staff member display with clickable phone and schedule
  */
 function StaffMemberDisplay({ staff }: { staff: LogisticsStaffMember }) {
+  const hasSchedule = staff.start_time || staff.end_time
+
   return (
-    <div className="flex flex-wrap items-center gap-x-2 py-1">
-      <span className="text-gray-900">{staff.name}</span>
-      {staff.phone && (
-        <>
-          <span className="text-gray-400">•</span>
-          <PhoneLink phone={staff.phone} />
-        </>
+    <div className="py-2">
+      <div className="flex flex-wrap items-center gap-x-2">
+        <span className="text-gray-900 font-medium">{staff.name}</span>
+        {staff.phone && (
+          <>
+            <span className="text-gray-400">•</span>
+            <PhoneLink phone={staff.phone} />
+          </>
+        )}
+      </div>
+      {hasSchedule && (
+        <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
+          <Clock className="h-3 w-3" />
+          <span>Schedule: {formatTime(staff.start_time)} - {formatTime(staff.end_time)}</span>
+        </div>
       )}
     </div>
   )

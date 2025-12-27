@@ -183,12 +183,15 @@ export async function GET(
       .order('assigned_date', { ascending: true })
 
     // Fetch staff assignments - exclude Graphic Designers
+    // Include start_time and end_time for staff schedule display
     const { data: staffAssignments, error: staffError } = await supabase
       .from('event_staff_assignments')
       .select(`
         id,
         notes,
         event_date_id,
+        start_time,
+        end_time,
         users!event_staff_assignments_user_id_fkey (
           first_name,
           last_name,
@@ -247,6 +250,8 @@ export async function GET(
       phone: string | null
       role: string | null
       role_type: string | null
+      start_time: string | null
+      end_time: string | null
     }> = []
 
     const eventManagers: Array<{
@@ -254,6 +259,22 @@ export async function GET(
       name: string
       phone: string | null
       role: string | null
+      start_time: string | null
+      end_time: string | null
+    }> = []
+
+    // Legacy staff array for PDF generator
+    const legacyStaff: Array<{
+      id: string
+      name: string
+      email?: string
+      phone?: string | null
+      role?: string
+      role_type?: string
+      notes?: string
+      is_event_day: boolean
+      start_time?: string | null
+      end_time?: string | null
     }> = []
 
     staffAssignments?.forEach(sa => {
@@ -282,7 +303,9 @@ export async function GET(
         name: user ? `${user.first_name} ${user.last_name}`.trim() : 'Unknown',
         phone: user?.phone || null,
         role: staffRole?.name || null,
-        role_type: staffRole?.type || null
+        role_type: staffRole?.type || null,
+        start_time: sa.start_time || null,
+        end_time: sa.end_time || null
       }
 
       // Categorize: operations type or "Manager" in name = Event Manager
@@ -291,6 +314,20 @@ export async function GET(
       } else if (staffRole?.type === 'event_staff') {
         eventStaff.push(staffMember)
       }
+
+      // Add to legacy array for PDF generator
+      legacyStaff.push({
+        id: sa.id,
+        name: staffMember.name,
+        email: user?.email,
+        phone: user?.phone,
+        role: staffRole?.name,
+        role_type: staffRole?.type,
+        notes: sa.notes || undefined,
+        is_event_day: staffRole?.type === 'event_staff',
+        start_time: sa.start_time,
+        end_time: sa.end_time
+      })
     })
 
     // Process equipment
@@ -372,7 +409,22 @@ export async function GET(
       all_event_dates: eventDates?.map(ed => ({
         id: ed.id,
         event_date: ed.event_date
-      })) || []
+      })) || [],
+
+      // ===== Legacy fields for PDF generator compatibility =====
+      load_in_time: targetEventDate?.setup_time || null,
+      venue_contact_name: event.venue_contact_name || locationData?.contact_name || null,
+      venue_contact_phone: event.venue_contact_phone || locationData?.contact_phone || null,
+      venue_contact_email: null, // Not available in current schema
+      event_planner_name: event.event_planner_name || null,
+      event_planner_phone: event.event_planner_phone || null,
+      event_planner_email: null, // Not available in current schema
+      staff: legacyStaff,
+      custom_items: addOns.map(addon => ({
+        id: addon.id,
+        item_name: addon.name,
+        item_type: 'add_on'
+      }))
     }
 
     return NextResponse.json({ logistics })
