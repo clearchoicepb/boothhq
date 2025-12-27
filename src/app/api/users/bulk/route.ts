@@ -29,10 +29,26 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'archive':
-        // Update status to 'archived' (you may need to add this status to your schema)
+        // Soft delete: set archived_at timestamp
         result = await supabase
           .from('users')
-          .update({ status: 'inactive', termination_date: new Date().toISOString() })
+          .update({
+            archived_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .in('id', userIds)
+          .eq('tenant_id', dataSourceTenantId)
+
+        break
+
+      case 'unarchive':
+        // Restore: clear archived_at timestamp
+        result = await supabase
+          .from('users')
+          .update({
+            archived_at: null,
+            updated_at: new Date().toISOString()
+          })
           .in('id', userIds)
           .eq('tenant_id', dataSourceTenantId)
 
