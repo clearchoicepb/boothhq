@@ -836,9 +836,6 @@ export function EventLogistics({ eventId, eventDateId: propEventDateId }: EventL
                     {logistics.packages.map(pkg => (
                       <li key={pkg.id} className="text-sm text-gray-700">
                         • {pkg.name}
-                        {pkg.description && (
-                          <span className="text-gray-500 ml-1">({pkg.description})</span>
-                        )}
                       </li>
                     ))}
                   </ul>
