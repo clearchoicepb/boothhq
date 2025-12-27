@@ -510,18 +510,20 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
           </div>
 
           {/* Parking Instructions - Display Only */}
-          {logistics.parking_instructions && (
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-2">
-                Parking & Venue Instructions
-              </label>
-              <div className="bg-gray-50 rounded-lg p-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">
+              Parking Instructions
+            </label>
+            <div className="bg-gray-50 rounded-lg p-4">
+              {logistics.parking_instructions ? (
                 <p className="text-sm text-gray-900 whitespace-pre-wrap">
                   {logistics.parking_instructions}
                 </p>
-              </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No parking instructions provided</p>
+              )}
             </div>
-          )}
+          </div>
         </section>
 
         {/* ========== SECTION 6: EVENT SCOPE ========== */}
@@ -581,39 +583,7 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
           </section>
         )}
 
-        {/* ========== SECTION 7: EVENT STAFF ========== */}
-        {hasStaff && (
-          <section>
-            <SectionHeader icon={Users} title="Event Staff" />
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Event Staff */}
-              {logistics.event_staff.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Event Staff</h4>
-                  <div className="space-y-1">
-                    {logistics.event_staff.map(staff => (
-                      <StaffMemberDisplay key={staff.id} staff={staff} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Event Managers */}
-              {logistics.event_managers.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Event Managers</h4>
-                  <div className="space-y-1">
-                    {logistics.event_managers.map(manager => (
-                      <StaffMemberDisplay key={manager.id} staff={manager} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ========== SECTION 8: NOTES ========== */}
+        {/* ========== SECTION 7: EVENT NOTES ========== */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <SectionHeader icon={FileText} title="Event Notes" />
@@ -670,6 +640,38 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
             </div>
           )}
         </section>
+
+        {/* ========== SECTION 8: EVENT STAFF ========== */}
+        {hasStaff && (
+          <section>
+            <SectionHeader icon={Users} title="Event Staff" />
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Event Staff */}
+              {logistics.event_staff.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Event Staff</h4>
+                  <div className="space-y-1">
+                    {logistics.event_staff.map(staff => (
+                      <StaffMemberDisplay key={staff.id} staff={staff} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Event Managers */}
+              {logistics.event_managers.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Event Managers</h4>
+                  <div className="space-y-1">
+                    {logistics.event_managers.map(manager => (
+                      <StaffMemberDisplay key={manager.id} staff={manager} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Multi-date selector (if applicable) */}
         {logistics.all_event_dates.length > 1 && (
