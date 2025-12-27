@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { FileDown, Phone, MapPin, Edit2, Save, X, Calendar, Clock, Users, Package, FileText, Loader2 } from 'lucide-react'
 import { useEventLogistics } from '@/hooks/useEventLogistics'
 import { Button } from '@/components/ui/button'
@@ -212,8 +213,22 @@ function EventTypeBadge({ type }: { type: string | null | undefined }) {
  * Main component for displaying event logistics with 8 sections.
  * Supports multi-date events and inline editing for notes fields.
  */
-export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
-  const { logistics, loading, invalidateLogistics } = useEventLogistics(eventId, eventDateId)
+export function EventLogistics({ eventId, eventDateId: propEventDateId }: EventLogisticsProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Use URL param if available, otherwise fall back to prop
+  const urlEventDateId = searchParams.get('event_date_id')
+  const currentEventDateId = urlEventDateId || propEventDateId
+
+  const { logistics, loading, invalidateLogistics } = useEventLogistics(eventId, currentEventDateId)
+
+  // Handle date selection - update URL without full page reload
+  const handleDateSelect = useCallback((newDateId: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('event_date_id', newDateId)
+    router.push(`?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
 
   // Editable state for Onsite Contact
   const [isEditingOnsiteContact, setIsEditingOnsiteContact] = useState(false)
@@ -963,17 +978,17 @@ export function EventLogistics({ eventId, eventDateId }: EventLogisticsProps) {
             </p>
             <div className="flex flex-wrap gap-2">
               {logistics.all_event_dates.map(ed => (
-                <a
+                <button
                   key={ed.id}
-                  href={`?event_date_id=${ed.id}`}
-                  className={`px-3 py-1 rounded-full text-sm ${
+                  onClick={() => handleDateSelect(ed.id)}
+                  className={`px-3 py-1 rounded-full text-sm transition-colors ${
                     ed.id === logistics.event_date_id
                       ? 'bg-[#347dc4] text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {formatDate(ed.event_date)}
-                </a>
+                </button>
               ))}
             </div>
           </section>
