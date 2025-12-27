@@ -143,7 +143,7 @@ function ContactDisplay({
  * Staff member display with clickable phone and schedule
  */
 function StaffMemberDisplay({ staff }: { staff: LogisticsStaffMember }) {
-  const hasSchedule = staff.start_time || staff.end_time
+  const hasSchedule = staff.arrival_time || staff.start_time || staff.end_time
 
   return (
     <div className="py-2">
@@ -157,9 +157,19 @@ function StaffMemberDisplay({ staff }: { staff: LogisticsStaffMember }) {
         )}
       </div>
       {hasSchedule && (
-        <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
-          <Clock className="h-3 w-3" />
-          <span>Schedule: {formatTime(staff.start_time)} - {formatTime(staff.end_time)}</span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-600">
+          {staff.arrival_time && (
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>Arrival: {formatTime(staff.arrival_time)}</span>
+            </div>
+          )}
+          {(staff.start_time || staff.end_time) && (
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>Shift: {formatTime(staff.start_time)} - {formatTime(staff.end_time)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

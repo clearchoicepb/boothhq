@@ -306,11 +306,18 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
         doc.setTextColor('#000000')
         yPos += 9
       }
-      // Add schedule if available
-      if (staff.start_time || staff.end_time) {
+      // Add schedule if available (arrival, start-end)
+      if (staff.arrival_time || staff.start_time || staff.end_time) {
         doc.setFont('helvetica', 'normal')
         doc.setTextColor('#6b7280')
-        const scheduleText = `  ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        let scheduleText = '  '
+        if (staff.arrival_time) {
+          scheduleText += `Arrival: ${formatTime(staff.arrival_time || undefined)}`
+          if (staff.start_time || staff.end_time) scheduleText += ' | '
+        }
+        if (staff.start_time || staff.end_time) {
+          scheduleText += `Shift: ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        }
         doc.text(scheduleText, leftX + 5, yPos)
         doc.setTextColor('#000000')
         yPos += 9
@@ -353,11 +360,18 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
         doc.setTextColor('#000000')
         yPos += 9
       }
-      // Add schedule if available
-      if (staff.start_time || staff.end_time) {
+      // Add schedule if available (arrival, start-end)
+      if (staff.arrival_time || staff.start_time || staff.end_time) {
         doc.setFont('helvetica', 'normal')
         doc.setTextColor('#6b7280')
-        const scheduleText = `  ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        let scheduleText = '  '
+        if (staff.arrival_time) {
+          scheduleText += `Arrival: ${formatTime(staff.arrival_time || undefined)}`
+          if (staff.start_time || staff.end_time) scheduleText += ' | '
+        }
+        if (staff.start_time || staff.end_time) {
+          scheduleText += `Shift: ${formatTime(staff.start_time || undefined)} - ${formatTime(staff.end_time || undefined)}`
+        }
         doc.text(scheduleText, rightX + 5, yPos)
         doc.setTextColor('#000000')
         yPos += 9

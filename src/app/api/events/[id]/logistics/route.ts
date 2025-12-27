@@ -183,13 +183,14 @@ export async function GET(
       .order('assigned_date', { ascending: true })
 
     // Fetch staff assignments - exclude Graphic Designers
-    // Include start_time and end_time for staff schedule display
+    // Include arrival_time, start_time, and end_time for staff schedule display
     const { data: staffAssignments, error: staffError } = await supabase
       .from('event_staff_assignments')
       .select(`
         id,
         notes,
         event_date_id,
+        arrival_time,
         start_time,
         end_time,
         users!event_staff_assignments_user_id_fkey (
@@ -250,6 +251,7 @@ export async function GET(
       phone: string | null
       role: string | null
       role_type: string | null
+      arrival_time: string | null
       start_time: string | null
       end_time: string | null
     }> = []
@@ -259,6 +261,7 @@ export async function GET(
       name: string
       phone: string | null
       role: string | null
+      arrival_time: string | null
       start_time: string | null
       end_time: string | null
     }> = []
@@ -273,6 +276,7 @@ export async function GET(
       role_type?: string
       notes?: string
       is_event_day: boolean
+      arrival_time?: string | null
       start_time?: string | null
       end_time?: string | null
     }> = []
@@ -304,6 +308,7 @@ export async function GET(
         phone: user?.phone || null,
         role: staffRole?.name || null,
         role_type: staffRole?.type || null,
+        arrival_time: sa.arrival_time || null,
         start_time: sa.start_time || null,
         end_time: sa.end_time || null
       }
@@ -325,6 +330,7 @@ export async function GET(
         role_type: staffRole?.type,
         notes: sa.notes || undefined,
         is_event_day: staffRole?.type === 'event_staff',
+        arrival_time: sa.arrival_time,
         start_time: sa.start_time,
         end_time: sa.end_time
       })

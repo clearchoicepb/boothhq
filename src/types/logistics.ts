@@ -58,6 +58,7 @@ export interface LogisticsStaffMember {
   phone: string | null
   role: string | null
   role_type?: string | null
+  arrival_time?: string | null
   start_time?: string | null
   end_time?: string | null
 }
@@ -74,6 +75,7 @@ export interface LogisticsStaff {
   role_type?: string
   notes?: string
   is_event_day: boolean
+  arrival_time?: string | null
   start_time?: string | null
   end_time?: string | null
 }
