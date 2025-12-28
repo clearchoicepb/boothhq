@@ -67,6 +67,13 @@ interface MergeFieldData {
   event_load_in_notes?: string
   event_total_amount?: number | null
 
+  // Location data
+  location_name?: string
+  location_address?: string
+  location_city?: string
+  location_state?: string
+  location_zip?: string
+
   // Invoice/Financial data
   invoice_number?: string
   invoice_total?: number
@@ -90,6 +97,14 @@ interface MergeFieldData {
   setup_time?: string
   load_in_notes?: string
   contact_name?: string
+
+  // Alias fields for template section compatibility
+  total_amount?: number
+  total_price?: number
+  deposit_amount?: number
+  balance_due_date?: string
+  setup_date?: string
+  current_date?: string
 
   // Custom fields
   [key: string]: any
@@ -116,14 +131,16 @@ export function replaceMergeFields(template: string, data: MergeFieldData): stri
     // Special formatting for certain fields
     
     // Currency fields
-    if ((key === 'amount' || key === 'opportunity_amount' || key === 'event_total_amount' || 
+    if ((key === 'amount' || key === 'opportunity_amount' || key === 'event_total_amount' ||
          key === 'invoice_total' || key === 'invoice_amount_due' || key === 'invoice_amount_paid' ||
-         key === 'invoice_deposit_amount' || key === 'invoice_balance_due') && typeof value === 'number') {
+         key === 'invoice_deposit_amount' || key === 'invoice_balance_due' ||
+         key === 'total_amount' || key === 'total_price' || key === 'deposit_amount') && typeof value === 'number') {
       formattedValue = `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     } 
     // Date fields (long format)
-    else if ((key === 'event_date' || key === 'event_start_date' || key === 'event_end_date' || 
-              key === 'invoice_due_date' || key === 'invoice_issue_date') && value) {
+    else if ((key === 'event_date' || key === 'event_start_date' || key === 'event_end_date' ||
+              key === 'invoice_due_date' || key === 'invoice_issue_date' ||
+              key === 'setup_date' || key === 'balance_due_date' || key === 'current_date') && value) {
       formattedValue = new Date(value).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -185,11 +202,9 @@ export async function getMergeFieldData(params: {
         // Event basic info
         data.event_title = event.title
         data.event_load_in_notes = event.load_in_notes
-        data.event_setup_time = event.setup_time
-        
+
         // Legacy fields
         data.load_in_notes = event.load_in_notes
-        data.setup_time = event.setup_time
 
         // Event dates - get first and last event dates
         if (event.event_dates && event.event_dates.length > 0) {
@@ -205,9 +220,20 @@ export async function getMergeFieldData(params: {
           data.event_end_date = lastDate.event_date
           data.event_end_time = lastDate.end_time
 
+          // Setup time comes from first event_date, not from events table
+          data.event_setup_time = firstDate.setup_time
+          data.setup_time = firstDate.setup_time
+
           // Event location from first event date
           if (firstDate.locations) {
             data.event_location = firstDate.locations.name
+
+            // Location-specific fields
+            data.location_name = firstDate.locations.name
+            data.location_address = firstDate.locations.address_line1
+            data.location_city = firstDate.locations.city
+            data.location_state = firstDate.locations.state
+            data.location_zip = firstDate.locations.postal_code
           }
         }
 
@@ -232,19 +258,31 @@ export async function getMergeFieldData(params: {
           data.account_name = event.accounts.name
           data.account_phone = event.accounts.phone
           data.account_email = event.accounts.email
-          
-          // Format billing address
-          if (event.accounts.billing_address) {
-            const addr = event.accounts.billing_address
-            data.account_billing_address = formatAddress(addr)
+
+          // Format billing address from flat columns
+          const billingAddr = {
+            street1: event.accounts.billing_address_line_1,
+            street2: event.accounts.billing_address_line_2,
+            city: event.accounts.billing_city,
+            state: event.accounts.billing_state,
+            zip: event.accounts.billing_zip_code,
           }
-          
-          // Format shipping address
-          if (event.accounts.shipping_address) {
-            const addr = event.accounts.shipping_address
-            data.account_shipping_address = formatAddress(addr)
+          if (billingAddr.street1 || billingAddr.city) {
+            data.account_billing_address = formatAddress(billingAddr)
           }
-          
+
+          // Format shipping address from flat columns
+          const shippingAddr = {
+            street1: event.accounts.shipping_address_line_1,
+            street2: event.accounts.shipping_address_line_2,
+            city: event.accounts.shipping_city,
+            state: event.accounts.shipping_state,
+            zip: event.accounts.shipping_zip_code,
+          }
+          if (shippingAddr.street1 || shippingAddr.city) {
+            data.account_shipping_address = formatAddress(shippingAddr)
+          }
+
           // Legacy field
           data.company_name = event.accounts.name
         }
@@ -316,17 +354,31 @@ export async function getMergeFieldData(params: {
         data.account_name = account.name
         data.account_phone = account.phone
         data.account_email = account.email
-        
-        // Format billing address
-        if (account.billing_address) {
-          data.account_billing_address = formatAddress(account.billing_address)
+
+        // Format billing address from flat columns
+        const billingAddr = {
+          street1: account.billing_address_line_1,
+          street2: account.billing_address_line_2,
+          city: account.billing_city,
+          state: account.billing_state,
+          zip: account.billing_zip_code,
         }
-        
-        // Format shipping address
-        if (account.shipping_address) {
-          data.account_shipping_address = formatAddress(account.shipping_address)
+        if (billingAddr.street1 || billingAddr.city) {
+          data.account_billing_address = formatAddress(billingAddr)
         }
-        
+
+        // Format shipping address from flat columns
+        const shippingAddr = {
+          street1: account.shipping_address_line_1,
+          street2: account.shipping_address_line_2,
+          city: account.shipping_city,
+          state: account.shipping_state,
+          zip: account.shipping_zip_code,
+        }
+        if (shippingAddr.street1 || shippingAddr.city) {
+          data.account_shipping_address = formatAddress(shippingAddr)
+        }
+
         // Legacy field
         data.company_name = account.name
       }
@@ -409,6 +461,26 @@ export async function getMergeFieldData(params: {
   } catch (error) {
     log.error({ error }, 'Error fetching merge field data')
   }
+
+  // Alias mappings for template section compatibility
+  // These allow seeded template sections to work with existing merge fields
+  if (data.event_total_amount !== undefined && data.event_total_amount !== null) {
+    data.total_amount = data.event_total_amount
+    data.total_price = data.event_total_amount
+  }
+  if (data.invoice_deposit_amount !== undefined) {
+    data.deposit_amount = data.invoice_deposit_amount
+  }
+  if (data.invoice_due_date) {
+    data.balance_due_date = data.invoice_due_date
+  }
+  if (data.event_start_date) {
+    data.setup_date = data.event_start_date
+  }
+
+  // Current date - always available for agreement headers
+  // Format: ISO date string, will be formatted by replaceMergeFields
+  data.current_date = new Date().toISOString()
 
   log.debug({ dataKeys: Object.keys(data) }, 'Final merge field data')
   return data
