@@ -117,7 +117,6 @@ export async function GET(
         end_date,
         location,
         location_id,
-        guest_count,
         public_page_enabled,
         account_id,
         contact_id,
@@ -468,8 +467,7 @@ export async function GET(
         id: event.id,
         title: event.title,
         event_type: event.event_type,
-        status: event.status,
-        guest_count: event.guest_count
+        status: event.status
       },
       client: {
         name: account?.name || clientContact?.name || null,
