@@ -133,7 +133,14 @@ const MERGE_FIELDS = [
   { label: 'Event: Setup Time', value: '{{event_setup_time}}' },
   { label: 'Event: Load In Notes', value: '{{event_load_in_notes}}' },
   { label: 'Event: Total Amount', value: '{{event_total_amount}}' },
-  
+
+  // Location Fields (from event's venue)
+  { label: 'Location: Name', value: '{{location_name}}' },
+  { label: 'Location: Address', value: '{{location_address}}' },
+  { label: 'Location: City', value: '{{location_city}}' },
+  { label: 'Location: State', value: '{{location_state}}' },
+  { label: 'Location: Zip', value: '{{location_zip}}' },
+
   // Invoice/Financial Fields (invoices linked to events)
   { label: 'Invoice: Total Amount', value: '{{invoice_total}}' },
   { label: 'Invoice: Amount Due', value: '{{invoice_amount_due}}' },
@@ -159,6 +166,9 @@ const MERGE_FIELDS = [
   { label: 'Account: Email', value: '{{account_email}}' },
   { label: 'Account: Billing Address', value: '{{account_billing_address}}' },
   { label: 'Account: Shipping Address', value: '{{account_shipping_address}}' },
+
+  // System Fields
+  { label: 'Current Date', value: '{{current_date}}' },
 ]
 
 export function RichTextEditor({
