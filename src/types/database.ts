@@ -331,6 +331,8 @@ export interface Database {
           mailing_postal_code: string | null
           mailing_country: string | null
           converted_from_opportunity_id: string | null
+          public_token: string | null
+          public_page_enabled: boolean
           created_at: string
           updated_at: string
         }
@@ -363,6 +365,8 @@ export interface Database {
           mailing_postal_code?: string | null
           mailing_country?: string | null
           converted_from_opportunity_id?: string | null
+          public_token?: string | null
+          public_page_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -395,6 +399,8 @@ export interface Database {
           mailing_postal_code?: string | null
           mailing_country?: string | null
           converted_from_opportunity_id?: string | null
+          public_token?: string | null
+          public_page_enabled?: boolean
           created_at?: string
           updated_at?: string
         }

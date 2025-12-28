@@ -254,6 +254,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('contracts')
       .select('*')
+      .is('deleted_at', null)  // Exclude soft-deleted contracts
       .order('created_at', { ascending: false })
 
     if (eventId) {

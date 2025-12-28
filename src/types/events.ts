@@ -241,6 +241,10 @@ export interface Event {
   // Staff assignment fields
   event_staff_assignments?: EventStaffAssignment[]
 
+  // Public event page fields
+  public_token?: string | null
+  public_page_enabled?: boolean
+
   // Timeline view helper fields (for virtual events from multi-date events)
   _currentEventDate?: EventDate
   _originalEventId?: string

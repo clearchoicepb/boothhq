@@ -149,21 +149,10 @@ export async function DELETE(
       )
     }
 
-    // Delete the associated attachment record if it exists
-    // (Look for attachments with this contract ID in the description)
-    if (contract.event_id) {
-      await supabase
-        .from('attachments')
-        .delete()
-        .eq('entity_type', 'event')
-        .eq('entity_id', contract.event_id)
-        .like('description', `%[CONTRACT:${id}]%`)
-    }
-
-    // Delete the contract
+    // Soft delete the contract (set deleted_at timestamp)
     const { error: deleteError } = await supabase
       .from('contracts')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
 
@@ -173,6 +162,16 @@ export async function DELETE(
         { error: 'Failed to delete contract' },
         { status: 500 }
       )
+    }
+
+    // Also soft-delete the associated attachment record if it exists
+    if (contract.event_id) {
+      await supabase
+        .from('attachments')
+        .delete()
+        .eq('entity_type', 'event')
+        .eq('entity_id', contract.event_id)
+        .like('description', `%[CONTRACT:${id}]%`)
     }
 
     return NextResponse.json({ success: true, message: 'Contract deleted successfully' })
