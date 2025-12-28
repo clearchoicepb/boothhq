@@ -78,6 +78,8 @@ export async function GET(
     const supabase = await getPublicSupabaseClient()
 
     // Fetch event by public_token
+    log.info({ token: token.substring(0, 8) + '...' }, 'Looking up event by token')
+
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
@@ -106,10 +108,17 @@ export async function GET(
       .eq('public_token', token)
       .single()
 
-    if (eventError || !event) {
-      log.error({ error: eventError }, 'Event not found')
+    if (eventError) {
+      log.error({ error: eventError, code: eventError.code, message: eventError.message }, 'Database error fetching event')
+      return NextResponse.json({ error: 'Event not found', details: eventError.message }, { status: 404 })
+    }
+
+    if (!event) {
+      log.error({ token: token.substring(0, 8) + '...' }, 'No event found with this token')
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
+
+    log.info({ eventId: event.id }, 'Event found')
 
     // Check if public page is enabled
     if (!event.public_page_enabled) {
