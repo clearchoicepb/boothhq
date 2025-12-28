@@ -51,7 +51,8 @@ WHERE public_token IS NULL;
 
 -- Policy to allow anyone to view events by public_token (for public event page)
 -- Note: Using service role key in API, so RLS is typically bypassed
-CREATE POLICY IF NOT EXISTS "Anyone can view events by public_token"
+DROP POLICY IF EXISTS "Anyone can view events by public_token" ON events;
+CREATE POLICY "Anyone can view events by public_token"
   ON events FOR SELECT
   USING (public_token IS NOT NULL AND public_page_enabled = true);
 
