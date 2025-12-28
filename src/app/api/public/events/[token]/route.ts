@@ -411,13 +411,23 @@ export async function GET(
     } : null
 
     // Fetch agreement/contract info
-    const { data: contracts } = await supabase
+    // First, check ALL contracts for this event (debug)
+    const { data: allContracts } = await supabase
+      .from('contracts')
+      .select('id, title, status, event_id')
+      .eq('event_id', event.id)
+
+    log.info({ eventId: event.id, allContracts }, 'All contracts for event')
+
+    const { data: contracts, error: contractsError } = await supabase
       .from('contracts')
       .select('id, title, status, signed_at, signed_pdf_url, pdf_url')
       .eq('event_id', event.id)
       .neq('status', 'draft')
       .order('created_at', { ascending: true })
       .limit(1)
+
+    log.info({ contracts, contractsError: contractsError?.message }, 'Filtered contracts query')
 
     const agreement = contracts && contracts.length > 0 ? {
       id: contracts[0].id,
