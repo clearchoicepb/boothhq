@@ -425,6 +425,8 @@ export async function GET(
       status: contracts[0].status,
       is_signed: contracts[0].status === 'signed',
       signed_at: contracts[0].signed_at,
+      // Public signing URL - clients can sign at this URL without auth
+      sign_url: `/contract/${contracts[0].id}/sign`,
       // Use signed PDF if available, otherwise unsigned
       pdf_url: contracts[0].signed_pdf_url || contracts[0].pdf_url
     } : null

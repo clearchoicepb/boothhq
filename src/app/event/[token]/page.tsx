@@ -47,6 +47,7 @@ interface Agreement {
   status: string
   is_signed: boolean
   signed_at: string | null
+  sign_url: string
   pdf_url: string | null
 }
 
@@ -492,7 +493,7 @@ export default function PublicEventPage() {
                   <TodoItem
                     label={todo.agreement.title || 'Agreement'}
                     isComplete={todo.agreement.is_signed}
-                    href={todo.agreement.pdf_url}
+                    href={todo.agreement.sign_url}
                   />
                 )}
 
