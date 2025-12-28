@@ -185,11 +185,9 @@ export async function getMergeFieldData(params: {
         // Event basic info
         data.event_title = event.title
         data.event_load_in_notes = event.load_in_notes
-        data.event_setup_time = event.setup_time
-        
+
         // Legacy fields
         data.load_in_notes = event.load_in_notes
-        data.setup_time = event.setup_time
 
         // Event dates - get first and last event dates
         if (event.event_dates && event.event_dates.length > 0) {
@@ -204,6 +202,10 @@ export async function getMergeFieldData(params: {
           data.event_start_time = firstDate.start_time
           data.event_end_date = lastDate.event_date
           data.event_end_time = lastDate.end_time
+
+          // Setup time comes from first event_date, not from events table
+          data.event_setup_time = firstDate.setup_time
+          data.setup_time = firstDate.setup_time
 
           // Event location from first event date
           if (firstDate.locations) {
