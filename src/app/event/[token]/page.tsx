@@ -207,6 +207,7 @@ export default function PublicEventPage() {
   const [data, setData] = useState<PublicEventData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
   useEffect(() => {
     fetchEvent()
@@ -216,10 +217,16 @@ export default function PublicEventPage() {
     try {
       setLoading(true)
       setError(null)
+      setDebugInfo(null)
 
       const response = await fetch(`/api/public/events/${token}`)
+      const result = await response.json()
 
       if (!response.ok) {
+        // Capture debug info if available
+        if (result.debug) {
+          setDebugInfo(JSON.stringify(result.debug, null, 2))
+        }
         if (response.status === 404) {
           setError('Event not found')
         } else if (response.status === 403) {
@@ -230,10 +237,10 @@ export default function PublicEventPage() {
         return
       }
 
-      const result = await response.json()
       setData(result)
-    } catch {
+    } catch (err) {
       setError('Unable to load event')
+      setDebugInfo(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
@@ -266,6 +273,12 @@ export default function PublicEventPage() {
             This event page may have been removed or the link is invalid.
             Please contact the event organizer for assistance.
           </p>
+          {debugInfo && (
+            <div className="mt-4 p-3 bg-gray-100 rounded text-left">
+              <p className="text-xs font-mono text-gray-500">Debug info:</p>
+              <pre className="text-xs font-mono text-gray-700 mt-1 overflow-auto">{debugInfo}</pre>
+            </div>
+          )}
         </div>
       </div>
     )
