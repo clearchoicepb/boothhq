@@ -478,6 +478,10 @@ export async function getMergeFieldData(params: {
     data.setup_date = data.event_start_date
   }
 
+  // Current date - always available for agreement headers
+  // Format: ISO date string, will be formatted by replaceMergeFields
+  data.current_date = new Date().toISOString()
+
   log.debug({ dataKeys: Object.keys(data) }, 'Final merge field data')
   return data
 }
