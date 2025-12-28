@@ -31,13 +31,12 @@ export async function GET(
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Fetch contract by ID
+    // Fetch contract by ID (exclude deleted)
     const { data: contract, error: contractError } = await supabase
       .from('contracts')
       .select(`
         id,
         tenant_id,
-        title,
         template_name,
         content,
         status,
@@ -48,13 +47,15 @@ export async function GET(
         signed_at,
         signed_by,
         expires_at,
-        created_at
+        created_at,
+        deleted_at
       `)
       .eq('id', id)
+      .is('deleted_at', null)
       .single()
 
     if (contractError || !contract) {
-      log.error({ error: contractError }, 'Contract not found')
+      log.error({ error: contractError, id }, 'Contract not found')
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
 
@@ -86,9 +87,10 @@ export async function GET(
       log.debug({}, 'No logo configured for tenant')
     }
 
-    // Return contract with logo
+    // Return contract with logo and title alias
     return NextResponse.json({
       ...contract,
+      title: contract.template_name,  // Alias for compatibility
       logoUrl
     })
   } catch (error) {
