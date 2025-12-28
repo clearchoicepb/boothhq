@@ -410,27 +410,31 @@ export async function GET(
                (primaryInvoice.balance_amount !== undefined && primaryInvoice.balance_amount <= 0)
     } : null
 
-    // Fetch agreement/contract info
-    // Note: contracts table uses 'template_name' not 'title'
+    // Fetch ALL agreements/contracts (excluding drafts and deleted)
     const { data: contracts, error: contractsError } = await supabase
       .from('contracts')
       .select('id, template_name, status, signed_at')
       .eq('event_id', event.id)
       .neq('status', 'draft')
+      .is('deleted_at', null)  // Exclude soft-deleted contracts
       .order('created_at', { ascending: true })
-      .limit(1)
 
     log.info({ eventId: event.id, contracts, contractsError: contractsError?.message }, 'Contracts query result')
 
-    const agreement = contracts && contracts.length > 0 ? {
-      id: contracts[0].id,
-      title: contracts[0].template_name,
-      status: contracts[0].status,
-      is_signed: contracts[0].status === 'signed',
-      signed_at: contracts[0].signed_at,
-      // Public signing URL - clients can sign at this URL without auth
-      sign_url: `/contract/${contracts[0].id}/sign`
-    } : null
+    // Map all contracts to agreements array
+    const agreements = (contracts || []).map((contract: {
+      id: string
+      template_name: string
+      status: string
+      signed_at: string | null
+    }) => ({
+      id: contract.id,
+      title: contract.template_name,
+      status: contract.status,
+      is_signed: contract.status === 'signed',
+      signed_at: contract.signed_at,
+      sign_url: `/contract/${contract.id}/sign`
+    }))
 
     // Fetch event forms
     const { data: eventForms } = await supabase
@@ -484,20 +488,13 @@ export async function GET(
       package: packages.length > 0 ? packages[0] : null,
       add_ons: addOns,
       todo: {
-        agreement,
+        agreements,  // Array of all agreements
         invoice: invoiceInfo,
         forms
       },
       tenant: {
         id: event.tenant_id,
         logoUrl
-      },
-      // Debug info - remove after fixing
-      _debug: {
-        eventId: event.id,
-        contractsQueryError: contractsError?.message || null,
-        contractsFound: contracts?.length || 0,
-        rawContracts: contracts
       }
     }
 

@@ -92,7 +92,7 @@ interface PublicEventData {
   package: PackageInfo | null
   add_ons: AddOn[]
   todo: {
-    agreement: Agreement | null
+    agreements: Agreement[]
     invoice: InvoiceInfo | null
     forms: EventForm[]
   }
@@ -290,12 +290,12 @@ export default function PublicEventPage() {
 
   // Count completed items
   const completedCount = [
-    todo.agreement?.is_signed,
+    ...todo.agreements.map(a => a.is_signed),
     todo.invoice?.is_paid,
     ...todo.forms.map(f => f.is_completed)
   ].filter(Boolean).length
 
-  const totalCount = (todo.agreement ? 1 : 0) + (todo.invoice ? 1 : 0) + todo.forms.length
+  const totalCount = todo.agreements.length + (todo.invoice ? 1 : 0) + todo.forms.length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -488,14 +488,15 @@ export default function PublicEventPage() {
               </div>
 
               <div className="space-y-2">
-                {/* Agreement */}
-                {todo.agreement && (
+                {/* Agreements */}
+                {todo.agreements.map((agreement) => (
                   <TodoItem
-                    label={todo.agreement.title || 'Agreement'}
-                    isComplete={todo.agreement.is_signed}
-                    href={todo.agreement.sign_url}
+                    key={agreement.id}
+                    label={agreement.title || 'Agreement'}
+                    isComplete={agreement.is_signed}
+                    href={agreement.sign_url}
                   />
-                )}
+                ))}
 
                 {/* Invoice */}
                 {todo.invoice && (
