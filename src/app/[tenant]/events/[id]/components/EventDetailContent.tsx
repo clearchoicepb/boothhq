@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -64,6 +64,18 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   // Destructure for easier access - Core Data
   const { event, eventDates = [], loading: localLoading } = eventData || {}
   const { paymentStatusOptions } = references
+
+  // Public page state (synced with event data)
+  const [publicToken, setPublicToken] = useState<string | null>(null)
+  const [publicPageEnabled, setPublicPageEnabled] = useState<boolean>(true)
+
+  // Sync public page state with event data
+  useEffect(() => {
+    if (event) {
+      setPublicToken(event.public_token ?? null)
+      setPublicPageEnabled(event.public_page_enabled ?? true)
+    }
+  }, [event?.public_token, event?.public_page_enabled])
 
   // Get the next upcoming event date
   const nextEventDate = useMemo(() => getNextEventDate(eventDates), [eventDates])
@@ -288,6 +300,10 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
             eventId={event.id}
             canManageEvents={canManageEvents}
             onDelete={handleDelete}
+            publicToken={publicToken}
+            publicPageEnabled={publicPageEnabled}
+            onPublicTokenChange={setPublicToken}
+            onPublicPageEnabledChange={setPublicPageEnabled}
           />
 
           {/* Sticky Event Context Bar */}
