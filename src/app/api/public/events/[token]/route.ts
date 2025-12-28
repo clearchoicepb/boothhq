@@ -80,6 +80,30 @@ export async function GET(
     // Fetch event by public_token
     log.info({ token: token.substring(0, 8) + '...' }, 'Looking up event by token')
 
+    // First, do a simple query to check if the token exists
+    const { data: simpleCheck, error: simpleError } = await supabase
+      .from('events')
+      .select('id, title, public_page_enabled')
+      .eq('public_token', token)
+      .single()
+
+    if (simpleError) {
+      log.error({
+        error: simpleError,
+        code: simpleError.code,
+        message: simpleError.message,
+        hint: simpleError.hint,
+        details: simpleError.details
+      }, 'Simple query failed')
+      return NextResponse.json({
+        error: 'Event not found',
+        debug: { code: simpleError.code, message: simpleError.message }
+      }, { status: 404 })
+    }
+
+    log.info({ eventId: simpleCheck?.id, title: simpleCheck?.title }, 'Simple check passed')
+
+    // Now fetch full event data
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
@@ -109,7 +133,7 @@ export async function GET(
       .single()
 
     if (eventError) {
-      log.error({ error: eventError, code: eventError.code, message: eventError.message }, 'Database error fetching event')
+      log.error({ error: eventError, code: eventError.code, message: eventError.message }, 'Full query failed')
       return NextResponse.json({ error: 'Event not found', details: eventError.message }, { status: 404 })
     }
 
