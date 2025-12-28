@@ -414,7 +414,7 @@ export async function GET(
     // Note: contracts table uses 'template_name' not 'title'
     const { data: contracts, error: contractsError } = await supabase
       .from('contracts')
-      .select('id, template_name, status, signed_at, signed_pdf_url, pdf_url')
+      .select('id, template_name, status, signed_at')
       .eq('event_id', event.id)
       .neq('status', 'draft')
       .order('created_at', { ascending: true })
@@ -424,14 +424,12 @@ export async function GET(
 
     const agreement = contracts && contracts.length > 0 ? {
       id: contracts[0].id,
-      title: contracts[0].template_name, // DB uses template_name
+      title: contracts[0].template_name,
       status: contracts[0].status,
       is_signed: contracts[0].status === 'signed',
       signed_at: contracts[0].signed_at,
       // Public signing URL - clients can sign at this URL without auth
-      sign_url: `/contract/${contracts[0].id}/sign`,
-      // Use signed PDF if available, otherwise unsigned
-      pdf_url: contracts[0].signed_pdf_url || contracts[0].pdf_url
+      sign_url: `/contract/${contracts[0].id}/sign`
     } : null
 
     // Fetch event forms
