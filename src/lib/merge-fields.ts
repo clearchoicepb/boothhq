@@ -67,6 +67,13 @@ interface MergeFieldData {
   event_load_in_notes?: string
   event_total_amount?: number | null
 
+  // Location data
+  location_name?: string
+  location_address?: string
+  location_city?: string
+  location_state?: string
+  location_zip?: string
+
   // Invoice/Financial data
   invoice_number?: string
   invoice_total?: number
@@ -210,6 +217,13 @@ export async function getMergeFieldData(params: {
           // Event location from first event date
           if (firstDate.locations) {
             data.event_location = firstDate.locations.name
+
+            // Location-specific fields
+            data.location_name = firstDate.locations.name
+            data.location_address = firstDate.locations.address_line1
+            data.location_city = firstDate.locations.city
+            data.location_state = firstDate.locations.state
+            data.location_zip = firstDate.locations.postal_code
           }
         }
 
