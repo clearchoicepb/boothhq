@@ -493,6 +493,13 @@ export async function GET(
       tenant: {
         id: event.tenant_id,
         logoUrl
+      },
+      // Debug info - remove after fixing
+      _debug: {
+        eventId: event.id,
+        contractsQueryError: contractsError?.message || null,
+        contractsFound: contracts?.length || 0,
+        rawContracts: contracts
       }
     }
 
