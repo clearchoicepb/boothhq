@@ -3,13 +3,27 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('api:public:events')
 
-// We need to use the default tenant database client for public access
-// since we don't have a session
+// Tenant Data DB client for public access (business data)
 async function getPublicSupabaseClient() {
   const { createClient } = await import('@supabase/supabase-js')
 
   const url = process.env.DEFAULT_TENANT_DATA_URL!
   const serviceKey = process.env.DEFAULT_TENANT_DATA_SERVICE_KEY!
+
+  return createClient(url, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+// App DB client for querying tenants table
+async function getAppSupabaseClient() {
+  const { createClient } = await import('@supabase/supabase-js')
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
   return createClient(url, serviceKey, {
     auth: {
@@ -410,6 +424,16 @@ export async function GET(
                (primaryInvoice.balance_amount !== undefined && primaryInvoice.balance_amount <= 0)
     } : null
 
+    // Fetch tenant subdomain from App DB for constructing URLs
+    const appSupabase = await getAppSupabaseClient()
+    const { data: tenantData } = await appSupabase
+      .from('tenants')
+      .select('subdomain')
+      .eq('id', event.tenant_id)
+      .single()
+
+    const tenantSubdomain = tenantData?.subdomain || 'default'
+
     // Fetch ALL agreements/contracts (excluding drafts and deleted)
     const { data: contracts, error: contractsError } = await supabase
       .from('contracts')
@@ -421,7 +445,7 @@ export async function GET(
 
     log.info({ eventId: event.id, contracts, contractsError: contractsError?.message }, 'Contracts query result')
 
-    // Map all contracts to agreements array
+    // Map all contracts to agreements array with correct URL pattern
     const agreements = (contracts || []).map((contract: {
       id: string
       template_name: string
@@ -433,7 +457,8 @@ export async function GET(
       status: contract.status,
       is_signed: contract.status === 'signed',
       signed_at: contract.signed_at,
-      sign_url: `/contract/${contract.id}/sign`
+      // Use existing CRM URL pattern: /{tenant}/contracts/{id}/sign
+      sign_url: `/${tenantSubdomain}/contracts/${contract.id}/sign`
     }))
 
     // Fetch event forms
