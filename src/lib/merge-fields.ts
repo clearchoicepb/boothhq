@@ -248,19 +248,31 @@ export async function getMergeFieldData(params: {
           data.account_name = event.accounts.name
           data.account_phone = event.accounts.phone
           data.account_email = event.accounts.email
-          
-          // Format billing address
-          if (event.accounts.billing_address) {
-            const addr = event.accounts.billing_address
-            data.account_billing_address = formatAddress(addr)
+
+          // Format billing address from flat columns
+          const billingAddr = {
+            street1: event.accounts.billing_address_line_1,
+            street2: event.accounts.billing_address_line_2,
+            city: event.accounts.billing_city,
+            state: event.accounts.billing_state,
+            zip: event.accounts.billing_zip_code,
           }
-          
-          // Format shipping address
-          if (event.accounts.shipping_address) {
-            const addr = event.accounts.shipping_address
-            data.account_shipping_address = formatAddress(addr)
+          if (billingAddr.street1 || billingAddr.city) {
+            data.account_billing_address = formatAddress(billingAddr)
           }
-          
+
+          // Format shipping address from flat columns
+          const shippingAddr = {
+            street1: event.accounts.shipping_address_line_1,
+            street2: event.accounts.shipping_address_line_2,
+            city: event.accounts.shipping_city,
+            state: event.accounts.shipping_state,
+            zip: event.accounts.shipping_zip_code,
+          }
+          if (shippingAddr.street1 || shippingAddr.city) {
+            data.account_shipping_address = formatAddress(shippingAddr)
+          }
+
           // Legacy field
           data.company_name = event.accounts.name
         }
@@ -332,17 +344,31 @@ export async function getMergeFieldData(params: {
         data.account_name = account.name
         data.account_phone = account.phone
         data.account_email = account.email
-        
-        // Format billing address
-        if (account.billing_address) {
-          data.account_billing_address = formatAddress(account.billing_address)
+
+        // Format billing address from flat columns
+        const billingAddr = {
+          street1: account.billing_address_line_1,
+          street2: account.billing_address_line_2,
+          city: account.billing_city,
+          state: account.billing_state,
+          zip: account.billing_zip_code,
         }
-        
-        // Format shipping address
-        if (account.shipping_address) {
-          data.account_shipping_address = formatAddress(account.shipping_address)
+        if (billingAddr.street1 || billingAddr.city) {
+          data.account_billing_address = formatAddress(billingAddr)
         }
-        
+
+        // Format shipping address from flat columns
+        const shippingAddr = {
+          street1: account.shipping_address_line_1,
+          street2: account.shipping_address_line_2,
+          city: account.shipping_city,
+          state: account.shipping_state,
+          zip: account.shipping_zip_code,
+        }
+        if (shippingAddr.street1 || shippingAddr.city) {
+          data.account_shipping_address = formatAddress(shippingAddr)
+        }
+
         // Legacy field
         data.company_name = account.name
       }
