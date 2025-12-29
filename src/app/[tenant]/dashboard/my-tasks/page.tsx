@@ -148,10 +148,22 @@ export default function MyTasksPage() {
         const res = await fetch('/api/users/me')
         if (res.ok) {
           const userData = await res.json()
-          setManagerOfDepartments(userData.manager_of_departments || [])
+          // Ensure we have an array even if API returns null/undefined
+          const depts = userData?.manager_of_departments
+          setManagerOfDepartments(Array.isArray(depts) ? depts : [])
+        } else {
+          // Log the error response for debugging
+          const errorData = await res.json().catch(() => ({}))
+          log.error({
+            status: res.status,
+            errorData
+          }, 'Error fetching user data from /api/users/me')
+          // Don't block the page - just don't show manager tabs
+          setManagerOfDepartments([])
         }
       } catch (error) {
         log.error({ error }, 'Error fetching manager data')
+        setManagerOfDepartments([])
       } finally {
         setLoadingManagerData(false)
       }
