@@ -201,6 +201,7 @@ async function processEventDateApproachingTriggers(
 
   try {
     // Get all active workflows with event_date_approaching trigger
+    // NOTE: design_item_types table has been deprecated. Templates are looked up at action execution time.
     const { data: workflows, error: workflowsError } = await supabase
       .from('workflows')
       .select(`
@@ -208,7 +209,6 @@ async function processEventDateApproachingTriggers(
         actions:workflow_actions(
           *,
           task_template:task_templates(*),
-          design_item_type:design_item_types(*),
           assigned_to_user:users(id, first_name, last_name, email, department, department_role)
         )
       `)
