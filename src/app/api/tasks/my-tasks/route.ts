@@ -64,11 +64,22 @@ export async function GET(request: Request) {
         .single()
 
       if (userError) {
-        log.error({ error: userError }, '[MyTasks] Error fetching user data')
-        return NextResponse.json({ error: 'Failed to verify permissions' }, { status: 500 })
+        log.error({
+          error: userError,
+          sessionUserId: session.user.id,
+          dataSourceTenantId,
+          errorCode: userError.code
+        }, '[MyTasks] Error fetching user data - potential tenant_id mismatch')
+        return NextResponse.json({
+          error: 'Failed to verify permissions',
+          message: 'User not found in database. This may be a tenant configuration issue.'
+        }, { status: 500 })
       }
 
-      const managerOfDepartments = userData?.manager_of_departments || []
+      // Ensure manager_of_departments is an array (handle NULL from database)
+      const managerOfDepartments = Array.isArray(userData?.manager_of_departments)
+        ? userData.manager_of_departments
+        : []
       if (!managerOfDepartments.includes(viewDepartment)) {
         log.warn({ userId: session.user.id, viewDepartment }, '[MyTasks] User not manager of requested department')
         return NextResponse.json({ error: 'Access denied - not a manager of this department' }, { status: 403 })
