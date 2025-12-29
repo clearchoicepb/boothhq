@@ -291,6 +291,7 @@ class WorkflowTriggerService {
     const { triggerType, tenantId, supabase, triggerConfig } = options
 
     // Fetch all active workflows with this trigger type
+    // NOTE: design_item_types table has been deprecated. Templates are looked up at action execution time.
     const { data: workflows, error } = await supabase
       .from('workflows')
       .select(`
@@ -298,7 +299,6 @@ class WorkflowTriggerService {
         actions:workflow_actions(
           *,
           task_template:task_templates(*),
-          design_item_type:design_item_types(*),
           assigned_to_user:users(id, first_name, last_name, email, department, department_role)
         )
       `)

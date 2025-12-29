@@ -181,17 +181,43 @@ const executeCreateDesignItemAction: ActionExecutor = async (
       eventData = event
     }
 
-    // Fetch design item type
-    const { data: designItemType, error: designItemTypeError } = await supabase
-      .from('design_item_types')
+    // NOTE: design_item_types table has been deprecated.
+    // Look up the migrated task template by the original design item type ID
+    const { data: taskTemplate, error: templateError } = await supabase
+      .from('task_templates')
       .select('*')
-      .eq('id', action.design_item_type_id)
+      .eq('migrated_from_id', action.design_item_type_id)
+      .eq('migrated_from_table', 'design_item_types')
       .eq('tenant_id', dataSourceTenantId)
       .single()
 
-    if (designItemTypeError || !designItemType) {
-      throw new Error(`Design item type not found: ${action.design_item_type_id}`)
+    // Fallback: try direct ID lookup (in case template was manually created)
+    let designItemType = taskTemplate
+    if (templateError || !taskTemplate) {
+      const { data: directTemplate, error: directError } = await supabase
+        .from('task_templates')
+        .select('*')
+        .eq('id', action.design_item_type_id)
+        .eq('tenant_id', dataSourceTenantId)
+        .single()
+
+      if (directError || !directTemplate) {
+        throw new Error(`Design item type ${action.design_item_type_id} not found in task_templates. ` +
+          `The design_item_types table has been deprecated. Please update your workflow to use a task template.`)
+      }
+      designItemType = directTemplate
     }
+
+    // Map task_template fields to expected design item type fields
+    const mappedDesignItemType = {
+      ...designItemType,
+      name: designItemType.name || designItemType.default_title,
+      default_design_days: designItemType.days_before_event || designItemType.default_due_in_days || 14,
+      default_production_days: 0,
+      default_shipping_days: 0,
+      client_approval_buffer_days: 0,
+    }
+    designItemType = mappedDesignItemType as any
 
     const eventDate = eventData.start_date || eventData.event_date
     if (!eventDate) {
