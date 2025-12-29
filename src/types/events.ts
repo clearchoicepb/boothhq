@@ -465,6 +465,7 @@ export interface DesignProof {
   id: string
   tenant_id: string
   event_id: string
+  proof_name: string | null
   file_name: string
   file_size: number
   file_type: string

@@ -487,12 +487,13 @@ export async function GET(
     // Fetch design proofs awaiting approval
     const { data: designProofs } = await supabase
       .from('design_proofs')
-      .select('id, file_name, public_token, status, uploaded_at, responded_at')
+      .select('id, proof_name, file_name, public_token, status, uploaded_at, responded_at')
       .eq('event_id', event.id)
       .order('uploaded_at', { ascending: true })
 
     const proofs = (designProofs || []).map((proof: {
       id: string
+      proof_name: string | null
       file_name: string
       public_token: string
       status: string
@@ -500,7 +501,7 @@ export async function GET(
       responded_at: string | null
     }) => ({
       id: proof.id,
-      name: proof.file_name,
+      name: proof.proof_name || proof.file_name,
       status: proof.status,
       is_approved: proof.status === 'approved',
       is_rejected: proof.status === 'rejected',

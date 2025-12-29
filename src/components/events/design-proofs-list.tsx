@@ -160,12 +160,12 @@ export function DesignProofsList({ eventId, refreshTrigger = 0 }: DesignProofsLi
               <div className="ml-3 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {proof.file_name}
+                    {proof.proof_name || proof.file_name}
                   </p>
                   {getStatusBadge(proof.status, proof.responded_at)}
                 </div>
                 <p className="text-xs text-gray-500">
-                  {formatFileSize(proof.file_size)} • Uploaded {formatDate(proof.uploaded_at)}
+                  {proof.file_name} • {formatFileSize(proof.file_size)} • Uploaded {formatDate(proof.uploaded_at)}
                   {proof.uploaded_by_user &&
                     ` by ${proof.uploaded_by_user.first_name} ${proof.uploaded_by_user.last_name}`
                   }

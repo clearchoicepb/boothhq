@@ -82,10 +82,18 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const eventId = formData.get('event_id') as string
+    const proofName = formData.get('proof_name') as string
 
     if (!file || !eventId) {
       return NextResponse.json(
         { error: 'file and event_id are required' },
+        { status: 400 }
+      )
+    }
+
+    if (!proofName || !proofName.trim()) {
+      return NextResponse.json(
+        { error: 'proof_name is required' },
         { status: 400 }
       )
     }
@@ -159,6 +167,7 @@ export async function POST(request: NextRequest) {
       .insert({
         tenant_id: dataSourceTenantId,
         event_id: eventId,
+        proof_name: proofName.trim(),
         file_name: file.name,
         file_size: file.size,
         file_type: file.type,

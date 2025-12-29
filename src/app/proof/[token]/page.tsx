@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Loader2, AlertCircle, CheckCircle, XCircle, FileImage, Download } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle, XCircle, FileImage, Download, X } from 'lucide-react'
 
 interface ProofData {
   proof: {
     id: string
+    proof_name: string | null
     file_name: string
     file_type: string
     file_size: number
@@ -44,6 +45,7 @@ export default function PublicProofPage() {
   const [clientName, setClientName] = useState('')
   const [notes, setNotes] = useState('')
   const [formError, setFormError] = useState('')
+  const [showEnlargedImage, setShowEnlargedImage] = useState(false)
 
   useEffect(() => {
     fetchProof()
@@ -162,6 +164,7 @@ export default function PublicProofPage() {
   const { proof, event, tenant } = data
   const isPending = proof.status === 'pending'
   const isImage = proof.file_type.startsWith('image/')
+  const displayName = proof.proof_name || proof.file_name
 
   // Already responded state
   if (!isPending) {
@@ -236,7 +239,7 @@ export default function PublicProofPage() {
               <div className="h-10" />
             )}
             <div className="text-right">
-              <p className="text-sm text-gray-500">Design Proof for</p>
+              <p className="text-sm text-gray-500">{displayName}</p>
               <p className="font-medium text-gray-900">{event.title}</p>
             </div>
           </div>
@@ -251,14 +254,16 @@ export default function PublicProofPage() {
             <div className="relative">
               <img
                 src={proof.signed_url}
-                alt={proof.file_name}
-                className="w-full h-auto max-h-[60vh] object-contain bg-gray-100"
+                alt={displayName}
+                className="w-full h-auto max-h-[48vh] object-contain bg-gray-100 cursor-pointer"
+                onClick={() => setShowEnlargedImage(true)}
               />
+              <p className="text-center text-xs text-gray-400 py-2">Tap to enlarge</p>
             </div>
           ) : (
             <div className="p-12 text-center bg-gray-50">
               <FileImage className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-900 mb-2">{proof.file_name}</p>
+              <p className="text-lg font-medium text-gray-900 mb-2">{displayName}</p>
               <p className="text-sm text-gray-500 mb-4">PDF Document</p>
               <a
                 href={proof.signed_url}
@@ -273,35 +278,85 @@ export default function PublicProofPage() {
           )}
         </div>
 
-        {/* Action Buttons / Form */}
+        {/* Action Buttons */}
         <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-          {showForm === null ? (
-            <>
-              <h2 className="text-lg font-semibold text-gray-900 text-center mb-4">
-                What do you think?
-              </h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+          <h2 className="text-lg font-semibold text-gray-900 text-center mb-4">
+            What do you think?
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => setShowForm('approve')}
+              className="flex-1 flex items-center justify-center gap-2 py-4 px-6 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg transition-colors"
+            >
+              <CheckCircle className="h-5 w-5" />
+              Approve
+            </button>
+            <button
+              onClick={() => setShowForm('reject')}
+              className="flex-1 flex items-center justify-center gap-2 py-4 px-6 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg transition-colors"
+            >
+              <XCircle className="h-5 w-5" />
+              Request Changes
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="py-4 text-center text-xs text-gray-400">
+        Powered by BoothHQ
+      </div>
+
+      {/* Enlarged Image Modal */}
+      {showEnlargedImage && isImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setShowEnlargedImage(false)}
+        >
+          <img
+            src={proof.signed_url}
+            alt={displayName}
+            className="max-h-[75vh] max-w-full object-contain"
+            onClick={() => setShowEnlargedImage(false)}
+          />
+        </div>
+      )}
+
+      {/* Notes Form Modal */}
+      {showForm !== null && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 transition-opacity"
+              onClick={() => {
+                if (!submitting) {
+                  setShowForm(null)
+                  setFormError('')
+                }
+              }}
+            />
+
+            {/* Modal Content */}
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {showForm === 'approve' ? 'Approve Design' : 'Request Changes'}
+                </h2>
                 <button
-                  onClick={() => setShowForm('approve')}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 px-6 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg transition-colors"
+                  onClick={() => {
+                    if (!submitting) {
+                      setShowForm(null)
+                      setFormError('')
+                    }
+                  }}
+                  className="text-gray-400 hover:text-gray-500"
+                  disabled={submitting}
                 >
-                  <CheckCircle className="h-5 w-5" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => setShowForm('reject')}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 px-6 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg transition-colors"
-                >
-                  <XCircle className="h-5 w-5" />
-                  Request Changes
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </>
-          ) : (
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                {showForm === 'approve' ? 'Approve Design' : 'Request Changes'}
-              </h2>
 
               {formError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
@@ -354,7 +409,7 @@ export default function PublicProofPage() {
                     className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
                     disabled={submitting}
                   >
-                    Back
+                    Cancel
                   </button>
                   <button
                     onClick={() => handleSubmit(showForm === 'approve' ? 'approved' : 'rejected')}
@@ -377,14 +432,9 @@ export default function PublicProofPage() {
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="py-4 text-center text-xs text-gray-400">
-        Powered by BoothHQ
-      </div>
+      )}
     </div>
   )
 }

@@ -22,6 +22,7 @@ export function UploadDesignProofModal({
   eventId,
   onSuccess
 }: UploadDesignProofModalProps) {
+  const [proofName, setProofName] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -64,6 +65,11 @@ export function UploadDesignProofModal({
   }
 
   const handleUpload = async () => {
+    if (!proofName.trim()) {
+      setError('Please enter a design proof name')
+      return
+    }
+
     if (!file) {
       setError('Please select a file')
       return
@@ -76,6 +82,7 @@ export function UploadDesignProofModal({
       const formData = new FormData()
       formData.append('file', file)
       formData.append('event_id', eventId)
+      formData.append('proof_name', proofName.trim())
 
       const response = await fetch('/api/design-proofs', {
         method: 'POST',
@@ -121,6 +128,7 @@ export function UploadDesignProofModal({
   }
 
   const handleClose = () => {
+    setProofName('')
     setFile(null)
     setPreview(null)
     setStep('select')
@@ -160,6 +168,23 @@ export function UploadDesignProofModal({
               {error}
             </div>
           )}
+
+          {/* Proof Name Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Design Proof Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={proofName}
+              onChange={(e) => setProofName(e.target.value)}
+              placeholder="e.g., Photo Strip Design, Microsite Layout"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This name will be shown to the client on the approval page
+            </p>
+          </div>
 
           {/* File Input Area */}
           <div>
@@ -233,7 +258,7 @@ export function UploadDesignProofModal({
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={uploading || !file}
+              disabled={uploading || !file || !proofName.trim()}
               className="bg-purple-600 hover:bg-purple-700"
             >
               {uploading ? (
@@ -282,9 +307,9 @@ export function UploadDesignProofModal({
                 </div>
               )}
               <div>
-                <p className="font-medium text-gray-900">{file?.name}</p>
+                <p className="font-medium text-gray-900">{proofName}</p>
                 <p className="text-sm text-gray-500">
-                  {file && formatFileSize(file.size)}
+                  {file?.name} • {file && formatFileSize(file.size)}
                 </p>
               </div>
             </div>

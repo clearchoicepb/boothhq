@@ -49,6 +49,7 @@ export async function GET(
         id,
         tenant_id,
         event_id,
+        proof_name,
         file_name,
         file_type,
         file_size,
@@ -117,6 +118,7 @@ export async function GET(
     return NextResponse.json({
       proof: {
         id: proof.id,
+        proof_name: proof.proof_name,
         file_name: proof.file_name,
         file_type: proof.file_type,
         file_size: proof.file_size,
