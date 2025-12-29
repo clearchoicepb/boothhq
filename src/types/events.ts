@@ -370,7 +370,7 @@ export interface EventActivity {
 // =============================================================================
 
 /** Communication type values */
-export type CommunicationType = 'email' | 'sms' | 'phone' | 'in_person'
+export type CommunicationType = 'email' | 'sms' | 'phone' | 'in_person' | 'other' | 'customer_note'
 
 /** Communication direction */
 export type CommunicationDirection = 'inbound' | 'outbound'
