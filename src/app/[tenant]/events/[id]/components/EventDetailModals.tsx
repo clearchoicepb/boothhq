@@ -18,6 +18,7 @@ import { EventDateDetailModal } from '@/components/events/event-date-detail-moda
 import { CommunicationDetailModal } from '@/components/events/communication-detail-modal'
 import { ActivityDetailModal } from '@/components/events/activity-detail-modal'
 import { GenerateEventAgreementModal } from '@/components/generate-event-agreement-modal'
+import { UploadDesignProofModal } from '@/components/events/upload-design-proof-modal'
 
 import { eventsService } from '@/lib/api/services/eventsService'
 import { createLogger } from '@/lib/logger'
@@ -71,6 +72,7 @@ export function EventDetailModals({
     setSelectedActivity,
     setSelectedEventDate,
     triggerAttachmentsRefresh,
+    triggerDesignProofsRefresh,
     // Event Date editing (from consolidated context)
     startEditEventDate,
     updateEditEventDateField,
@@ -429,6 +431,16 @@ export function EventDetailModals({
         eventId={eventId}
         onSuccess={() => {
           triggerAttachmentsRefresh()
+        }}
+      />
+
+      {/* Upload Design Proof Modal */}
+      <UploadDesignProofModal
+        isOpen={contextModals.isUploadDesignProofModalOpen}
+        onClose={() => closeModal('isUploadDesignProofModalOpen')}
+        eventId={eventId}
+        onSuccess={() => {
+          triggerDesignProofsRefresh()
         }}
       />
 

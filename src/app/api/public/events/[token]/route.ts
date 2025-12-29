@@ -484,6 +484,31 @@ export async function GET(
       completed_at: form.completed_at
     }))
 
+    // Fetch design proofs awaiting approval
+    const { data: designProofs } = await supabase
+      .from('design_proofs')
+      .select('id, file_name, public_token, status, uploaded_at, responded_at')
+      .eq('event_id', event.id)
+      .order('uploaded_at', { ascending: true })
+
+    const proofs = (designProofs || []).map((proof: {
+      id: string
+      file_name: string
+      public_token: string
+      status: string
+      uploaded_at: string
+      responded_at: string | null
+    }) => ({
+      id: proof.id,
+      name: proof.file_name,
+      status: proof.status,
+      is_approved: proof.status === 'approved',
+      is_rejected: proof.status === 'rejected',
+      uploaded_at: proof.uploaded_at,
+      responded_at: proof.responded_at,
+      proof_url: `/proof/${proof.public_token}`
+    }))
+
     // Get account info
     const accountData = event.account as unknown
     const account = Array.isArray(accountData) ? accountData[0] : accountData as {
@@ -515,7 +540,8 @@ export async function GET(
       todo: {
         agreements,  // Array of all agreements
         invoice: invoiceInfo,
-        forms
+        forms,
+        design_proofs: proofs  // Array of design proofs for approval
       },
       tenant: {
         id: event.tenant_id,

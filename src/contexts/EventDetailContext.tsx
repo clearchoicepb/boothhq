@@ -22,6 +22,7 @@ interface ModalState {
   isEmailModalOpen: boolean
   isSMSModalOpen: boolean
   isGenerateAgreementModalOpen: boolean
+  isUploadDesignProofModalOpen: boolean
 
   // Detail view modals
   isCommunicationDetailOpen: boolean
@@ -44,6 +45,7 @@ interface DetailModalState {
   /** Tab index for event dates card (0-based) */
   activeEventDateTab: number
   attachmentsRefreshTrigger: number
+  designProofsRefreshTrigger: number
 }
 
 // ============================================================================
@@ -78,6 +80,7 @@ type ModalBooleanKeys =
   | 'isEmailModalOpen'
   | 'isSMSModalOpen'
   | 'isGenerateAgreementModalOpen'
+  | 'isUploadDesignProofModalOpen'
   | 'isCommunicationDetailOpen'
   | 'isActivityDetailOpen'
   | 'isEventDateDetailOpen'
@@ -109,6 +112,7 @@ interface EventDetailContextValue {
   toggleSMSThread: () => void
   setActiveEventDateTab: (tab: number) => void
   triggerAttachmentsRefresh: () => void
+  triggerDesignProofsRefresh: () => void
 
   // Convenience methods for opening detail modals with data
   openCommunicationDetail: (communication: Communication) => void
@@ -182,6 +186,7 @@ export function EventDetailProvider({
     isEmailModalOpen: false,
     isSMSModalOpen: false,
     isGenerateAgreementModalOpen: false,
+    isUploadDesignProofModalOpen: false,
     // Detail view modals
     isCommunicationDetailOpen: false,
     isActivityDetailOpen: false,
@@ -197,7 +202,8 @@ export function EventDetailProvider({
     selectedEventDate: null,
     showSMSThread: false,
     activeEventDateTab: 0,
-    attachmentsRefreshTrigger: 0
+    attachmentsRefreshTrigger: 0,
+    designProofsRefreshTrigger: 0
   })
 
   // Helper to extract payment status as string
@@ -265,6 +271,10 @@ export function EventDetailProvider({
 
   const triggerAttachmentsRefresh = () => {
     setDetailModals(prev => ({ ...prev, attachmentsRefreshTrigger: prev.attachmentsRefreshTrigger + 1 }))
+  }
+
+  const triggerDesignProofsRefresh = () => {
+    setDetailModals(prev => ({ ...prev, designProofsRefreshTrigger: prev.designProofsRefreshTrigger + 1 }))
   }
 
   // Convenience methods for opening detail modals with data
@@ -442,6 +452,7 @@ export function EventDetailProvider({
     toggleSMSThread,
     setActiveEventDateTab,
     triggerAttachmentsRefresh,
+    triggerDesignProofsRefresh,
 
     // Convenience methods for opening detail modals
     openCommunicationDetail,

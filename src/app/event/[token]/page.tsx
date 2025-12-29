@@ -69,6 +69,17 @@ interface EventForm {
   completed_at: string | null
 }
 
+interface DesignProof {
+  id: string
+  name: string
+  status: string
+  is_approved: boolean
+  is_rejected: boolean
+  uploaded_at: string
+  responded_at: string | null
+  proof_url: string
+}
+
 interface PublicEventData {
   event: {
     id: string
@@ -95,6 +106,7 @@ interface PublicEventData {
     agreements: Agreement[]
     invoice: InvoiceInfo | null
     forms: EventForm[]
+    design_proofs: DesignProof[]
   }
   tenant: {
     id: string
@@ -287,15 +299,17 @@ export default function PublicEventPage() {
 
   const { event, client, dates, venue, staff, package: eventPackage, add_ons, todo, tenant } = data
   const primaryDate = dates.length > 0 ? dates[0] : null
+  const designProofs = todo.design_proofs || []
 
-  // Count completed items
+  // Count completed items (design proofs that are approved or rejected count as completed)
   const completedCount = [
     ...todo.agreements.map(a => a.is_signed),
     todo.invoice?.is_paid,
-    ...todo.forms.map(f => f.is_completed)
+    ...todo.forms.map(f => f.is_completed),
+    ...designProofs.map(p => p.is_approved || p.is_rejected)
   ].filter(Boolean).length
 
-  const totalCount = todo.agreements.length + (todo.invoice ? 1 : 0) + todo.forms.length
+  const totalCount = todo.agreements.length + (todo.invoice ? 1 : 0) + todo.forms.length + designProofs.length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -515,6 +529,19 @@ export default function PublicEventPage() {
                     label={form.name}
                     isComplete={form.is_completed}
                     href={`/forms/${form.public_id}`}
+                  />
+                ))}
+
+                {/* Design Proofs */}
+                {designProofs.map((proof) => (
+                  <TodoItem
+                    key={proof.id}
+                    label={proof.is_rejected
+                      ? `Design Proof: ${proof.name} (Revision Requested)`
+                      : `Design Proof: ${proof.name}`
+                    }
+                    isComplete={proof.is_approved || proof.is_rejected}
+                    href={proof.proof_url}
                   />
                 ))}
 
