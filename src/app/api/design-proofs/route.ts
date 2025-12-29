@@ -178,11 +178,11 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      log.error({ dbError }, 'Database error creating design proof')
+      log.error({ dbError, code: dbError.code, message: dbError.message, details: dbError.details, hint: dbError.hint }, 'Database error creating design proof')
       // Clean up uploaded file
       await supabase.storage.from('attachments').remove([storagePath])
       return NextResponse.json(
-        { error: 'Failed to create design proof record' },
+        { error: 'Failed to create design proof record', details: dbError.message },
         { status: 500 }
       )
     }
