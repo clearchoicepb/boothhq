@@ -20,7 +20,7 @@ import { linkifyText } from '@/lib/linkify'
 
 export interface Communication {
   id: string
-  communication_type: 'email' | 'sms' | 'phone' | 'in_person' | 'other'
+  communication_type: 'email' | 'sms' | 'phone' | 'in_person' | 'other' | 'customer_note'
   direction: 'inbound' | 'outbound'
   communication_date: string
   subject?: string
@@ -192,9 +192,12 @@ export function CommunicationsTab({
                           comm.communication_type === 'sms' ? 'bg-green-100 text-green-800' :
                           comm.communication_type === 'phone' ? 'bg-purple-100 text-purple-800' :
                           comm.communication_type === 'in_person' ? 'bg-orange-100 text-orange-800' :
+                          comm.communication_type === 'customer_note' ? 'bg-teal-100 text-teal-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {comm.communication_type === 'in_person' ? 'In-Person' : comm.communication_type.toUpperCase()}
+                          {comm.communication_type === 'in_person' ? 'In-Person' :
+                           comm.communication_type === 'customer_note' ? 'Customer Note' :
+                           comm.communication_type.toUpperCase()}
                         </span>
                         <span className={`${badgeText} ${comm.direction === 'inbound' ? 'text-green-600' : 'text-blue-600'}`}>
                           {comm.direction === 'inbound' ? '← Inbound' : '→ Outbound'}

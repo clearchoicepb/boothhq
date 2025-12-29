@@ -16,7 +16,9 @@ import {
   CreditCard,
   ClipboardList,
   Phone,
-  Mail
+  Mail,
+  MessageSquare,
+  Send
 } from 'lucide-react'
 
 interface EventDate {
@@ -222,6 +224,14 @@ export default function PublicEventPage() {
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
+  // Note form state
+  const [noteContent, setNoteContent] = useState('')
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false)
+  const [noteSubmitStatus, setNoteSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [noteError, setNoteError] = useState<string | null>(null)
+
+  const MAX_NOTE_LENGTH = 2000
+
   useEffect(() => {
     fetchEvent()
   }, [token])
@@ -256,6 +266,43 @@ export default function PublicEventPage() {
       setDebugInfo(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSubmitNote = async () => {
+    if (!noteContent.trim() || isSubmittingNote) return
+
+    setIsSubmittingNote(true)
+    setNoteSubmitStatus('idle')
+    setNoteError(null)
+
+    try {
+      const response = await fetch(`/api/public/events/${token}/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: noteContent.trim() }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit note')
+      }
+
+      setNoteSubmitStatus('success')
+      setNoteContent('')
+
+      // Reset success message after 3 seconds
+      setTimeout(() => {
+        setNoteSubmitStatus('idle')
+      }, 3000)
+    } catch (err) {
+      setNoteSubmitStatus('error')
+      setNoteError(err instanceof Error ? err.message : 'Failed to submit note')
+    } finally {
+      setIsSubmittingNote(false)
     }
   }
 
@@ -487,6 +534,65 @@ export default function PublicEventPage() {
                 </div>
               </div>
             )}
+
+            {/* Leave a Note Card */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <SectionHeader icon={MessageSquare} title="Leave Us a Note" />
+              <p className="text-sm text-gray-600 mb-4">
+                Have a question or want to share something with us?
+              </p>
+
+              {noteSubmitStatus === 'success' ? (
+                <div className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-green-800 font-medium">Your note has been sent!</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <textarea
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder="Type your message here..."
+                      rows={4}
+                      maxLength={MAX_NOTE_LENGTH}
+                      disabled={isSubmittingNote}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#347dc4] focus:border-transparent resize-none text-gray-900 placeholder-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                    <div className="flex justify-end mt-1">
+                      <span className={`text-xs ${noteContent.length > MAX_NOTE_LENGTH - 100 ? 'text-amber-600' : 'text-gray-400'}`}>
+                        {noteContent.length}/{MAX_NOTE_LENGTH}
+                      </span>
+                    </div>
+                  </div>
+
+                  {noteSubmitStatus === 'error' && noteError && (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                      <span className="text-sm text-red-800">{noteError}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleSubmitNote}
+                    disabled={!noteContent.trim() || isSubmittingNote}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#347dc4] hover:bg-[#2c6ba8] text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingNote ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        Send Note
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Sidebar - Right Column (1/3 width) */}
