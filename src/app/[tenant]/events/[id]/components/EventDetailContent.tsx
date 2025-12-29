@@ -5,13 +5,14 @@ import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { FileText } from 'lucide-react'
+import { FileText, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AccessGuard } from '@/components/access-guard'
 import { usePermissions } from '@/lib/permissions'
 import toast from 'react-hot-toast'
 import { EventFilesList } from '@/components/events/event-files-list'
+import { DesignProofsList } from '@/components/events/design-proofs-list'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useEventData } from '@/hooks/useEventData'
 import { getNextEventDate } from '@/lib/utils/event-utils'
@@ -400,17 +401,30 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                 <div className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Files</h3>
-                    <Button
-                      onClick={() => context.openModal('isGenerateAgreementModalOpen')}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Generate Agreement
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => context.openModal('isUploadDesignProofModalOpen')}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Design Proof
+                      </Button>
+                      <Button
+                        onClick={() => context.openModal('isGenerateAgreementModalOpen')}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Agreement
+                      </Button>
+                    </div>
                   </div>
                   <EventFilesList
                     eventId={event.id}
                     refreshTrigger={detailModals.attachmentsRefreshTrigger}
+                  />
+                  <DesignProofsList
+                    eventId={event.id}
+                    refreshTrigger={detailModals.designProofsRefreshTrigger}
                   />
                 </div>
               </TabsContent>

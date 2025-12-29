@@ -450,3 +450,57 @@ export interface EventFiltersProps {
   coreTasks?: CoreTask[]
   eventCounts: EventCounts
 }
+
+// =============================================================================
+// Design Proof Types
+// =============================================================================
+
+/** Status values for design proofs */
+export type DesignProofStatus = 'pending' | 'approved' | 'rejected'
+
+/**
+ * Design proof record for client approval workflow
+ */
+export interface DesignProof {
+  id: string
+  tenant_id: string
+  event_id: string
+  proof_name: string | null
+  file_name: string
+  file_size: number
+  file_type: string
+  storage_path: string
+  public_token: string
+  status: DesignProofStatus
+  uploaded_at: string
+  uploaded_by: string | null
+  viewed_at: string | null
+  responded_at: string | null
+  client_name: string | null
+  client_notes: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+/**
+ * Design proof with additional computed fields for display
+ */
+export interface DesignProofWithDetails extends DesignProof {
+  /** Signed URL for viewing the proof image */
+  signed_url?: string
+  /** Uploader user details */
+  uploaded_by_user?: {
+    first_name: string
+    last_name: string
+    email: string
+  } | null
+}
+
+/**
+ * Request body for responding to a design proof
+ */
+export interface DesignProofResponse {
+  status: 'approved' | 'rejected'
+  clientName: string
+  notes?: string
+}
