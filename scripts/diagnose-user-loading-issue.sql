@@ -90,12 +90,13 @@ LIMIT 20;
 -- ============================================================================
 
 -- Check for NULL values in critical columns for this tenant
+-- NOTE: departments is JSONB type, manager_of_departments is TEXT[] type
 SELECT
     id,
     email,
     CASE WHEN department IS NULL THEN 'NULL' ELSE 'HAS VALUE' END as department_status,
     CASE WHEN departments IS NULL THEN 'NULL'
-         WHEN departments = '{}' THEN 'EMPTY ARRAY'
+         WHEN departments = '[]'::jsonb THEN 'EMPTY ARRAY'
          ELSE 'HAS VALUES' END as departments_status,
     CASE WHEN manager_of_departments IS NULL THEN 'NULL'
          WHEN manager_of_departments = '{}' THEN 'EMPTY ARRAY'
@@ -107,19 +108,19 @@ WHERE LOWER(email) LIKE '%clearchoicephotos.com%';
 -- STEP 6: Fix NULL departments arrays (if this is the issue)
 -- ============================================================================
 
--- PREVIEW: What would be updated
+-- PREVIEW: What would be updated (departments is JSONB)
 SELECT
     id,
     email,
     department,
     departments,
-    'Would set departments to {}' as proposed_fix
+    'Would set departments to []::jsonb' as proposed_fix
 FROM users
 WHERE departments IS NULL;
 
 -- ACTUAL FIX (uncomment to run):
 -- UPDATE users
--- SET departments = '{}'
+-- SET departments = '[]'::jsonb
 -- WHERE departments IS NULL;
 
 -- UPDATE users
@@ -130,21 +131,21 @@ WHERE departments IS NULL;
 -- STEP 7: If department column has value but departments array is empty, migrate
 -- ============================================================================
 
--- PREVIEW: Users who need migration
+-- PREVIEW: Users who need migration (departments is JSONB)
 SELECT
     id,
     email,
     department,
     departments,
-    'Would set departments = ARRAY[department]' as proposed_fix
+    'Would set departments = jsonb_build_array(department)' as proposed_fix
 FROM users
 WHERE department IS NOT NULL
   AND department != ''
-  AND (departments IS NULL OR departments = '{}');
+  AND (departments IS NULL OR departments = '[]'::jsonb);
 
 -- ACTUAL FIX (uncomment to run):
 -- UPDATE users
--- SET departments = ARRAY[department]
+-- SET departments = jsonb_build_array(department)
 -- WHERE department IS NOT NULL
 --   AND department != ''
---   AND (departments IS NULL OR departments = '{}');
+--   AND (departments IS NULL OR departments = '[]'::jsonb);

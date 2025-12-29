@@ -8,18 +8,20 @@
 -- if they were created before these columns had proper defaults or if migrations
 -- didn't run correctly. This causes issues when the application tries to use
 -- these values as arrays.
+--
+-- NOTE: The departments column is JSONB type, not TEXT[], so we use JSON syntax.
 
 -- =============================================================================
--- STEP 1: Fix NULL departments arrays
+-- STEP 1: Fix NULL departments arrays (JSONB type)
 -- =============================================================================
 
--- Set NULL departments to empty array
+-- Set NULL departments to empty JSON array
 UPDATE users
-SET departments = '{}'
+SET departments = '[]'::jsonb
 WHERE departments IS NULL;
 
 -- =============================================================================
--- STEP 2: Fix NULL manager_of_departments arrays
+-- STEP 2: Fix NULL manager_of_departments arrays (TEXT[] type)
 -- =============================================================================
 
 -- Set NULL manager_of_departments to empty array
@@ -32,12 +34,12 @@ WHERE manager_of_departments IS NULL;
 -- =============================================================================
 
 -- For users who have a legacy department value but empty departments array,
--- copy the legacy value to the new array
+-- copy the legacy value to the new JSONB array
 UPDATE users
-SET departments = ARRAY[department]
+SET departments = jsonb_build_array(department)
 WHERE department IS NOT NULL
   AND department != ''
-  AND (departments = '{}' OR departments IS NULL);
+  AND (departments = '[]'::jsonb OR departments IS NULL);
 
 -- =============================================================================
 -- STEP 4: Add NOT NULL constraints with defaults to prevent future issues
@@ -46,7 +48,7 @@ WHERE department IS NOT NULL
 -- Alter columns to have NOT NULL with defaults
 -- This ensures new users always have proper empty arrays
 ALTER TABLE users
-ALTER COLUMN departments SET DEFAULT '{}';
+ALTER COLUMN departments SET DEFAULT '[]'::jsonb;
 
 ALTER TABLE users
 ALTER COLUMN manager_of_departments SET DEFAULT '{}';
@@ -67,5 +69,5 @@ ALTER COLUMN manager_of_departments SET DEFAULT '{}';
 -- COMMENTS
 -- =============================================================================
 
-COMMENT ON COLUMN users.departments IS 'Array of department IDs the user belongs to. Never NULL - defaults to empty array {}.';
+COMMENT ON COLUMN users.departments IS 'JSONB array of department IDs the user belongs to. Never NULL - defaults to empty array [].';
 COMMENT ON COLUMN users.manager_of_departments IS 'Array of department IDs where user has manager access. Never NULL - defaults to empty array {}.';
