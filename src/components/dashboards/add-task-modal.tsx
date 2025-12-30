@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useCreateTask, useCreateTaskFromTemplate } from '@/hooks/useTaskActions'
 import { useTaskTemplates } from '@/hooks/useTaskTemplates'
 import { useUsers } from '@/hooks/useUsers'
-import { DEPARTMENTS, DEPARTMENT_TASK_TYPES, type DepartmentId } from '@/lib/departments'
+import { DEPARTMENTS, DEPARTMENT_TASK_TYPES, getTaskDepartments, type DepartmentId } from '@/lib/departments'
 import { Plus, FileText, Loader2, Users } from 'lucide-react'
 import { createLogger } from '@/lib/logger'
 import type { UnifiedTaskType } from '@/types/tasks'
@@ -56,7 +56,8 @@ const UNIFIED_TASK_TYPES: UnifiedTaskType[] = [
 interface AddTaskModalProps {
   isOpen: boolean
   onClose: () => void
-  departmentId: DepartmentId
+  /** Department for the task - if not provided, user can select from all departments */
+  departmentId?: DepartmentId
   userId?: string
   primaryColor: string
   /** Default unified task type - when set, pre-selects this type */
@@ -71,7 +72,7 @@ interface AddTaskModalProps {
 export function AddTaskModal({
   isOpen,
   onClose,
-  departmentId,
+  departmentId: propDepartmentId,
   userId,
   primaryColor,
   defaultTaskType,
@@ -87,6 +88,14 @@ export function AddTaskModal({
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
   const [dueDate, setDueDate] = useState('')
   const [assignedTo, setAssignedTo] = useState(userId || '')
+  // State for department selection when not provided via prop
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentId | ''>(propDepartmentId || '')
+
+  // Whether department selector should be shown (when departmentId is not provided)
+  const showDepartmentSelector = !propDepartmentId
+
+  // Effective department - either from prop or selection
+  const effectiveDepartmentId = propDepartmentId || selectedDepartment || null
 
   const { createTask, isPending } = useCreateTask()
   const { createFromTemplate, isPending: isCreatingFromTemplate } = useCreateTaskFromTemplate()
@@ -95,24 +104,30 @@ export function AddTaskModal({
   const { data: users = [], isLoading: loadingUsers } = useUsers()
 
   // Filter users by department (Phase 2)
+  // When no department selected, show all users
   // Check both departments[] array AND legacy department field
   const filteredUsers = useMemo(() => {
     const allUsers = users as UserWithDepartments[]
 
+    // If no department selected, show all users
+    if (!effectiveDepartmentId) {
+      return allUsers
+    }
+
     return allUsers.filter(user => {
       // Check new departments array first
       if (user.departments && Array.isArray(user.departments)) {
-        if (user.departments.includes(departmentId)) {
+        if (user.departments.includes(effectiveDepartmentId)) {
           return true
         }
       }
       // Fall back to legacy department field
-      if (user.department === departmentId) {
+      if (user.department === effectiveDepartmentId) {
         return true
       }
       return false
     })
-  }, [users, departmentId])
+  }, [users, effectiveDepartmentId])
 
   // Fetch templates filtered by unified task type
   const { data: templates = [] } = useTaskTemplates({
@@ -120,19 +135,22 @@ export function AddTaskModal({
     enabled: true,
   })
 
-  const department = DEPARTMENTS[departmentId]
-  const taskTypes = DEPARTMENT_TASK_TYPES[departmentId]
+  // Get department info - may be null if none selected
+  const department = effectiveDepartmentId ? DEPARTMENTS[effectiveDepartmentId] : null
+  const taskTypes = effectiveDepartmentId ? DEPARTMENT_TASK_TYPES[effectiveDepartmentId] : []
+  const availableDepartments = getTaskDepartments()
 
-  // Reset unified task type when modal opens with a new default
+  // Reset unified task type and department when modal opens
   useEffect(() => {
     if (isOpen) {
       setUnifiedTaskType(defaultTaskType || '')
+      setSelectedDepartment(propDepartmentId || '')
       // Also ensure assignedTo is updated if userId becomes available
       if (userId && !assignedTo) {
         setAssignedTo(userId)
       }
     }
-  }, [isOpen, defaultTaskType, userId, assignedTo])
+  }, [isOpen, defaultTaskType, propDepartmentId, userId, assignedTo])
 
   // When a template is selected, populate the form
   useEffect(() => {
@@ -187,7 +205,7 @@ export function AddTaskModal({
         await createTask({
           title: title.trim(),
           description: description.trim() || undefined,
-          department: departmentId,
+          department: effectiveDepartmentId || undefined,
           taskType: unifiedTaskType || taskType || undefined,
           priority,
           dueDate: dueDate || undefined,
@@ -207,6 +225,7 @@ export function AddTaskModal({
       setPriority('medium')
       setDueDate('')
       setAssignedTo(userId || '')
+      setSelectedDepartment(propDepartmentId || '')
 
       onClose()
     } catch (error) {
@@ -225,13 +244,40 @@ export function AddTaskModal({
       setPriority('medium')
       setDueDate('')
       setAssignedTo(userId || '')
+      setSelectedDepartment(propDepartmentId || '')
       onClose()
     }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={`Add ${department.name} Task`}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={department ? `Add ${department.name} Task` : 'Add Task'}>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Department Selector - shown when not provided via prop */}
+        {showDepartmentSelector && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Department
+            </label>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value as DepartmentId | '')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+              style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
+              disabled={isSubmitting}
+            >
+              <option value="">Select department (optional)</option>
+              {availableDepartments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Assign this task to a specific department
+            </p>
+          </div>
+        )}
+
         {/* Unified Task Type - Category selector */}
         {!hideTaskTypeSelector && (
           <div>
@@ -402,7 +448,10 @@ export function AddTaskModal({
               </select>
               <p className="text-xs text-blue-600 mt-1 flex items-center">
                 <Users className="h-3 w-3 mr-1" />
-                Showing {department.name} team ({filteredUsers.length})
+                {department
+                  ? `Showing ${department.name} team (${filteredUsers.length})`
+                  : `Showing all team members (${filteredUsers.length})`
+                }
               </p>
             </>
           )}

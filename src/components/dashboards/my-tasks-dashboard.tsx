@@ -7,7 +7,7 @@
  * Displays tasks across all roles/departments in one unified view
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import {
@@ -18,6 +18,7 @@ import {
   Filter,
   ExternalLink,
   User,
+  Users,
   Briefcase,
   Loader2,
   Plus,
@@ -25,6 +26,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { tasksService } from '@/lib/api/services/tasksService'
 import { AddTaskModal } from '@/components/dashboards/add-task-modal'
+import { useUsers } from '@/hooks/useUsers'
+import { DEPARTMENTS, type DepartmentId } from '@/lib/departments'
 import type { TaskWithRelations } from '@/types/tasks'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
@@ -59,7 +62,7 @@ export function MyTasksDashboard() {
     dueToday: 0,
     dueThisWeek: 0,
   })
-  
+
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [departmentFilter, setDepartmentFilter] = useState<string>('all')
@@ -67,28 +70,82 @@ export function MyTasksDashboard() {
   // Add task modal state
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
 
+  // Manager department view state
+  // null = "My Tasks", string = specific department's tasks
+  const [selectedDepartmentView, setSelectedDepartmentView] = useState<DepartmentId | null>(null)
+
+  // Fetch users to get current user's department info
+  const { data: users = [] } = useUsers()
+
+  // Get current user's profile with department info
+  const currentUserProfile = useMemo(() => {
+    if (!session?.user?.id || !users.length) return null
+    return users.find((u: any) => u.id === session.user.id)
+  }, [session?.user?.id, users])
+
+  // Determine if user is a manager (can view department tasks)
+  // A user is a manager if:
+  // 1. They have manager_of_departments array with entries, OR
+  // 2. They have role of 'admin' or 'tenant_admin', OR
+  // 3. They have department_role of 'manager'
+  const managedDepartments = useMemo(() => {
+    if (!currentUserProfile) return []
+
+    const userRole = session?.user?.role
+    const profile = currentUserProfile as any
+
+    // Admin/tenant_admin can see all departments
+    if (userRole === 'admin' || userRole === 'tenant_admin') {
+      return Object.keys(DEPARTMENTS).filter(d => d !== 'event_staff') as DepartmentId[]
+    }
+
+    // Check manager_of_departments array
+    if (profile.manager_of_departments && Array.isArray(profile.manager_of_departments)) {
+      return profile.manager_of_departments as DepartmentId[]
+    }
+
+    // Check if department_role is manager - they manage their own departments
+    if (profile.department_role === 'manager' && profile.departments) {
+      return profile.departments as DepartmentId[]
+    }
+
+    return []
+  }, [currentUserProfile, session?.user?.role])
+
+  const isManager = managedDepartments.length > 0
+
   useEffect(() => {
     if (session?.user?.id) {
       fetchTasks()
     }
-  }, [session, statusFilter, priorityFilter, departmentFilter])
+  }, [session, statusFilter, priorityFilter, departmentFilter, selectedDepartmentView])
 
   const fetchTasks = async () => {
     if (!session?.user?.id) return
 
     try {
       setLoading(true)
-      
-      // Fetch all tasks assigned to current user
+
+      // Build fetch options based on view mode
       const options: any = {
-        assignedTo: session.user.id,
         sortBy: 'due_date',
         sortOrder: 'asc',
       }
 
+      if (selectedDepartmentView) {
+        // Department view - fetch all tasks for the department
+        options.department = selectedDepartmentView
+      } else {
+        // Personal view - fetch only tasks assigned to current user
+        options.assignedTo = session.user.id
+      }
+
       if (statusFilter !== 'all') options.status = statusFilter
       if (priorityFilter !== 'all') options.priority = priorityFilter
-      if (departmentFilter !== 'all') options.department = departmentFilter
+      // Only apply department filter when in personal view
+      if (!selectedDepartmentView && departmentFilter !== 'all') {
+        options.department = departmentFilter
+      }
 
       const data = await tasksService.list(options)
       setTasks(data)
@@ -184,11 +241,23 @@ export function MyTasksDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-            <User className="h-6 w-6 mr-3 text-[#347dc4]" />
-            My Tasks
+            {selectedDepartmentView ? (
+              <>
+                <Users className="h-6 w-6 mr-3 text-[#347dc4]" />
+                {DEPARTMENTS[selectedDepartmentView].name} Tasks
+              </>
+            ) : (
+              <>
+                <User className="h-6 w-6 mr-3 text-[#347dc4]" />
+                My Tasks
+              </>
+            )}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            All tasks assigned to you across all departments
+            {selectedDepartmentView
+              ? `All tasks for the ${DEPARTMENTS[selectedDepartmentView].name} department`
+              : 'All tasks assigned to you across all departments'
+            }
           </p>
         </div>
         <Button
@@ -199,6 +268,37 @@ export function MyTasksDashboard() {
           Add Task
         </Button>
       </div>
+
+      {/* Manager Department Tabs */}
+      {isManager && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="flex gap-1 p-1 overflow-x-auto">
+            <button
+              onClick={() => setSelectedDepartmentView(null)}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                !selectedDepartmentView
+                  ? 'bg-[#347dc4] text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              My Tasks
+            </button>
+            {managedDepartments.map((deptId) => (
+              <button
+                key={deptId}
+                onClick={() => setSelectedDepartmentView(deptId)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                  selectedDepartmentView === deptId
+                    ? 'bg-[#347dc4] text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {DEPARTMENTS[deptId].name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -294,7 +394,9 @@ export function MyTasksDashboard() {
           <p className="text-gray-600">
             {statusFilter !== 'all' || priorityFilter !== 'all'
               ? 'Try adjusting your filters to see more tasks.'
-              : 'You have no tasks assigned to you at the moment.'}
+              : selectedDepartmentView
+                ? `No tasks found in the ${DEPARTMENTS[selectedDepartmentView].name} department.`
+                : 'You have no tasks assigned to you at the moment.'}
           </p>
         </div>
       ) : (
@@ -325,7 +427,34 @@ export function MyTasksDashboard() {
                       <p className="text-sm text-gray-600 mb-3">{task.description}</p>
                     )}
 
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    {/* Event Info - show when task is linked to an event */}
+                    {task.entity_type === 'event' && task.event && (
+                      <div className="text-sm text-gray-600 mb-3 p-2 bg-blue-50 rounded border border-blue-100">
+                        <div className="font-medium text-gray-800">{task.event.title}</div>
+                        <div className="flex gap-4 text-xs text-gray-500 mt-1">
+                          {task.event.event_number && (
+                            <span>#{task.event.event_number}</span>
+                          )}
+                          {task.event.start_date && (
+                            <span>{new Date(task.event.start_date).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center flex-wrap gap-4 text-sm text-gray-600">
+                      {/* Assignee - show in department view */}
+                      {selectedDepartmentView && (
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-1" />
+                          <span>
+                            {task.assigned_to_user
+                              ? `${task.assigned_to_user.first_name} ${task.assigned_to_user.last_name}`
+                              : 'Unassigned'}
+                          </span>
+                        </div>
+                      )}
+
                       {task.due_date && dueDateStatus && (
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1" />
@@ -334,7 +463,7 @@ export function MyTasksDashboard() {
                           </span>
                         </div>
                       )}
-                      
+
                       {task.entity_type && task.entity_id && (
                         <button
                           onClick={() => router.push(`/${task.entity_type}s/${task.entity_id}`)}
@@ -385,7 +514,7 @@ export function MyTasksDashboard() {
           // Refresh tasks after adding
           fetchTasks()
         }}
-        departmentId="sales" // Default department - user can select task category in modal
+        // No departmentId - user can select any department in modal
         userId={session?.user?.id}
         primaryColor={PRIMARY_COLOR}
       />

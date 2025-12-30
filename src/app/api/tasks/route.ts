@@ -138,6 +138,28 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Enrich event-type tasks with event data
+    // Tasks linked to events have entity_type='event' and entity_id=event UUID
+    if (tasks && tasks.length > 0) {
+      const eventTasks = tasks.filter((t: any) => t.entity_type === 'event' && t.entity_id)
+      if (eventTasks.length > 0) {
+        const eventIds = eventTasks.map((t: any) => t.entity_id)
+        const { data: events } = await supabase
+          .from('events')
+          .select('id, title, event_number, start_date')
+          .in('id', eventIds)
+
+        if (events) {
+          const eventMap = new Map(events.map((e: any) => [e.id, e]))
+          for (const task of tasks) {
+            if (task.entity_type === 'event' && task.entity_id) {
+              (task as any).event = eventMap.get(task.entity_id) || null
+            }
+          }
+        }
+      }
+    }
+
     // If includeSubtaskProgress is requested, compute progress for each task
     if (includeSubtaskProgress && tasks && tasks.length > 0) {
       // Get all task IDs that might have subtasks
