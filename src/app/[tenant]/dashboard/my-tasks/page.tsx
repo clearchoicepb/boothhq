@@ -963,10 +963,29 @@ function DepartmentTaskList({
                 {/* Task Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    {/* Title */}
+                    {/* Title (Event • Task) */}
                     <h3 className={`text-sm font-medium text-gray-900 truncate flex-1 ${isCompleted ? 'line-through' : ''}`}>
-                      {task.title}
+                      {getTaskDisplayTitle(task)}
                     </h3>
+
+                    {/* Open Entity Link */}
+                    {(task.project_id || (task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project'))) && (
+                      <button
+                        onClick={(e) => onOpenEntity(e, task)}
+                        className="flex-shrink-0 text-blue-600 hover:text-blue-700"
+                        title="Open in new tab"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </button>
+                    )}
+
+                    {/* Event Date Badge */}
+                    {getEventDateDisplay(task) && (
+                      <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                        <Calendar className="h-2.5 w-2.5 mr-0.5" />
+                        {getEventDateDisplay(task)}
+                      </span>
+                    )}
 
                     {/* Assignee */}
                     <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-600">
