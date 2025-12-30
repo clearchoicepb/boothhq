@@ -72,6 +72,8 @@ export async function GET(
       opportunity_name: opportunityName,
       event_name: invoice.events?.title || null,
       event_date: invoice.events?.start_date || null,
+      event: invoice.events || null,
+      invoice_type: invoice.invoice_type || (invoice.event_id ? 'event' : 'general'), // Default for backwards compatibility
       line_items: (lineItems || []).map((item: any) => ({
         ...item,
         total: item.total_price // Map database field to component field

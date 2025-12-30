@@ -6,7 +6,7 @@ import { useTenant } from '@/lib/tenant-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Plus, FileText, Download, Send, DollarSign, Search, Filter } from 'lucide-react'
+import { Plus, FileText, Download, Send, DollarSign, Search, Filter, Calendar } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { createLogger } from '@/lib/logger'
 
@@ -15,9 +15,11 @@ const log = createLogger('invoices')
 interface Invoice {
   id: string
   invoice_number: string
+  invoice_type: 'event' | 'general'
   opportunity_id: string | null
   account_id: string | null
   contact_id: string | null
+  event_id: string | null
   issue_date: string
   due_date: string
   status: string
@@ -28,6 +30,11 @@ interface Invoice {
   opportunity_name: string | null
   account_name: string | null
   contact_name: string | null
+  event_name: string | null
+  event?: {
+    id: string
+    title: string
+  } | null
   created_at: string
 }
 
@@ -43,6 +50,7 @@ export default function InvoicesPage() {
   const [localLoading, setLocalLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'event' | 'general'>('all')
 
   useEffect(() => {
     if (session && tenant) {
@@ -52,7 +60,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     filterInvoices()
-  }, [invoices, searchTerm, statusFilter])
+  }, [invoices, searchTerm, statusFilter, typeFilter])
 
   const fetchInvoices = async () => {
     try {
@@ -80,6 +88,15 @@ export default function InvoicesPage() {
       filtered = filtered.filter(inv => inv.status === statusFilter)
     }
 
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(inv => {
+        // Handle legacy invoices that may not have invoice_type set
+        const invType = inv.invoice_type || (inv.event_id ? 'event' : 'general')
+        return invType === typeFilter
+      })
+    }
+
     // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
@@ -87,7 +104,8 @@ export default function InvoicesPage() {
         inv.invoice_number.toLowerCase().includes(term) ||
         inv.account_name?.toLowerCase().includes(term) ||
         inv.contact_name?.toLowerCase().includes(term) ||
-        inv.opportunity_name?.toLowerCase().includes(term)
+        inv.opportunity_name?.toLowerCase().includes(term) ||
+        inv.event_name?.toLowerCase().includes(term)
       )
     }
 
@@ -167,7 +185,7 @@ export default function InvoicesPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -178,6 +196,20 @@ export default function InvoicesPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
               />
+            </div>
+
+            {/* Type Filter */}
+            <div className="relative">
+              <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as 'all' | 'event' | 'general')}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
+              >
+                <option value="all">All Types</option>
+                <option value="event">Event Invoices</option>
+                <option value="general">General Invoices</option>
+              </select>
             </div>
 
             {/* Status Filter */}
@@ -229,6 +261,9 @@ export default function InvoicesPage() {
                     Invoice #
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Client
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -249,49 +284,75 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/${tenantSubdomain}/invoices/${invoice.id}`}
-                        className="text-sm font-medium text-[#347dc4] hover:text-[#2c6aa3]"
-                      >
-                        {invoice.invoice_number}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {invoice.account_name || invoice.contact_name || '-'}
-                      </div>
-                      {invoice.opportunity_name && (
-                        <div className="text-xs text-gray-500">{invoice.opportunity_name}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(invoice.issue_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(invoice.due_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      ${invoice.total_amount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
-                        {getStatusLabel(invoice.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Link href={`/${tenantSubdomain}/invoices/${invoice.id}`}>
-                          <button className="text-[#347dc4] hover:text-[#2c6aa3]">
-                            View
-                          </button>
+                {filteredInvoices.map((invoice) => {
+                  const invoiceType = invoice.invoice_type || (invoice.event_id ? 'event' : 'general')
+                  const isGeneral = invoiceType === 'general'
+
+                  return (
+                    <tr key={invoice.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Link
+                          href={`/${tenantSubdomain}/invoices/${invoice.id}`}
+                          className="text-sm font-medium text-[#347dc4] hover:text-[#2c6aa3]"
+                        >
+                          {invoice.invoice_number}
                         </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isGeneral ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <FileText className="h-3 w-3" />
+                            General
+                          </span>
+                        ) : invoice.event ? (
+                          <Link
+                            href={`/${tenantSubdomain}/events/${invoice.event.id}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                          >
+                            <Calendar className="h-3 w-3" />
+                            {invoice.event.title || invoice.event_name || 'Event'}
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <Calendar className="h-3 w-3" />
+                            Event
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {invoice.account_name || invoice.contact_name || '-'}
+                        </div>
+                        {invoice.opportunity_name && (
+                          <div className="text-xs text-gray-500">{invoice.opportunity_name}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(invoice.issue_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(invoice.due_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        ${invoice.total_amount.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
+                          {getStatusLabel(invoice.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Link href={`/${tenantSubdomain}/invoices/${invoice.id}`}>
+                            <button className="text-[#347dc4] hover:text-[#2c6aa3]">
+                              View
+                            </button>
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
