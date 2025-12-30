@@ -44,14 +44,17 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
   publishableKey?: string
 }> {
   try {
-    // Check both possible locations for Stripe settings:
-    // 1. Integrations page: thirdPartyIntegrations.stripe.* (preferred)
-    // 2. Payment Gateways page: stripe.* (legacy, for backwards compatibility)
+    // Check all possible locations for Stripe settings:
+    // 1. Integrations page (current): integrations.thirdPartyIntegrations.stripe.* (preferred)
+    // 2. Legacy Integrations page: thirdPartyIntegrations.stripe.*
+    // 3. Payment Gateways page: stripe.* (legacy, for backwards compatibility)
     const { data: settings, error } = await supabase
       .from('tenant_settings')
       .select('setting_key, setting_value')
       .eq('tenant_id', tenantId)
       .in('setting_key', [
+        'integrations.thirdPartyIntegrations.stripe.secretKey',
+        'integrations.thirdPartyIntegrations.stripe.publishableKey',
         'thirdPartyIntegrations.stripe.secretKey',
         'thirdPartyIntegrations.stripe.publishableKey',
         'stripe.secretKey',
@@ -69,6 +72,23 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
 
     const config: { secretKey?: string; publishableKey?: string } = {}
 
+    // Priority order for keys (first match wins):
+    // 1. integrations.thirdPartyIntegrations.stripe.* (current UI path)
+    // 2. thirdPartyIntegrations.stripe.* (legacy)
+    // 3. stripe.* (oldest legacy)
+    const secretKeyPriority = [
+      'integrations.thirdPartyIntegrations.stripe.secretKey',
+      'thirdPartyIntegrations.stripe.secretKey',
+      'stripe.secretKey'
+    ]
+    const publishableKeyPriority = [
+      'integrations.thirdPartyIntegrations.stripe.publishableKey',
+      'thirdPartyIntegrations.stripe.publishableKey',
+      'stripe.publishableKey'
+    ]
+
+    // Create a map of setting_key -> value for easy lookup
+    const settingsMap = new Map<string, string>()
     settings?.forEach((setting: any) => {
       // Handle JSONB values - they might be strings wrapped in quotes
       let value = setting.setting_value
@@ -76,24 +96,33 @@ export async function getTenantStripeConfig(supabase: any, tenantId: string): Pr
       // If it's a string (from JSONB), use it directly
       // If it's an object with a string property, extract it
       if (typeof value === 'string') {
-        value = value
+        // value is already a string
       } else if (value && typeof value === 'object' && typeof value.value === 'string') {
         value = value.value
       }
 
-      // Check both possible key locations (prefer Integrations page keys)
-      if (setting.setting_key === 'thirdPartyIntegrations.stripe.secretKey' || setting.setting_key === 'stripe.secretKey') {
-        // Only set if not already set (prefer thirdPartyIntegrations version)
-        if (!config.secretKey) {
-          config.secretKey = value
-        }
-      } else if (setting.setting_key === 'thirdPartyIntegrations.stripe.publishableKey' || setting.setting_key === 'stripe.publishableKey') {
-        // Only set if not already set (prefer thirdPartyIntegrations version)
-        if (!config.publishableKey) {
-          config.publishableKey = value
-        }
+      if (value) {
+        settingsMap.set(setting.setting_key, value)
       }
     })
+
+    // Find secret key using priority order
+    for (const key of secretKeyPriority) {
+      const value = settingsMap.get(key)
+      if (value) {
+        config.secretKey = value
+        break
+      }
+    }
+
+    // Find publishable key using priority order
+    for (const key of publishableKeyPriority) {
+      const value = settingsMap.get(key)
+      if (value) {
+        config.publishableKey = value
+        break
+      }
+    }
 
     // Fallback to environment variables if not found in settings
     if (!config.secretKey && process.env.STRIPE_SECRET_KEY) {
