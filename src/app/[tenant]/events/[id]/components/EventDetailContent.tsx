@@ -70,13 +70,19 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   const [publicToken, setPublicToken] = useState<string | null>(null)
   const [publicPageEnabled, setPublicPageEnabled] = useState<boolean>(true)
 
-  // Sync public page state with event data
+  // Staff brief state (synced with event data)
+  const [staffBriefToken, setStaffBriefToken] = useState<string | null>(null)
+  const [staffBriefEnabled, setStaffBriefEnabled] = useState<boolean>(true)
+
+  // Sync public page and staff brief state with event data
   useEffect(() => {
     if (event) {
       setPublicToken(event.public_token ?? null)
       setPublicPageEnabled(event.public_page_enabled ?? true)
+      setStaffBriefToken((event as any).staff_brief_token ?? null)
+      setStaffBriefEnabled((event as any).staff_brief_enabled ?? true)
     }
-  }, [event?.public_token, event?.public_page_enabled])
+  }, [event?.public_token, event?.public_page_enabled, (event as any)?.staff_brief_token, (event as any)?.staff_brief_enabled])
 
   // Get the next upcoming event date
   const nextEventDate = useMemo(() => getNextEventDate(eventDates), [eventDates])
@@ -305,6 +311,10 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
             publicPageEnabled={publicPageEnabled}
             onPublicTokenChange={setPublicToken}
             onPublicPageEnabledChange={setPublicPageEnabled}
+            staffBriefToken={staffBriefToken}
+            staffBriefEnabled={staffBriefEnabled}
+            onStaffBriefTokenChange={setStaffBriefToken}
+            onStaffBriefEnabledChange={setStaffBriefEnabled}
           />
 
           {/* Sticky Event Context Bar */}
