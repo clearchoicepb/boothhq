@@ -240,11 +240,15 @@ export async function GET(
       googleMapsUrl: string | null
     } | null = null
 
+    // Location contact info (fallback for onsite contact)
+    let locationContactName: string | null = null
+    let locationContactPhone: string | null = null
+
     const formattedDates = (eventDates || []).map((ed: EventDateData) => {
       const locationData = ed.location as unknown
       const loc = Array.isArray(locationData) ? locationData[0] : locationData
 
-      // Get venue from first event date with location
+      // Get venue and location contact from first event date with location
       if (!venue && loc) {
         const addressParts = [
           loc.address_line1,
@@ -263,6 +267,10 @@ export async function GET(
             ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
             : null
         }
+
+        // Capture location contact info as fallback for onsite contact
+        locationContactName = loc.contact_name || null
+        locationContactPhone = loc.contact_phone || null
       }
 
       return {
@@ -457,10 +465,10 @@ export async function GET(
       dates: formattedDates,
       // Location
       venue,
-      // Onsite contacts
+      // Onsite contacts (with fallback to location contact)
       onsiteContact: {
-        name: event.venue_contact_name || null,
-        phone: event.venue_contact_phone || null,
+        name: event.venue_contact_name || locationContactName || null,
+        phone: event.venue_contact_phone || locationContactPhone || null,
         email: event.venue_contact_email || null
       },
       eventCoordinator: {
