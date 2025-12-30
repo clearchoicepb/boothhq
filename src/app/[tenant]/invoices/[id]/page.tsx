@@ -7,7 +7,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus, Pencil } from 'lucide-react'
+import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X, CreditCard, DollarSign, Link2, Check, Plus, Pencil, FileText, Calendar } from 'lucide-react'
 import { InvoicePaymentForm } from '@/components/forms/InvoicePaymentForm'
 import { createLogger } from '@/lib/logger'
 import { sanitizeHtml } from '@/lib/sanitize'
@@ -40,11 +40,16 @@ interface Payment {
 interface Invoice {
   id: string
   invoice_number: string
+  invoice_type: 'event' | 'general'
   opportunity_id: string | null
   account_id: string | null
   contact_id: string | null
   event_id: string | null
   event_date?: string | null  // From joined event data
+  event?: {
+    id: string
+    title: string
+  } | null
   issue_date: string
   due_date: string
   status: string
@@ -60,6 +65,7 @@ interface Invoice {
   opportunity_name: string | null
   account_name: string | null
   contact_name: string | null
+  event_name?: string | null
   line_items: InvoiceLineItem[]
   public_token?: string | null
   created_at: string
@@ -491,9 +497,34 @@ export default function InvoiceDetailPage() {
                     </button>
                   </div>
                 )}
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                  {getStatusLabel(invoice.status)}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                    {getStatusLabel(invoice.status)}
+                  </span>
+                  {/* Invoice Type Badge */}
+                  {(invoice.invoice_type === 'general' || !invoice.event_id) ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      <FileText className="h-3 w-3" />
+                      General Invoice
+                    </span>
+                  ) : invoice.event ? (
+                    <Link
+                      href={`/${tenantSubdomain}/events/${invoice.event.id}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                    >
+                      <Calendar className="h-3 w-3" />
+                      {invoice.event.title || invoice.event_name || 'Event'}
+                    </Link>
+                  ) : invoice.event_id ? (
+                    <Link
+                      href={`/${tenantSubdomain}/events/${invoice.event_id}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                    >
+                      <Calendar className="h-3 w-3" />
+                      Event
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             </div>
             <div className="flex space-x-2">
@@ -557,14 +588,22 @@ export default function InvoiceDetailPage() {
                   )}
                 </>
               )}
-              {invoice.event_id && (
+              {/* Edit button - routes differently based on invoice type */}
+              {invoice.event_id ? (
                 <Link href={`/${tenantSubdomain}/events/${invoice.event_id}?tab=financials&invoice=${invoice.id}`}>
                   <Button variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit Invoice
+                    Edit in Event
                   </Button>
                 </Link>
-              )}
+              ) : invoice.account_id ? (
+                <Link href={`/${tenantSubdomain}/accounts/${invoice.account_id}#invoices`}>
+                  <Button variant="outline">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit in Account
+                  </Button>
+                </Link>
+              ) : null}
               {invoice.status === 'draft' && (
                 <Button variant="outline" className="text-red-600" onClick={handleDelete}>
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -879,6 +918,12 @@ export default function InvoiceDetailPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Information</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
+              <span className="text-gray-500">Type:</span>
+              <span className="ml-2 text-gray-900">
+                {(invoice.invoice_type === 'general' || !invoice.event_id) ? 'General Invoice' : 'Event Invoice'}
+              </span>
+            </div>
+            <div>
               <span className="text-gray-500">Created:</span>
               <span className="ml-2 text-gray-900">{new Date(invoice.created_at).toLocaleString()}</span>
             </div>
@@ -886,6 +931,28 @@ export default function InvoiceDetailPage() {
               <span className="text-gray-500">Last Updated:</span>
               <span className="ml-2 text-gray-900">{new Date(invoice.updated_at).toLocaleString()}</span>
             </div>
+            {invoice.account_id && (
+              <div>
+                <span className="text-gray-500">Account:</span>
+                <Link
+                  href={`/${tenantSubdomain}/accounts/${invoice.account_id}`}
+                  className="ml-2 text-[#347dc4] hover:text-[#2c6aa3]"
+                >
+                  {invoice.account_name || 'View Account'}
+                </Link>
+              </div>
+            )}
+            {invoice.event_id && (
+              <div>
+                <span className="text-gray-500">Related Event:</span>
+                <Link
+                  href={`/${tenantSubdomain}/events/${invoice.event_id}`}
+                  className="ml-2 text-[#347dc4] hover:text-[#2c6aa3]"
+                >
+                  {invoice.event?.title || invoice.event_name || 'View Event'}
+                </Link>
+              </div>
+            )}
             {invoice.opportunity_id && (
               <div>
                 <span className="text-gray-500">Related Opportunity:</span>
@@ -893,7 +960,7 @@ export default function InvoiceDetailPage() {
                   href={`/${tenantSubdomain}/opportunities/${invoice.opportunity_id}`}
                   className="ml-2 text-[#347dc4] hover:text-[#2c6aa3]"
                 >
-                  {invoice.opportunity_name}
+                  {invoice.opportunity_name || 'View Opportunity'}
                 </Link>
               </div>
             )}

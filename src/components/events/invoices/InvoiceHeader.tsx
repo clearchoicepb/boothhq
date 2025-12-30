@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronDown, ChevronRight, ExternalLink, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ExternalLink, Trash2, Calendar, FileText } from 'lucide-react'
 import type { Invoice } from './types'
 
 interface InvoiceHeaderProps {
@@ -7,6 +7,7 @@ interface InvoiceHeaderProps {
   isExpanded: boolean
   tenantSubdomain: string
   canEdit: boolean
+  showInvoiceType?: boolean // Show event name or "General" badge
   onToggleExpand: () => void
   onDelete: (invoiceId: string, invoiceNumber: string) => void
 }
@@ -15,6 +16,7 @@ interface InvoiceHeaderProps {
  * Collapsible header row for an invoice displaying:
  * - Expand/collapse chevron
  * - Invoice number and due date
+ * - Invoice type badge (optional - for account invoices page)
  * - Status badge
  * - Balance amount
  * - External link and delete actions
@@ -24,10 +26,15 @@ export function InvoiceHeader({
   isExpanded,
   tenantSubdomain,
   canEdit,
+  showInvoiceType = false,
   onToggleExpand,
   onDelete
 }: InvoiceHeaderProps) {
   const statusStyles = getStatusStyles(invoice.status)
+
+  // Determine if this is a general or event-linked invoice
+  const isGeneral = invoice.invoice_type === 'general' || !invoice.event_id
+  const eventName = invoice.event?.title || null
 
   return (
     <div
@@ -40,8 +47,27 @@ export function InvoiceHeader({
         ) : (
           <ChevronRight className="h-5 w-5 text-gray-400" />
         )}
-        <div>
-          <div className="font-medium text-gray-900">{invoice.invoice_number}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-gray-900">{invoice.invoice_number}</span>
+            {showInvoiceType && (
+              isGeneral ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  <FileText className="h-3 w-3" />
+                  General
+                </span>
+              ) : eventName ? (
+                <Link
+                  href={`/${tenantSubdomain}/events/${invoice.event_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                >
+                  <Calendar className="h-3 w-3" />
+                  {eventName}
+                </Link>
+              ) : null
+            )}
+          </div>
           <div className="text-sm text-gray-500">
             Due: {new Date(invoice.due_date).toLocaleDateString()}
           </div>

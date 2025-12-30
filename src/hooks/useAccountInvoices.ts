@@ -1,19 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import type { Invoice } from '@/components/events/invoices/types'
 
-interface Invoice {
-  id: string
-  invoice_number: string
-  total_amount: number
-  due_date: string
-  status: string
-  events: {
-    name: string
-    event_date: string
-  } | null
-}
-
-async function fetchAccountInvoices(accountId: string): Promise<Invoice[]> {
-  const response = await fetch(`/api/accounts/${accountId}/invoices?type=upcoming`)
+async function fetchAccountInvoices(accountId: string, type: 'all' | 'upcoming' = 'all'): Promise<Invoice[]> {
+  const response = await fetch(`/api/accounts/${accountId}/invoices?type=${type}`)
   if (!response.ok) {
     throw new Error('Failed to fetch invoices')
   }
@@ -22,13 +11,20 @@ async function fetchAccountInvoices(accountId: string): Promise<Invoice[]> {
 }
 
 /**
- * Fetches upcoming invoices for an account
+ * Fetches all invoices for an account (both event-linked and general)
  */
-export function useAccountInvoices(accountId: string) {
+export function useAccountInvoices(accountId: string, type: 'all' | 'upcoming' = 'all') {
   return useQuery({
-    queryKey: ['account-invoices', accountId],
-    queryFn: () => fetchAccountInvoices(accountId),
+    queryKey: ['account-invoices', accountId, type],
+    queryFn: () => fetchAccountInvoices(accountId, type),
     staleTime: 0, // Always fetch fresh data to ensure cache updates are visible
     enabled: Boolean(accountId),
   })
+}
+
+/**
+ * Fetches only upcoming invoices for an account (for quick display)
+ */
+export function useAccountUpcomingInvoices(accountId: string) {
+  return useAccountInvoices(accountId, 'upcoming')
 }

@@ -447,49 +447,76 @@ export interface Database {
       invoices: {
         Row: {
           id: string
+          tenant_id: string
           account_id: string | null
           contact_id: string | null
           opportunity_id: string | null
+          event_id: string | null
           invoice_number: string
+          invoice_type: 'event' | 'general'
           issue_date: string
           due_date: string
           subtotal: number
           tax_amount: number
+          tax_rate: number
           total_amount: number
+          paid_amount: number
+          balance_amount: number
           status: string
           notes: string | null
+          terms: string | null
+          purchase_order: string | null
+          public_token: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
+          tenant_id: string
           account_id?: string | null
           contact_id?: string | null
           opportunity_id?: string | null
+          event_id?: string | null
           invoice_number: string
+          invoice_type?: 'event' | 'general'
           issue_date: string
           due_date: string
           subtotal?: number
           tax_amount?: number
+          tax_rate?: number
           total_amount?: number
+          paid_amount?: number
+          balance_amount?: number
           status?: string
           notes?: string | null
+          terms?: string | null
+          purchase_order?: string | null
+          public_token?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
+          tenant_id?: string
           account_id?: string | null
           contact_id?: string | null
           opportunity_id?: string | null
+          event_id?: string | null
           invoice_number?: string
+          invoice_type?: 'event' | 'general'
           issue_date?: string
           due_date?: string
           subtotal?: number
           tax_amount?: number
+          tax_rate?: number
           total_amount?: number
+          paid_amount?: number
+          balance_amount?: number
           status?: string
           notes?: string | null
+          terms?: string | null
+          purchase_order?: string | null
+          public_token?: string | null
           created_at?: string
           updated_at?: string
         }

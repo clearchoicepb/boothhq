@@ -425,7 +425,7 @@ export default function NewInvoicePage() {
             {/* Event Selection */}
             <div>
               <label htmlFor="event_id" className="block text-sm font-medium text-gray-700 mb-1">
-                Event
+                Link to Event
               </label>
               <select
                 id="event_id"
@@ -433,7 +433,7 @@ export default function NewInvoicePage() {
                 onChange={(e) => handleInputChange('event_id', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
               >
-                <option value="">Select an event (optional)</option>
+                <option value="">No event - General Invoice</option>
                 {filteredEvents.map((event) => {
                   const startDate = new Date(event.start_date)
                   const isPast = startDate < new Date()
@@ -444,6 +444,11 @@ export default function NewInvoicePage() {
                   )
                 })}
               </select>
+              <p className="mt-1 text-xs text-gray-500">
+                {formData.event_id
+                  ? 'This invoice will be linked to the selected event'
+                  : 'This will be a General Invoice not linked to any event'}
+              </p>
             </div>
 
             {/* Dates */}

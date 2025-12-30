@@ -37,7 +37,14 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
-    const response = NextResponse.json(data || [])
+    // Transform to ensure consistent event object and invoice_type
+    const transformedData = (data || []).map(invoice => ({
+      ...invoice,
+      event: invoice.events || null,
+      invoice_type: invoice.invoice_type || 'event' // Default for backwards compatibility
+    }))
+
+    const response = NextResponse.json(transformedData)
     // Use short-lived cache to ensure fresh data after mutations
     response.headers.set('Cache-Control', 'private, no-cache, must-revalidate, max-age=0')
     return response

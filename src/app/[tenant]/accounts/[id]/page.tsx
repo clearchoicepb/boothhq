@@ -14,7 +14,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAccount } from '@/hooks/useAccount'
 import { useAccountContacts } from '@/hooks/useAccountContacts'
 import { useAccountUpcomingEvents, useAccountPreviousEvents } from '@/hooks/useAccountEvents'
-import { useAccountInvoices } from '@/hooks/useAccountInvoices'
+import { useAccountUpcomingInvoices } from '@/hooks/useAccountInvoices'
+import { AccountInvoices } from '@/components/accounts/AccountInvoices'
 import { useAccountSummary } from '@/hooks/useAccountSummary'
 import { createLogger } from '@/lib/logger'
 
@@ -110,7 +111,7 @@ export default function AccountDetailPage() {
   const { data: contacts = [] } = useAccountContacts(accountId)
   const { data: upcomingEvents = [] } = useAccountUpcomingEvents(accountId)
   const { data: previousEvents = [] } = useAccountPreviousEvents(accountId)
-  const { data: upcomingInvoices = [] } = useAccountInvoices(accountId)
+  const { data: upcomingInvoices = [] } = useAccountUpcomingInvoices(accountId)
   const { data: summary = null } = useAccountSummary(accountId)
 
   // Aggregate loading state
@@ -610,57 +611,13 @@ export default function AccountDetailPage() {
               )}
             </div>
 
-            {/* Upcoming Invoices */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Upcoming Invoices</h2>
-                <Link href={`/${tenantSubdomain}/invoices/new?account_id=${account.id}`}>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Invoice
-                  </Button>
-                </Link>
-              </div>
-              {upcomingInvoices.length === 0 ? (
-                <p className="text-gray-500 text-sm">No upcoming invoices.</p>
-              ) : (
-                <div className="space-y-3">
-                  {upcomingInvoices.slice(0, 5).map((invoice) => (
-                    <div key={invoice.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0 h-8 w-8">
-                          <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                            <DollarSign className="h-4 w-4 text-orange-600" />
-                          </div>
-                        </div>
-                        <div>
-                          <Link 
-                            href={`/${tenantSubdomain}/invoices/${invoice.id}`}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                          >
-                            {invoice.invoice_number}
-                          </Link>
-                          {invoice.events && (
-                            <p className="text-xs text-gray-500">
-                              {invoice.events.name} • {new Date(invoice.events.event_date).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">${invoice.total_amount.toLocaleString()}</p>
-                        <p className="text-xs text-gray-500">Due {new Date(invoice.due_date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {upcomingInvoices.length > 5 && (
-                    <Link href={`/${tenantSubdomain}/invoices?account_id=${account.id}`} className="block text-center text-sm text-blue-600 hover:text-blue-800 cursor-pointer transition-colors duration-150">
-                      View all {upcomingInvoices.length} upcoming invoices
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* Account Invoices - Full Management */}
+            <AccountInvoices
+              accountId={account.id}
+              tenantSubdomain={tenantSubdomain}
+              canCreate={true}
+              canEdit={true}
+            />
 
             {/* Contact Associations (Many-to-Many with Roles) */}
             <div className="bg-white rounded-lg shadow p-6">
