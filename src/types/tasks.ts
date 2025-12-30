@@ -102,6 +102,13 @@ export interface TaskWithRelations extends Task {
     name: string
     target_date: string | null
   } | null
+  // Event info (populated when entity_type='event')
+  event?: {
+    id: string
+    title: string
+    event_number: string | null
+    start_date: string | null
+  } | null
   // Subtasks (populated when fetching a parent task with its children)
   subtasks?: TaskWithRelations[]
   // Subtask progress (computed, for display in list views)
