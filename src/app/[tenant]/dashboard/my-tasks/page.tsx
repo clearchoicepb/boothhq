@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useTenant } from '@/lib/tenant-context'
 import { AppLayout } from '@/components/layout/app-layout'
 import { TaskDetailModal } from '@/components/task-detail-modal'
+import { AddTaskModal } from '@/components/dashboards/add-task-modal'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   CheckCircle2,
@@ -25,7 +26,8 @@ import {
   CornerDownRight,
   ChevronDown,
   ChevronRight,
-  User
+  User,
+  Plus
 } from 'lucide-react'
 import { getDepartmentById, DEPARTMENTS, type DepartmentId } from '@/lib/departments'
 import toast from 'react-hot-toast'
@@ -135,6 +137,7 @@ export default function MyTasksPage() {
   const [filterPriority, setFilterPriority] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
 
   // Phase 3: Manager department tabs
   const [viewTab, setViewTab] = useState<string>('my-tasks') // 'my-tasks' or department id
@@ -475,17 +478,26 @@ export default function MyTasksPage() {
       <div className="min-h-screen bg-gray-50 p-3">
         <div className="max-w-6xl mx-auto space-y-3">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center">
-            <ListTodo className="h-5 w-5 mr-2 text-blue-600" />
-            {isDepartmentView ? `${getDepartmentName(viewTab)} Tasks` : 'My Tasks'}
-          </h1>
-          <p className="text-xs text-gray-600 mt-0.5">
-            {isDepartmentView
-              ? `All tasks for the ${getDepartmentName(viewTab)} department`
-              : "What's next for you today"
-            }
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center">
+              <ListTodo className="h-5 w-5 mr-2 text-blue-600" />
+              {isDepartmentView ? `${getDepartmentName(viewTab)} Tasks` : 'My Tasks'}
+            </h1>
+            <p className="text-xs text-gray-600 mt-0.5">
+              {isDepartmentView
+                ? `All tasks for the ${getDepartmentName(viewTab)} department`
+                : "What's next for you today"
+              }
+            </p>
+          </div>
+          <button
+            onClick={() => setIsAddTaskModalOpen(true)}
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 flex items-center gap-1.5 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add Task
+          </button>
         </div>
 
         {/* View Tabs - My Tasks vs Department Tabs */}
@@ -667,6 +679,17 @@ export default function MyTasksPage() {
           }}
         />
       )}
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => {
+          setIsAddTaskModalOpen(false)
+          fetchMyTasks() // Refresh tasks after adding
+        }}
+        userId={undefined} // User will be fetched from session in the modal
+        primaryColor="#2563eb"
+      />
     </AppLayout>
   )
 }

@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2, Users } from 'lucide-react'
+import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User, Calendar, Loader2, Users, Hash, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
+import { useTenant } from '@/lib/tenant-context'
 import { useUsers } from '@/hooks/useUsers'
 import { SubtaskList } from '@/components/subtask-list'
 import { TaskNotes } from '@/components/task-notes'
@@ -57,6 +59,19 @@ interface Task {
     last_name: string
     email: string
   }
+  // Event info (when entity_type='event')
+  event?: {
+    id: string
+    title: string
+    event_number?: string | null
+    start_date?: string | null
+    event_dates?: Array<{ event_date: string }>
+  } | null
+  // Project info (when entity_type='project')
+  project?: {
+    id: string
+    name: string
+  } | null
 }
 
 interface TaskDetailModalProps {
@@ -67,6 +82,7 @@ interface TaskDetailModalProps {
 }
 
 export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetailModalProps) {
+  const { tenant } = useTenant()
   const { data: users = [], isLoading: loadingUsers } = useUsers()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -234,6 +250,74 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
             </p>
           </div>
         </div>
+
+        {/* Event Info Section - Prominent display for event-linked tasks */}
+        {task.entity_type === 'event' && task.event && (
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">
+              Linked Event
+            </div>
+            <div className="text-lg font-semibold text-gray-900">{task.event.title}</div>
+            <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
+              {task.event.event_number && (
+                <span className="flex items-center gap-1">
+                  <Hash className="h-3.5 w-3.5" />
+                  {task.event.event_number}
+                </span>
+              )}
+              {task.event.start_date && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {new Date(task.event.start_date).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </span>
+              )}
+              {task.event.event_dates && task.event.event_dates.length > 0 && !task.event.start_date && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {new Date(task.event.event_dates[0].event_date).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </span>
+              )}
+            </div>
+            {tenant && task.entity_id && (
+              <Link
+                href={`/${tenant}/events/${task.entity_id}`}
+                className="inline-flex items-center gap-1 mt-3 text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                View Event
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* Project Info Section - Display for project-linked tasks */}
+        {task.entity_type === 'project' && task.project && (
+          <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+            <div className="text-xs text-purple-600 font-medium uppercase tracking-wide mb-1">
+              Linked Project
+            </div>
+            <div className="text-lg font-semibold text-gray-900">{task.project.name}</div>
+            {tenant && task.entity_id && (
+              <Link
+                href={`/${tenant}/projects/${task.entity_id}`}
+                className="inline-flex items-center gap-1 mt-3 text-sm text-purple-600 hover:text-purple-700 hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                View Project
+              </Link>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
