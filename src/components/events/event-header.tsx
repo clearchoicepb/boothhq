@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, MoreVertical, Copy, RefreshCw, Link as LinkIcon, Eye, EyeOff, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, MoreVertical, Copy, RefreshCw, Link as LinkIcon, Eye, EyeOff, RotateCcw, Users } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -19,6 +19,10 @@ interface EventHeaderProps {
   publicPageEnabled?: boolean
   onPublicTokenChange?: (token: string) => void
   onPublicPageEnabledChange?: (enabled: boolean) => void
+  staffBriefToken?: string | null
+  staffBriefEnabled?: boolean
+  onStaffBriefTokenChange?: (token: string) => void
+  onStaffBriefEnabledChange?: (enabled: boolean) => void
 }
 
 export function EventHeader({
@@ -31,10 +35,16 @@ export function EventHeader({
   publicPageEnabled = true,
   onPublicTokenChange,
   onPublicPageEnabledChange,
+  staffBriefToken,
+  staffBriefEnabled = true,
+  onStaffBriefTokenChange,
+  onStaffBriefEnabledChange,
 }: EventHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [isTogglingAccess, setIsTogglingAccess] = useState(false)
+  const [isRegeneratingStaffBrief, setIsRegeneratingStaffBrief] = useState(false)
+  const [isTogglingStaffBriefAccess, setIsTogglingStaffBriefAccess] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { confirm } = useConfirmDialog()
@@ -166,6 +176,81 @@ export function EventHeader({
     }
   }
 
+  // Staff Brief handlers
+  const handleCopyStaffBriefLink = () => {
+    setIsMenuOpen(false)
+    if (!staffBriefToken) {
+      toast.error('Staff brief link not available')
+      return
+    }
+
+    const briefUrl = `${window.location.origin}/brief/${staffBriefToken}`
+    navigator.clipboard.writeText(briefUrl)
+      .then(() => {
+        toast.success('Staff brief link copied to clipboard')
+      })
+      .catch(() => {
+        toast.error('Failed to copy link')
+      })
+  }
+
+  const handleToggleStaffBriefAccess = async () => {
+    setIsMenuOpen(false)
+    setIsTogglingStaffBriefAccess(true)
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/staff-brief-token`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_brief_enabled: !staffBriefEnabled })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle access')
+      }
+
+      const data = await response.json()
+      onStaffBriefEnabledChange?.(data.staff_brief_enabled)
+      toast.success(data.staff_brief_enabled ? 'Staff brief enabled' : 'Staff brief disabled')
+    } catch {
+      toast.error('Failed to update staff brief access')
+    } finally {
+      setIsTogglingStaffBriefAccess(false)
+    }
+  }
+
+  const handleRegenerateStaffBriefToken = async () => {
+    setIsMenuOpen(false)
+
+    const confirmed = await confirm({
+      title: 'Regenerate Staff Brief Link',
+      message: 'Are you sure you want to regenerate the staff brief link? The current link will stop working.',
+      confirmText: 'Regenerate',
+      variant: 'danger'
+    })
+
+    if (!confirmed) return
+
+    setIsRegeneratingStaffBrief(true)
+    try {
+      const response = await fetch(`/api/events/${eventId}/staff-brief-token`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate token')
+      }
+
+      const data = await response.json()
+      onStaffBriefTokenChange?.(data.staff_brief_token)
+      toast.success('Staff brief link regenerated')
+    } catch {
+      toast.error('Failed to regenerate staff brief link')
+    } finally {
+      setIsRegeneratingStaffBrief(false)
+    }
+  }
+
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between">
@@ -253,6 +338,52 @@ export function EventHeader({
                       <button
                         onClick={handleRegenerateToken}
                         disabled={isRegenerating}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Regenerate Link
+                      </button>
+                      <div className="border-t border-gray-100 my-1" />
+                    </>
+                  )}
+                  {/* Staff Brief Section */}
+                  {staffBriefToken && (
+                    <>
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Staff Event Brief</p>
+                      </div>
+                      <button
+                        onClick={handleCopyStaffBriefLink}
+                        disabled={!staffBriefEnabled}
+                        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+                          staffBriefEnabled
+                            ? 'text-gray-700 hover:bg-gray-50'
+                            : 'text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <Users className="h-4 w-4" />
+                        Copy Staff Brief Link
+                      </button>
+                      <button
+                        onClick={handleToggleStaffBriefAccess}
+                        disabled={isTogglingStaffBriefAccess}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        {staffBriefEnabled ? (
+                          <>
+                            <EyeOff className="h-4 w-4" />
+                            Disable Staff Brief
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-4 w-4" />
+                            Enable Staff Brief
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={handleRegenerateStaffBriefToken}
+                        disabled={isRegeneratingStaffBrief}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                       >
                         <RotateCcw className="h-4 w-4" />
