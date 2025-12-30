@@ -142,10 +142,17 @@ export function AddTaskModal({
         setTitle(template.default_title)
         setDescription(template.default_description || '')
         setPriority(template.default_priority)
-        if (template.default_due_in_days) {
+
+        // Calculate due date based on template settings
+        // Note: Event-based due dates (use_event_date) will be calculated by the API
+        // when the task is created, since this modal doesn't have access to event dates
+        if (!template.use_event_date && template.default_due_in_days) {
           const dueDate = new Date()
           dueDate.setDate(dueDate.getDate() + template.default_due_in_days)
           setDueDate(dueDate.toISOString().split('T')[0])
+        } else if (template.use_event_date) {
+          // Clear due date - let API calculate from event date
+          setDueDate('')
         }
       }
     }

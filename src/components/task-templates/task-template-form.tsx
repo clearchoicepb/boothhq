@@ -48,6 +48,9 @@ export function TaskTemplateForm({
     requires_assignment: template?.requires_assignment || false,
     enabled: template?.enabled ?? true,
     display_order: template?.display_order?.toString() || '0',
+    // Event-based due date calculation fields
+    use_event_date: template?.use_event_date ?? false,
+    days_before_event: template?.days_before_event?.toString() || '',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -91,12 +94,20 @@ export function TaskTemplateForm({
         default_title: formData.default_title.trim(),
         default_description: formData.default_description.trim() || null,
         default_priority: formData.default_priority as 'low' | 'medium' | 'high' | 'urgent',
-        default_due_in_days: formData.default_due_in_days
-          ? parseInt(formData.default_due_in_days)
-          : null,
+        // Due date calculation - only set the relevant field based on calculation type
+        default_due_in_days: formData.use_event_date
+          ? null // Clear when using event-based calculation
+          : formData.default_due_in_days
+            ? parseInt(formData.default_due_in_days)
+            : null,
         requires_assignment: formData.requires_assignment,
         enabled: formData.enabled,
         display_order: parseInt(formData.display_order) || 0,
+        // Event-based due date calculation fields
+        use_event_date: formData.use_event_date,
+        days_before_event: formData.use_event_date && formData.days_before_event
+          ? parseInt(formData.days_before_event)
+          : null,
       }
 
       if (isEditing) {
@@ -256,44 +267,98 @@ export function TaskTemplateForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {/* Priority */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Default Priority
+        {/* Priority */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Default Priority
+          </label>
+          <select
+            value={formData.default_priority}
+            onChange={(e) =>
+              setFormData({ ...formData, default_priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent' })
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+
+        {/* Due Date Calculation Section */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Due Date Calculation
+          </label>
+
+          {/* Radio buttons for calculation type */}
+          <div className="space-y-2">
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                name="due_date_type"
+                checked={!formData.use_event_date}
+                onChange={() => setFormData({ ...formData, use_event_date: false })}
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Days after task creation</span>
             </label>
-            <select
-              value={formData.default_priority}
-              onChange={(e) =>
-                setFormData({ ...formData, default_priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent' })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                name="due_date_type"
+                checked={formData.use_event_date}
+                onChange={() => setFormData({ ...formData, use_event_date: true })}
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Days before event date</span>
+            </label>
           </div>
 
-          {/* Due In Days */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Due In (Days)
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={formData.default_due_in_days}
-              onChange={(e) =>
-                setFormData({ ...formData, default_due_in_days: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              placeholder="Leave empty for no default"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Days from task creation
-            </p>
+          {/* Conditional input based on selected calculation type */}
+          <div className="mt-3">
+            {!formData.use_event_date ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Days after task is created
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.default_due_in_days}
+                  onChange={(e) =>
+                    setFormData({ ...formData, default_due_in_days: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  placeholder="Leave empty for no default due date"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  e.g., Enter 7 for a task due one week after creation
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Days before event date
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.days_before_event}
+                  onChange={(e) =>
+                    setFormData({ ...formData, days_before_event: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  placeholder="e.g., 14 for two weeks before event"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  For Events with multiple dates, the first (earliest) date is used.
+                  For Projects, falls back to creation date if set.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

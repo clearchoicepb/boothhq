@@ -110,12 +110,45 @@ const executeCreateTaskAction: ActionExecutor = async (
       throw new Error(`Task template not found: ${action.task_template_id}`)
     }
 
-    // Calculate due date (if template specifies default_due_in_days)
+    // Calculate due date
     let dueDate: string | null = null
-    if (template.default_due_in_days) {
+
+    // Priority 1: Event-based calculation (days before event)
+    if (template.use_event_date && template.days_before_event !== null) {
+      if (context.triggerEntity?.type === 'event') {
+        const eventData = context.triggerEntity.data
+
+        // Try start_date first, then event_date from the event object
+        let eventDateStr = eventData?.start_date || eventData?.event_date
+
+        // If no direct date, fetch from event_dates table (first/earliest date)
+        if (!eventDateStr && context.triggerEntity.id) {
+          const { data: eventDates } = await supabase
+            .from('event_dates')
+            .select('event_date')
+            .eq('event_id', context.triggerEntity.id)
+            .eq('tenant_id', dataSourceTenantId)
+            .order('event_date', { ascending: true })
+            .limit(1)
+
+          if (eventDates?.[0]?.event_date) {
+            eventDateStr = eventDates[0].event_date
+          }
+        }
+
+        if (eventDateStr) {
+          const eventDate = new Date(eventDateStr.includes('T') ? eventDateStr : eventDateStr + 'T00:00:00')
+          eventDate.setDate(eventDate.getDate() - template.days_before_event)
+          dueDate = eventDate.toISOString().split('T')[0]
+        }
+      }
+    }
+
+    // Priority 2: Fallback to days-from-creation
+    if (!dueDate && template.default_due_in_days) {
       const due = new Date()
       due.setDate(due.getDate() + template.default_due_in_days)
-      dueDate = due.toISOString()
+      dueDate = due.toISOString().split('T')[0]
     }
 
     // Create task from template

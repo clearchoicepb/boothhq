@@ -95,6 +95,8 @@ export async function GET(request: NextRequest) {
  *   requires_assignment?: boolean
  *   enabled?: boolean
  *   display_order?: number
+ *   use_event_date?: boolean          // If true, calculate due date based on event date
+ *   days_before_event?: number         // Days before event date for due date calculation
  * }
  */
 export async function POST(request: NextRequest) {
@@ -125,6 +127,9 @@ export async function POST(request: NextRequest) {
       requires_assignment = false,
       enabled = true,
       display_order = 0,
+      // Event-based due date calculation fields
+      use_event_date = false,
+      days_before_event,
     } = body
 
     // Validation
@@ -162,11 +167,14 @@ export async function POST(request: NextRequest) {
         default_title,
         default_description: default_description || null,
         default_priority,
-        default_due_in_days: default_due_in_days || null,
+        default_due_in_days: default_due_in_days ?? null,
         requires_assignment,
         enabled,
         display_order,
         created_by: session.user.id,
+        // Event-based due date calculation fields
+        use_event_date,
+        days_before_event: days_before_event ?? null,
       })
       .select()
       .single()
