@@ -128,8 +128,9 @@ export interface LogisticsData {
   location: LogisticsLocation | null
 
   // Section 4: Contacts
-  onsite_contact: LogisticsContact
-  event_planner: LogisticsContact
+  onsite_contact: LogisticsContact  // Client's designated person at the event
+  venue_contact?: LogisticsContact   // Venue's employee/coordinator (from location)
+  event_planner: LogisticsContact    // Third-party professional planner
 
   // Section 5: Arrival Instructions
   load_in_notes: string | null
@@ -153,9 +154,15 @@ export interface LogisticsData {
   // ===== Legacy fields for PDF generator compatibility =====
   // These mirror the new fields in the format expected by the original PDF generator
   load_in_time?: string | null // Same as setup_time
+  // Onsite contact (client's designated person at the event)
+  onsite_contact_name?: string | null
+  onsite_contact_phone?: string | null
+  onsite_contact_email?: string | null
+  // Venue contact (venue's employee/coordinator - from location record)
   venue_contact_name?: string | null
   venue_contact_phone?: string | null
   venue_contact_email?: string | null
+  // Event planner (third-party professional planner)
   event_planner_name?: string | null
   event_planner_phone?: string | null
   event_planner_email?: string | null

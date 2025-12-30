@@ -29,8 +29,8 @@ export async function GET(
         event_type,
         location,
         load_in_notes,
-        venue_contact_name,
-        venue_contact_phone,
+        onsite_contact_name,
+        onsite_contact_phone,
         event_planner_name,
         event_planner_phone,
         start_date,
@@ -387,8 +387,12 @@ export async function GET(
 
       // Section 4: Contacts
       onsite_contact: {
-        name: event.venue_contact_name || locationData?.contact_name || null,
-        phone: event.venue_contact_phone || locationData?.contact_phone || null
+        name: event.onsite_contact_name || null,
+        phone: event.onsite_contact_phone || null
+      },
+      venue_contact: {
+        name: locationData?.contact_name || null,
+        phone: locationData?.contact_phone || null
       },
       event_planner: {
         name: event.event_planner_name || null,
@@ -419,12 +423,18 @@ export async function GET(
 
       // ===== Legacy fields for PDF generator compatibility =====
       load_in_time: targetEventDate?.setup_time || null,
-      venue_contact_name: event.venue_contact_name || locationData?.contact_name || null,
-      venue_contact_phone: event.venue_contact_phone || locationData?.contact_phone || null,
-      venue_contact_email: null, // Not available in current schema
+      // Onsite contact (from event record)
+      onsite_contact_name: event.onsite_contact_name || null,
+      onsite_contact_phone: event.onsite_contact_phone || null,
+      onsite_contact_email: null,
+      // Venue contact (from location record)
+      venue_contact_name: locationData?.contact_name || null,
+      venue_contact_phone: locationData?.contact_phone || null,
+      venue_contact_email: locationData?.contact_email || null,
+      // Event planner
       event_planner_name: event.event_planner_name || null,
       event_planner_phone: event.event_planner_phone || null,
-      event_planner_email: null, // Not available in current schema
+      event_planner_email: null,
       staff: legacyStaff,
       custom_items: addOns.map(addon => ({
         id: addon.id,

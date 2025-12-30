@@ -120,12 +120,12 @@ export const mergeFieldCategories: MergeFieldCategory[] = [
     ]
   },
   {
-    id: 'venue_contact_event',
-    label: 'Venue Contact (On Event)',
+    id: 'onsite_contact',
+    label: 'Onsite Contact',
     fields: [
-      { key: 'events.venue_contact_name', label: 'Venue Contact Name', type: 'text', table: 'events', column: 'venue_contact_name' },
-      { key: 'events.venue_contact_phone', label: 'Venue Contact Phone', type: 'text', table: 'events', column: 'venue_contact_phone' },
-      { key: 'events.venue_contact_email', label: 'Venue Contact Email', type: 'email', table: 'events', column: 'venue_contact_email' },
+      { key: 'events.onsite_contact_name', label: 'Onsite Contact Name', type: 'text', table: 'events', column: 'onsite_contact_name' },
+      { key: 'events.onsite_contact_phone', label: 'Onsite Contact Phone', type: 'text', table: 'events', column: 'onsite_contact_phone' },
+      { key: 'events.onsite_contact_email', label: 'Onsite Contact Email', type: 'email', table: 'events', column: 'onsite_contact_email' },
     ]
   },
   {
