@@ -319,8 +319,8 @@ export function EventLogistics({ eventId, eventDateId: propEventDateId }: EventL
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          venue_contact_name: onsiteContactName,
-          venue_contact_phone: onsiteContactPhone
+          onsite_contact_name: onsiteContactName,
+          onsite_contact_phone: onsiteContactPhone
         })
       })
       if (res.ok) {

@@ -54,16 +54,26 @@ interface StaffBriefData {
     address: string | null
     googleMapsUrl: string | null
   } | null
+  // Contact Types:
+  // 1. Venue Contact - employee of the venue (from location record)
+  venueContact: {
+    name: string | null
+    phone: string | null
+    email: string | null
+  }
+  // 2. Onsite Contact - client's designated person at the event
   onsiteContact: {
     name: string | null
     phone: string | null
     email: string | null
   }
-  eventCoordinator: {
+  // 3. Event Planner - professional third-party planner
+  eventPlanner: {
     name: string | null
     phone: string | null
     email: string | null
-  }
+    company: string | null
+  } | null
   arrivalInstructions: string | null
   dressCode: string | null
   package: {
@@ -293,7 +303,7 @@ export default function StaffBriefPage() {
     )
   }
 
-  const { event, customer, dates, venue, onsiteContact, eventCoordinator, arrivalInstructions, dressCode, package: eventPackage, addOns, eventNotes, staff, tenant } = data
+  const { event, customer, dates, venue, venueContact, onsiteContact, eventPlanner, arrivalInstructions, dressCode, package: eventPackage, addOns, eventNotes, staff, tenant } = data
   const primaryDate = dates.length > 0 ? dates[0] : null
 
   return (
@@ -423,20 +433,52 @@ export default function StaffBriefPage() {
           </SectionCard>
 
           {/* Section 2: Onsite Contacts */}
-          {(onsiteContact.name || onsiteContact.phone || eventCoordinator.name || eventCoordinator.phone) && (
+          {(venueContact.name || venueContact.phone || onsiteContact.name || onsiteContact.phone || eventPlanner) && (
             <SectionCard icon={Phone} title="Onsite Contacts">
+              {/* Onsite Contact - Primary person to find on arrival */}
               <ContactRow
                 label="Onsite Point of Contact"
                 name={onsiteContact.name}
                 phone={onsiteContact.phone}
                 email={onsiteContact.email}
               />
+              {/* Venue Contact - Venue's employee/coordinator */}
               <ContactRow
-                label="Event Coordinator"
-                name={eventCoordinator.name}
-                phone={eventCoordinator.phone}
-                email={eventCoordinator.email}
+                label="Venue Contact"
+                name={venueContact.name}
+                phone={venueContact.phone}
+                email={venueContact.email}
               />
+              {/* Event Planner - Third-party professional planner */}
+              {eventPlanner && (
+                <div className="py-3 border-b border-gray-100 last:border-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Event Planner</p>
+                  {eventPlanner.name && <p className="font-medium text-gray-900">{eventPlanner.name}</p>}
+                  {eventPlanner.company && (
+                    <p className="text-sm text-gray-600">{eventPlanner.company}</p>
+                  )}
+                  <div className="flex flex-wrap gap-3 mt-1">
+                    {eventPlanner.phone && (
+                      <a
+                        href={`tel:${formatPhoneForLink(eventPlanner.phone)}`}
+                        className="inline-flex items-center gap-1.5 text-[#347dc4] hover:underline text-sm"
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        {eventPlanner.phone}
+                      </a>
+                    )}
+                    {eventPlanner.email && (
+                      <a
+                        href={`mailto:${eventPlanner.email}`}
+                        className="inline-flex items-center gap-1.5 text-[#347dc4] hover:underline text-sm"
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        {eventPlanner.email}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </SectionCard>
           )}
 

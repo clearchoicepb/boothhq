@@ -187,14 +187,14 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   yPos += 10
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Name: ${logistics.onsite_contact?.name || logistics.venue_contact_name || logistics.location?.contact_name || 'Not specified'}`, leftX, yPos)
+  doc.text(`Name: ${logistics.onsite_contact?.name || logistics.onsite_contact_name || 'Not specified'}`, leftX, yPos)
   yPos += 9
-  if (logistics.onsite_contact?.phone || logistics.venue_contact_phone || logistics.location?.contact_phone) {
-    doc.text(`Phone: ${logistics.onsite_contact?.phone || logistics.venue_contact_phone || logistics.location?.contact_phone}`, leftX, yPos)
+  if (logistics.onsite_contact?.phone || logistics.onsite_contact_phone) {
+    doc.text(`Phone: ${logistics.onsite_contact?.phone || logistics.onsite_contact_phone}`, leftX, yPos)
     yPos += 9
   }
-  if (logistics.venue_contact_email) {
-    doc.text(`Email: ${logistics.venue_contact_email}`, leftX, yPos)
+  if (logistics.onsite_contact_email) {
+    doc.text(`Email: ${logistics.onsite_contact_email}`, leftX, yPos)
     yPos += 9
   }
 

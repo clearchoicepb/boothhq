@@ -52,6 +52,7 @@ interface EventDateData {
     country: string | null
     contact_name: string | null
     contact_phone: string | null
+    contact_email: string | null
     notes: string | null
   } | null
 }
@@ -120,9 +121,10 @@ export async function GET(
         account_id,
         contact_id,
         primary_contact_id,
-        venue_contact_name,
-        venue_contact_phone,
-        venue_contact_email,
+        onsite_contact_name,
+        onsite_contact_phone,
+        onsite_contact_email,
+        event_planner_id,
         event_planner_name,
         event_planner_phone,
         event_planner_email,
@@ -205,7 +207,44 @@ export async function GET(
       }
     }
 
-    // Fetch event dates with location info
+    // Fetch event planner contact (if linked to a contact record)
+    let eventPlannerContact: {
+      name: string
+      email: string | null
+      phone: string | null
+      company: string | null
+    } | null = null
+
+    if (event.event_planner_id) {
+      const { data: planner } = await supabase
+        .from('contacts')
+        .select(`
+          first_name,
+          last_name,
+          email,
+          phone,
+          mobile,
+          account:accounts (
+            name
+          )
+        `)
+        .eq('id', event.event_planner_id)
+        .single()
+
+      if (planner) {
+        const accountData = planner.account as unknown
+        const account = Array.isArray(accountData) ? accountData[0] : accountData as { name: string } | null
+
+        eventPlannerContact = {
+          name: `${planner.first_name} ${planner.last_name}`.trim(),
+          email: planner.email,
+          phone: planner.phone || planner.mobile,
+          company: account?.name || null
+        }
+      }
+    }
+
+    // Fetch event dates with location info (including venue contact)
     const { data: eventDates } = await supabase
       .from('event_dates')
       .select(`
@@ -227,6 +266,7 @@ export async function GET(
           country,
           contact_name,
           contact_phone,
+          contact_email,
           notes
         )
       `)
@@ -240,9 +280,10 @@ export async function GET(
       googleMapsUrl: string | null
     } | null = null
 
-    // Location contact info (fallback for onsite contact)
-    let locationContactName: string | null = null
-    let locationContactPhone: string | null = null
+    // Venue contact info (from location record - the venue's employee/coordinator)
+    let venueContactName: string | null = null
+    let venueContactPhone: string | null = null
+    let venueContactEmail: string | null = null
 
     const formattedDates = (eventDates || []).map((ed: EventDateData) => {
       const locationData = ed.location as unknown
@@ -268,9 +309,10 @@ export async function GET(
             : null
         }
 
-        // Capture location contact info as fallback for onsite contact
-        locationContactName = loc.contact_name || null
-        locationContactPhone = loc.contact_phone || null
+        // Capture venue contact info from location record
+        venueContactName = loc.contact_name || null
+        venueContactPhone = loc.contact_phone || null
+        venueContactEmail = loc.contact_email || null
       }
 
       return {
@@ -465,17 +507,26 @@ export async function GET(
       dates: formattedDates,
       // Location
       venue,
-      // Onsite contacts (with fallback to location contact)
+      // Contact Types:
+      // 1. Venue Contact - employee of the venue (from location record)
+      venueContact: {
+        name: venueContactName,
+        phone: venueContactPhone,
+        email: venueContactEmail
+      },
+      // 2. Onsite Contact - client's designated person at the event (from event record)
       onsiteContact: {
-        name: event.venue_contact_name || locationContactName || null,
-        phone: event.venue_contact_phone || locationContactPhone || null,
-        email: event.venue_contact_email || null
+        name: event.onsite_contact_name || null,
+        phone: event.onsite_contact_phone || null,
+        email: event.onsite_contact_email || null
       },
-      eventCoordinator: {
-        name: event.event_planner_name || null,
+      // 3. Event Planner - professional third-party planner (from linked contact or fallback text fields)
+      eventPlanner: eventPlannerContact || (event.event_planner_name ? {
+        name: event.event_planner_name,
         phone: event.event_planner_phone || null,
-        email: event.event_planner_email || null
-      },
+        email: event.event_planner_email || null,
+        company: null
+      } : null),
       // Logistics
       arrivalInstructions: event.load_in_notes || null,
       dressCode: event.dress_code || null,

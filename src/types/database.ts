@@ -333,6 +333,19 @@ export interface Database {
           converted_from_opportunity_id: string | null
           public_token: string | null
           public_page_enabled: boolean
+          // Onsite contact - client's designated person at the event
+          onsite_contact_name: string | null
+          onsite_contact_phone: string | null
+          onsite_contact_email: string | null
+          // Staff brief
+          staff_brief_token: string | null
+          staff_brief_enabled: boolean
+          dress_code: string | null
+          load_in_notes: string | null
+          // Event planner text fallback
+          event_planner_name: string | null
+          event_planner_phone: string | null
+          event_planner_email: string | null
           created_at: string
           updated_at: string
         }
@@ -367,6 +380,19 @@ export interface Database {
           converted_from_opportunity_id?: string | null
           public_token?: string | null
           public_page_enabled?: boolean
+          // Onsite contact - client's designated person at the event
+          onsite_contact_name?: string | null
+          onsite_contact_phone?: string | null
+          onsite_contact_email?: string | null
+          // Staff brief
+          staff_brief_token?: string | null
+          staff_brief_enabled?: boolean
+          dress_code?: string | null
+          load_in_notes?: string | null
+          // Event planner text fallback
+          event_planner_name?: string | null
+          event_planner_phone?: string | null
+          event_planner_email?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -401,6 +427,19 @@ export interface Database {
           converted_from_opportunity_id?: string | null
           public_token?: string | null
           public_page_enabled?: boolean
+          // Onsite contact - client's designated person at the event
+          onsite_contact_name?: string | null
+          onsite_contact_phone?: string | null
+          onsite_contact_email?: string | null
+          // Staff brief
+          staff_brief_token?: string | null
+          staff_brief_enabled?: boolean
+          dress_code?: string | null
+          load_in_notes?: string | null
+          // Event planner text fallback
+          event_planner_name?: string | null
+          event_planner_phone?: string | null
+          event_planner_email?: string | null
           created_at?: string
           updated_at?: string
         }

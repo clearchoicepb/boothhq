@@ -81,8 +81,8 @@ export async function GET(
         event_type,
         location,
         load_in_notes,
-        venue_contact_name,
-        venue_contact_phone,
+        onsite_contact_name,
+        onsite_contact_phone,
         event_planner_name,
         event_planner_phone,
         start_date,
@@ -367,8 +367,12 @@ export async function GET(
 
       // Section 4: Contacts
       onsite_contact: {
-        name: event.venue_contact_name || locationData?.contact_name || null,
-        phone: event.venue_contact_phone || locationData?.contact_phone || null
+        name: event.onsite_contact_name || null,
+        phone: event.onsite_contact_phone || null
+      },
+      venue_contact: {
+        name: locationData?.contact_name || null,
+        phone: locationData?.contact_phone || null
       },
       event_planner: {
         name: event.event_planner_name || null,
