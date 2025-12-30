@@ -110,6 +110,14 @@ export async function PATCH(
     if (body.enabled !== undefined) updates.enabled = body.enabled
     if (body.display_order !== undefined) updates.display_order = body.display_order
 
+    // Event-based due date calculation fields
+    if (body.use_event_date !== undefined) {
+      updates.use_event_date = body.use_event_date
+    }
+    if (body.days_before_event !== undefined) {
+      updates.days_before_event = body.days_before_event
+    }
+
     updates.updated_at = new Date().toISOString()
 
     const { data, error } = await supabase

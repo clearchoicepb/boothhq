@@ -177,17 +177,41 @@ export function CreateTaskModal({
           description: template.default_description || '',
           priority: template.default_priority,
         }))
-        if (template.default_due_in_days) {
+
+        // Calculate due date based on template settings
+        let calculatedDueDate: string | null = null
+
+        // Check if template uses event-based due date calculation
+        if (template.use_event_date && template.days_before_event !== null && eventDates && eventDates.length > 0) {
+          // Sort event dates to get the first (earliest) one
+          const sortedDates = [...eventDates].sort((a, b) =>
+            new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+          )
+          const firstEventDate = new Date(sortedDates[0].event_date)
+          firstEventDate.setDate(firstEventDate.getDate() - template.days_before_event)
+          calculatedDueDate = firstEventDate.toISOString().split('T')[0]
+          log.debug({
+            eventDate: sortedDates[0].event_date,
+            daysBefore: template.days_before_event,
+            calculatedDueDate
+          }, 'Calculated due date from event date')
+        }
+        // Fallback to days-from-creation
+        else if (template.default_due_in_days) {
           const dueDate = new Date()
           dueDate.setDate(dueDate.getDate() + template.default_due_in_days)
+          calculatedDueDate = dueDate.toISOString().split('T')[0]
+        }
+
+        if (calculatedDueDate) {
           setFormData(prev => ({
             ...prev,
-            dueDate: dueDate.toISOString().split('T')[0]
+            dueDate: calculatedDueDate
           }))
         }
       }
     }
-  }, [selectedTemplateId, templates])
+  }, [selectedTemplateId, templates, eventDates])
 
   // Reset template selection when task type changes
   useEffect(() => {

@@ -24,6 +24,9 @@ export interface TaskTemplate {
   created_by: string | null
   created_at: string
   updated_at: string
+  // Event-based due date calculation fields
+  use_event_date: boolean
+  days_before_event: number | null
 }
 
 export interface CreateTaskTemplateInput {
@@ -38,6 +41,9 @@ export interface CreateTaskTemplateInput {
   requires_assignment?: boolean
   enabled?: boolean
   display_order?: number
+  // Event-based due date calculation fields
+  use_event_date?: boolean
+  days_before_event?: number | null
 }
 
 export interface UpdateTaskTemplateInput extends Partial<CreateTaskTemplateInput> {
