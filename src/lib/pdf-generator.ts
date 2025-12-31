@@ -884,8 +884,222 @@ export const generateInvoicePDFFromHTML = async (htmlElement: HTMLElement): Prom
   return Buffer.from(pdf.output('arraybuffer'))
 }
 
+// Helper function to add an invoice to an existing jsPDF document (for Schedule A attachment)
+// Note: companyInfo is accepted for API compatibility but not rendered since contracts already have company info
+export const addInvoiceToDocument = (
+  doc: jsPDF,
+  invoice: InvoicePDFData['invoice'],
+  _companyInfo: InvoicePDFData['companyInfo']
+): void => {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
 
+  // Get page dimensions from the document (works with any units/size)
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  // Use proportional margins based on page width (roughly 7% of page width)
+  const margin = pageWidth * 0.07
+  const contentWidth = pageWidth - (margin * 2)
+  const rightEdge = pageWidth - margin
 
+  // Column positions - use proportional spacing
+  const col1X = margin
+  const col1Width = contentWidth * 0.46
+  const colSpacing = contentWidth * 0.01
+  const col2X = margin + (contentWidth * 0.46) + colSpacing
+  const col3X = margin + (contentWidth * 0.64) + colSpacing
+
+  let yPos = margin + 10
+
+  // Invoice Header
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.text('INVOICE', rightEdge, yPos + 8, { align: 'right' })
+
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`#${invoice.invoice_number}`, rightEdge, yPos + 15, { align: 'right' })
+
+  yPos += 35
+
+  // Bill To Section
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(100, 100, 100)
+  doc.text('BILL TO', margin, yPos)
+
+  yPos += 6
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+
+  if (invoice.account_name) {
+    doc.text(invoice.account_name, margin, yPos)
+    yPos += 5
+  }
+
+  if (invoice.contact_name) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
+    yPos += 5
+  }
+
+  // Dates on right side
+  const rightColX = margin + (contentWidth * 0.55)
+  let rightColY = yPos - 11
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(100, 100, 100)
+  doc.text('ISSUE DATE', rightColX, rightColY)
+  rightColY += 5
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(formatDate(invoice.issue_date), rightColX, rightColY)
+  rightColY += 8
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(100, 100, 100)
+  doc.text('DUE DATE', rightColX, rightColY)
+  rightColY += 5
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(formatDate(invoice.due_date), rightColX, rightColY)
+
+  yPos = Math.max(yPos, rightColY) + 15
+
+  // Line separator
+  doc.setDrawColor(229, 229, 229)
+  doc.setLineWidth(0.3)
+  doc.line(margin, yPos, rightEdge, yPos)
+
+  yPos += 12
+
+  // Table header
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('ITEM', col1X, yPos)
+  doc.text('QTY', col2X + 15, yPos, { align: 'right' })
+  doc.text('UNIT PRICE', col3X + 15, yPos, { align: 'right' })
+  doc.text('AMOUNT', rightEdge, yPos, { align: 'right' })
+
+  doc.setDrawColor(0, 0, 0)
+  doc.setLineWidth(0.8)
+  doc.line(margin, yPos + 2, rightEdge, yPos + 2)
+
+  yPos += 10
+
+  // Line items
+  invoice.line_items.forEach((item, index) => {
+    if (yPos > pageHeight - (margin * 3)) {
+      doc.addPage()
+      yPos = margin + 10
+    }
+
+    const itemStartY = yPos
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    const itemName = doc.splitTextToSize(item.name, col1Width - 2)
+    doc.text(itemName, col1X, yPos)
+    yPos += itemName.length * 4
+
+    if (item.description) {
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 100, 100)
+      const descLines = doc.splitTextToSize(item.description.replace(/<[^>]*>/g, ''), col1Width - 2)
+      doc.text(descLines, col1X, yPos + 1)
+      yPos += descLines.length * 3.5
+      doc.setTextColor(0, 0, 0)
+    }
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(item.quantity.toString(), col2X + 15, itemStartY, { align: 'right' })
+    doc.text(formatCurrency(item.unit_price), col3X + 15, itemStartY, { align: 'right' })
+    doc.setFont('helvetica', 'bold')
+    doc.text(formatCurrency(item.total_price), rightEdge, itemStartY, { align: 'right' })
+
+    yPos += 8
+  })
+
+  // Totals section
+  yPos += 8
+  const totalsX = rightEdge - 70
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(70, 70, 70)
+  doc.text('Subtotal:', totalsX, yPos)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(formatCurrency(invoice.subtotal), rightEdge, yPos, { align: 'right' })
+  yPos += 7
+
+  if (invoice.tax_amount && invoice.tax_amount > 0) {
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(70, 70, 70)
+    doc.text(`Tax:`, totalsX, yPos)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    doc.text(formatCurrency(invoice.tax_amount), rightEdge, yPos, { align: 'right' })
+    yPos += 7
+  }
+
+  doc.setDrawColor(0, 0, 0)
+  doc.setLineWidth(0.8)
+  doc.line(totalsX, yPos, rightEdge, yPos)
+  yPos += 8
+
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('Total:', totalsX, yPos)
+  doc.setFontSize(14)
+  doc.text(formatCurrency(invoice.total_amount), rightEdge, yPos, { align: 'right' })
+
+  if (invoice.paid_amount && invoice.paid_amount > 0) {
+    yPos += 14
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(70, 70, 70)
+    doc.text('Amount Paid:', totalsX, yPos)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(34, 139, 34)
+    doc.text(`-${formatCurrency(invoice.paid_amount)}`, rightEdge, yPos, { align: 'right' })
+    yPos += 7
+
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 0, 0)
+    doc.text('Balance Due:', totalsX, yPos)
+    doc.setFontSize(14)
+    doc.setTextColor(52, 125, 196)
+    doc.text(formatCurrency(invoice.balance_amount), rightEdge, yPos, { align: 'right' })
+  }
+
+  doc.setTextColor(0, 0, 0)
+}
 
 

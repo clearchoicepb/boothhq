@@ -2,6 +2,7 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import jsPDF from 'jspdf'
 import { createLogger } from '@/lib/logger'
+import { addInvoiceToDocument } from '@/lib/pdf-generator'
 
 const log = createLogger('api:contracts')
 
@@ -140,6 +141,103 @@ export async function POST(
     pdf.text(`IP Address: ${clientIp}`, margin, y)
     y += 12
     pdf.text(`Document ID: ${contract.id}`, margin, y)
+
+    // Schedule A - Invoice Attachment (if enabled)
+    if (contract.include_invoice_attachment && contract.event_id) {
+      try {
+        // Fetch invoices for this event
+        const { data: invoices, error: invoicesError } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            invoice_line_items(*),
+            accounts(*),
+            contacts(*)
+          `)
+          .eq('tenant_id', dataSourceTenantId)
+          .eq('event_id', contract.event_id)
+          .order('created_at', { ascending: true })
+
+        if (!invoicesError && invoices && invoices.length > 0) {
+          // Fetch tenant info for company details
+          const { data: tenant } = await supabase
+            .from('tenants')
+            .select('name, address, phone, email, logo_url')
+            .eq('id', dataSourceTenantId)
+            .single()
+
+          const companyInfo = {
+            name: tenant?.name || 'Company',
+            address: tenant?.address || '',
+            phone: tenant?.phone || '',
+            email: tenant?.email || ''
+          }
+
+          // Add Schedule A header page
+          pdf.addPage()
+          pdf.setFontSize(18)
+          pdf.setFont('helvetica', 'bold')
+          pdf.text('Schedule A - Invoice(s)', margin, margin + 20)
+
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'normal')
+          pdf.text(`The following invoice(s) are attached as part of this agreement.`, margin, margin + 40)
+          pdf.text(`Total invoices: ${invoices.length}`, margin, margin + 55)
+
+          // Add each invoice
+          for (const inv of invoices) {
+            pdf.addPage()
+
+            // Calculate paid amount from payments if not stored
+            let paidAmount = inv.paid_amount || 0
+            // Note: payments aren't fetched in current query, but keeping this for future compatibility
+            const payments = (inv as { payments?: Array<{ status: string; amount: number }> }).payments
+            if (!paidAmount && payments) {
+              paidAmount = payments
+                .filter((p) => p.status === 'completed')
+                .reduce((sum, p) => sum + (p.amount || 0), 0)
+            }
+
+            const invoiceData = {
+              id: inv.id,
+              invoice_number: inv.invoice_number || 'N/A',
+              account_name: inv.accounts?.name || null,
+              contact_name: inv.contacts ? `${inv.contacts.first_name || ''} ${inv.contacts.last_name || ''}`.trim() : null,
+              opportunity_name: null,
+              event_date: null,
+              issue_date: inv.issue_date || inv.created_at,
+              due_date: inv.due_date || inv.issue_date || inv.created_at,
+              status: inv.status || 'draft',
+              subtotal: inv.subtotal || inv.total_amount || 0,
+              tax_rate: inv.tax_rate || null,
+              tax_amount: inv.tax_amount || null,
+              total_amount: inv.total_amount || 0,
+              paid_amount: paidAmount,
+              balance_amount: (inv.total_amount || 0) - paidAmount,
+              purchase_order: inv.purchase_order || null,
+              payment_terms: inv.payment_terms || null,
+              notes: inv.notes || null,
+              terms: inv.terms || null,
+              line_items: (inv.invoice_line_items || []).map((item: any) => ({
+                name: item.name || item.description || 'Item',
+                description: item.description || null,
+                quantity: item.quantity || 1,
+                unit_price: item.unit_price || 0,
+                total_price: item.total_price || (item.quantity || 1) * (item.unit_price || 0),
+                taxable: item.taxable
+              }))
+            }
+
+            addInvoiceToDocument(pdf, invoiceData, companyInfo)
+          }
+
+          log.debug({ invoiceCount: invoices.length }, 'Added Schedule A invoices to contract PDF')
+        }
+      } catch (scheduleAError) {
+        log.error({ scheduleAError }, 'Error adding Schedule A invoices (continuing without)')
+        // Don't fail the signing - just skip the invoice attachment
+      }
+    }
 
     // Get PDF as base64
     const pdfBase64 = pdf.output('datauristring').split(',')[1]
