@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { template_type, name, subject, content, merge_fields, is_active, sections } = body
+    const { template_type, name, subject, content, merge_fields, is_active, sections, include_invoice_attachment } = body
 
     if (!template_type || !name || !content) {
       return NextResponse.json(
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         merge_fields: merge_fields || [],
         sections: sections || [],
         is_active: is_active !== undefined ? is_active : true,
+        include_invoice_attachment: include_invoice_attachment || false,
         created_by: session.user.id,
       })
       .select()

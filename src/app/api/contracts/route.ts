@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
       title,
       signer_email,
       signer_name,
-      expires_days = 30
+      expires_days = 30,
+      include_invoice_attachment = false
     } = body
 
     if (!event_id || !template_content || !title) {
@@ -221,9 +222,9 @@ export async function POST(request: NextRequest) {
       )
 
       if (addOnItems.length > 0) {
-        // Format as bullet list with name + price
+        // Format as bullet list with name - price
         mergeData.add_ons_list = addOnItems
-          .map((item: any) => `• ${item.description}: $${(item.total_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          .map((item: any) => `• ${item.description} - $${(item.total_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
           .join('\n')
       }
     }
@@ -276,6 +277,7 @@ export async function POST(request: NextRequest) {
     if (contractNumber) insertData.contract_number = contractNumber
     if (expiresAt) insertData.expires_at = expiresAt.toISOString()
     if (session.user.id) insertData.created_by = session.user.id
+    insertData.include_invoice_attachment = include_invoice_attachment
     
     log.debug({ keys: Object.keys(insertData) }, 'Inserting with data')
     log.debug({

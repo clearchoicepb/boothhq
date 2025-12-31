@@ -49,6 +49,7 @@ export async function POST(
         merge_fields: original.merge_fields || [],
         sections: original.sections || [],
         is_active: original.is_active,
+        include_invoice_attachment: original.include_invoice_attachment || false,
         created_by: session.user.id,
       })
       .select()

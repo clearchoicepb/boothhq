@@ -20,6 +20,8 @@ interface Template {
   content: string
   is_active: boolean
   created_at: string
+  sections?: any[]
+  include_invoice_attachment?: boolean
 }
 
 type TemplateType = 'email' | 'sms' | 'contract'
@@ -207,9 +209,10 @@ export default function TemplatesSettingsPage() {
           initialTemplate={editingTemplate ? {
             id: editingTemplate.id,
             name: editingTemplate.name,
-            sections: (editingTemplate as any).sections || [],
+            sections: editingTemplate.sections || [],
             template_type: editingTemplate.template_type,
-            content: editingTemplate.content
+            content: editingTemplate.content,
+            include_invoice_attachment: editingTemplate.include_invoice_attachment
           } : undefined}
           onSave={handleSaveFromBuilder}
           onCancel={() => {

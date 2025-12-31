@@ -53,6 +53,7 @@ interface TemplateBuilderProps {
     sections: TemplateSection[]
     template_type: string
     content?: string
+    include_invoice_attachment?: boolean
   }
   onSave: (template: any) => void
   onCancel: () => void
@@ -67,6 +68,7 @@ export default function TemplateBuilder({
   const [templateName, setTemplateName] = useState(initialTemplate?.name || '')
   const [templateType, setTemplateType] = useState(initialTemplate?.template_type || 'custom')
   const [sections, setSections] = useState<TemplateSection[]>(initialTemplate?.sections || [])
+  const [includeInvoiceAttachment, setIncludeInvoiceAttachment] = useState(initialTemplate?.include_invoice_attachment || false)
   const [editingSection, setEditingSection] = useState<TemplateSection | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'sections' | 'editor'>(
@@ -291,7 +293,8 @@ export default function TemplateBuilder({
         name: templateName,
         content: finalContent,
         sections: viewMode === 'sections' ? sections : [],
-        template_type: templateType
+        template_type: templateType,
+        include_invoice_attachment: includeInvoiceAttachment
       })
 
       toast.success('Template saved successfully')
@@ -385,6 +388,25 @@ export default function TemplateBuilder({
                 <p className="text-xs text-gray-500 mt-1">Sections auto-populated for {templateType} template</p>
               )}
             </div>
+          </div>
+
+          {/* Invoice Attachment Toggle - only for contract templates */}
+          <div className="mt-4 flex items-center gap-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeInvoiceAttachment}
+                onChange={(e) => setIncludeInvoiceAttachment(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <span className="text-sm font-medium text-gray-700">
+              Attach invoices as Schedule A
+            </span>
+            <span className="text-xs text-gray-500">
+              (Appends full invoice PDF(s) after the signing area)
+            </span>
           </div>
         </div>
 

@@ -144,14 +144,20 @@ const MERGE_FIELDS = [
   // Invoice/Financial Fields (invoices linked to events)
   { label: 'Invoice: Total Amount', value: '{{invoice_total}}' },
   { label: 'Invoice: Amount Due', value: '{{invoice_amount_due}}' },
-  { label: 'Invoice: Deposit Amount', value: '{{invoice_deposit_amount}}' },
-  { label: 'Invoice: Balance Due', value: '{{invoice_balance_due}}' },
+  { label: 'Invoice: Deposit Amount', value: '{{deposit_amount}}' },
+  { label: 'Invoice: Balance Due', value: '{{balance_due}}' },
   { label: 'Invoice: Amount Paid', value: '{{invoice_amount_paid}}' },
   { label: 'Invoice: Due Date', value: '{{invoice_due_date}}' },
   { label: 'Invoice: Payment Terms', value: '{{invoice_payment_terms}}' },
   { label: 'Invoice: Number', value: '{{invoice_number}}' },
   { label: 'Invoice: Issue Date', value: '{{invoice_issue_date}}' },
   { label: 'Invoice: Status', value: '{{invoice_status}}' },
+
+  // Package/Line Item Fields
+  { label: 'Package: Name', value: '{{package_name}}' },
+  { label: 'Package: Description', value: '{{package_description}}' },
+  { label: 'Package: Price', value: '{{package_price}}' },
+  { label: 'Add-ons List', value: '{{add_ons_list}}' },
   
   // Contact Fields (from event's account/contact)
   { label: 'Contact: Full Name', value: '{{contact_full_name}}' },

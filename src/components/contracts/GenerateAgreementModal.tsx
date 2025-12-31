@@ -13,6 +13,7 @@ interface Template {
   id: string
   name: string
   content: string
+  include_invoice_attachment?: boolean
 }
 
 interface GenerateAgreementModalProps {
@@ -88,7 +89,8 @@ export function GenerateAgreementModal({
           template_id: template.id,
           template_content: template.content,
           title: template.name,
-          expires_days: 30
+          expires_days: 30,
+          include_invoice_attachment: template.include_invoice_attachment || false
         })
       })
 
