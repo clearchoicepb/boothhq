@@ -171,6 +171,9 @@ export function replaceMergeFields(template: string, data: MergeFieldData): stri
     result = result.replace(regex, formattedValue)
   })
 
+  // Clean up any remaining unresolved merge fields (replace with empty string)
+  result = result.replace(/\{\{\s*\w+\s*\}\}/g, '')
+
   log.debug({ resultLength: result.length }, 'Template processed')
   return result
 }
