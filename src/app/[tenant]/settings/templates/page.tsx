@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
-import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Edit, Trash2, Mail, MessageSquare, FileText, Copy } from 'lucide-react'
 import TemplateBuilder from '@/components/templates/TemplateBuilder'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import toast from 'react-hot-toast'
@@ -170,6 +170,24 @@ export default function TemplatesSettingsPage() {
     }
   }
 
+  const handleDuplicateTemplate = async (id: string) => {
+    try {
+      const response = await fetch(`/api/templates/${id}/duplicate`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        toast.success('Template duplicated')
+        fetchTemplates()
+      } else {
+        toast.error('Failed to duplicate template')
+      }
+    } catch (error) {
+      log.error({ error }, 'Error duplicating template')
+      toast.error('Error duplicating template')
+    }
+  }
+
   const getTabIcon = (type: TemplateType) => {
     switch (type) {
       case 'email':
@@ -281,6 +299,13 @@ export default function TemplatesSettingsPage() {
                           )}
                         </div>
                         <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => handleDuplicateTemplate(template.id)}
+                            className="p-2 text-gray-400 hover:text-green-600 rounded-md hover:bg-gray-100"
+                            title="Duplicate"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => handleEditTemplate(template)}
                             className="p-2 text-gray-400 hover:text-blue-600 rounded-md hover:bg-gray-100"

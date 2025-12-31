@@ -160,7 +160,74 @@ export async function POST(request: NextRequest) {
         mergeData.company_name = event.accounts.name
       }
     }
-    
+
+    // Fetch invoice data for the event
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('*, invoice_line_items(*), payments(*)')
+      .eq('event_id', event_id)
+      .eq('tenant_id', dataSourceTenantId)
+      .order('created_at', { ascending: true })
+
+    if (invoices && invoices.length > 0) {
+      const primaryInvoice = invoices[0]
+      const lineItems = primaryInvoice.invoice_line_items || []
+      const payments = primaryInvoice.payments || []
+
+      // Invoice totals
+      mergeData.invoice_total = primaryInvoice.total_amount
+
+      // Calculate balance due (total minus all payments)
+      const totalPaid = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+      mergeData.balance_due = (primaryInvoice.total_amount || 0) - totalPaid
+
+      // Find deposit amount (look for line item or payment with "deposit" in description)
+      const depositLineItem = lineItems.find((item: any) =>
+        item.description?.toLowerCase().includes('deposit') ||
+        item.description?.toLowerCase().includes('retainer')
+      )
+      const depositPayment = payments.find((p: any) =>
+        p.notes?.toLowerCase().includes('deposit') ||
+        p.notes?.toLowerCase().includes('retainer')
+      )
+      mergeData.deposit_amount = depositLineItem?.total_price || depositPayment?.amount || null
+
+      // Package and add-ons logic
+      // First try to find a line item explicitly marked as package
+      let packageItem = lineItems.find((item: any) =>
+        item.description?.toLowerCase().includes('package') ||
+        item.item_type === 'package'
+      )
+
+      // If no explicit package, use the first non-deposit line item as the package
+      if (!packageItem && lineItems.length > 0) {
+        packageItem = lineItems.find((item: any) =>
+          !item.description?.toLowerCase().includes('deposit') &&
+          !item.description?.toLowerCase().includes('retainer')
+        ) || lineItems[0]
+      }
+
+      if (packageItem) {
+        mergeData.package_name = packageItem.description
+        mergeData.package_description = packageItem.description
+        mergeData.package_price = packageItem.total_price
+      }
+
+      // Add-ons: all line items except the package and deposits
+      const addOnItems = lineItems.filter((item: any) =>
+        item !== packageItem &&
+        !item.description?.toLowerCase().includes('deposit') &&
+        !item.description?.toLowerCase().includes('retainer')
+      )
+
+      if (addOnItems.length > 0) {
+        // Format as bullet list with name + price
+        mergeData.add_ons_list = addOnItems
+          .map((item: any) => `• ${item.description}: $${(item.total_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          .join('\n')
+      }
+    }
+
     log.debug({ keys: Object.keys(mergeData) }, 'Merge data built')
 
     // Replace merge fields in template
