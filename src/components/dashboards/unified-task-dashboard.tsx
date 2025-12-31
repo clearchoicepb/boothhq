@@ -56,6 +56,8 @@ interface TaskWithEvent extends TaskWithUrgency {
   event?: {
     id: string
     title: string
+    event_number: string | null
+    start_date: string | null
     event_dates: Array<{ event_date: string }>
   }
 }

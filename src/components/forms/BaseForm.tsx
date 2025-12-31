@@ -567,7 +567,7 @@ export function BaseForm<T extends Record<string, any>>({
             country: state.data[addressFieldMap.country] || 'US',
             latitude: state.data[addressFieldMap.latitude] ?? null,
             longitude: state.data[addressFieldMap.longitude] ?? null,
-            place_id: state.data[addressFieldMap.place_id] ?? null
+            place_id: addressFieldMap.place_id ? state.data[addressFieldMap.place_id] ?? null : null
           }
 
           return (

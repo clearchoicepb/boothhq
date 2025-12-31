@@ -33,6 +33,18 @@ async function getAppSupabaseClient() {
   })
 }
 
+interface LocationData {
+  id: string
+  name: string
+  address_line1: string | null
+  address_line2: string | null
+  city: string | null
+  state: string | null
+  postal_code: string | null
+  country: string | null
+  notes: string | null
+}
+
 interface EventDateData {
   id: string
   event_date: string
@@ -40,29 +52,23 @@ interface EventDateData {
   start_time: string | null
   end_time: string | null
   location_id: string | null
-  location: {
-    id: string
-    name: string
-    address_line1: string | null
-    address_line2: string | null
-    city: string | null
-    state: string | null
-    postal_code: string | null
-    country: string | null
-    notes: string | null
-  } | null
+  location: LocationData | null
+}
+
+interface UserData {
+  first_name: string
+  last_name: string
+}
+
+interface RoleData {
+  name: string
+  type: string
 }
 
 interface StaffAssignment {
   id: string
-  users: {
-    first_name: string
-    last_name: string
-  } | null
-  staff_roles: {
-    name: string
-    type: string
-  } | null
+  users: UserData | null
+  staff_roles: RoleData | null
 }
 
 interface LineItem {
@@ -261,9 +267,9 @@ export async function GET(
       address: string | null
     } | null = null
 
-    const formattedDates = (eventDates || []).map((ed: EventDateData) => {
+    const formattedDates = (eventDates || []).map((ed: any) => {
       const locationData = ed.location as unknown
-      const loc = Array.isArray(locationData) ? locationData[0] : locationData
+      const loc = Array.isArray(locationData) ? locationData[0] : locationData as LocationData | null
 
       // Get venue from first event date with location
       if (!venue && loc) {
@@ -343,18 +349,12 @@ export async function GET(
     const staffSet = new Set<string>()
     const staff: { name: string; role: string | null }[] = []
 
-    staffAssignments?.forEach((sa: StaffAssignment) => {
+    staffAssignments?.forEach((sa: any) => {
       const usersData = sa.users as unknown
-      const user = Array.isArray(usersData) ? usersData[0] : usersData as {
-        first_name: string
-        last_name: string
-      } | null
+      const user = Array.isArray(usersData) ? usersData[0] : usersData as UserData | null
 
       const rolesData = sa.staff_roles as unknown
-      const staffRole = Array.isArray(rolesData) ? rolesData[0] : rolesData as {
-        name: string
-        type: string
-      } | null
+      const staffRole = Array.isArray(rolesData) ? rolesData[0] : rolesData as RoleData | null
 
       // Skip Graphic Designers
       const roleName = staffRole?.name?.toLowerCase() || ''

@@ -12,7 +12,7 @@ export type { EventDate }
  * Event with related data (account, contact, opportunity names, category, type, payment status)
  * Omits fields that are redefined with different types (joined data instead of raw values)
  */
-export interface EventWithRelations extends Omit<EventType, 'event_type' | 'payment_status'> {
+export interface EventWithRelations extends Omit<EventType, 'event_type' | 'payment_status' | 'event_planner_name'> {
   account_name: string | null
   contact_name: string | null // Legacy field
   opportunity_name: string | null
@@ -34,7 +34,7 @@ export interface EventWithRelations extends Omit<EventType, 'event_type' | 'paym
     phone: string | null
     company: string | null
   } | null
-  event_planner_name?: string | null
+  event_planner_name?: string | null | undefined
   event_category?: {
     name: string
     color: string

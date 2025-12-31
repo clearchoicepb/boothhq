@@ -400,6 +400,7 @@ export interface Communication {
 /** Selected date/time for staff assignment form */
 export interface SelectedDateTime {
   dateId: string
+  arrivalTime: string
   startTime: string
   endTime: string
 }

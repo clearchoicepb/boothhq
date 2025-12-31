@@ -583,8 +583,8 @@ export function isSubtask(task: Task): boolean {
  * Check if a task has subtasks
  */
 export function hasSubtasks(task: TaskWithRelations): boolean {
-  return (task.subtasks && task.subtasks.length > 0) ||
-         (task.subtask_progress && task.subtask_progress.total > 0)
+  return Boolean(task.subtasks && task.subtasks.length > 0) ||
+         Boolean(task.subtask_progress && task.subtask_progress.total > 0)
 }
 
 /**
