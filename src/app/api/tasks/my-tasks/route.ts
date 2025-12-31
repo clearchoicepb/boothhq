@@ -51,6 +51,7 @@ export async function GET(request: Request) {
     const priority = searchParams.get('priority')
     const sortBy = searchParams.get('sortBy') || 'due_date'
     const viewDepartment = searchParams.get('viewDepartment') // Phase 3: Department manager view
+    const assignedTo = searchParams.get('assignedTo') // User filter for department view
 
     // If viewDepartment is specified, verify user has manager access
     let isDepartmentView = false
@@ -101,6 +102,11 @@ export async function GET(request: Request) {
         .eq('tenant_id', dataSourceTenantId)
         .eq('department', viewDepartment)
         .is('parent_task_id', null) // Only top-level tasks, subtasks fetched separately
+
+      // Apply user filter for department view
+      if (assignedTo) {
+        query = query.eq('assigned_to', assignedTo)
+      }
     } else {
       // Regular my-tasks view: fetch tasks assigned to current user
       query = supabase
@@ -219,7 +225,7 @@ export async function GET(request: Request) {
     let subtasksMap: Record<string, any[]> = {}
     if (isDepartmentView && tasks && tasks.length > 0) {
       const parentIds = tasks.map(t => t.id)
-      const { data: subtasks } = await supabase
+      let subtasksQuery = supabase
         .from('tasks')
         .select(`
           *,
@@ -228,6 +234,13 @@ export async function GET(request: Request) {
         .eq('tenant_id', dataSourceTenantId)
         .in('parent_task_id', parentIds)
         .order('display_order', { ascending: true })
+
+      // Apply user filter to subtasks as well
+      if (assignedTo) {
+        subtasksQuery = subtasksQuery.eq('assigned_to', assignedTo)
+      }
+
+      const { data: subtasks } = await subtasksQuery
 
       if (subtasks) {
         subtasks.forEach(subtask => {
