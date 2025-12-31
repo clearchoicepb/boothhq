@@ -273,8 +273,67 @@ export async function GET(request: Request) {
       return enrichedTask
     })
 
+    // Mark pre-event tasks as missed if event date has passed
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const tasksToMarkMissed: string[] = []
+
+    for (const task of tasksWithEntities) {
+      // Skip if already missed, completed, or not an event task
+      if (task.missed || task.status === 'completed' || task.entity_type !== 'event') {
+        continue
+      }
+
+      // Skip if not a pre-event task (default to pre_event for backwards compatibility)
+      const taskTiming = task.task_timing || 'pre_event'
+      if (taskTiming !== 'pre_event') {
+        continue
+      }
+
+      // Check if first event date has passed (+ 1 day buffer)
+      if (task.event?.event_dates?.length > 0) {
+        const eventDates = task.event.event_dates.map((d: { event_date: string }) => new Date(d.event_date))
+        const firstEventDate = new Date(Math.min(...eventDates.map((d: Date) => d.getTime())))
+        firstEventDate.setHours(0, 0, 0, 0)
+
+        // Add 1 day buffer (task is missed 1 calendar day after event)
+        const missedThreshold = new Date(firstEventDate)
+        missedThreshold.setDate(missedThreshold.getDate() + 1)
+
+        if (today >= missedThreshold) {
+          tasksToMarkMissed.push(task.id)
+          task.missed = true
+          task.missed_at = new Date().toISOString()
+        }
+      }
+    }
+
+    // Batch update missed tasks in database
+    if (tasksToMarkMissed.length > 0) {
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({
+          missed: true,
+          missed_at: new Date().toISOString()
+        })
+        .in('id', tasksToMarkMissed)
+
+      if (updateError) {
+        log.warn({ error: updateError, taskIds: tasksToMarkMissed }, '[MyTasks] Failed to mark tasks as missed')
+      } else {
+        log.info({ count: tasksToMarkMissed.length }, '[MyTasks] Marked tasks as missed')
+      }
+    }
+
+    // Exclude missed tasks from response (unless explicitly requested)
+    const includeMissed = searchParams.get('includeMissed') === 'true'
+    const finalTasks = includeMissed
+      ? tasksWithEntities
+      : tasksWithEntities.filter(t => !t.missed)
+
     return NextResponse.json({
-      tasks: tasksWithEntities,
+      tasks: finalTasks,
       viewMode: isDepartmentView ? 'department' : 'myTasks',
       department: viewDepartment || null
     })

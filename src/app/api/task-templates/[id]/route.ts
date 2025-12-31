@@ -117,6 +117,21 @@ export async function PATCH(
     if (body.days_before_event !== undefined) {
       updates.days_before_event = body.days_before_event
     }
+    if (body.days_after_event !== undefined) {
+      updates.days_after_event = body.days_after_event
+    }
+
+    // Task timing
+    if (body.task_timing !== undefined) {
+      const validTimings = ['pre_event', 'post_event', 'general']
+      if (!validTimings.includes(body.task_timing)) {
+        return NextResponse.json(
+          { error: 'Invalid task_timing. Must be: pre_event, post_event, or general' },
+          { status: 400 }
+        )
+      }
+      updates.task_timing = body.task_timing
+    }
 
     updates.updated_at = new Date().toISOString()
 

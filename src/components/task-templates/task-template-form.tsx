@@ -51,7 +51,53 @@ export function TaskTemplateForm({
     // Event-based due date calculation fields
     use_event_date: template?.use_event_date ?? false,
     days_before_event: template?.days_before_event?.toString() || '',
+    days_after_event: template?.days_after_event?.toString() || '',
+    // Task timing (added 2025-12-31)
+    task_timing: template?.task_timing || 'pre_event',
   })
+
+  // Helper to determine current due date calculation method
+  const getDueDateMethod = () => {
+    if (formData.use_event_date && formData.days_before_event) {
+      return 'days_before_event'
+    }
+    if (formData.use_event_date && formData.days_after_event) {
+      return 'days_after_event'
+    }
+    return 'days_after_creation'
+  }
+
+  // Handler for due date method change - auto-syncs task_timing
+  const handleDueDateMethodChange = (method: string) => {
+    if (method === 'days_before_event') {
+      setFormData({
+        ...formData,
+        use_event_date: true,
+        days_before_event: formData.days_before_event || '14',
+        days_after_event: '',
+        default_due_in_days: '',
+        task_timing: 'pre_event', // Auto-set timing
+      })
+    } else if (method === 'days_after_event') {
+      setFormData({
+        ...formData,
+        use_event_date: true,
+        days_before_event: '',
+        days_after_event: formData.days_after_event || '3',
+        default_due_in_days: '',
+        task_timing: 'post_event', // Auto-set timing
+      })
+    } else {
+      setFormData({
+        ...formData,
+        use_event_date: false,
+        days_before_event: '',
+        days_after_event: '',
+        default_due_in_days: formData.default_due_in_days || '7',
+        task_timing: 'general', // Auto-set timing
+      })
+    }
+  }
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
@@ -108,6 +154,11 @@ export function TaskTemplateForm({
         days_before_event: formData.use_event_date && formData.days_before_event
           ? parseInt(formData.days_before_event)
           : null,
+        days_after_event: formData.use_event_date && formData.days_after_event
+          ? parseInt(formData.days_after_event)
+          : null,
+        // Task timing
+        task_timing: formData.task_timing as 'pre_event' | 'post_event' | 'general',
       }
 
       if (isEditing) {
@@ -292,56 +343,23 @@ export function TaskTemplateForm({
             Due Date Calculation
           </label>
 
-          {/* Radio buttons for calculation type */}
-          <div className="space-y-2">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="due_date_type"
-                checked={!formData.use_event_date}
-                onChange={() => setFormData({ ...formData, use_event_date: false })}
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Days after task creation</span>
-            </label>
-
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="due_date_type"
-                checked={formData.use_event_date}
-                onChange={() => setFormData({ ...formData, use_event_date: true })}
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Days before event date</span>
-            </label>
-          </div>
+          {/* Dropdown for calculation method */}
+          <select
+            value={getDueDateMethod()}
+            onChange={(e) => handleDueDateMethodChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          >
+            <option value="days_before_event">Days before event date (Pre-Event)</option>
+            <option value="days_after_event">Days after event date (Post-Event)</option>
+            <option value="days_after_creation">Days after task creation (General)</option>
+          </select>
 
           {/* Conditional input based on selected calculation type */}
           <div className="mt-3">
-            {!formData.use_event_date ? (
+            {getDueDateMethod() === 'days_before_event' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Days after task is created
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.default_due_in_days}
-                  onChange={(e) =>
-                    setFormData({ ...formData, default_due_in_days: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  placeholder="Leave empty for no default due date"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  e.g., Enter 7 for a task due one week after creation
-                </p>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Days before event date
+                  Days before event
                 </label>
                 <input
                   type="number"
@@ -354,12 +372,61 @@ export function TaskTemplateForm({
                   placeholder="e.g., 14 for two weeks before event"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  For Events with multiple dates, the first (earliest) date is used.
-                  For Projects, falls back to creation date if set.
+                  Due date = First event date minus X days. Pre-event tasks are marked &quot;missed&quot; if not completed by event date.
+                </p>
+              </div>
+            )}
+
+            {getDueDateMethod() === 'days_after_event' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Days after event
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.days_after_event}
+                  onChange={(e) =>
+                    setFormData({ ...formData, days_after_event: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  placeholder="e.g., 3 for three days after event"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Due date = Last event date plus X days. Post-event tasks are never marked as missed.
+                </p>
+              </div>
+            )}
+
+            {getDueDateMethod() === 'days_after_creation' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Days after task creation
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.default_due_in_days}
+                  onChange={(e) =>
+                    setFormData({ ...formData, default_due_in_days: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  placeholder="Leave empty for no default due date"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Due date = Task creation date plus X days. General tasks are never marked as missed.
                 </p>
               </div>
             )}
           </div>
+
+          {/* Task Timing indicator (read-only, auto-synced) */}
+          <p className="text-xs text-gray-500 mt-2">
+            Task Timing: <span className="font-medium">{
+              formData.task_timing === 'pre_event' ? 'Pre-Event' :
+              formData.task_timing === 'post_event' ? 'Post-Event' : 'General'
+            }</span> (auto-set based on due date method)
+          </p>
         </div>
 
         {/* Checkboxes */}

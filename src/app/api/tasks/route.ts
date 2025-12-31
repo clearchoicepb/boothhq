@@ -37,6 +37,9 @@ export async function GET(request: NextRequest) {
     const excludeSubtasks = searchParams.get('excludeSubtasks') === 'true'
     const includeSubtaskProgress = searchParams.get('includeSubtaskProgress') === 'true'
 
+    // Missed tasks filter (added 2025-12-31)
+    const includeMissed = searchParams.get('includeMissed') === 'true'
+
     // Build query with relations
     let query = supabase
       .from('tasks')
@@ -108,6 +111,12 @@ export async function GET(request: NextRequest) {
     } else if (excludeSubtasks) {
       // Only top-level tasks (exclude subtasks from main list)
       query = query.is('parent_task_id', null)
+    }
+
+    // Missed tasks filter (added 2025-12-31)
+    // By default, exclude missed tasks unless explicitly requested
+    if (!includeMissed) {
+      query = query.or('missed.is.null,missed.eq.false')
     }
 
     // Apply sorting
