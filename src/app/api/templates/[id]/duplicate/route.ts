@@ -38,27 +38,40 @@ export async function POST(
     }
 
     // Create duplicate with new name
+    // Build insert data, only including fields that exist
+    const insertData: Record<string, any> = {
+      tenant_id: dataSourceTenantId,
+      template_type: original.template_type,
+      name: `Copy of ${original.name}`,
+      subject: original.subject,
+      content: original.content,
+      merge_fields: original.merge_fields || [],
+      sections: original.sections || [],
+      is_active: original.is_active ?? true,
+      created_by: session.user.id,
+    }
+
+    // Only include include_invoice_attachment if it exists on original
+    if (original.include_invoice_attachment !== undefined) {
+      insertData.include_invoice_attachment = original.include_invoice_attachment
+    }
+
     const { data: duplicate, error: insertError } = await supabase
       .from('templates')
-      .insert({
-        tenant_id: dataSourceTenantId,
-        template_type: original.template_type,
-        name: `Copy of ${original.name}`,
-        subject: original.subject,
-        content: original.content,
-        merge_fields: original.merge_fields || [],
-        sections: original.sections || [],
-        is_active: original.is_active,
-        include_invoice_attachment: original.include_invoice_attachment || false,
-        created_by: session.user.id,
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (insertError) {
-      log.error({ insertError }, 'Failed to duplicate template')
+      log.error({
+        insertError,
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint
+      }, 'Failed to duplicate template')
       return NextResponse.json(
-        { error: 'Failed to duplicate template' },
+        { error: 'Failed to duplicate template', details: insertError.message },
         { status: 500 }
       )
     }

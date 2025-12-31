@@ -72,27 +72,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Build insert data
+    const insertData: Record<string, any> = {
+      tenant_id: dataSourceTenantId,
+      template_type,
+      name,
+      subject: subject || null,
+      content,
+      merge_fields: merge_fields || [],
+      sections: sections || [],
+      is_active: is_active !== undefined ? is_active : true,
+      created_by: session.user.id,
+    }
+
+    // Only include include_invoice_attachment if provided (column may not exist yet)
+    if (include_invoice_attachment !== undefined) {
+      insertData.include_invoice_attachment = include_invoice_attachment
+    }
+
     const { data: template, error } = await supabase
       .from('templates')
-      .insert({
-        tenant_id: dataSourceTenantId,
-        template_type,
-        name,
-        subject: subject || null,
-        content,
-        merge_fields: merge_fields || [],
-        sections: sections || [],
-        is_active: is_active !== undefined ? is_active : true,
-        include_invoice_attachment: include_invoice_attachment || false,
-        created_by: session.user.id,
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (error) {
-      log.error({ error }, 'Database error')
+      log.error({ error, code: error.code, message: error.message }, 'Database error')
       return NextResponse.json(
-        { error: 'Failed to create template' },
+        { error: 'Failed to create template', details: error.message },
         { status: 500 }
       )
     }
