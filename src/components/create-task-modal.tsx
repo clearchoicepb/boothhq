@@ -272,6 +272,11 @@ export function CreateTaskModal({
     setError('')
 
     try {
+      // Get task_timing from selected template (if any)
+      const selectedTemplate = selectedTemplateId
+        ? templates.find(t => t.id === selectedTemplateId)
+        : null
+
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -289,6 +294,7 @@ export function CreateTaskModal({
           taskType: taskType || null, // Unified task type
           department: department, // Auto-set from task type (Phase 1)
           taskTemplateId: selectedTemplateId || null,
+          taskTiming: selectedTemplate?.task_timing || null, // Inherit from template
         }),
       })
 
