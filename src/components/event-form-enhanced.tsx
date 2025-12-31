@@ -294,7 +294,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
 
   const opportunityOptions = useMemo<SearchableOption[]>(() => {
     if (!formData.account_id) return []
-    
+
     return opportunities
       .filter(o => o.account_id === formData.account_id)
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
@@ -304,6 +304,15 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         subLabel: `${o.stage} - $${o.estimated_value || 0}`
       }))
   }, [opportunities, formData.account_id])
+
+  // Get the selected account to determine if contact is required
+  const selectedAccount = useMemo(() => {
+    if (!formData.account_id) return null
+    return accounts.find(a => a.id === formData.account_id) || null
+  }, [accounts, formData.account_id])
+
+  // Contact is required for company accounts, optional for individual accounts
+  const isContactRequired = selectedAccount?.account_type === 'company'
 
   // Auto-update date type based on number of dates
   useEffect(() => {
@@ -544,7 +553,7 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
 
           <div>
             <SearchableSelect
-              label="Primary Contact"
+              label={`Primary Contact${isContactRequired ? '' : ' (Optional)'}`}
               placeholder={formData.account_id ? "Search contacts..." : "Select account first"}
               value={formData.primary_contact_id || null}
               onChange={(value) => {
@@ -553,11 +562,13 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
               }}
               options={contactOptions}
               emptyMessage={formData.account_id ? "No contacts for this account" : "Select an account first"}
-              required={true}
+              required={isContactRequired}
               disabled={!formData.account_id}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Main decision maker at {accounts.find(a => a.id === formData.account_id)?.name || 'the account'}
+              {selectedAccount?.account_type === 'individual'
+                ? 'Optional for private events (e.g., add bride & groom if needed)'
+                : `Main decision maker at ${selectedAccount?.name || 'the account'}`}
             </p>
           </div>
 
