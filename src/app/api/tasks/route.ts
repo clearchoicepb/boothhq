@@ -236,6 +236,7 @@ export async function POST(request: NextRequest) {
       dueDate,
       department,
       taskType,
+      taskTiming, // Task timing relative to event (pre_event, post_event, general)
       // Subtask fields (added 2025-12-23)
       parentTaskId,
       displayOrder,
@@ -316,6 +317,7 @@ export async function POST(request: NextRequest) {
         due_date: inheritedDueDate || null, // Inherit from parent if not provided
         department: taskDepartment || null,
         task_type: taskType || null,
+        task_timing: taskTiming || null, // pre_event, post_event, or general
         // Subtask fields (added 2025-12-23)
         parent_task_id: parentTaskId || null,
         display_order: displayOrder ?? 0,

@@ -291,6 +291,15 @@ export async function GET(request: Request) {
         continue
       }
 
+      // Skip if due date is in the future (can't be missed yet)
+      if (task.due_date) {
+        const dueDate = new Date(task.due_date)
+        dueDate.setHours(0, 0, 0, 0)
+        if (dueDate > today) {
+          continue
+        }
+      }
+
       // Check if first event date has passed (+ 1 day buffer)
       if (task.event?.event_dates?.length > 0) {
         const eventDates = task.event.event_dates.map((d: { event_date: string }) => new Date(d.event_date))

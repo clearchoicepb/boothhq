@@ -147,9 +147,10 @@ export function CreateTaskModal({
     })
   }, [users, department])
 
-  // Fetch templates filtered by unified task type
+  // Fetch templates filtered by department (derived from task type)
+  // Templates are categorized by department, not task_type, so we filter by department
   const { data: templates = [] } = useTaskTemplates({
-    task_type: taskType || undefined,
+    department: department || undefined,
     enabled: true,
   })
 
@@ -190,22 +191,37 @@ export function CreateTaskModal({
         let calculatedDueDate: string | null = null
 
         // Check if template uses event-based due date calculation
-        if (template.use_event_date && template.days_before_event !== null && eventDates && eventDates.length > 0) {
-          // Sort event dates to get the first (earliest) one
+        if (template.use_event_date && eventDates && eventDates.length > 0) {
+          // Sort event dates
           const sortedDates = [...eventDates].sort((a, b) =>
             new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
           )
-          const firstEventDate = new Date(sortedDates[0].event_date)
-          firstEventDate.setDate(firstEventDate.getDate() - template.days_before_event)
-          calculatedDueDate = firstEventDate.toISOString().split('T')[0]
-          log.debug({
-            eventDate: sortedDates[0].event_date,
-            daysBefore: template.days_before_event,
-            calculatedDueDate
-          }, 'Calculated due date from event date')
+
+          // Pre-event: days before FIRST event date
+          if (template.days_before_event !== null && template.days_before_event !== undefined) {
+            const firstEventDate = new Date(sortedDates[0].event_date)
+            firstEventDate.setDate(firstEventDate.getDate() - template.days_before_event)
+            calculatedDueDate = firstEventDate.toISOString().split('T')[0]
+            log.debug({
+              eventDate: sortedDates[0].event_date,
+              daysBefore: template.days_before_event,
+              calculatedDueDate
+            }, 'Calculated due date from event date (pre-event)')
+          }
+          // Post-event: days after LAST event date
+          else if (template.days_after_event !== null && template.days_after_event !== undefined) {
+            const lastEventDate = new Date(sortedDates[sortedDates.length - 1].event_date)
+            lastEventDate.setDate(lastEventDate.getDate() + template.days_after_event)
+            calculatedDueDate = lastEventDate.toISOString().split('T')[0]
+            log.debug({
+              eventDate: sortedDates[sortedDates.length - 1].event_date,
+              daysAfter: template.days_after_event,
+              calculatedDueDate
+            }, 'Calculated due date from event date (post-event)')
+          }
         }
         // Fallback to days-from-creation
-        else if (template.default_due_in_days) {
+        if (!calculatedDueDate && template.default_due_in_days) {
           const dueDate = new Date()
           dueDate.setDate(dueDate.getDate() + template.default_due_in_days)
           calculatedDueDate = dueDate.toISOString().split('T')[0]
@@ -256,6 +272,11 @@ export function CreateTaskModal({
     setError('')
 
     try {
+      // Get task_timing from selected template (if any)
+      const selectedTemplate = selectedTemplateId
+        ? templates.find(t => t.id === selectedTemplateId)
+        : null
+
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -273,6 +294,7 @@ export function CreateTaskModal({
           taskType: taskType || null, // Unified task type
           department: department, // Auto-set from task type (Phase 1)
           taskTemplateId: selectedTemplateId || null,
+          taskTiming: selectedTemplate?.task_timing || null, // Inherit from template
         }),
       })
 
