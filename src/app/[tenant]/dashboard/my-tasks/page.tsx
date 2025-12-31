@@ -602,63 +602,41 @@ export default function MyTasksPage() {
           </TabsList>
 
           <TabsContent value="active" className="mt-2">
-            {isDepartmentView ? (
-              <DepartmentTaskList
-                tasks={filteredTasks}
-                searchQuery={searchQuery}
-                onToggleComplete={handleToggleComplete}
-                onOpenTask={setSelectedTask}
-                onOpenEntity={handleOpenEntity}
-                getDepartmentIcon={getDepartmentIcon}
-                getDepartmentLabel={getDepartmentLabel}
-                getTaskDisplayTitle={getTaskDisplayTitle}
-                getDaysUntil={getDaysUntil}
-                getEventDateDisplay={getEventDateDisplay}
-              />
-            ) : (
-              <TaskList
-                tasks={filteredTasks}
-                searchQuery={searchQuery}
-                onToggleComplete={handleToggleComplete}
-                onOpenTask={setSelectedTask}
-                onOpenEntity={handleOpenEntity}
-                getDepartmentIcon={getDepartmentIcon}
-                getDepartmentLabel={getDepartmentLabel}
-                getTaskDisplayTitle={getTaskDisplayTitle}
-                getDaysUntil={getDaysUntil}
-                getEventDateDisplay={getEventDateDisplay}
-              />
-            )}
+            <TaskList
+              tasks={filteredTasks}
+              searchQuery={searchQuery}
+              onToggleComplete={handleToggleComplete}
+              onOpenTask={setSelectedTask}
+              onOpenEntity={handleOpenEntity}
+              getDepartmentIcon={getDepartmentIcon}
+              getDepartmentLabel={getDepartmentLabel}
+              getTaskDisplayTitle={getTaskDisplayTitle}
+              getDaysUntil={getDaysUntil}
+              getEventDateDisplay={getEventDateDisplay}
+              showAssignee={isDepartmentView}
+              showDepartment={!isDepartmentView}
+              showSubtasks={isDepartmentView}
+              emptyMessage={isDepartmentView ? "No tasks in this department" : "You're all caught up!"}
+            />
           </TabsContent>
 
           <TabsContent value="completed" className="mt-2">
-            {isDepartmentView ? (
-              <DepartmentTaskList
-                tasks={filteredTasks}
-                searchQuery={searchQuery}
-                onToggleComplete={handleToggleComplete}
-                onOpenTask={setSelectedTask}
-                onOpenEntity={handleOpenEntity}
-                getDepartmentIcon={getDepartmentIcon}
-                getDepartmentLabel={getDepartmentLabel}
-                getTaskDisplayTitle={getTaskDisplayTitle}
-                getDaysUntil={getDaysUntil}
-                getEventDateDisplay={getEventDateDisplay}
-              />
-            ) : (
-              <TaskList
-                tasks={filteredTasks}
-                searchQuery={searchQuery}
-                onToggleComplete={handleToggleComplete}
-                onOpenTask={setSelectedTask}
-                onOpenEntity={handleOpenEntity}
-                getDepartmentIcon={getDepartmentIcon}
-                getDepartmentLabel={getDepartmentLabel}
-                getTaskDisplayTitle={getTaskDisplayTitle}
-                getDaysUntil={getDaysUntil}
-                getEventDateDisplay={getEventDateDisplay}
-              />
-            )}
+            <TaskList
+              tasks={filteredTasks}
+              searchQuery={searchQuery}
+              onToggleComplete={handleToggleComplete}
+              onOpenTask={setSelectedTask}
+              onOpenEntity={handleOpenEntity}
+              getDepartmentIcon={getDepartmentIcon}
+              getDepartmentLabel={getDepartmentLabel}
+              getTaskDisplayTitle={getTaskDisplayTitle}
+              getDaysUntil={getDaysUntil}
+              getEventDateDisplay={getEventDateDisplay}
+              showAssignee={isDepartmentView}
+              showDepartment={!isDepartmentView}
+              showSubtasks={isDepartmentView}
+              emptyMessage={isDepartmentView ? "No tasks in this department" : "You're all caught up!"}
+            />
           </TabsContent>
         </Tabs>
         </div>
@@ -694,7 +672,7 @@ export default function MyTasksPage() {
   )
 }
 
-// Separate component for task list to keep main component clean
+// Unified TaskList component that handles both "My Tasks" and department views
 function TaskList({
   tasks,
   searchQuery,
@@ -705,7 +683,12 @@ function TaskList({
   getDepartmentLabel,
   getTaskDisplayTitle,
   getDaysUntil,
-  getEventDateDisplay
+  getEventDateDisplay,
+  // Display options
+  showAssignee = false,
+  showDepartment = false,
+  showSubtasks = false,
+  emptyMessage = "You're all caught up!"
 }: {
   tasks: Task[]
   searchQuery: string
@@ -717,162 +700,21 @@ function TaskList({
   getTaskDisplayTitle: (task: Task) => string
   getDaysUntil: (dueDate: string) => number
   getEventDateDisplay: (task: Task) => string | null
+  // Display options
+  showAssignee?: boolean
+  showDepartment?: boolean
+  showSubtasks?: boolean
+  emptyMessage?: string
 }) {
-  if (tasks.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-        <ListTodo className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-        <h3 className="text-sm font-medium text-gray-900 mb-1">No tasks found</h3>
-        <p className="text-xs text-gray-600">
-          {searchQuery ? "No tasks match your search" : "You're all caught up!"}
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-0.5">
-      {tasks.map(task => {
-        const priorityConfig = PRIORITY_CONFIG[task.priority || 'low']
-        const DeptIcon = getDepartmentIcon(task.department)
-        const isCompleted = task.status === 'completed'
-        const daysUntil = task.due_date ? getDaysUntil(task.due_date) : null
-        const isOverdue = daysUntil !== null && daysUntil < 0 && !isCompleted
-
-        return (
-          <div
-            key={task.id}
-            onClick={() => onOpenTask(task)}
-            className={`bg-white rounded shadow-sm hover:shadow transition-all p-1.5 cursor-pointer border border-transparent hover:border-blue-200 ${
-              isCompleted ? 'opacity-40' : ''
-            } ${isOverdue ? 'border-l-2 border-l-red-500' : ''} ${task.parent_task_id ? 'ml-4 border-l-2 border-l-gray-200' : ''}`}
-          >
-            {/* Subtask Indicator */}
-            {task.parent_task && (
-              <div className="flex items-center gap-1 mb-1 ml-5">
-                <CornerDownRight className="h-3 w-3 text-gray-400" />
-                <span className="text-xs text-gray-500">
-                  Subtask of: <span className="font-medium text-gray-600">{task.parent_task.title}</span>
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              {/* Complete Checkbox */}
-              <button
-                onClick={(e) => onToggleComplete(e, task.id, task.status)}
-                className="flex-shrink-0"
-                title={isCompleted ? "Mark as incomplete" : "Mark as complete"}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                ) : (
-                  <Circle className="h-3.5 w-3.5 text-gray-300 hover:text-blue-600" />
-                )}
-              </button>
-
-              {/* Task Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    {/* Task Title (Event • Task) */}
-                    <h3 className={`text-xs font-medium text-gray-900 truncate ${isCompleted ? 'line-through' : ''}`}>
-                      {getTaskDisplayTitle(task)}
-                    </h3>
-
-                    {/* Open Entity Link */}
-                    {(task.project_id || (task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project'))) && (
-                      <button
-                        onClick={(e) => onOpenEntity(e, task)}
-                        className="flex-shrink-0 text-blue-600 hover:text-blue-700"
-                        title="Open in new tab"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </button>
-                    )}
-
-                    {/* Event Date Badge */}
-                    {getEventDateDisplay(task) && (
-                      <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
-                        <Calendar className="h-2.5 w-2.5 mr-0.5" />
-                        {getEventDateDisplay(task)}
-                      </span>
-                    )}
-
-                    {/* Department & Priority */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="flex items-center text-xs text-gray-600">
-                        <DeptIcon className="h-3 w-3 mr-0.5" />
-                        <span className="hidden sm:inline">{getDepartmentLabel(task.department)}</span>
-                      </span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${priorityConfig.bgColor} ${priorityConfig.color}`}>
-                        {priorityConfig.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Due Date */}
-                  {task.due_date && (
-                    <div className="flex-shrink-0">
-                      <div className={`flex items-center text-xs font-medium ${
-                        isOverdue ? 'text-red-600' :
-                        daysUntil !== null && daysUntil === 0 ? 'text-orange-600' :
-                        daysUntil !== null && daysUntil <= 3 ? 'text-yellow-600' :
-                        'text-gray-600'
-                      }`}>
-                        <Clock className="h-3 w-3 mr-0.5" />
-                        <span className="text-xs">
-                          {isOverdue && '⚠️ '}
-                          {daysUntil === 0 ? 'Today' :
-                           daysUntil === 1 ? 'Tomorrow' :
-                           daysUntil === -1 ? 'Yesterday' :
-                           daysUntil && daysUntil < 0 ? `${Math.abs(daysUntil)}d ago` :
-                           daysUntil && daysUntil > 0 ? `${daysUntil}d` :
-                           ''}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// Department Task List component for manager view with assignees and collapsible subtasks
-function DepartmentTaskList({
-  tasks,
-  searchQuery,
-  onToggleComplete,
-  onOpenTask,
-  onOpenEntity,
-  getDepartmentIcon,
-  getDepartmentLabel,
-  getTaskDisplayTitle,
-  getDaysUntil,
-  getEventDateDisplay
-}: {
-  tasks: Task[]
-  searchQuery: string
-  onToggleComplete: (e: React.MouseEvent, taskId: string, currentStatus: string) => void
-  onOpenTask: (task: Task) => void
-  onOpenEntity: (e: React.MouseEvent, task: Task) => void
-  getDepartmentIcon: (deptId?: string) => any
-  getDepartmentLabel: (deptId?: string) => string
-  getTaskDisplayTitle: (task: Task) => string
-  getDaysUntil: (dueDate: string) => number
-  getEventDateDisplay: (task: Task) => string | null
-}) {
-  // Track expanded state for each task (open by default)
+  // Track expanded state for each task (open by default) - only used when showSubtasks is true
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => new Set(tasks.map(t => t.id)))
 
   // Update expanded state when tasks change
   useEffect(() => {
-    setExpandedTasks(new Set(tasks.map(t => t.id)))
-  }, [tasks])
+    if (showSubtasks) {
+      setExpandedTasks(new Set(tasks.map(t => t.id)))
+    }
+  }, [tasks, showSubtasks])
 
   const toggleExpanded = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation()
@@ -904,35 +746,45 @@ function DepartmentTaskList({
         <ListTodo className="h-10 w-10 mx-auto text-gray-300 mb-2" />
         <h3 className="text-sm font-medium text-gray-900 mb-1">No tasks found</h3>
         <p className="text-xs text-gray-600">
-          {searchQuery ? "No tasks match your search" : "No tasks in this department"}
+          {searchQuery ? "No tasks match your search" : emptyMessage}
         </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-1">
+    <div className={showSubtasks ? "space-y-1" : "space-y-0.5"}>
       {tasks.map(task => {
         const priorityConfig = PRIORITY_CONFIG[task.priority || 'low']
+        const DeptIcon = getDepartmentIcon(task.department)
         const isCompleted = task.status === 'completed'
         const daysUntil = task.due_date ? getDaysUntil(task.due_date) : null
         const isOverdue = daysUntil !== null && daysUntil < 0 && !isCompleted
-        const hasSubtasks = task.subtasks && task.subtasks.length > 0
+        const hasSubtasks = showSubtasks && task.subtasks && task.subtasks.length > 0
         const isExpanded = expandedTasks.has(task.id)
         const completedSubtasks = task.subtasks?.filter(s => s.status === 'completed').length || 0
         const totalSubtasks = task.subtasks?.length || 0
 
         return (
-          <div key={task.id} className="space-y-0.5">
-            {/* Main Task */}
+          <div key={task.id} className={showSubtasks ? "space-y-0.5" : ""}>
+            {/* Main Task Card */}
             <div
               onClick={() => onOpenTask(task)}
-              className={`bg-white rounded shadow-sm hover:shadow transition-all p-2 cursor-pointer border border-transparent hover:border-blue-200 ${
+              className={`bg-white rounded shadow-sm hover:shadow transition-all ${showSubtasks ? 'p-2' : 'p-1.5'} cursor-pointer border border-transparent hover:border-blue-200 ${
                 isCompleted ? 'opacity-40' : ''
-              } ${isOverdue ? 'border-l-2 border-l-red-500' : ''}`}
+              } ${isOverdue ? 'border-l-2 border-l-red-500' : ''} ${!showSubtasks && task.parent_task_id ? 'ml-4 border-l-2 border-l-gray-200' : ''}`}
             >
+              {/* Subtask Indicator - only in My Tasks view */}
+              {!showSubtasks && task.parent_task && (
+                <div className="flex items-center gap-1 mb-1 ml-5">
+                  <CornerDownRight className="h-3 w-3 text-gray-400" />
+                  <span className="text-xs text-gray-500">
+                    Subtask of: <span className="font-medium text-gray-600">{task.parent_task.title}</span>
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
-                {/* Expand/Collapse Toggle */}
+                {/* Expand/Collapse Toggle - only in department view with subtasks */}
                 {hasSubtasks && (
                   <button
                     onClick={(e) => toggleExpanded(e, task.id)}
@@ -954,73 +806,110 @@ function DepartmentTaskList({
                   title={isCompleted ? "Mark as incomplete" : "Mark as complete"}
                 >
                   {isCompleted ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className={showSubtasks ? "h-4 w-4 text-green-600" : "h-3.5 w-3.5 text-green-600"} />
                   ) : (
-                    <Circle className="h-4 w-4 text-gray-300 hover:text-blue-600" />
+                    <Circle className={showSubtasks ? "h-4 w-4 text-gray-300 hover:text-blue-600" : "h-3.5 w-3.5 text-gray-300 hover:text-blue-600"} />
                   )}
                 </button>
 
                 {/* Task Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    {/* Title (Event • Task) */}
-                    <h3 className={`text-sm font-medium text-gray-900 truncate flex-1 ${isCompleted ? 'line-through' : ''}`}>
-                      {getTaskDisplayTitle(task)}
-                    </h3>
+                  <div className={`flex items-center ${showSubtasks ? 'gap-3' : 'justify-between gap-2'}`}>
+                    <div className={showSubtasks ? "flex items-center gap-3 flex-1 min-w-0" : "flex-1 min-w-0 flex items-center gap-2"}>
+                      {/* Task Title (Event • Task) */}
+                      <h3 className={`${showSubtasks ? 'text-sm' : 'text-xs'} font-medium text-gray-900 truncate ${showSubtasks ? 'flex-1' : ''} ${isCompleted ? 'line-through' : ''}`}>
+                        {getTaskDisplayTitle(task)}
+                      </h3>
 
-                    {/* Open Entity Link */}
-                    {(task.project_id || (task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project'))) && (
-                      <button
-                        onClick={(e) => onOpenEntity(e, task)}
-                        className="flex-shrink-0 text-blue-600 hover:text-blue-700"
-                        title="Open in new tab"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </button>
-                    )}
+                      {/* Open Entity Link */}
+                      {(task.project_id || (task.entity_id && (task.entity_type === 'event' || task.entity_type === 'opportunity' || task.entity_type === 'project'))) && (
+                        <button
+                          onClick={(e) => onOpenEntity(e, task)}
+                          className="flex-shrink-0 text-blue-600 hover:text-blue-700"
+                          title="Open in new tab"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </button>
+                      )}
 
-                    {/* Event Date Badge */}
-                    {getEventDateDisplay(task) && (
-                      <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
-                        <Calendar className="h-2.5 w-2.5 mr-0.5" />
-                        {getEventDateDisplay(task)}
+                      {/* Event Date Badge */}
+                      {getEventDateDisplay(task) && (
+                        <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                          <Calendar className="h-2.5 w-2.5 mr-0.5" />
+                          {getEventDateDisplay(task)}
+                        </span>
+                      )}
+
+                      {/* Assignee - only in department view */}
+                      {showAssignee && (
+                        <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-600">
+                          <User className="h-3 w-3" />
+                          <span>{getAssigneeName(task)}</span>
+                        </div>
+                      )}
+
+                      {/* Subtask Count - only in department view with subtasks */}
+                      {hasSubtasks && (
+                        <span className="flex-shrink-0 text-xs text-gray-500">
+                          {completedSubtasks}/{totalSubtasks} subtasks
+                        </span>
+                      )}
+
+                      {/* Department - only in My Tasks view */}
+                      {showDepartment && (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="flex items-center text-xs text-gray-600">
+                            <DeptIcon className="h-3 w-3 mr-0.5" />
+                            <span className="hidden sm:inline">{getDepartmentLabel(task.department)}</span>
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Priority */}
+                      <span className={`${showSubtasks ? 'flex-shrink-0' : ''} inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${priorityConfig.bgColor} ${priorityConfig.color}`}>
+                        {priorityConfig.label}
                       </span>
-                    )}
 
-                    {/* Assignee */}
-                    <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-600">
-                      <User className="h-3 w-3" />
-                      <span>{getAssigneeName(task)}</span>
+                      {/* Due Date - inline in department view */}
+                      {showSubtasks && task.due_date && (
+                        <div className={`flex-shrink-0 flex items-center text-xs font-medium ${
+                          isOverdue ? 'text-red-600' :
+                          daysUntil !== null && daysUntil === 0 ? 'text-orange-600' :
+                          daysUntil !== null && daysUntil <= 3 ? 'text-yellow-600' :
+                          'text-gray-600'
+                        }`}>
+                          <Clock className="h-3 w-3 mr-0.5" />
+                          {isOverdue && '⚠️ '}
+                          {daysUntil === 0 ? 'Today' :
+                           daysUntil === 1 ? 'Tomorrow' :
+                           daysUntil === -1 ? 'Yesterday' :
+                           daysUntil && daysUntil < 0 ? `${Math.abs(daysUntil)}d ago` :
+                           daysUntil && daysUntil > 0 ? `${daysUntil}d` :
+                           ''}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Subtask Count */}
-                    {hasSubtasks && (
-                      <span className="flex-shrink-0 text-xs text-gray-500">
-                        {completedSubtasks}/{totalSubtasks} subtasks
-                      </span>
-                    )}
-
-                    {/* Priority */}
-                    <span className={`flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${priorityConfig.bgColor} ${priorityConfig.color}`}>
-                      {priorityConfig.label}
-                    </span>
-
-                    {/* Due Date */}
-                    {task.due_date && (
-                      <div className={`flex-shrink-0 flex items-center text-xs font-medium ${
-                        isOverdue ? 'text-red-600' :
-                        daysUntil !== null && daysUntil === 0 ? 'text-orange-600' :
-                        daysUntil !== null && daysUntil <= 3 ? 'text-yellow-600' :
-                        'text-gray-600'
-                      }`}>
-                        <Clock className="h-3 w-3 mr-0.5" />
-                        {isOverdue && '⚠️ '}
-                        {daysUntil === 0 ? 'Today' :
-                         daysUntil === 1 ? 'Tomorrow' :
-                         daysUntil === -1 ? 'Yesterday' :
-                         daysUntil && daysUntil < 0 ? `${Math.abs(daysUntil)}d ago` :
-                         daysUntil && daysUntil > 0 ? `${daysUntil}d` :
-                         ''}
+                    {/* Due Date - separate column in My Tasks view */}
+                    {!showSubtasks && task.due_date && (
+                      <div className="flex-shrink-0">
+                        <div className={`flex items-center text-xs font-medium ${
+                          isOverdue ? 'text-red-600' :
+                          daysUntil !== null && daysUntil === 0 ? 'text-orange-600' :
+                          daysUntil !== null && daysUntil <= 3 ? 'text-yellow-600' :
+                          'text-gray-600'
+                        }`}>
+                          <Clock className="h-3 w-3 mr-0.5" />
+                          <span className="text-xs">
+                            {isOverdue && '⚠️ '}
+                            {daysUntil === 0 ? 'Today' :
+                             daysUntil === 1 ? 'Tomorrow' :
+                             daysUntil === -1 ? 'Yesterday' :
+                             daysUntil && daysUntil < 0 ? `${Math.abs(daysUntil)}d ago` :
+                             daysUntil && daysUntil > 0 ? `${daysUntil}d` :
+                             ''}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1028,7 +917,7 @@ function DepartmentTaskList({
               </div>
             </div>
 
-            {/* Subtasks (collapsible, open by default) */}
+            {/* Subtasks (collapsible, open by default) - only in department view */}
             {hasSubtasks && isExpanded && (
               <div className="ml-6 pl-4 border-l-2 border-gray-200 space-y-0.5">
                 {task.subtasks!.map(subtask => {
