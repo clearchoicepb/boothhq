@@ -125,6 +125,125 @@ const DEPARTMENT_ICONS: Record<string, any> = {
   admin: SettingsIcon
 }
 
+// KPI Card Component
+interface KPICardProps {
+  title: string
+  value: number
+  subtitle: string
+  icon: React.ComponentType<{ className?: string }>
+  color: 'yellow' | 'green' | 'red' | 'orange' | 'blue'
+}
+
+function KPICard({ title, value, subtitle, icon: Icon, color }: KPICardProps) {
+  const borderColors: Record<KPICardProps['color'], string> = {
+    red: 'border-red-500',
+    orange: 'border-orange-500',
+    yellow: 'border-yellow-500',
+    green: 'border-green-500',
+    blue: 'border-blue-500',
+  }
+
+  const iconColors: Record<KPICardProps['color'], string> = {
+    red: 'text-red-500',
+    orange: 'text-orange-500',
+    yellow: 'text-yellow-500',
+    green: 'text-green-500',
+    blue: 'text-blue-500',
+  }
+
+  return (
+    <div className={`bg-white rounded-lg shadow-sm p-4 border-l-4 ${borderColors[color]}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-600">{title}</span>
+        <Icon className={`h-5 w-5 ${iconColors[color]}`} />
+      </div>
+      <div className="text-2xl font-bold text-gray-900 mt-1">{value}</div>
+      <div className="text-xs text-gray-500">{subtitle}</div>
+    </div>
+  )
+}
+
+// Helper function to get urgency color class for task cards
+function getTaskUrgencyColor(task: Task): string {
+  if (task.status === 'completed') return 'bg-gray-200'
+  if (!task.due_date) return 'bg-blue-500' // No due date = remaining
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = new Date(task.due_date)
+  due.setHours(0, 0, 0, 0)
+
+  const endOfWeek = new Date(today)
+  endOfWeek.setDate(today.getDate() + 6)
+  const endOfNextWeek = new Date(today)
+  endOfNextWeek.setDate(today.getDate() + 13)
+
+  if (due < today) return 'bg-red-500'        // Past due
+  if (due.getTime() === today.getTime()) return 'bg-orange-500'  // Due today
+  if (due <= endOfWeek) return 'bg-yellow-500' // Due this week
+  if (due <= endOfNextWeek) return 'bg-green-500' // Due next week
+  return 'bg-blue-500' // Remaining
+}
+
+// KPI Stats calculation
+interface KPIStats {
+  pastDue: number
+  dueToday: number
+  dueThisWeek: number
+  dueNextWeek: number
+  totalRemaining: number
+}
+
+function calculateKPIStats(tasks: Task[]): KPIStats {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const endOfWeek = new Date(today)
+  endOfWeek.setDate(today.getDate() + 6)
+
+  const endOfNextWeek = new Date(today)
+  endOfNextWeek.setDate(today.getDate() + 13)
+
+  const incompleteTasks = tasks.filter(t => t.status !== 'completed')
+
+  const pastDue = incompleteTasks.filter(t => {
+    if (!t.due_date) return false
+    const due = new Date(t.due_date)
+    due.setHours(0, 0, 0, 0)
+    return due < today
+  }).length
+
+  const dueToday = incompleteTasks.filter(t => {
+    if (!t.due_date) return false
+    const due = new Date(t.due_date)
+    due.setHours(0, 0, 0, 0)
+    return due.getTime() === today.getTime()
+  }).length
+
+  const dueThisWeek = incompleteTasks.filter(t => {
+    if (!t.due_date) return false
+    const due = new Date(t.due_date)
+    due.setHours(0, 0, 0, 0)
+    return due > today && due <= endOfWeek
+  }).length
+
+  const dueNextWeek = incompleteTasks.filter(t => {
+    if (!t.due_date) return false
+    const due = new Date(t.due_date)
+    due.setHours(0, 0, 0, 0)
+    return due > endOfWeek && due <= endOfNextWeek
+  }).length
+
+  const totalRemaining = incompleteTasks.filter(t => {
+    if (!t.due_date) return true // No due date = remaining
+    const due = new Date(t.due_date)
+    due.setHours(0, 0, 0, 0)
+    return due > endOfNextWeek
+  }).length
+
+  return { pastDue, dueToday, dueThisWeek, dueNextWeek, totalRemaining }
+}
+
 export default function MyTasksPage() {
   const params = useParams()
   const router = useRouter()
@@ -143,6 +262,13 @@ export default function MyTasksPage() {
   const [viewTab, setViewTab] = useState<string>('my-tasks') // 'my-tasks' or department id
   const [managerOfDepartments, setManagerOfDepartments] = useState<string[]>([])
   const [loadingManagerData, setLoadingManagerData] = useState(true)
+
+  // User filter for department views
+  const [filterUser, setFilterUser] = useState<string>('')
+  const [departmentUsers, setDepartmentUsers] = useState<Array<{ id: string; first_name: string | null; last_name: string | null; email: string }>>([])
+
+  // KPI stats
+  const kpiStats = useMemo(() => calculateKPIStats(tasks), [tasks])
 
   // Fetch user's manager_of_departments on mount
   useEffect(() => {
@@ -174,9 +300,32 @@ export default function MyTasksPage() {
     fetchManagerData()
   }, [])
 
+  // Reset user filter and fetch department users when switching tabs
+  useEffect(() => {
+    setFilterUser('') // Reset user filter when tab changes
+
+    // Fetch department users when switching to a department tab
+    if (viewTab !== 'my-tasks') {
+      const fetchDepartmentUsers = async () => {
+        try {
+          const res = await fetch(`/api/users?department=${viewTab}`)
+          if (res.ok) {
+            const data = await res.json()
+            setDepartmentUsers(data.users || data || [])
+          }
+        } catch (error) {
+          log.error({ error }, 'Error fetching department users')
+        }
+      }
+      fetchDepartmentUsers()
+    } else {
+      setDepartmentUsers([])
+    }
+  }, [viewTab])
+
   useEffect(() => {
     fetchMyTasks()
-  }, [filterDepartment, filterPriority, viewTab])
+  }, [filterDepartment, filterPriority, viewTab, filterUser])
 
   const fetchMyTasks = async () => {
     try {
@@ -187,6 +336,8 @@ export default function MyTasksPage() {
       // Phase 3: Add viewDepartment param for department tabs
       if (viewTab !== 'my-tasks') {
         params.append('viewDepartment', viewTab)
+        // Add user filter for department view
+        if (filterUser) params.append('assignedTo', filterUser)
       } else {
         // Only apply filters in my-tasks view
         if (filterDepartment) params.append('department', filterDepartment)
@@ -536,6 +687,45 @@ export default function MyTasksPage() {
           </div>
         )}
 
+        {/* KPI Cards */}
+        <div className="grid grid-cols-5 gap-4">
+          <KPICard
+            title="Past Due"
+            value={kpiStats.pastDue}
+            icon={AlertCircle}
+            color="red"
+            subtitle="Needs attention"
+          />
+          <KPICard
+            title="Due Today"
+            value={kpiStats.dueToday}
+            icon={Clock}
+            color="orange"
+            subtitle="Act now"
+          />
+          <KPICard
+            title="Due This Week"
+            value={kpiStats.dueThisWeek}
+            icon={Calendar}
+            color="yellow"
+            subtitle="Coming up soon"
+          />
+          <KPICard
+            title="Due Next Week"
+            value={kpiStats.dueNextWeek}
+            icon={Calendar}
+            color="green"
+            subtitle="Plan ahead"
+          />
+          <KPICard
+            title="Total Remaining"
+            value={kpiStats.totalRemaining}
+            icon={ListTodo}
+            color="blue"
+            subtitle="All other tasks"
+          />
+        </div>
+
         {/* Search & Filters */}
         <div className="bg-white rounded-lg shadow-sm p-2 space-y-2">
           {/* Search Bar */}
@@ -567,6 +757,24 @@ export default function MyTasksPage() {
                 <option value="customer_success">Customer Success</option>
                 <option value="accounting">Accounting</option>
                 <option value="admin">Administration</option>
+              </select>
+            )}
+
+            {/* User filter - only visible on department tabs */}
+            {isDepartmentView && (
+              <select
+                value={filterUser}
+                onChange={(e) => setFilterUser(e.target.value)}
+                className="px-2 py-0.5 text-xs border border-gray-300 rounded"
+              >
+                <option value="">All Team Members</option>
+                {departmentUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.first_name && user.last_name
+                      ? `${user.first_name} ${user.last_name}`
+                      : user.email}
+                  </option>
+                ))}
               </select>
             )}
 
@@ -764,6 +972,8 @@ function TaskList({
         const isExpanded = expandedTasks.has(task.id)
         const completedSubtasks = task.subtasks?.filter(s => s.status === 'completed').length || 0
         const totalSubtasks = task.subtasks?.length || 0
+        const urgencyColor = getTaskUrgencyColor(task)
+        const urgencyBorderColor = urgencyColor.replace('bg-', 'border-')
 
         return (
           <div key={task.id} className={showSubtasks ? "space-y-0.5" : ""}>
@@ -772,7 +982,7 @@ function TaskList({
               onClick={() => onOpenTask(task)}
               className={`bg-white rounded shadow-sm hover:shadow transition-all ${showSubtasks ? 'p-2' : 'p-1.5'} cursor-pointer border border-transparent hover:border-blue-200 ${
                 isCompleted ? 'opacity-40' : ''
-              } ${isOverdue ? 'border-l-2 border-l-red-500' : ''} ${!showSubtasks && task.parent_task_id ? 'ml-4 border-l-2 border-l-gray-200' : ''}`}
+              } border-l-4 ${urgencyBorderColor} ${!showSubtasks && task.parent_task_id ? 'ml-4' : ''}`}
             >
               {/* Subtask Indicator - only in My Tasks view */}
               {!showSubtasks && task.parent_task && (
@@ -925,6 +1135,8 @@ function TaskList({
                   const subIsCompleted = subtask.status === 'completed'
                   const subDaysUntil = subtask.due_date ? getDaysUntil(subtask.due_date) : null
                   const subIsOverdue = subDaysUntil !== null && subDaysUntil < 0 && !subIsCompleted
+                  const subUrgencyColor = getTaskUrgencyColor(subtask)
+                  const subUrgencyBorderColor = subUrgencyColor.replace('bg-', 'border-')
 
                   return (
                     <div
@@ -932,7 +1144,7 @@ function TaskList({
                       onClick={() => onOpenTask(subtask)}
                       className={`bg-gray-50 rounded shadow-sm hover:shadow transition-all p-1.5 cursor-pointer border border-transparent hover:border-blue-200 ${
                         subIsCompleted ? 'opacity-40' : ''
-                      } ${subIsOverdue ? 'border-l-2 border-l-red-500' : ''}`}
+                      } border-l-4 ${subUrgencyBorderColor}`}
                     >
                       <div className="flex items-center gap-2">
                         {/* Complete Checkbox */}
