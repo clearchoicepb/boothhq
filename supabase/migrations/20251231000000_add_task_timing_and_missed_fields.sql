@@ -11,6 +11,10 @@
 ALTER TABLE task_templates
 ADD COLUMN IF NOT EXISTS task_timing TEXT DEFAULT 'pre_event';
 
+-- Add days_after_event to task_templates (for post-event due date calculation)
+ALTER TABLE task_templates
+ADD COLUMN IF NOT EXISTS days_after_event INTEGER;
+
 -- Add constraint to task_templates
 DO $$
 BEGIN
@@ -60,6 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_task_templates_task_timing ON task_templates(task
 
 -- Add comments
 COMMENT ON COLUMN task_templates.task_timing IS 'When task should be done relative to event: pre_event (before), post_event (after), general (no timing)';
+COMMENT ON COLUMN task_templates.days_after_event IS 'For post-event tasks: due date = last event date + X days';
 COMMENT ON COLUMN tasks.task_timing IS 'Inherited from template: pre_event, post_event, or general';
 COMMENT ON COLUMN tasks.missed IS 'True if pre-event task was not completed before event date passed';
 COMMENT ON COLUMN tasks.missed_at IS 'Timestamp when task was marked as missed';

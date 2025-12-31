@@ -94,15 +94,13 @@ const executeCreateTaskAction: ActionExecutor = async (
     // Calculate due date
     let dueDate: string | null = null
 
-    // Priority 1: Event-based calculation (days before event)
+    // Priority 1: Event-based calculation (pre-event: days before first date)
     if (template.use_event_date && template.days_before_event !== null) {
       if (context.triggerEntity?.type === 'event') {
         const eventData = context.triggerEntity.data
-
-        // Try start_date first, then event_date from the event object
         let eventDateStr = eventData?.start_date || eventData?.event_date
 
-        // If no direct date, fetch from event_dates table (first/earliest date)
+        // Fetch from event_dates table (first/earliest date)
         if (!eventDateStr && context.triggerEntity.id) {
           const { data: eventDates } = await supabase
             .from('event_dates')
@@ -120,6 +118,25 @@ const executeCreateTaskAction: ActionExecutor = async (
         if (eventDateStr) {
           const eventDate = new Date(eventDateStr.includes('T') ? eventDateStr : eventDateStr + 'T00:00:00')
           eventDate.setDate(eventDate.getDate() - template.days_before_event)
+          dueDate = eventDate.toISOString().split('T')[0]
+        }
+      }
+    }
+    // Priority 1b: Event-based calculation (post-event: days after last date)
+    else if (template.use_event_date && template.days_after_event !== null) {
+      if (context.triggerEntity?.type === 'event' && context.triggerEntity.id) {
+        const { data: eventDates } = await supabase
+          .from('event_dates')
+          .select('event_date')
+          .eq('event_id', context.triggerEntity.id)
+          .eq('tenant_id', dataSourceTenantId)
+          .order('event_date', { ascending: false }) // Get LAST (latest) date
+          .limit(1)
+
+        if (eventDates?.[0]?.event_date) {
+          const eventDateStr = eventDates[0].event_date
+          const eventDate = new Date(eventDateStr.includes('T') ? eventDateStr : eventDateStr + 'T00:00:00')
+          eventDate.setDate(eventDate.getDate() + template.days_after_event)
           dueDate = eventDate.toISOString().split('T')[0]
         }
       }

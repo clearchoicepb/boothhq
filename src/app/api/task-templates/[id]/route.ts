@@ -117,6 +117,9 @@ export async function PATCH(
     if (body.days_before_event !== undefined) {
       updates.days_before_event = body.days_before_event
     }
+    if (body.days_after_event !== undefined) {
+      updates.days_after_event = body.days_after_event
+    }
 
     // Task timing
     if (body.task_timing !== undefined) {

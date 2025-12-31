@@ -77,10 +77,9 @@ export async function POST(request: NextRequest) {
     // Calculate due date if not overridden
     let dueDate = dueDateOverride
 
-    if (!dueDate) {
-      // Check if template uses event-based calculation
-      if (template.use_event_date && entityType === 'event' && entityId && template.days_before_event !== null) {
-        // Fetch the first (earliest) event date for this event
+    if (!dueDate && template.use_event_date && entityType === 'event' && entityId) {
+      // Pre-event: days before first event date
+      if (template.days_before_event !== null) {
         const { data: eventDates, error: eventDatesError } = await supabase
           .from('event_dates')
           .select('event_date')
@@ -92,19 +91,38 @@ export async function POST(request: NextRequest) {
         if (!eventDatesError && eventDates?.[0]?.event_date) {
           const eventDate = new Date(eventDates[0].event_date)
           eventDate.setDate(eventDate.getDate() - template.days_before_event)
-          dueDate = eventDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
-          log.debug({ eventDate: eventDates[0].event_date, daysBefore: template.days_before_event, calculatedDueDate: dueDate }, 'Calculated due date from event date')
+          dueDate = eventDate.toISOString().split('T')[0]
+          log.debug({ eventDate: eventDates[0].event_date, daysBefore: template.days_before_event, calculatedDueDate: dueDate }, 'Calculated due date (pre-event)')
         } else {
-          log.warn({ entityId, error: eventDatesError }, 'Could not fetch event dates for due date calculation, falling back to default')
+          log.warn({ entityId, error: eventDatesError }, 'Could not fetch event dates for pre-event due date')
         }
       }
+      // Post-event: days after last event date
+      else if (template.days_after_event !== null) {
+        const { data: eventDates, error: eventDatesError } = await supabase
+          .from('event_dates')
+          .select('event_date')
+          .eq('event_id', entityId)
+          .eq('tenant_id', dataSourceTenantId)
+          .order('event_date', { ascending: false }) // Get LAST (latest) date
+          .limit(1)
 
-      // Fallback to days-from-creation if no event-based calculation was performed
-      if (!dueDate && template.default_due_in_days !== null) {
-        const due = new Date()
-        due.setDate(due.getDate() + template.default_due_in_days)
-        dueDate = due.toISOString().split('T')[0] // Format as YYYY-MM-DD
+        if (!eventDatesError && eventDates?.[0]?.event_date) {
+          const eventDate = new Date(eventDates[0].event_date)
+          eventDate.setDate(eventDate.getDate() + template.days_after_event)
+          dueDate = eventDate.toISOString().split('T')[0]
+          log.debug({ eventDate: eventDates[0].event_date, daysAfter: template.days_after_event, calculatedDueDate: dueDate }, 'Calculated due date (post-event)')
+        } else {
+          log.warn({ entityId, error: eventDatesError }, 'Could not fetch event dates for post-event due date')
+        }
       }
+    }
+
+    // Fallback to days-from-creation if no event-based calculation was performed
+    if (!dueDate && template.default_due_in_days !== null) {
+      const due = new Date()
+      due.setDate(due.getDate() + template.default_due_in_days)
+      dueDate = due.toISOString().split('T')[0]
     }
 
     // Determine assignment

@@ -355,6 +355,7 @@ export interface TaskTemplate {
 
   // Timeline calculation fields
   days_before_event: number | null
+  days_after_event: number | null // For post-event tasks
   days_after_booking: number | null
   start_days_before_event: number | null
   start_days_after_booking: number | null

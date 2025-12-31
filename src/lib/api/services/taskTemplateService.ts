@@ -27,6 +27,7 @@ export interface TaskTemplate {
   // Event-based due date calculation fields
   use_event_date: boolean
   days_before_event: number | null
+  days_after_event: number | null // For post-event tasks
   // Task timing
   task_timing: 'pre_event' | 'post_event' | 'general'
 }
@@ -46,6 +47,7 @@ export interface CreateTaskTemplateInput {
   // Event-based due date calculation fields
   use_event_date?: boolean
   days_before_event?: number | null
+  days_after_event?: number | null // For post-event tasks
   // Task timing
   task_timing?: 'pre_event' | 'post_event' | 'general'
 }
