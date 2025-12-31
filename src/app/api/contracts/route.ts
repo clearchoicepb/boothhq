@@ -70,7 +70,8 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         accounts(*),
-        contacts:contacts!events_contact_id_fkey(*)
+        contacts:contacts!events_contact_id_fkey(*),
+        event_dates(*)
       `)
       .eq('id', event_id)
       .single()
@@ -103,10 +104,30 @@ export async function POST(request: NextRequest) {
     if (event) {
       mergeData.event_title = event.title
       mergeData.event_load_in_notes = event.load_in_notes
-      mergeData.event_setup_time = event.setup_time
       mergeData.load_in_notes = event.load_in_notes
-      mergeData.setup_time = event.setup_time
-      
+
+      // Event dates - get first and last for date/time fields
+      if (event.event_dates && event.event_dates.length > 0) {
+        const sortedDates = [...event.event_dates].sort((a: any, b: any) =>
+          new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+        )
+        const firstDate = sortedDates[0]
+        const lastDate = sortedDates[sortedDates.length - 1]
+
+        // Date fields
+        mergeData.event_date = firstDate.event_date
+        mergeData.event_start_date = firstDate.event_date
+        mergeData.event_end_date = lastDate.event_date
+
+        // Time fields
+        mergeData.event_start_time = firstDate.start_time
+        mergeData.event_end_time = lastDate.end_time
+        mergeData.event_setup_time = firstDate.setup_time
+        mergeData.setup_time = firstDate.setup_time
+        mergeData.start_time = firstDate.start_time
+        mergeData.end_time = lastDate.end_time
+      }
+
       // Contact data
       if (event.contacts) {
         mergeData.contact_first_name = event.contacts.first_name
@@ -120,7 +141,7 @@ export async function POST(request: NextRequest) {
         mergeData.phone = event.contacts.phone
         mergeData.contact_name = mergeData.contact_full_name
       }
-      
+
       // Account data
       if (event.accounts) {
         mergeData.account_name = event.accounts.name
