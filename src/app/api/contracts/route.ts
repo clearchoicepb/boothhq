@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         *,
         accounts(*),
         contacts:contacts!events_contact_id_fkey(*),
-        event_dates(*)
+        event_dates(*, locations(*))
       `)
       .eq('id', event_id)
       .single()
@@ -126,6 +126,16 @@ export async function POST(request: NextRequest) {
         mergeData.setup_time = firstDate.setup_time
         mergeData.start_time = firstDate.start_time
         mergeData.end_time = lastDate.end_time
+
+        // Location fields from first event date
+        if (firstDate.locations) {
+          mergeData.event_location = firstDate.locations.name
+          mergeData.location_name = firstDate.locations.name
+          mergeData.location_address = firstDate.locations.address_line1
+          mergeData.location_city = firstDate.locations.city
+          mergeData.location_state = firstDate.locations.state
+          mergeData.location_zip = firstDate.locations.postal_code
+        }
       }
 
       // Contact data
