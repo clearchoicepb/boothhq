@@ -58,6 +58,8 @@ export async function PUT(
     const templateId = params.id
 
     const body = await request.json()
+    log.debug({ body, templateId }, 'Update template request')
+
     const { name, subject, content, merge_fields, is_active, sections, template_type, include_invoice_attachment } = body
 
     const updateData: any = {}
@@ -68,7 +70,12 @@ export async function PUT(
     if (is_active !== undefined) updateData.is_active = is_active
     if (sections !== undefined) updateData.sections = sections
     if (template_type !== undefined) updateData.template_type = template_type
-    if (include_invoice_attachment !== undefined) updateData.include_invoice_attachment = include_invoice_attachment
+    // Only include include_invoice_attachment if explicitly provided (column may not exist)
+    if (include_invoice_attachment !== undefined) {
+      updateData.include_invoice_attachment = include_invoice_attachment
+    }
+
+    log.debug({ updateData, templateId }, 'Updating template with data')
 
     const { data: template, error } = await supabase
       .from('templates')
@@ -79,16 +86,24 @@ export async function PUT(
       .single()
 
     if (error) {
-      log.error({ error }, 'Database error')
+      log.error({
+        error,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        templateId,
+        updateData
+      }, 'Database error updating template')
       return NextResponse.json(
-        { error: 'Failed to update template' },
+        { error: 'Failed to update template', details: error.message },
         { status: 500 }
       )
     }
 
     return NextResponse.json(template)
   } catch (error) {
-    log.error({ error }, 'Error')
+    log.error({ error }, 'Error updating template')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
