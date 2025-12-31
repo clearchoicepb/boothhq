@@ -178,29 +178,6 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  const handleMarkAsPaid = async () => {
-    if (!confirm('Mark this invoice as paid?')) return
-
-    try {
-      setUpdating(true)
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid_in_full' })
-      })
-
-      if (!response.ok) throw new Error('Failed to update invoice')
-
-      toast('Invoice marked as paid!')
-      fetchInvoice()
-    } catch (error) {
-      log.error({ error }, 'Error updating invoice')
-      toast.error('Failed to update invoice')
-    } finally {
-      setUpdating(false)
-    }
-  }
-
   const handleActivateInvoice = async () => {
     if (!confirm('Activate this invoice? It will be available for payment via the public link.')) return
 
@@ -579,11 +556,11 @@ export default function InvoiceDetailPage() {
                     <Button
                       variant="outline"
                       className="text-green-600 border-green-600 hover:bg-green-50"
-                      onClick={handleMarkAsPaid}
+                      onClick={() => setIsPaymentModalOpen(true)}
                       disabled={updating}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Mark as Paid
+                      Record Payment
                     </Button>
                   )}
                 </>
