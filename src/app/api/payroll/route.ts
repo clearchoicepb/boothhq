@@ -153,12 +153,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch assignments' }, { status: 500 })
     }
 
-    // Filter assignments to only those within the period
-    const filteredAssignments = (assignments || []).filter((a: Assignment) => {
-      const eventDate = a.event_dates?.event_date
+    // Filter assignments to only those within the period and normalize structure
+    const filteredAssignments = (assignments || []).filter((a: any) => {
+      // Handle both array and single object for event_dates (Supabase join returns array)
+      const eventDatesData = a.event_dates
+      const eventDate = Array.isArray(eventDatesData) ? eventDatesData[0]?.event_date : eventDatesData?.event_date
       if (!eventDate) return false
       return eventDate >= startDateStr && eventDate <= endDateStr
-    }) as Assignment[]
+    }).map((a: any): Assignment => ({
+      id: a.id,
+      event_id: a.event_id,
+      user_id: a.user_id,
+      event_date_id: a.event_date_id,
+      arrival_time: a.arrival_time,
+      start_time: a.start_time,
+      end_time: a.end_time,
+      pay_type_override: a.pay_type_override,
+      flat_rate_amount: a.flat_rate_amount,
+      events: Array.isArray(a.events) ? a.events[0] || null : a.events,
+      event_dates: Array.isArray(a.event_dates) ? a.event_dates[0] || null : a.event_dates,
+      users: Array.isArray(a.users) ? a.users[0] || null : a.users
+    }))
 
     log.debug({ count: filteredAssignments.length }, 'Filtered assignments in period')
 

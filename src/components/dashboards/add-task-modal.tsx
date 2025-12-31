@@ -38,6 +38,8 @@ const UNIFIED_TASK_TYPE_LABELS: Record<UnifiedTaskType, string> = {
   operations: 'Operations',
   sales: 'Sales',
   admin: 'Admin',
+  accounting: 'Accounting',
+  customer_success: 'Customer Success',
   project: 'Project',
   misc: 'Miscellaneous',
 }
@@ -49,6 +51,8 @@ const UNIFIED_TASK_TYPES: UnifiedTaskType[] = [
   'operations',
   'sales',
   'admin',
+  'accounting',
+  'customer_success',
   'project',
   'misc',
 ]

@@ -254,6 +254,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
         .filter((assignment: StaffAssignmentWithJoins) => assignment.event_date_id !== null)
         .map((assignment: StaffAssignmentWithJoins) => ({
           dateId: assignment.event_date_id as string,
+          arrivalTime: (assignment as any).arrival_time || '',
           startTime: assignment.start_time || '',
           endTime: assignment.end_time || ''
         }))
@@ -505,7 +506,13 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                             )
                           )
                         } else {
-                          staff.setSelectedDateTimes([...staff.selectedDateTimes, dt])
+                          const fullDt: SelectedDateTime = {
+                            dateId: dt.dateId,
+                            arrivalTime: dt.arrivalTime || '',
+                            startTime: dt.startTime,
+                            endTime: dt.endTime
+                          }
+                          staff.setSelectedDateTimes([...staff.selectedDateTimes, fullDt])
                         }
                       }}
                       onAddStaff={async () => true}

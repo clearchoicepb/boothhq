@@ -110,7 +110,6 @@ export function EventPlanningTab({
           <div className="border-t border-gray-100">
             <EventLogistics
               eventId={eventId}
-              tenant={tenantSubdomain}
             />
           </div>
         )}

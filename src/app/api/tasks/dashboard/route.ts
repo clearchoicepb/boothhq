@@ -12,6 +12,8 @@ const log = createLogger('api:tasks')
 interface EventInfo {
   id: string
   title: string
+  event_number: string | null
+  start_date: string | null
   event_dates: Array<{ event_date: string }>
 }
 
@@ -147,13 +149,19 @@ export async function GET(request: NextRequest) {
     if (uniqueEventIds.length > 0) {
       const { data: events } = await supabase
         .from('events')
-        .select('id, title, event_dates(event_date)')
+        .select('id, title, event_number, start_date, event_dates(event_date)')
         .eq('tenant_id', dataSourceTenantId)
         .in('id', uniqueEventIds)
 
       if (events) {
-        events.forEach((event: EventInfo) => {
-          eventsMap[event.id] = event
+        events.forEach((event: any) => {
+          eventsMap[event.id] = {
+            id: event.id,
+            title: event.title,
+            event_number: event.event_number || null,
+            start_date: event.start_date || null,
+            event_dates: event.event_dates || []
+          }
         })
       }
     }

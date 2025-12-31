@@ -225,6 +225,7 @@ export async function GET(
       country: string | null
       contact_name: string | null
       contact_phone: string | null
+      contact_email: string | null
       notes: string | null
     } | null = Array.isArray(eventDateLocation) ? eventDateLocation[0] : eventDateLocation as typeof locationData
 
@@ -240,6 +241,7 @@ export async function GET(
         country: null,
         contact_name: null,
         contact_phone: null,
+        contact_email: null,
         notes: null
       }
     }
