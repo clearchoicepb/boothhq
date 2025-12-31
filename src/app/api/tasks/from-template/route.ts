@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
         due_date: dueDate || null,
         department: template.department,
         task_type: template.task_type,
+        task_timing: template.task_timing || 'pre_event',
       })
       .select(`
         *,

@@ -148,6 +148,7 @@ const executeCreateTaskAction: ActionExecutor = async (
         entity_id: context.triggerEntity.id,
         department: template.department,
         task_type: template.task_type,
+        task_timing: template.task_timing || 'pre_event',
         auto_created: true,
         workflow_id: action.workflow_id,
       })

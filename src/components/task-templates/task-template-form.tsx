@@ -51,6 +51,8 @@ export function TaskTemplateForm({
     // Event-based due date calculation fields
     use_event_date: template?.use_event_date ?? false,
     days_before_event: template?.days_before_event?.toString() || '',
+    // Task timing (added 2025-12-31)
+    task_timing: template?.task_timing || 'pre_event',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -108,6 +110,8 @@ export function TaskTemplateForm({
         days_before_event: formData.use_event_date && formData.days_before_event
           ? parseInt(formData.days_before_event)
           : null,
+        // Task timing
+        task_timing: formData.task_timing as 'pre_event' | 'post_event' | 'general',
       }
 
       if (isEditing) {
@@ -284,6 +288,27 @@ export function TaskTemplateForm({
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
           </select>
+        </div>
+
+        {/* Task Timing */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Task Timing
+          </label>
+          <select
+            value={formData.task_timing}
+            onChange={(e) =>
+              setFormData({ ...formData, task_timing: e.target.value })
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          >
+            <option value="pre_event">Pre-Event (before event date)</option>
+            <option value="post_event">Post-Event (after event date)</option>
+            <option value="general">General (no event timing)</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Pre-event tasks will be marked as &quot;missed&quot; if not completed by the event date.
+          </p>
         </div>
 
         {/* Due Date Calculation Section */}

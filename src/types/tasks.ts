@@ -15,6 +15,14 @@ import type { DepartmentId, DepartmentRole } from '@/lib/departments'
 export type UnifiedTaskType = 'general' | 'design' | 'operations' | 'sales' | 'admin' | 'project' | 'misc'
 
 /**
+ * Task timing relative to event date
+ * - pre_event: Must be completed before event (marked missed if not)
+ * - post_event: Done after event (never marked missed)
+ * - general: No event timing relationship
+ */
+export type TaskTiming = 'pre_event' | 'post_event' | 'general'
+
+/**
  * Base Task type - matches database schema (unified model)
  */
 export interface Task {
@@ -73,6 +81,11 @@ export interface Task {
   // Subtask hierarchy (added 2025-12-23)
   parent_task_id: string | null // NULL = top-level task, NOT NULL = subtask
   display_order: number // Order within parent's subtasks, default 0
+
+  // Task timing (added 2025-12-31)
+  task_timing: TaskTiming // pre_event, post_event, or general
+  missed: boolean // True if pre-event task not completed before event
+  missed_at: string | null // When task was marked as missed
 }
 
 /**
@@ -164,6 +177,9 @@ export interface TaskInsert {
   parentTaskId?: string | null // If provided, creates as subtask of this task
   displayOrder?: number // Order within parent's subtasks
 
+  // Task timing (added 2025-12-31)
+  taskTiming?: TaskTiming // pre_event, post_event, or general
+
   // Design-specific fields
   quantity?: number
   requiresApproval?: boolean
@@ -218,6 +234,11 @@ export interface TaskUpdate {
   // Subtask updates (added 2025-12-23)
   parent_task_id?: string | null // Move to different parent or promote to top-level
   display_order?: number // Reorder within parent
+
+  // Task timing (added 2025-12-31)
+  task_timing?: TaskTiming
+  missed?: boolean
+  missed_at?: string | null
 }
 
 /**
@@ -243,6 +264,10 @@ export interface TaskFilters {
   parentTaskId?: string // Filter to subtasks of a specific parent
   excludeSubtasks?: boolean // If true, only return top-level tasks (parent_task_id IS NULL)
   includeSubtaskProgress?: boolean // If true, compute subtask_progress for each task
+
+  // Task timing filters (added 2025-12-31)
+  taskTiming?: TaskTiming // Filter by timing
+  includeMissed?: boolean // If true, include missed tasks (default: exclude)
 }
 
 /**
@@ -348,6 +373,9 @@ export interface TaskTemplate {
   // Status
   enabled: boolean
   is_active: boolean
+
+  // Task timing (added 2025-12-31)
+  task_timing: TaskTiming // pre_event, post_event, or general
 
   // Metadata
   created_by: string | null
