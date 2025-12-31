@@ -11,8 +11,10 @@ import type { DepartmentId, DepartmentRole } from '@/lib/departments'
 
 /**
  * Unified task type - categorizes tasks
+ * Includes department-based types (design, operations, sales, admin, accounting, customer_success)
+ * Plus general categories (general, project, misc)
  */
-export type UnifiedTaskType = 'general' | 'design' | 'operations' | 'sales' | 'admin' | 'project' | 'misc'
+export type UnifiedTaskType = 'general' | 'design' | 'operations' | 'sales' | 'admin' | 'accounting' | 'customer_success' | 'project' | 'misc'
 
 /**
  * Task timing relative to event date
@@ -503,7 +505,7 @@ export function isCompletedStatus(status: TaskStatus): boolean {
  * Check if task type is a unified task type
  */
 export function isUnifiedTaskType(value: string): value is UnifiedTaskType {
-  return ['general', 'design', 'operations', 'sales', 'admin', 'project', 'misc'].includes(value)
+  return ['general', 'design', 'operations', 'sales', 'admin', 'accounting', 'customer_success', 'project', 'misc'].includes(value)
 }
 
 export function isTaskPriority(value: string): value is TaskPriority {

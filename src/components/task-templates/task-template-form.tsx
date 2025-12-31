@@ -7,8 +7,6 @@ import { Loader2 } from 'lucide-react'
 import { useTaskTemplateMutations } from '@/hooks/useTaskTemplates'
 import {
   DEPARTMENTS,
-  DEPARTMENT_TASK_TYPES,
-  getDepartmentById,
   type DepartmentId,
 } from '@/lib/departments'
 import type { TaskTemplate } from '@/lib/api/services/taskTemplateService'
@@ -102,8 +100,22 @@ export function TaskTemplateForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
 
-  // Get task types for selected department
-  const taskTypes = DEPARTMENT_TASK_TYPES[formData.department as DepartmentId] || []
+  // Sync task_timing on mount based on due date fields (fixes stale data)
+  useEffect(() => {
+    let expectedTiming: 'pre_event' | 'post_event' | 'general' = 'general'
+    if (formData.days_after_event) {
+      expectedTiming = 'post_event'
+    } else if (formData.days_before_event) {
+      expectedTiming = 'pre_event'
+    } else if (formData.use_event_date) {
+      expectedTiming = 'pre_event' // Default for event-based without specific days
+    }
+
+    if (formData.task_timing !== expectedTiming) {
+      setFormData(prev => ({ ...prev, task_timing: expectedTiming }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on mount
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -136,7 +148,9 @@ export function TaskTemplateForm({
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         department: formData.department,
-        task_type: formData.task_type || null,
+        // Set task_type to department for unified filtering (e.g., 'sales', 'design')
+        // This allows templates to appear when user selects the matching category
+        task_type: formData.department,
         default_title: formData.default_title.trim(),
         default_description: formData.default_description.trim() || null,
         default_priority: formData.default_priority as 'low' | 'medium' | 'high' | 'urgent',
@@ -221,64 +235,40 @@ export function TaskTemplateForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {/* Department */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Department <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.department}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  department: e.target.value,
-                  task_type: '', // Reset task type when department changes
-                })
-              }
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
-                errors.department ? 'border-red-500' : 'border-gray-300'
-              }`}
-              disabled={isEditing}
-            >
-              {Object.values(DEPARTMENTS)
-                .filter((dept) => dept.id !== 'event_staff')
-                .map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-            </select>
-            {isEditing && (
-              <p className="mt-1 text-xs text-gray-500">
-                Department cannot be changed after creation
-              </p>
-            )}
-          </div>
-
-          {/* Task Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Task Type
-            </label>
-            <select
-              value={formData.task_type}
-              onChange={(e) =>
-                setFormData({ ...formData, task_type: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            >
-              <option value="">None (Custom)</option>
-              {taskTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
+        {/* Department */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Department <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.department}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                department: e.target.value,
+              })
+            }
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+              errors.department ? 'border-red-500' : 'border-gray-300'
+            }`}
+            disabled={isEditing}
+          >
+            {Object.values(DEPARTMENTS)
+              .filter((dept) => dept.id !== 'event_staff')
+              .map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
                 </option>
               ))}
-            </select>
+          </select>
+          {isEditing && (
             <p className="mt-1 text-xs text-gray-500">
-              Optional: Link to predefined task type
+              Department cannot be changed after creation
             </p>
-          </div>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Templates will appear when users select this department&apos;s task category
+          </p>
         </div>
 
         {/* Default Title */}

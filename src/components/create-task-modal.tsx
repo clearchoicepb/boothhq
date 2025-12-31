@@ -19,6 +19,8 @@ const UNIFIED_TASK_TYPE_LABELS: Record<UnifiedTaskType, string> = {
   operations: 'Operations',
   sales: 'Sales',
   admin: 'Admin',
+  accounting: 'Accounting',
+  customer_success: 'Customer Success',
   project: 'Project',
   misc: 'Miscellaneous',
 }
@@ -30,6 +32,8 @@ const UNIFIED_TASK_TYPES: UnifiedTaskType[] = [
   'operations',
   'sales',
   'admin',
+  'accounting',
+  'customer_success',
   'project',
   'misc',
 ]
@@ -40,6 +44,8 @@ const TASK_TYPE_TO_DEPARTMENT: Partial<Record<UnifiedTaskType, string>> = {
   operations: 'operations',
   sales: 'sales',
   admin: 'admin',
+  accounting: 'accounting',
+  customer_success: 'customer_success',
 }
 
 // Department display names
@@ -48,6 +54,8 @@ const DEPARTMENT_LABELS: Record<string, string> = {
   operations: 'Operations',
   sales: 'Sales',
   admin: 'Admin',
+  accounting: 'Accounting',
+  customer_success: 'Customer Success',
 }
 
 // User type for filtering
