@@ -80,18 +80,26 @@ export function GenerateAgreementModal({
       const template = templates.find(t => t.id === selectedTemplateId)
       if (!template) return
 
+      // Debug: Log template values
+      console.log('=== GENERATE AGREEMENT ===')
+      console.log('template:', template)
+      console.log('template.include_invoice_attachment:', template.include_invoice_attachment)
+
       // Create contract with e-signature capability
+      const requestBody = {
+        event_id: eventId,
+        template_id: template.id,
+        template_content: template.content,
+        title: template.name,
+        expires_days: 30,
+        include_invoice_attachment: template.include_invoice_attachment || false
+      }
+      console.log('Request body being sent:', requestBody)
+
       const response = await fetch('/api/contracts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_id: eventId,
-          template_id: template.id,
-          template_content: template.content,
-          title: template.name,
-          expires_days: 30,
-          include_invoice_attachment: template.include_invoice_attachment || false
-        })
+        body: JSON.stringify(requestBody)
       })
 
       const responseData = await response.json()

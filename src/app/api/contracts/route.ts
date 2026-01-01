@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     log.debug({}, 'Reading request body...')
     const body = await request.json()
     log.debug({ body }, 'Request body')
-    
+
     const {
       event_id,
       template_id,
@@ -49,6 +49,11 @@ export async function POST(request: NextRequest) {
       expires_days = 30,
       include_invoice_attachment = false
     } = body
+
+    // Debug: Log include_invoice_attachment value
+    console.log('=== CONTRACT CREATION ===')
+    console.log('include_invoice_attachment from body:', body.include_invoice_attachment)
+    console.log('include_invoice_attachment after destructure:', include_invoice_attachment)
 
     if (!event_id || !template_content || !title) {
       log.debug({ event_id, has_template_content: !!template_content, title }, 'Missing required fields')
@@ -281,7 +286,11 @@ export async function POST(request: NextRequest) {
     if (include_invoice_attachment) {
       insertData.include_invoice_attachment = include_invoice_attachment
     }
-    
+
+    console.log('=== INSERT DATA ===')
+    console.log('include_invoice_attachment in insertData:', insertData.include_invoice_attachment)
+    console.log('insertData keys:', Object.keys(insertData))
+
     log.debug({ keys: Object.keys(insertData) }, 'Inserting with data')
     log.debug({
       template_name: insertData.template_name,
