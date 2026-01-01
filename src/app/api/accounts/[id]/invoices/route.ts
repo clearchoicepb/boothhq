@@ -20,7 +20,7 @@ export async function GET(
       .from('invoices')
       .select(`
         *,
-        events!invoices_event_id_fkey(id, title, start_date, status)
+        events!invoices_event_id_fkey(id, title, start_date)
       `)
       .eq('account_id', id)
       .eq('tenant_id', dataSourceTenantId)

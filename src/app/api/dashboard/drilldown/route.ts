@@ -311,8 +311,7 @@ export async function GET(request: NextRequest) {
           location: ed.locations?.name || ed.events?.location || null,
           eventType: ed.events?.event_types?.name || null,
           eventCategory: ed.events?.event_categories?.name || null,
-          eventCategoryColor: ed.events?.event_categories?.color || null,
-          status: ed.events?.status || 'unknown'
+          eventCategoryColor: ed.events?.event_categories?.color || null
         }))
 
         response = {

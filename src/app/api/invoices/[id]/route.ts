@@ -20,7 +20,7 @@ export async function GET(
         *,
         accounts(name, email, phone),
         contacts(first_name, last_name, email, phone),
-        events(id, title, start_date, status)
+        events(id, title, start_date)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
