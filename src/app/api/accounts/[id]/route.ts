@@ -17,7 +17,6 @@ export async function GET(
       .from('accounts')
       .select(`
         *,
-        contacts!contacts_account_id_fkey(id, first_name, last_name, email, phone, job_title),
         contact_accounts(
           id,
           role,
@@ -28,7 +27,7 @@ export async function GET(
           contacts(id, first_name, last_name, email, phone, job_title, avatar_url)
         ),
         opportunities(id, name, stage, amount, expected_close_date),
-        events(id, title, start_date, status)
+        events(id, title, start_date)
       `)
       .eq('id', id)
       .eq('tenant_id', dataSourceTenantId)
