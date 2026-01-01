@@ -13,6 +13,7 @@ interface Template {
   id: string
   name: string
   content: string
+  include_invoice_attachment?: boolean
 }
 
 interface GenerateAgreementModalProps {
@@ -56,6 +57,12 @@ export function GenerateAgreementModal({
       const response = await fetch('/api/templates?type=contract')
       if (response.ok) {
         const data = await response.json()
+        // Debug: Log fetched templates to see if include_invoice_attachment is present
+        console.log('=== TEMPLATES FETCHED ===')
+        console.log('templates:', data)
+        data.forEach((t: Template) => {
+          console.log(`Template "${t.name}": include_invoice_attachment =`, t.include_invoice_attachment)
+        })
         setTemplates(data)
       }
     } catch (error) {
@@ -79,17 +86,33 @@ export function GenerateAgreementModal({
       const template = templates.find(t => t.id === selectedTemplateId)
       if (!template) return
 
+      // Debug: Log template values
+      console.log('=== GENERATE AGREEMENT ===')
+      console.log('template:', template)
+      console.log('template.include_invoice_attachment:', template.include_invoice_attachment)
+      console.log('typeof template.include_invoice_attachment:', typeof template.include_invoice_attachment)
+
+      // Handle both boolean true and string "true" (database serialization can vary)
+      const rawValue = template.include_invoice_attachment
+      const includeInvoice = rawValue === true || rawValue === 'true' || rawValue === 1
+      console.log('includeInvoice after conversion:', includeInvoice)
+
       // Create contract with e-signature capability
+      const requestBody = {
+        event_id: eventId,
+        template_id: template.id,
+        template_content: template.content,
+        title: template.name,
+        expires_days: 30,
+        include_invoice_attachment: includeInvoice
+      }
+      console.log('include_invoice_attachment being sent:', includeInvoice)
+      console.log('Request body being sent:', requestBody)
+
       const response = await fetch('/api/contracts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_id: eventId,
-          template_id: template.id,
-          template_content: template.content,
-          title: template.name,
-          expires_days: 30
-        })
+        body: JSON.stringify(requestBody)
       })
 
       const responseData = await response.json()

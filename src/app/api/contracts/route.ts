@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     log.debug({}, 'Reading request body...')
     const body = await request.json()
     log.debug({ body }, 'Request body')
-    
+
     const {
       event_id,
       template_id,
@@ -46,8 +46,14 @@ export async function POST(request: NextRequest) {
       title,
       signer_email,
       signer_name,
-      expires_days = 30
+      expires_days = 30,
+      include_invoice_attachment = false
     } = body
+
+    // Debug: Log include_invoice_attachment value
+    console.log('=== CONTRACT CREATION ===')
+    console.log('include_invoice_attachment from body:', body.include_invoice_attachment)
+    console.log('include_invoice_attachment after destructure:', include_invoice_attachment)
 
     if (!event_id || !template_content || !title) {
       log.debug({ event_id, has_template_content: !!template_content, title }, 'Missing required fields')
@@ -70,7 +76,8 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         accounts(*),
-        contacts:contacts!events_contact_id_fkey(*)
+        contacts:contacts!events_contact_id_fkey(*),
+        event_dates(*, locations(*))
       `)
       .eq('id', event_id)
       .single()
@@ -103,10 +110,40 @@ export async function POST(request: NextRequest) {
     if (event) {
       mergeData.event_title = event.title
       mergeData.event_load_in_notes = event.load_in_notes
-      mergeData.event_setup_time = event.setup_time
       mergeData.load_in_notes = event.load_in_notes
-      mergeData.setup_time = event.setup_time
-      
+
+      // Event dates - get first and last for date/time fields
+      if (event.event_dates && event.event_dates.length > 0) {
+        const sortedDates = [...event.event_dates].sort((a: any, b: any) =>
+          new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+        )
+        const firstDate = sortedDates[0]
+        const lastDate = sortedDates[sortedDates.length - 1]
+
+        // Date fields
+        mergeData.event_date = firstDate.event_date
+        mergeData.event_start_date = firstDate.event_date
+        mergeData.event_end_date = lastDate.event_date
+
+        // Time fields
+        mergeData.event_start_time = firstDate.start_time
+        mergeData.event_end_time = lastDate.end_time
+        mergeData.event_setup_time = firstDate.setup_time
+        mergeData.setup_time = firstDate.setup_time
+        mergeData.start_time = firstDate.start_time
+        mergeData.end_time = lastDate.end_time
+
+        // Location fields from first event date
+        if (firstDate.locations) {
+          mergeData.event_location = firstDate.locations.name
+          mergeData.location_name = firstDate.locations.name
+          mergeData.location_address = firstDate.locations.address_line1
+          mergeData.location_city = firstDate.locations.city
+          mergeData.location_state = firstDate.locations.state
+          mergeData.location_zip = firstDate.locations.postal_code
+        }
+      }
+
       // Contact data
       if (event.contacts) {
         mergeData.contact_first_name = event.contacts.first_name
@@ -120,7 +157,7 @@ export async function POST(request: NextRequest) {
         mergeData.phone = event.contacts.phone
         mergeData.contact_name = mergeData.contact_full_name
       }
-      
+
       // Account data
       if (event.accounts) {
         mergeData.account_name = event.accounts.name
@@ -129,7 +166,74 @@ export async function POST(request: NextRequest) {
         mergeData.company_name = event.accounts.name
       }
     }
-    
+
+    // Fetch invoice data for the event
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('*, invoice_line_items(*), payments(*)')
+      .eq('event_id', event_id)
+      .eq('tenant_id', dataSourceTenantId)
+      .order('created_at', { ascending: true })
+
+    if (invoices && invoices.length > 0) {
+      const primaryInvoice = invoices[0]
+      const lineItems = primaryInvoice.invoice_line_items || []
+      const payments = primaryInvoice.payments || []
+
+      // Invoice totals
+      mergeData.invoice_total = primaryInvoice.total_amount
+
+      // Calculate balance due (total minus all payments)
+      const totalPaid = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+      mergeData.balance_due = (primaryInvoice.total_amount || 0) - totalPaid
+
+      // Find deposit amount (look for line item or payment with "deposit" in description)
+      const depositLineItem = lineItems.find((item: any) =>
+        item.description?.toLowerCase().includes('deposit') ||
+        item.description?.toLowerCase().includes('retainer')
+      )
+      const depositPayment = payments.find((p: any) =>
+        p.notes?.toLowerCase().includes('deposit') ||
+        p.notes?.toLowerCase().includes('retainer')
+      )
+      mergeData.deposit_amount = depositLineItem?.total_price || depositPayment?.amount || null
+
+      // Package and add-ons logic
+      // First try to find a line item explicitly marked as package
+      let packageItem = lineItems.find((item: any) =>
+        item.description?.toLowerCase().includes('package') ||
+        item.item_type === 'package'
+      )
+
+      // If no explicit package, use the first non-deposit line item as the package
+      if (!packageItem && lineItems.length > 0) {
+        packageItem = lineItems.find((item: any) =>
+          !item.description?.toLowerCase().includes('deposit') &&
+          !item.description?.toLowerCase().includes('retainer')
+        ) || lineItems[0]
+      }
+
+      if (packageItem) {
+        mergeData.package_name = packageItem.description
+        mergeData.package_description = packageItem.description
+        mergeData.package_price = packageItem.total_price
+      }
+
+      // Add-ons: all line items except the package and deposits
+      const addOnItems = lineItems.filter((item: any) =>
+        item !== packageItem &&
+        !item.description?.toLowerCase().includes('deposit') &&
+        !item.description?.toLowerCase().includes('retainer')
+      )
+
+      if (addOnItems.length > 0) {
+        // Format as bullet list with name - price
+        mergeData.add_ons_list = addOnItems
+          .map((item: any) => `• ${item.description} - $${(item.total_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          .join('\n')
+      }
+    }
+
     log.debug({ keys: Object.keys(mergeData) }, 'Merge data built')
 
     // Replace merge fields in template
@@ -178,7 +282,29 @@ export async function POST(request: NextRequest) {
     if (contractNumber) insertData.contract_number = contractNumber
     if (expiresAt) insertData.expires_at = expiresAt.toISOString()
     if (session.user.id) insertData.created_by = session.user.id
-    
+
+    // Get include_invoice_attachment from template directly (frontend may not pass it correctly)
+    let finalIncludeInvoice = include_invoice_attachment === true || include_invoice_attachment === 'true'
+    if (!finalIncludeInvoice && template_id) {
+      // Fetch from template as fallback
+      const { data: templateData } = await supabase
+        .from('templates')
+        .select('include_invoice_attachment')
+        .eq('id', template_id)
+        .single()
+
+      if (templateData?.include_invoice_attachment) {
+        finalIncludeInvoice = templateData.include_invoice_attachment === true ||
+                              templateData.include_invoice_attachment === 'true'
+        console.log('=== FETCHED include_invoice_attachment FROM TEMPLATE ===', finalIncludeInvoice)
+      }
+    }
+    insertData.include_invoice_attachment = finalIncludeInvoice
+
+    console.log('=== INSERT DATA ===')
+    console.log('include_invoice_attachment in insertData:', insertData.include_invoice_attachment)
+    console.log('insertData keys:', Object.keys(insertData))
+
     log.debug({ keys: Object.keys(insertData) }, 'Inserting with data')
     log.debug({
       template_name: insertData.template_name,
