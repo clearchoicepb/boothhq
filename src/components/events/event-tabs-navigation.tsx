@@ -5,7 +5,8 @@ import {
   Paperclip,
   ClipboardList,
   MessageSquare,
-  Info
+  Info,
+  PartyPopper
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 
@@ -34,6 +35,7 @@ export function EventTabsNavigation({ activeTab, onTabChange }: EventTabsNavigat
     { value: "activity", label: "Activity", icon: Activity },
     { value: "communications", label: "Communications", icon: MessageSquare },
     { value: "files", label: "Files", icon: Paperclip },
+    { value: "post-event", label: "Post Event", icon: PartyPopper },
   ]
 
   return (
