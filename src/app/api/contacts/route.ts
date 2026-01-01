@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create contact', details: error }, { status: 500 })
     }
 
-    // NEW: If account_id provided, create contact_accounts entry
+    // If account_id provided, create contact_accounts entry (transactional - rollback on failure)
     if (body.account_id) {
       const { error: junctionError } = await supabase
         .from('contact_accounts')
@@ -180,11 +180,24 @@ export async function POST(request: NextRequest) {
           start_date: new Date().toISOString().split('T')[0],
           tenant_id: dataSourceTenantId
         })
-      
+
       if (junctionError) {
-        log.error({ junctionError }, 'Failed to create contact_accounts entry')
-        // Don't fail the request, but log the error
-        // The contact was created successfully, junction entry is supplementary
+        log.error({ junctionError, contactId: data.id }, 'Failed to create contact_accounts entry - rolling back contact creation')
+
+        // Rollback: Delete the contact that was just created
+        const { error: deleteError } = await supabase
+          .from('contacts')
+          .delete()
+          .eq('id', data.id)
+
+        if (deleteError) {
+          log.error({ deleteError, contactId: data.id }, 'Failed to rollback contact creation')
+        }
+
+        return NextResponse.json({
+          error: 'Failed to link contact to account. Please try again or contact support if the issue persists.',
+          details: junctionError.message
+        }, { status: 500 })
       }
     }
 

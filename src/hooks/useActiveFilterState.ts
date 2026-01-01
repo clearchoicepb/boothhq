@@ -12,7 +12,6 @@ interface UseActiveFilterStateReturn {
 export function useActiveFilterState(filters: FilterState): UseActiveFilterStateReturn {
   const hasActiveFilters = useMemo(
     () =>
-      filters.statusFilter !== 'all' ||
       filters.dateRangeFilter !== 'upcoming' ||
       filters.searchTerm !== '' ||
       filters.taskFilter !== 'all' ||
@@ -25,7 +24,6 @@ export function useActiveFilterState(filters: FilterState): UseActiveFilterState
   const activeFilterCount = useMemo(
     () =>
       [
-        filters.statusFilter !== 'all',
         filters.dateRangeFilter !== 'upcoming',
         filters.searchTerm !== '',
         filters.taskFilter !== 'all',

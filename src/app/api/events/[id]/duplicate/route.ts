@@ -31,7 +31,6 @@ export async function POST(
       ...originalEvent,
       id: undefined, // Let Supabase generate new ID
       title: `${originalEvent.title} (Copy)`,
-      status: 'scheduled', // Reset to scheduled
       created_at: undefined,
       updated_at: undefined,
       // Keep dates, location, and other details

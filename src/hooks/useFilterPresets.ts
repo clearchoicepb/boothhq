@@ -34,7 +34,6 @@ export function useFilterPresets({
     updateMultipleFilters({
       dateRangeFilter: 'custom_days',
       customDaysFilter: 10,
-      statusFilter: 'all',
       taskFilter: 'all',
       selectedTaskIds: [],
       searchTerm: '',
@@ -45,7 +44,6 @@ export function useFilterPresets({
   const applyPlanningView = useCallback(() => {
     updateMultipleFilters({
       dateRangeFilter: 'all',
-      statusFilter: 'all',
       taskFilter: 'incomplete',
       taskDateRangeFilter: 45,
       selectedTaskIds: [],
@@ -58,7 +56,6 @@ export function useFilterPresets({
     updateMultipleFilters({
       dateRangeFilter: 'upcoming',
       customDaysFilter: null,
-      statusFilter: 'all',
       taskFilter: 'all',
       selectedTaskIds: [],
       searchTerm: '',
@@ -70,7 +67,6 @@ export function useFilterPresets({
     updateMultipleFilters({
       dateRangeFilter: 'upcoming',
       customDaysFilter: null,
-      statusFilter: 'all',
       taskFilter: 'all',
       selectedTaskIds: [],
       searchTerm: '',
@@ -95,7 +91,6 @@ export function useFilterPresets({
   // Compute hasActiveFilters locally for isAllEventsActive check
   const hasActiveFilters = useMemo(
     () =>
-      filters.statusFilter !== 'all' ||
       filters.dateRangeFilter !== 'upcoming' ||
       filters.searchTerm !== '' ||
       filters.taskFilter !== 'all' ||

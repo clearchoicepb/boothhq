@@ -15,9 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { supabase, dataSourceTenantId } = context
     const { searchParams } = new URL(request.url)
-    const statusFilter = searchParams.get('status') || 'all'
     const typeFilter = searchParams.get('type') || 'all'
-
 
     let query = supabase
       .from('events')
@@ -41,10 +39,6 @@ export async function GET(request: NextRequest) {
       `)
       .eq('tenant_id', dataSourceTenantId)
       .order('start_date', { ascending: true })
-
-    if (statusFilter !== 'all') {
-      query = query.eq('status', statusFilter)
-    }
 
     if (typeFilter !== 'all') {
       // Support both old event_type TEXT field and new event_type_id
@@ -225,7 +219,6 @@ export async function POST(request: NextRequest) {
       account_id,
       contact_id,
       opportunity_id,
-      status,
       event_dates
     } = body
 
@@ -257,8 +250,7 @@ export async function POST(request: NextRequest) {
       location_id: location_id || null,
       account_id: account_id || null,
       contact_id: contact_id || null,
-      opportunity_id: opportunity_id || null,
-      status: status || 'scheduled'
+      opportunity_id: opportunity_id || null
     }
 
     log.debug({ insertData }, 'Inserting event')

@@ -138,18 +138,8 @@ export function EventTimelineCard({
         </div>
       )}
 
-      {/* Status Badge */}
+      {/* Task Ready Badge */}
       <div className="mt-2 flex items-center gap-1 flex-wrap">
-        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
-          event.status === 'completed' ? 'bg-green-100 text-green-800' :
-          event.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-          event.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
-          event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {event.status}
-        </span>
-
         {taskProgress.percentage === 100 && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
             <CheckCircle2 className="h-3 w-3" />

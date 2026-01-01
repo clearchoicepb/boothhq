@@ -20,20 +20,14 @@ export async function GET(request: NextRequest) {
 
   const { supabase, dataSourceTenantId, session } = context
     const { searchParams } = new URL(request.url)
-    const statusFilter = searchParams.get('status')
     const eventTypeFilter = searchParams.get('event_type')
 
     // Build query with filters
     let query = supabase
       .from('events')
-      .select('id, status, start_date, end_date, event_type')
+      .select('id, start_date, end_date, event_type')
       .eq('tenant_id', dataSourceTenantId)
 
-    // Apply filters
-    if (statusFilter && statusFilter !== 'all') {
-      query = query.eq('status', statusFilter)
-    }
-    
     if (eventTypeFilter && eventTypeFilter !== 'all') {
       query = query.eq('event_type', eventTypeFilter)
     }
@@ -69,18 +63,10 @@ export async function GET(request: NextRequest) {
       return startDate >= todayStart && startDate <= weekEnd
     }).length || 0
 
-    // Additional stats by status
-    const scheduledEvents = events?.filter(e => e.status === 'scheduled').length || 0
-    const confirmedEvents = events?.filter(e => e.status === 'confirmed').length || 0
-    const completedEvents = events?.filter(e => e.status === 'completed').length || 0
-
     const stats = {
       totalEvents,
       upcomingEvents,
-      thisWeekEvents,
-      scheduledEvents,
-      confirmedEvents,
-      completedEvents
+      thisWeekEvents
     }
 
     const response = NextResponse.json(stats)

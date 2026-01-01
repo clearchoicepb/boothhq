@@ -14,7 +14,6 @@
 'use client'
 
 import { Building2, Calendar, User } from 'lucide-react'
-import { EventStatusBadge } from '../../event-status-badge'
 import { formatDate } from '@/lib/utils/date-utils'
 import { getNextEventDate } from '@/lib/utils/event-utils'
 import type { Event } from '@/types/events'
@@ -44,7 +43,6 @@ export function StickyEventContext({ event }: StickyEventContextProps) {
               <h2 className="text-lg font-bold text-gray-900 truncate max-w-xs">
                 {event.title}
               </h2>
-              <EventStatusBadge status={event.status} />
             </div>
 
             {/* Divider */}

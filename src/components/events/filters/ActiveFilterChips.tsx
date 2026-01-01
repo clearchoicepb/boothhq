@@ -38,17 +38,6 @@ export function ActiveFilterChips({
             </button>
           </span>
         )}
-        {filters.statusFilter !== 'all' && (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-            Status: {filters.statusFilter}
-            <button
-              onClick={() => onUpdateFilter('statusFilter', 'all')}
-              className="hover:opacity-70"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        )}
         {filters.assignedToFilter !== 'all' && (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <Users className="h-3 w-3" />

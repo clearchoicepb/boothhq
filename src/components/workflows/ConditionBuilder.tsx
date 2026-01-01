@@ -214,25 +214,6 @@ export default function ConditionBuilder({
       }
     }
 
-    // For status field, show a dropdown with common statuses
-    if (condition.field === 'event.status') {
-      const statuses = ['draft', 'pending', 'confirmed', 'completed', 'cancelled']
-      return (
-        <select
-          value={condition.value as string || ''}
-          onChange={(e) => handleUpdateCondition(index, { value: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-sm"
-        >
-          <option value="">Select status...</option>
-          {statuses.map(status => (
-            <option key={status} value={status}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </option>
-          ))}
-        </select>
-      )
-    }
-
     // Default text input
     return (
       <input

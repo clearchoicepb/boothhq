@@ -94,7 +94,6 @@ export function useEventsFilters({
     searchTerm: '',
     dateRangeFilter: 'upcoming',
     customDaysFilter: null,
-    statusFilter: 'all',
     taskFilter: 'all',
     taskDateRangeFilter: 14,
     selectedTaskIds: [],
@@ -223,11 +222,6 @@ export function useEventsFilters({
         (event.account_name && event.account_name.toLowerCase().includes(filters.searchTerm.toLowerCase()))
 
       if (!matchesSearch) return false
-
-      // Status filter
-      if (filters.statusFilter !== 'all' && event.status !== filters.statusFilter) {
-        return false
-      }
 
       // Date range filter
       if (filters.dateRangeFilter !== 'all' && event.start_date) {

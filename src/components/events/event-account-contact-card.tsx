@@ -142,31 +142,6 @@ export function EventAccountContactCard({
                 </button>
               )}
             </div>
-          ) : event.contact_name ? (
-            // Legacy fallback for old contact_id field
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <User className="h-4 w-4 text-gray-400 mr-2" />
-                <Link
-                  href={`/${tenantSubdomain}/contacts/${event.contact_id}`}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {event.contact_name}
-                </Link>
-                <Badge variant="outline" className="ml-2 text-xs text-amber-600">
-                  Legacy
-                </Badge>
-              </div>
-              {canEdit && (
-                <button
-                  onClick={onStartEdit}
-                  className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit contact"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-              )}
-            </div>
           ) : (
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">No primary contact assigned</p>

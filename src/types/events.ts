@@ -185,7 +185,6 @@ export interface Event {
   // Core database fields (required)
   id: string
   title: string
-  status: string
   start_date: string
   event_type?: string | EventType | null
   created_at: string
@@ -263,7 +262,6 @@ export interface CalendarEvent {
   start_time?: string | null
   end_time?: string | null
   setup_time?: string | null
-  status: string
   event_type?: string
   event_id?: string  // Reference to parent event for multi-date events
 }
@@ -274,7 +272,6 @@ export interface AccountEvent {
   name: string
   event_type: string
   event_date: string
-  status: string
   total_cost: number | null
 }
 
@@ -414,7 +411,6 @@ export interface FilterState {
   searchTerm: string
   dateRangeFilter: 'all' | 'today' | 'this_week' | 'this_month' | 'upcoming' | 'past' | 'custom_days'
   customDaysFilter: number | null
-  statusFilter: string
   taskFilter: 'all' | 'incomplete'
   taskDateRangeFilter: number
   selectedTaskIds: string[]

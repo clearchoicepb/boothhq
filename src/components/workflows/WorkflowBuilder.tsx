@@ -560,7 +560,6 @@ export default function WorkflowBuilder({
 
                       const fieldLabels: Record<string, string> = {
                         'event.event_type_id': 'Event Type',
-                        'event.status': 'Event Status',
                         'event.account_id': 'Account',
                         'event.assigned_to': 'Assigned To',
                       }

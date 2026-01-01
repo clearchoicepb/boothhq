@@ -78,26 +78,11 @@ export function EventPreviewModal({
             </div>
           ) : event ? (
             <div className="space-y-4">
-              {/* Title and Status */}
+              {/* Title */}
               <div>
                 <h3 className="mb-2 text-2xl font-bold text-gray-900">
                   {event.title || 'Untitled Event'}
                 </h3>
-                <span
-                  className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
-                    event.status === 'completed'
-                      ? 'bg-green-100 text-green-800'
-                      : event.status === 'confirmed'
-                        ? 'bg-blue-100 text-blue-800'
-                        : event.status === 'scheduled'
-                          ? 'bg-purple-100 text-purple-800'
-                          : event.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {event.status}
-                </span>
               </div>
 
               {/* Category & Type */}

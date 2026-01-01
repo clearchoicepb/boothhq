@@ -767,35 +767,6 @@ export default function AccountDetailPage() {
                 <p className="text-gray-500 text-sm">No contacts associated with this account.</p>
               )}
 
-              {/* Legacy Fallback (if old contacts exist but no junction table entries) */}
-              {contacts.length > 0 && 
-               (!account.all_contacts || account.all_contacts.length === 0) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <User className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-amber-900 mb-2">
-                        Legacy Contact Links Detected
-                      </p>
-                      <p className="text-xs text-amber-700 mb-3">
-                        This account has contacts using the old system. Edit the account to migrate to the new many-to-many relationship system with roles.
-                      </p>
-                      <div className="space-y-2">
-                        {contacts.map((contact) => (
-                          <Link
-                            key={contact.id}
-                            href={`/${tenantSubdomain}/contacts/${contact.id}`}
-                            className="flex items-center gap-2 text-sm text-amber-800 hover:text-amber-900 hover:underline"
-                          >
-                            <ArrowRight className="h-3 w-3" />
-                            {contact.first_name} {contact.last_name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Notes */}
