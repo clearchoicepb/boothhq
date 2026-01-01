@@ -20,7 +20,6 @@ interface CalendarEvent {
   end_time?: string
   location?: string
   type: 'event' | 'opportunity'
-  status: string
   account_name?: string
   contact_name?: string
   event_type?: string
@@ -34,7 +33,6 @@ interface EventData {
   start_time?: string
   end_time?: string
   location?: string
-  status: string
   account_name?: string
   contact_name?: string
   event_type?: string
@@ -47,7 +45,6 @@ interface OpportunityData {
   expected_close_date?: string
   initial_date?: string
   stage?: string
-  status: string
   account_name?: string
   contact_name?: string
   amount?: number
@@ -92,7 +89,6 @@ export default function CalendarPage() {
           end_time: event.end_time,
           location: event.location,
           type: 'event' as const,
-          status: event.status,
           account_name: event.account_name,
           contact_name: event.contact_name,
           event_type: event.event_type

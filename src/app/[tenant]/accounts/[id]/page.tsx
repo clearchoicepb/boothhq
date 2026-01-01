@@ -532,15 +532,8 @@ export default function AccountDetailPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          event.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {event.status}
-                        </span>
                         {event.total_cost && (
-                          <p className="text-xs text-gray-500 mt-1">${event.total_cost.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">${event.total_cost.toLocaleString()}</p>
                         )}
                       </div>
                     </div>
@@ -589,15 +582,8 @@ export default function AccountDetailPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {event.status}
-                        </span>
                         {event.total_cost && (
-                          <p className="text-xs text-gray-500 mt-1">${event.total_cost.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">${event.total_cost.toLocaleString()}</p>
                         )}
                       </div>
                     </div>

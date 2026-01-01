@@ -184,9 +184,6 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                   >
                     {event.title}
                   </Link>
-                  <p className="text-xs text-gray-500 mt-1 capitalize">
-                    {event.status}
-                  </p>
                 </td>
 
                 {/* Client */}
@@ -275,13 +272,6 @@ export function StaffingTable({ roleType, daysAhead }: StaffingTableProps) {
                 >
                   {event.title}
                 </Link>
-                <span className={`ml-2 inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                  event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                  event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {event.status}
-                </span>
               </div>
             </div>
 

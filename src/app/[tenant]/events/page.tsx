@@ -730,14 +730,6 @@ export default function EventsPage() {
                         {/* Status */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                              event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {event.status || 'Unknown'}
-                            </span>
                             {event.tasks_ready && (
                               <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -755,12 +747,8 @@ export default function EventsPage() {
                           <EventQuickActionsMenu
                             eventId={event.id}
                             eventTitle={event.title || 'Untitled Event'}
-                            currentStatus={event.status}
                             tenantSubdomain={tenantSubdomain}
                             onDelete={handleDeleteEvent}
-                            onStatusChange={() => {
-                              queryClient.invalidateQueries({ queryKey: ['events'] })
-                            }}
                           />
                         </td>
                       </tr>
@@ -898,15 +886,7 @@ export default function EventsPage() {
                           )}
                         </div>
                       </div>
-                      {/* Status Badge */}
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ml-2 ${
-                        event.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        event.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                        event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {event.status || 'Unknown'}
-                      </span>
+                      {/* Status Badge - Removed: status column no longer exists */}
                     </div>
 
                     {/* Details Grid */}
@@ -1007,12 +987,8 @@ export default function EventsPage() {
                         <EventQuickActionsMenu
                           eventId={event.id}
                           eventTitle={event.title || 'Untitled Event'}
-                          currentStatus={event.status}
                           tenantSubdomain={tenantSubdomain}
                           onDelete={handleDeleteEvent}
-                          onStatusChange={() => {
-                            queryClient.invalidateQueries({ queryKey: ['events'] })
-                          }}
                         />
                       </div>
                     </div>

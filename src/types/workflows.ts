@@ -448,7 +448,7 @@ export const WORKFLOW_ACTION_TYPES: Record<WorkflowActionType, {
  * All conditions in a workflow use AND logic (all must pass)
  */
 export interface WorkflowCondition {
-  /** Field path to evaluate (e.g., 'event.event_type_id', 'event.status') */
+  /** Field path to evaluate (e.g., 'event.event_type_id', 'event.account_id') */
   field: string
   /** Comparison operator */
   operator: ConditionOperator

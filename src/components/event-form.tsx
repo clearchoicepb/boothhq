@@ -31,7 +31,6 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     end_date: null,
     location: '',
     location_id: null,
-    status: 'scheduled',
     account_id: null,
     contact_id: null,
     opportunity_id: null
@@ -59,7 +58,6 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         end_date: event.end_date || null,
         location: event.location || '',
         location_id: event.location_id || null,
-        status: event.status || 'scheduled',
         account_id: event.account_id,
         contact_id: event.contact_id,
         opportunity_id: event.opportunity_id
@@ -79,7 +77,6 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
         end_date: null,
         location: '',
         location_id: null,
-        status: 'scheduled',
         account_id: null,
         contact_id: null,
         opportunity_id: null
@@ -219,12 +216,6 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
     { value: 'other', label: 'Other' }
   ]
 
-  const statusOptions = [
-    { value: 'scheduled', label: 'Scheduled' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'rescheduled', label: 'Rescheduled' }
-  ]
 
   // Filter contacts and opportunities based on selected account
   const filteredContacts = formData.account_id
@@ -271,23 +262,6 @@ export function EventForm({ event, isOpen, onClose, onSubmit }: EventFormProps) 
               onChange={(e) => handleInputChange('event_type', e.target.value)}
             >
               {eventTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Status */}
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <Select
-              value={formData.status}
-              onChange={(e) => handleInputChange('status', e.target.value)}
-            >
-              {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

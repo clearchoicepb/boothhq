@@ -35,7 +35,6 @@ export const mergeFieldCategories: MergeFieldCategory[] = [
       { key: 'events.id', label: 'Event ID', type: 'text', table: 'events', column: 'id' },
       { key: 'events.title', label: 'Event Title', type: 'text', table: 'events', column: 'title' },
       { key: 'events.description', label: 'Event Description', type: 'textarea', table: 'events', column: 'description' },
-      { key: 'events.status', label: 'Event Status', type: 'text', table: 'events', column: 'status' },
       { key: 'events.event_value', label: 'Event Value', type: 'text', table: 'events', column: 'event_value' },
       { key: 'events.guest_count', label: 'Guest Count', type: 'number', table: 'events', column: 'guest_count' },
       { key: 'events.payment_status', label: 'Payment Status', type: 'text', table: 'events', column: 'payment_status' },

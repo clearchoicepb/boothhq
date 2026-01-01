@@ -493,8 +493,7 @@ export async function GET(
       event: {
         id: event.id,
         title: event.title,
-        event_type: event.event_type,
-        status: event.status
+        event_type: event.event_type
       },
       // Customer info
       customer: {

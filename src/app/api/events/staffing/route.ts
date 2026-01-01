@@ -230,7 +230,6 @@ export async function GET(request: NextRequest) {
         title: event.title,
         start_date: event.start_date,
         end_date: event.end_date,
-        status: event.status,
         location: locationData.name,
         location_coordinates: locationData.coordinates,
         account: event.accounts ? {

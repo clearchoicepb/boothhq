@@ -18,7 +18,6 @@ interface Event {
   title: string
   start_date: string
   end_date: string | null
-  status: string
   location: string | null
   account_name: string | null
   event_dates?: Array<{
@@ -26,7 +25,6 @@ interface Event {
     event_date: string
     start_time: string | null
     end_time: string | null
-    status: string
   }>
 }
 
@@ -36,7 +34,6 @@ interface CalendarEvent {
   event_date: string
   start_time?: string | null
   end_time?: string | null
-  status: string
   event_id?: string
 }
 
@@ -59,7 +56,7 @@ export default function EventsCalendarPage() {
   // Transform events into calendar events (flatten event_dates)
   useEffect(() => {
     const transformedEvents: CalendarEvent[] = []
-    
+
     events.forEach(event => {
       // If event has event_dates, use those
       if (event.event_dates && event.event_dates.length > 0) {
@@ -70,7 +67,6 @@ export default function EventsCalendarPage() {
             event_date: eventDate.event_date,
             start_time: eventDate.start_time || undefined,
             end_time: eventDate.end_time || undefined,
-            status: eventDate.status || event.status,
             event_id: event.id
           })
         })
@@ -80,12 +76,11 @@ export default function EventsCalendarPage() {
           id: event.id,
           name: event.title,
           event_date: event.start_date,
-          status: event.status,
           event_id: event.id
         })
       }
     })
-    
+
     setCalendarEvents(transformedEvents)
   }, [events])
 
