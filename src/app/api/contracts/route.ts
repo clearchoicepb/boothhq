@@ -282,8 +282,24 @@ export async function POST(request: NextRequest) {
     if (contractNumber) insertData.contract_number = contractNumber
     if (expiresAt) insertData.expires_at = expiresAt.toISOString()
     if (session.user.id) insertData.created_by = session.user.id
-    // Always include include_invoice_attachment (use body value or default to false)
-    insertData.include_invoice_attachment = include_invoice_attachment === true || include_invoice_attachment === 'true'
+
+    // Get include_invoice_attachment from template directly (frontend may not pass it correctly)
+    let finalIncludeInvoice = include_invoice_attachment === true || include_invoice_attachment === 'true'
+    if (!finalIncludeInvoice && template_id) {
+      // Fetch from template as fallback
+      const { data: templateData } = await supabase
+        .from('templates')
+        .select('include_invoice_attachment')
+        .eq('id', template_id)
+        .single()
+
+      if (templateData?.include_invoice_attachment) {
+        finalIncludeInvoice = templateData.include_invoice_attachment === true ||
+                              templateData.include_invoice_attachment === 'true'
+        console.log('=== FETCHED include_invoice_attachment FROM TEMPLATE ===', finalIncludeInvoice)
+      }
+    }
+    insertData.include_invoice_attachment = finalIncludeInvoice
 
     console.log('=== INSERT DATA ===')
     console.log('include_invoice_attachment in insertData:', insertData.include_invoice_attachment)
