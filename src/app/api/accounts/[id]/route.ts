@@ -17,7 +17,6 @@ export async function GET(
       .from('accounts')
       .select(`
         *,
-        contacts!contacts_account_id_fkey(id, first_name, last_name, email, phone, job_title),
         contact_accounts(
           id,
           role,
