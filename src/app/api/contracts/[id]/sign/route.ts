@@ -52,6 +52,15 @@ export async function POST(
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
 
+    // Debug: Log Schedule A relevant fields
+    log.debug({
+      contractId: contract.id,
+      eventId: contract.event_id,
+      includeInvoiceAttachment: contract.include_invoice_attachment,
+      hasEventId: !!contract.event_id,
+      hasIncludeFlag: !!contract.include_invoice_attachment
+    }, 'Schedule A debug: contract fields')
+
     // Check if already signed
     if (contract.status === 'signed') {
       return NextResponse.json(
@@ -143,7 +152,15 @@ export async function POST(
     pdf.text(`Document ID: ${contract.id}`, margin, y)
 
     // Schedule A - Invoice Attachment (if enabled)
+    log.debug({
+      willCheckScheduleA: true,
+      includeFlag: contract.include_invoice_attachment,
+      eventId: contract.event_id,
+      conditionMet: !!(contract.include_invoice_attachment && contract.event_id)
+    }, 'Schedule A: checking condition')
+
     if (contract.include_invoice_attachment && contract.event_id) {
+      log.debug({}, 'Schedule A: condition passed, fetching invoices')
       try {
         // Fetch invoices for this event
         const { data: invoices, error: invoicesError } = await supabase
@@ -157,6 +174,12 @@ export async function POST(
           .eq('tenant_id', dataSourceTenantId)
           .eq('event_id', contract.event_id)
           .order('created_at', { ascending: true })
+
+        log.debug({
+          invoicesFound: invoices?.length || 0,
+          invoicesError: invoicesError?.message,
+          eventId: contract.event_id
+        }, 'Schedule A: invoice query results')
 
         if (!invoicesError && invoices && invoices.length > 0) {
           // Fetch tenant info for company details
@@ -232,11 +255,26 @@ export async function POST(
           }
 
           log.debug({ invoiceCount: invoices.length }, 'Added Schedule A invoices to contract PDF')
+        } else {
+          log.debug({
+            hasError: !!invoicesError,
+            invoiceCount: invoices?.length || 0,
+            reason: invoicesError ? 'query error' : 'no invoices found'
+          }, 'Schedule A: no invoices to attach')
         }
       } catch (scheduleAError) {
-        log.error({ scheduleAError }, 'Error adding Schedule A invoices (continuing without)')
+        log.error({
+          error: scheduleAError instanceof Error ? scheduleAError.message : String(scheduleAError),
+          stack: scheduleAError instanceof Error ? scheduleAError.stack : undefined
+        }, 'Error adding Schedule A invoices (continuing without)')
         // Don't fail the signing - just skip the invoice attachment
       }
+    } else {
+      log.debug({
+        includeFlag: contract.include_invoice_attachment,
+        eventId: contract.event_id,
+        reason: !contract.include_invoice_attachment ? 'include_invoice_attachment is false/undefined' : 'no event_id'
+      }, 'Schedule A: condition not met, skipping')
     }
 
     // Get PDF as base64
