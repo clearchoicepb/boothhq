@@ -52,15 +52,6 @@ export async function POST(
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
 
-    // Debug: Log Schedule A relevant fields
-    log.debug({
-      contractId: contract.id,
-      eventId: contract.event_id,
-      includeInvoiceAttachment: contract.include_invoice_attachment,
-      hasEventId: !!contract.event_id,
-      hasIncludeFlag: !!contract.include_invoice_attachment
-    }, 'Schedule A debug: contract fields')
-
     // Check if already signed
     if (contract.status === 'signed') {
       return NextResponse.json(
@@ -112,55 +103,15 @@ export async function POST(
       }
     }
 
-    // Add signature section
-    if (y > pageHeight - margin - 120) {
-      pdf.addPage()
-      y = margin
-    }
-
-    y += 30
-    pdf.setFontSize(10)
-    pdf.setFont('helvetica', 'bold')
-    pdf.text('SIGNED BY:', margin, y)
-    y += 20
-
-    // Add signature in script font (simulate with italic)
-    pdf.setFontSize(24)
-    pdf.setFont('times', 'italic')
-    pdf.text(signature, margin, y)
-    y += 10
-
-    // Add signature line
-    pdf.setLineWidth(1)
-    pdf.line(margin, y, pageWidth - margin, y)
-    y += 15
-
-    // Add signature details
-    pdf.setFontSize(8)
-    pdf.setFont('helvetica', 'normal')
-    pdf.text(`Signed on: ${new Date(signedAt).toLocaleString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    })}`, margin, y)
-    y += 12
-    pdf.text(`IP Address: ${clientIp}`, margin, y)
-    y += 12
-    pdf.text(`Document ID: ${contract.id}`, margin, y)
-
-    // Schedule A - Invoice Attachment (if enabled)
-    log.debug({
-      willCheckScheduleA: true,
-      includeFlag: contract.include_invoice_attachment,
-      eventId: contract.event_id,
-      conditionMet: !!(contract.include_invoice_attachment && contract.event_id)
-    }, 'Schedule A: checking condition')
+    // ============================================
+    // Schedule A - Invoice Attachment (BEFORE signature)
+    // ============================================
+    console.log('=== SCHEDULE A SECTION REACHED ===')
+    console.log('contract.include_invoice_attachment:', contract.include_invoice_attachment)
+    console.log('contract.event_id:', contract.event_id)
 
     if (contract.include_invoice_attachment && contract.event_id) {
-      log.debug({}, 'Schedule A: condition passed, fetching invoices')
+      console.log('=== SCHEDULE A CONDITION PASSED ===')
       try {
         // Fetch invoices for this event
         const { data: invoices, error: invoicesError } = await supabase
@@ -175,11 +126,9 @@ export async function POST(
           .eq('event_id', contract.event_id)
           .order('created_at', { ascending: true })
 
-        log.debug({
-          invoicesFound: invoices?.length || 0,
-          invoicesError: invoicesError?.message,
-          eventId: contract.event_id
-        }, 'Schedule A: invoice query results')
+        console.log('=== INVOICE QUERY RESULTS ===')
+        console.log('invoicesError:', invoicesError?.message)
+        console.log('invoices found:', invoices?.length || 0)
 
         if (!invoicesError && invoices && invoices.length > 0) {
           // Fetch tenant info for company details
@@ -254,28 +203,56 @@ export async function POST(
             addInvoiceToDocument(pdf, invoiceData, companyInfo)
           }
 
-          log.debug({ invoiceCount: invoices.length }, 'Added Schedule A invoices to contract PDF')
+          console.log('=== SCHEDULE A INVOICES ADDED ===', invoices.length)
         } else {
-          log.debug({
-            hasError: !!invoicesError,
-            invoiceCount: invoices?.length || 0,
-            reason: invoicesError ? 'query error' : 'no invoices found'
-          }, 'Schedule A: no invoices to attach')
+          console.log('=== NO INVOICES TO ATTACH ===', invoicesError ? 'query error' : 'no invoices found')
         }
       } catch (scheduleAError) {
-        log.error({
-          error: scheduleAError instanceof Error ? scheduleAError.message : String(scheduleAError),
-          stack: scheduleAError instanceof Error ? scheduleAError.stack : undefined
-        }, 'Error adding Schedule A invoices (continuing without)')
+        console.error('=== SCHEDULE A ERROR ===', scheduleAError)
         // Don't fail the signing - just skip the invoice attachment
       }
     } else {
-      log.debug({
-        includeFlag: contract.include_invoice_attachment,
-        eventId: contract.event_id,
-        reason: !contract.include_invoice_attachment ? 'include_invoice_attachment is false/undefined' : 'no event_id'
-      }, 'Schedule A: condition not met, skipping')
+      console.log('=== SCHEDULE A CONDITION NOT MET ===')
+      console.log('Reason:', !contract.include_invoice_attachment ? 'include_invoice_attachment is false/undefined' : 'no event_id')
     }
+
+    // ============================================
+    // Signature Section (AFTER Schedule A)
+    // ============================================
+    // Always add signature on a new page after Schedule A (or continue from content if no Schedule A)
+    pdf.addPage()
+    y = margin + 30
+    pdf.setFontSize(10)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('SIGNED BY:', margin, y)
+    y += 20
+
+    // Add signature in script font (simulate with italic)
+    pdf.setFontSize(24)
+    pdf.setFont('times', 'italic')
+    pdf.text(signature, margin, y)
+    y += 10
+
+    // Add signature line
+    pdf.setLineWidth(1)
+    pdf.line(margin, y, pageWidth - margin, y)
+    y += 15
+
+    // Add signature details
+    pdf.setFontSize(8)
+    pdf.setFont('helvetica', 'normal')
+    pdf.text(`Signed on: ${new Date(signedAt).toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    })}`, margin, y)
+    y += 12
+    pdf.text(`IP Address: ${clientIp}`, margin, y)
+    y += 12
+    pdf.text(`Document ID: ${contract.id}`, margin, y)
 
     // Get PDF as base64
     const pdfBase64 = pdf.output('datauristring').split(',')[1]
