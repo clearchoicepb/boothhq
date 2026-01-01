@@ -17,6 +17,7 @@ import {
   ChevronDown,
   CheckSquare,
   Circle,
+  Star,
   Calendar,
   Clock,
   Heading,
@@ -49,6 +50,7 @@ const FIELD_ICONS: Record<FormFieldType, React.ComponentType<{ className?: strin
   select: ChevronDown,
   multiselect: CheckSquare,
   radio: Circle,
+  star_rating: Star,
   date: Calendar,
   time: Clock,
   section: Heading,
@@ -436,6 +438,25 @@ function FieldEditorModal({ field, onSave, onClose }: FieldEditorModalProps) {
               placeholder="Option 1&#10;Option 2&#10;Option 3"
               rows={5}
             />
+          </div>
+        )}
+
+        {/* Max Rating for star_rating */}
+        {field.type === 'star_rating' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Maximum Rating
+            </label>
+            <select
+              value={editedField.maxRating || 5}
+              onChange={(e) => setEditedField({ ...editedField, maxRating: parseInt(e.target.value) })}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value={3}>3 Stars</option>
+              <option value={4}>4 Stars</option>
+              <option value={5}>5 Stars</option>
+              <option value={10}>10 Stars</option>
+            </select>
           </div>
         )}
 

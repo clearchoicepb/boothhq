@@ -28,6 +28,7 @@ import { EventStaffList } from '@/components/events/event-staff-list'
 import { EventTabsNavigation } from '@/components/events/event-tabs-navigation'
 import { EventOverviewTab } from '@/components/events/detail/tabs/EventOverviewTab'
 import { EventPlanningTab } from '@/components/events/detail/tabs/EventPlanningTab'
+import { EventPostEventTab } from '@/components/events/detail/tabs/EventPostEventTab'
 import { CommunicationsTab } from '@/components/shared/CommunicationsTab'
 import { StickyEventContext } from '@/components/events/detail/shared/StickyEventContext'
 import { eventsService } from '@/lib/api/services/eventsService'
@@ -527,6 +528,21 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                     />
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* Post Event Tab */}
+              <TabsContent value="post-event" className="mt-0">
+                <EventPostEventTab
+                  eventId={eventId}
+                  eventTitle={event.title}
+                  photoGalleryUrl={event.photo_gallery_url || null}
+                  btsGalleryUrl={event.bts_gallery_url || null}
+                  recapDeckPath={event.recap_deck_path || null}
+                  recapDeckUploadedAt={event.recap_deck_uploaded_at || null}
+                  recapDeckUploadedBy={event.recap_deck_uploaded_by || null}
+                  onEventUpdate={eventData.fetchEvent}
+                  canEdit={canManageEvents}
+                />
               </TabsContent>
             </Tabs>
           </div>

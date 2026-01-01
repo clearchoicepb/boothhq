@@ -19,6 +19,7 @@ export type FormFieldType =
   | 'select'      // Dropdown select (single choice)
   | 'multiselect' // Checkbox group (multiple choices)
   | 'radio'       // Radio button group (single choice)
+  | 'star_rating' // Star rating (1-5 scale)
   | 'date'        // Date picker
   | 'time'        // Time picker
   | 'section'     // Section header (display only)
@@ -37,6 +38,7 @@ export interface FormField {
   order: number                 // Display order (for drag-drop reordering)
   options?: string[]            // Options for select/multiselect/radio
   content?: string              // Content for section headers and paragraphs
+  maxRating?: number            // Max stars for star_rating (default 5)
   // Data mapping for merge tags (Phase 7B)
   prePopulateFrom?: string      // Merge field key to pull data from (e.g., "events.venue_contact_name")
   saveResponseTo?: string       // Merge field key to save response to (e.g., "events.venue_contact_name")
@@ -89,6 +91,11 @@ export type FormFieldMappings = FormFieldMapping[]
 export type FormTemplateCategory = 'logistics' | 'design' | 'survey' | 'feedback' | 'other'
 
 /**
+ * Form type - distinguishes client forms from staff forms
+ */
+export type FormType = 'client' | 'staff'
+
+/**
  * Template status
  */
 export type FormTemplateStatus = 'active' | 'inactive'
@@ -102,6 +109,7 @@ export interface EventFormTemplate {
   name: string
   description: string | null
   category: FormTemplateCategory
+  form_type: FormType
   status: FormTemplateStatus
   fields: FormField[]
   created_at: string
@@ -117,6 +125,7 @@ export interface EventFormTemplateInsert {
   name: string
   description?: string | null
   category?: FormTemplateCategory
+  form_type?: FormType          // Defaults to 'client'
   status?: FormTemplateStatus
   fields?: FormField[]
   created_by?: string           // Usually set by API
@@ -129,6 +138,7 @@ export interface EventFormTemplateUpdate {
   name?: string
   description?: string | null
   category?: FormTemplateCategory
+  form_type?: FormType
   status?: FormTemplateStatus
   fields?: FormField[]
 }

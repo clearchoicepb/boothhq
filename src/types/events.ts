@@ -244,6 +244,13 @@ export interface Event {
   public_token?: string | null
   public_page_enabled?: boolean
 
+  // Post-event fields
+  photo_gallery_url?: string | null
+  bts_gallery_url?: string | null
+  recap_deck_path?: string | null
+  recap_deck_uploaded_at?: string | null
+  recap_deck_uploaded_by?: string | null
+
   // Timeline view helper fields (for virtual events from multi-date events)
   _currentEventDate?: EventDate
   _originalEventId?: string
