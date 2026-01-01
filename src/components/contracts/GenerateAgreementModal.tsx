@@ -57,6 +57,12 @@ export function GenerateAgreementModal({
       const response = await fetch('/api/templates?type=contract')
       if (response.ok) {
         const data = await response.json()
+        // Debug: Log fetched templates to see if include_invoice_attachment is present
+        console.log('=== TEMPLATES FETCHED ===')
+        console.log('templates:', data)
+        data.forEach((t: Template) => {
+          console.log(`Template "${t.name}": include_invoice_attachment =`, t.include_invoice_attachment)
+        })
         setTemplates(data)
       }
     } catch (error) {
@@ -85,6 +91,9 @@ export function GenerateAgreementModal({
       console.log('template:', template)
       console.log('template.include_invoice_attachment:', template.include_invoice_attachment)
 
+      // Explicitly get the include_invoice_attachment value (handle undefined/null)
+      const includeInvoice = template.include_invoice_attachment === true
+
       // Create contract with e-signature capability
       const requestBody = {
         event_id: eventId,
@@ -92,8 +101,9 @@ export function GenerateAgreementModal({
         template_content: template.content,
         title: template.name,
         expires_days: 30,
-        include_invoice_attachment: template.include_invoice_attachment || false
+        include_invoice_attachment: includeInvoice
       }
+      console.log('include_invoice_attachment being sent:', includeInvoice)
       console.log('Request body being sent:', requestBody)
 
       const response = await fetch('/api/contracts', {
