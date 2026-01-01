@@ -173,10 +173,31 @@ export async function PUT(
               start_date: new Date().toISOString().split('T')[0],
               tenant_id: dataSourceTenantId
             })
-          
+
           if (junctionError) {
-            log.error({ junctionError }, 'Failed to create contact_accounts entry')
-            // Don't fail the request, junction entry is supplementary
+            log.error({ junctionError, contactId: id }, 'Failed to create contact_accounts entry - rolling back changes')
+
+            // Rollback: Restore previous primary relationship if we ended it
+            if (currentPrimary) {
+              await supabase
+                .from('contact_accounts')
+                .update({
+                  is_primary: true,
+                  end_date: null
+                })
+                .eq('id', currentPrimary.id)
+            }
+
+            // Rollback: Revert the contact's account_id to previous value
+            await supabase
+              .from('contacts')
+              .update({ account_id: currentPrimary?.account_id || null })
+              .eq('id', id)
+
+            return NextResponse.json({
+              error: 'Failed to link contact to account. Please try again or contact support if the issue persists.',
+              details: junctionError.message
+            }, { status: 500 })
           }
         }
       }

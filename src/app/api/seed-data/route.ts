@@ -360,10 +360,6 @@ export async function POST(request: Request) {
       const isMultiDay = Math.random() < 0.3 // 30% chance of multi-day event
       const endDate = isMultiDay ? new Date(startDate.getTime() + (Math.floor(Math.random() * 3) + 1) * 24 * 60 * 60 * 1000) : null
 
-      let status = 'confirmed'
-      if (isPast) status = random(['completed', 'completed', 'completed', 'cancelled'])
-      else status = random(['scheduled', 'confirmed', 'confirmed', 'confirmed'])
-
       const eventData: any = {
         tenant_id: dataSourceTenantId,
         opportunity_id: opp.id,
@@ -374,7 +370,6 @@ export async function POST(request: Request) {
         start_date: startDate.toISOString(),
         end_date: endDate ? endDate.toISOString() : null,
         location: `${random(['Grand Ballroom', 'Convention Center', 'Hotel Ballroom', 'Outdoor Venue', 'Private Estate', 'Corporate Office', 'Community Center'])} - ${random(cities).city}`,
-        status,
         description: opp.description,
         payment_status: random(['Unpaid', 'Deposit Paid', 'Paid in Full', 'Refunded']),
         created_at: opp.created_at

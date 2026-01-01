@@ -1,5 +1,4 @@
 import { Calendar, MapPin, DollarSign, Users, Edit, X, Check } from 'lucide-react'
-import { EventStatusBadge } from './event-status-badge'
 import { EventTypeBadge } from './event-type-badge'
 import { PaymentStatusBadge } from './payment-status-badge'
 import { EventWithRelations } from '@/hooks/useEventData'
@@ -64,12 +63,6 @@ export function EventInformationCard({
             category={event.event_category} 
             type={event.event_type} 
           />
-        </div>
-
-        {/* Status */}
-        <div>
-          <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-          <EventStatusBadge status={event.status} />
         </div>
 
         {/* Payment Status */}

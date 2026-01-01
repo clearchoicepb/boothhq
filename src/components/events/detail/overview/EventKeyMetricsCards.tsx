@@ -10,7 +10,6 @@
 import { Calendar, DollarSign } from 'lucide-react'
 import { formatDate, getDaysUntil } from '@/lib/utils/date-utils'
 import { PaymentStatusBadge } from '../../payment-status-badge'
-import { EventStatusBadge } from '../../event-status-badge'
 import { getNextEventDate } from '@/lib/utils/event-utils'
 import type { Event } from '@/types/events'
 
@@ -27,8 +26,6 @@ interface EventKeyMetricsCardsProps {
   onStartEditPaymentStatus: () => void
   onUpdatePaymentStatus: (status: string) => void
   onCancelEditPaymentStatus: () => void
-  isEditingStatus?: boolean
-  onStatusChange?: (status: string) => void
   canEdit: boolean
 }
 
@@ -39,8 +36,6 @@ export function EventKeyMetricsCards({
   onStartEditPaymentStatus,
   onUpdatePaymentStatus,
   onCancelEditPaymentStatus,
-  isEditingStatus = false,
-  onStatusChange,
   canEdit
 }: EventKeyMetricsCardsProps) {
   // Determine which date to display - use the next upcoming date chronologically
@@ -56,7 +51,7 @@ export function EventKeyMetricsCards({
     : '0'
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Event Date Card */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <label className="block text-sm font-medium text-gray-500 mb-3">Event Date</label>
@@ -142,32 +137,6 @@ export function EventKeyMetricsCards({
         )}
       </div>
 
-      {/* Status Card */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <label className="block text-sm font-medium text-gray-500 mb-3">Event Status</label>
-        {isEditingStatus && onStatusChange ? (
-          <select
-            value={event.status}
-            onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full px-4 py-3 text-lg font-semibold rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-[#347dc4] text-gray-900"
-          >
-            <option value="planning">Planning</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        ) : (
-          <div>
-            <EventStatusBadge status={event.status} />
-            {canEdit && onStatusChange && (
-              <p className="text-xs text-gray-400 mt-2">
-                Contact admin to change status
-              </p>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   )
 }

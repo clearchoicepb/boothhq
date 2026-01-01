@@ -139,13 +139,6 @@ export const CONDITION_FIELDS: Record<string, {
     lookupTable: 'event_types',
     triggerTypes: ['event_created', 'event_date_approaching'],
   },
-  'event.status': {
-    label: 'Event Status',
-    description: 'Current status of the event',
-    type: 'string',
-    entity: 'event',
-    triggerTypes: ['event_created', 'event_date_approaching'],
-  },
   'event.account_id': {
     label: 'Account',
     description: 'The account/customer for the event',
