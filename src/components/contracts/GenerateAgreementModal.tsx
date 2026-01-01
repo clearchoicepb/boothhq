@@ -90,9 +90,12 @@ export function GenerateAgreementModal({
       console.log('=== GENERATE AGREEMENT ===')
       console.log('template:', template)
       console.log('template.include_invoice_attachment:', template.include_invoice_attachment)
+      console.log('typeof template.include_invoice_attachment:', typeof template.include_invoice_attachment)
 
-      // Explicitly get the include_invoice_attachment value (handle undefined/null)
-      const includeInvoice = template.include_invoice_attachment === true
+      // Handle both boolean true and string "true" (database serialization can vary)
+      const rawValue = template.include_invoice_attachment
+      const includeInvoice = rawValue === true || rawValue === 'true' || rawValue === 1
+      console.log('includeInvoice after conversion:', includeInvoice)
 
       // Create contract with e-signature capability
       const requestBody = {
