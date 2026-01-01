@@ -282,10 +282,8 @@ export async function POST(request: NextRequest) {
     if (contractNumber) insertData.contract_number = contractNumber
     if (expiresAt) insertData.expires_at = expiresAt.toISOString()
     if (session.user.id) insertData.created_by = session.user.id
-    // Only include if column exists (migration may not be applied yet)
-    if (include_invoice_attachment) {
-      insertData.include_invoice_attachment = include_invoice_attachment
-    }
+    // Always include include_invoice_attachment (use body value or default to false)
+    insertData.include_invoice_attachment = include_invoice_attachment === true || include_invoice_attachment === 'true'
 
     console.log('=== INSERT DATA ===')
     console.log('include_invoice_attachment in insertData:', insertData.include_invoice_attachment)
