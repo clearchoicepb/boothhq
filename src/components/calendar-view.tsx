@@ -16,7 +16,6 @@ interface CalendarEvent {
   setup_time?: string
   location?: string
   type: 'event' | 'opportunity'
-  status: string
   account_name?: string
   contact_name?: string
   event_type?: string
@@ -80,38 +79,12 @@ export function CalendarView({ events, onDateClick, onEventClick, className = ''
     setCurrentDate(new Date())
   }
 
-  // Get status color
-  const getStatusColor = (status: string, type: string) => {
+  // Get color based on type
+  const getTypeColor = (type: string) => {
     if (type === 'event') {
-      switch (status) {
-        case 'scheduled':
-          return 'bg-blue-100 text-blue-800 border-blue-200'
-        case 'in_progress':
-          return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        case 'completed':
-          return 'bg-green-100 text-green-800 border-green-200'
-        case 'cancelled':
-          return 'bg-red-100 text-red-800 border-red-200'
-        default:
-          return 'bg-gray-100 text-gray-800 border-gray-200'
-      }
+      return 'bg-blue-100 text-blue-800 border-blue-200'
     } else {
-      switch (status) {
-        case 'prospecting':
-          return 'bg-blue-100 text-blue-800 border-blue-200'
-        case 'qualification':
-          return 'bg-purple-100 text-purple-800 border-purple-200'
-        case 'proposal':
-          return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        case 'negotiation':
-          return 'bg-orange-100 text-orange-800 border-orange-200'
-        case 'closed_won':
-          return 'bg-green-100 text-green-800 border-green-200'
-        case 'closed_lost':
-          return 'bg-red-100 text-red-800 border-red-200'
-        default:
-          return 'bg-gray-100 text-gray-800 border-gray-200'
-      }
+      return 'bg-purple-100 text-purple-800 border-purple-200'
     }
   }
 
@@ -204,7 +177,7 @@ export function CalendarView({ events, onDateClick, onEventClick, className = ''
                   {dayEvents.map(event => (
                     <div
                       key={event.id}
-                      className={`text-xs p-1 rounded border truncate cursor-pointer ${getStatusColor(event.status, event.type)}`}
+                      className={`text-xs p-1 rounded border truncate cursor-pointer ${getTypeColor(event.type)}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         onEventClick?.(event)

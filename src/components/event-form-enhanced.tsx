@@ -58,7 +58,6 @@ interface EventWithDates {
   event_type: string | null
   event_category_id: string | null
   event_type_id: string | null
-  status: string
   date_type: string | null
   start_date: string
   end_date: string | null
@@ -104,7 +103,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
     event_type: '',
     event_category_id: '',
     event_type_id: '',
-    status: 'scheduled',
     date_type: 'single_day',
     converted_from_opportunity_id: opportunityId || '',
     opportunity_id: opportunityId || '',
@@ -136,7 +134,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_type: event.event_type || '',
         event_category_id: event.event_category_id || '',
         event_type_id: event.event_type_id || '',
-        status: event.status || 'scheduled',
         date_type: event.date_type || 'single_day',
         converted_from_opportunity_id: opportunityId || '',
         opportunity_id: event.opportunity_id || opportunityId || '',
@@ -176,7 +173,6 @@ export function EventFormEnhanced({ isOpen, onClose, onSave, account, contact, o
         event_type: '',
         event_category_id: '',
         event_type_id: '',
-        status: 'scheduled',
         date_type: 'single_day',
         converted_from_opportunity_id: opportunityId || '',
         opportunity_id: opportunityId || '',

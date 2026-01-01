@@ -183,7 +183,7 @@ export const searchApi = {
         title: event.name,
         type: 'event',
         subtitle: new Date(event.event_date).toLocaleDateString(),
-        metadata: `${event.event_type} • ${event.status}`
+        metadata: event.event_type || ''
       })
     })
 

@@ -39,7 +39,7 @@ import type {
  * Example: getNestedValue(obj, 'event.event_type_id')
  *
  * @param obj - The object to traverse
- * @param path - Dot-separated path (e.g., 'event.status', 'user.email')
+ * @param path - Dot-separated path (e.g., 'event.event_type', 'user.email')
  * @returns The value at the path, or undefined if not found
  */
 export function getNestedValue(obj: Record<string, any>, path: string): any {
