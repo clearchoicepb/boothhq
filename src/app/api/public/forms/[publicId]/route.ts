@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
 import { resolveFormPrefillValues } from '@/lib/event-forms/merge-field-resolver'
 import { saveFormResponsesToEventData } from '@/lib/event-forms/form-response-saver'
+import { createNotification } from '@/lib/services/notificationService'
 import type { FormField, FormResponses } from '@/types/event-forms'
 
 const log = createLogger('api:public:forms')
@@ -195,7 +196,7 @@ export async function POST(
     // Fetch form to verify it exists and is submittable
     const { data: form, error: formError } = await supabase
       .from('event_forms')
-      .select('id, event_id, status, fields')
+      .select('id, event_id, status, fields, tenant_id, name')
       .eq('public_id', publicId)
       .single()
 
@@ -231,6 +232,51 @@ export async function POST(
     if (updateError) {
       log.error({ error: updateError }, 'Error submitting form')
       return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 })
+    }
+
+    // Send notification to relevant staff (non-blocking)
+    try {
+      // Get event title for notification message
+      const { data: event } = await supabase
+        .from('events')
+        .select('title')
+        .eq('id', form.event_id)
+        .single()
+
+      // Find tasks related to this event to determine who to notify
+      // Notify users who have tasks assigned for this event
+      const { data: eventTasks } = await supabase
+        .from('tasks')
+        .select('assigned_to')
+        .eq('entity_type', 'event')
+        .eq('entity_id', form.event_id)
+        .not('assigned_to', 'is', null)
+
+      if (eventTasks && eventTasks.length > 0) {
+        // Get unique assignees
+        const uniqueAssignees = [...new Set(eventTasks.map((t) => t.assigned_to))]
+
+        // Create notification for each assignee
+        for (const assigneeId of uniqueAssignees) {
+          if (assigneeId) {
+            await createNotification({
+              supabase,
+              tenantId: form.tenant_id,
+              userId: assigneeId,
+              type: 'form_completed',
+              title: `${form.name} completed`,
+              message: `Form submitted for ${event?.title || 'event'}`,
+              entityType: 'event',
+              entityId: form.event_id,
+              linkUrl: `/events/${form.event_id}`,
+              actorName: 'Client',
+            })
+          }
+        }
+      }
+    } catch (notifyError) {
+      // Log but don't fail - notification is not critical
+      log.error({ error: notifyError }, 'Error sending form completion notifications')
     }
 
     // Apply save-back mappings to update event data

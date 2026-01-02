@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation'
 import { usePermissions } from '@/lib/permissions'
 import { useTenant } from '@/lib/tenant-context'
 import { GlobalSearch } from '@/components/global-search'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('layout')
@@ -218,6 +219,9 @@ export function TopNav({ leftContent }: TopNavProps = {}) {
           <div className="hidden md:flex flex-1 max-w-[400px] xl:max-w-2xl 2xl:max-w-4xl mx-1 xl:mx-2 2xl:mx-6">
             <GlobalSearch tenantSubdomain={tenantSubdomain} />
           </div>
+
+          {/* Notifications */}
+          {session && <NotificationBell />}
 
           {session && (
             <div className="relative flex-shrink-0" ref={userMenuRef}>

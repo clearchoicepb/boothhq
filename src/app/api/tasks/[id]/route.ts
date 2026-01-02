@@ -1,6 +1,7 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { createNotification } from '@/lib/services/notificationService'
 
 const log = createLogger('api:tasks')
 // GET - Fetch a single task
@@ -288,6 +289,42 @@ export async function PATCH(
         })
       } catch (error) {
         log.error({ error }, '[Tasks API] Error importing workflow trigger service')
+      }
+
+      // Send notification for subtask completion
+      if (
+        (status === 'completed' || status === 'approved') &&
+        task.parent_task_id
+      ) {
+        try {
+          // Fetch parent task to find owner
+          const { data: parentTask } = await supabase
+            .from('tasks')
+            .select('assigned_to, title')
+            .eq('id', task.parent_task_id)
+            .single()
+
+          // Notify parent task owner if they're different from current user
+          if (parentTask?.assigned_to && parentTask.assigned_to !== session.user.id) {
+            await createNotification({
+              supabase,
+              tenantId: dataSourceTenantId,
+              userId: parentTask.assigned_to,
+              type: 'subtask_completed',
+              title: 'Subtask completed',
+              message: `"${task.title}" has been marked complete`,
+              entityType: 'task',
+              entityId: task.parent_task_id,
+              linkUrl: task.entity_type === 'event'
+                ? `/events/${task.entity_id}?tab=tasks`
+                : `/tasks/${task.parent_task_id}`,
+              actorName: session.user.name || 'Team member',
+            })
+          }
+        } catch (notifyError) {
+          // Log but don't fail - notification is not critical
+          log.error({ error: notifyError }, 'Error sending subtask completion notification')
+        }
       }
     }
 
