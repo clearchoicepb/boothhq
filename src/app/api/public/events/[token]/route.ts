@@ -244,7 +244,8 @@ export async function GET(
       }
     }
 
-    // Fetch event dates with location info and per-date onsite contacts
+    // Fetch event dates with location info
+    // Note: onsite contact fields may not exist if migration hasn't run
     const { data: eventDates } = await supabase
       .from('event_dates')
       .select(`
@@ -255,9 +256,6 @@ export async function GET(
         end_time,
         notes,
         location_id,
-        onsite_contact_name,
-        onsite_contact_phone,
-        onsite_contact_email,
         location:locations (
           id,
           name,
@@ -317,10 +315,11 @@ export async function GET(
       }
 
       // Per-date onsite contact: use date-specific if set, otherwise inherit from event
+      // Note: these fields may not exist if migration hasn't run - safely access
       const onsiteContact = {
-        name: ed.onsite_contact_name || event.onsite_contact_name || null,
-        phone: ed.onsite_contact_phone || event.onsite_contact_phone || null,
-        email: ed.onsite_contact_email || event.onsite_contact_email || null
+        name: (ed as any).onsite_contact_name || event.onsite_contact_name || null,
+        phone: (ed as any).onsite_contact_phone || event.onsite_contact_phone || null,
+        email: (ed as any).onsite_contact_email || event.onsite_contact_email || null
       }
 
       return {
@@ -332,7 +331,8 @@ export async function GET(
         notes: ed.notes,
         venue,
         onsiteContact,
-        hasOnsiteContactOverride: !!(ed.onsite_contact_name || ed.onsite_contact_phone || ed.onsite_contact_email)
+        // Fields may not exist if migration not run - will be false in that case
+        hasOnsiteContactOverride: !!((ed as any).onsite_contact_name || (ed as any).onsite_contact_phone || (ed as any).onsite_contact_email)
       }
     })
 

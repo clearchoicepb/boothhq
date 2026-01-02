@@ -254,7 +254,8 @@ export async function GET(
       }
     }
 
-    // Fetch event dates with location info (including venue contact and per-date onsite contact)
+    // Fetch event dates with location info (including venue contact)
+    // Note: onsite contact fields may not exist if migration hasn't run
     const { data: eventDates } = await supabase
       .from('event_dates')
       .select(`
@@ -265,9 +266,6 @@ export async function GET(
         end_time,
         notes,
         location_id,
-        onsite_contact_name,
-        onsite_contact_phone,
-        onsite_contact_email,
         location:locations (
           id,
           name,
@@ -336,10 +334,11 @@ export async function GET(
       }
 
       // Per-date onsite contact: use date-specific if set, otherwise inherit from event
+      // Note: these fields may not exist if migration hasn't run - safely access with optional chaining
       const onsiteContact = {
-        name: ed.onsite_contact_name || event.onsite_contact_name || null,
-        phone: ed.onsite_contact_phone || event.onsite_contact_phone || null,
-        email: ed.onsite_contact_email || event.onsite_contact_email || null
+        name: (ed as any).onsite_contact_name || event.onsite_contact_name || null,
+        phone: (ed as any).onsite_contact_phone || event.onsite_contact_phone || null,
+        email: (ed as any).onsite_contact_email || event.onsite_contact_email || null
       }
 
       // Venue contact from location record (venue's employee/coordinator)
@@ -361,8 +360,8 @@ export async function GET(
         venueContact,
         // Per-date onsite contact (inherited from event if not set)
         onsiteContact,
-        // Flag if onsite contact is overridden at date level
-        hasOnsiteContactOverride: !!(ed.onsite_contact_name || ed.onsite_contact_phone || ed.onsite_contact_email)
+        // Flag if onsite contact is overridden at date level (fields may not exist if migration not run)
+        hasOnsiteContactOverride: !!((ed as any).onsite_contact_name || (ed as any).onsite_contact_phone || (ed as any).onsite_contact_email)
       }
     })
 

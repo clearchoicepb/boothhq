@@ -330,7 +330,9 @@ export async function POST(request: NextRequest) {
     revalidatePath(`/${tenantSubdomain}/events`)
 
     log.info({ eventId: event.id, title: event.title }, 'Event created successfully')
-    return NextResponse.json({ event }, { status: 201 })
+    // Return the event directly (not wrapped in { event })
+    // This matches what eventsService.create expects
+    return NextResponse.json(event, { status: 201 })
   } catch (error: any) {
     log.error({ error }, 'Unexpected error creating event')
     return NextResponse.json({
