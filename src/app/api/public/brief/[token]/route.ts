@@ -122,7 +122,6 @@ export async function GET(
         title,
         event_type,
         description,
-        status,
         start_date,
         end_date,
         location,
