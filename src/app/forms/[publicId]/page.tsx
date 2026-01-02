@@ -6,6 +6,14 @@ import { FormRenderer } from '@/components/event-forms/FormRenderer'
 import { Loader2, AlertCircle } from 'lucide-react'
 import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
 
+interface EventDateInfo {
+  id: string
+  event_date: string
+  start_time: string | null
+  end_time: string | null
+  location_name: string | null
+}
+
 interface PublicFormData {
   form: {
     id: string
@@ -19,6 +27,8 @@ interface PublicFormData {
     title: string
     start_date: string | null
   } | null
+  isMultiDay?: boolean
+  eventDates?: EventDateInfo[]
   tenant: {
     logoUrl: string | null
   }
@@ -113,7 +123,7 @@ export default function PublicFormPage() {
     )
   }
 
-  const { form, event, tenant, prefilled } = formData
+  const { form, event, tenant, prefilled, eventDates } = formData
   const isCompleted = form.status === 'completed'
 
   return (
@@ -158,6 +168,7 @@ export default function PublicFormPage() {
             formId={form.id}
             formType="event-forms"
             publicId={publicId}
+            eventDates={eventDates}
           />
         </div>
 

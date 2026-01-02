@@ -151,6 +151,10 @@ export interface EventDate {
   status?: string
   created_at?: string
   updated_at?: string
+  // Onsite contact fields (for multi-day events with different contacts per date)
+  onsite_contact_name?: string | null
+  onsite_contact_phone?: string | null
+  onsite_contact_email?: string | null
   // Computed/joined fields (populated when joining with locations table)
   location_name?: string | null
   locations?: EventDateLocation | null
@@ -169,6 +173,10 @@ export interface EditableEventDate {
   end_time?: string | null
   notes?: string | null
   location_id?: string | null
+  // Onsite contact fields (for multi-day events with different contacts per date)
+  onsite_contact_name?: string | null
+  onsite_contact_phone?: string | null
+  onsite_contact_email?: string | null
 }
 
 // =============================================================================

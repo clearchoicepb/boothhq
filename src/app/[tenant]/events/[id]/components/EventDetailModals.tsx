@@ -150,7 +150,11 @@ export function EventDetailModals({
         end_time: detailModals.selectedEventDate.end_time || '',
         location_id: detailModals.selectedEventDate.location_id || '',
         notes: detailModals.selectedEventDate.notes || '',
-        status: detailModals.selectedEventDate.status
+        status: detailModals.selectedEventDate.status,
+        // Onsite contact fields for multi-day events
+        onsite_contact_name: detailModals.selectedEventDate.onsite_contact_name || '',
+        onsite_contact_phone: detailModals.selectedEventDate.onsite_contact_phone || '',
+        onsite_contact_email: detailModals.selectedEventDate.onsite_contact_email || '',
       })
     }
   }

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, MapPin, User, Edit, X, CheckCircle } from "lucide-react"
+import { Calendar, Clock, MapPin, User, Edit, X, CheckCircle, Phone, Mail, UserCheck } from "lucide-react"
 import { EventStatusBadge } from "./event-status-badge"
 import { formatDate, formatTime, toDateInputValue } from "@/lib/utils/date-utils"
 import { Modal } from "@/components/ui/modal"
@@ -248,6 +248,93 @@ export function EventDateDetailModal({
             ) : (
               <span className="text-sm text-gray-500">Not set</span>
             )}
+          </section>
+
+          {/* Onsite Contact Section */}
+          <section className="border-t border-gray-200 pt-4">
+            <h3 className="mb-3 flex items-center text-sm font-medium text-gray-700">
+              <UserCheck className="mr-2 h-4 w-4 text-gray-400" />
+              Onsite Contact
+              {!isEditing && !eventDate.onsite_contact_name && (
+                <span className="ml-2 text-xs text-gray-400">(Uses event default)</span>
+              )}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="onsite-contact-name">
+                  Contact Name
+                </label>
+                {isEditing ? (
+                  <input
+                    id="onsite-contact-name"
+                    name="onsite_contact_name"
+                    title="Onsite Contact Name"
+                    type="text"
+                    value={editEventDateData.onsite_contact_name || ''}
+                    onChange={(e) => onFieldChange('onsite_contact_name', e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Leave blank to use event default"
+                  />
+                ) : eventDate.onsite_contact_name ? (
+                  <div className="flex items-center">
+                    <User className="mr-2 h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-900">{eventDate.onsite_contact_name}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">Inherited from event</span>
+                )}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="onsite-contact-phone">
+                    Phone
+                  </label>
+                  {isEditing ? (
+                    <input
+                      id="onsite-contact-phone"
+                      name="onsite_contact_phone"
+                      title="Onsite Contact Phone"
+                      type="tel"
+                      value={editEventDateData.onsite_contact_phone || ''}
+                      onChange={(e) => onFieldChange('onsite_contact_phone', e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Leave blank to use event default"
+                    />
+                  ) : eventDate.onsite_contact_phone ? (
+                    <div className="flex items-center">
+                      <Phone className="mr-2 h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-900">{eventDate.onsite_contact_phone}</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Inherited from event</span>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="onsite-contact-email">
+                    Email
+                  </label>
+                  {isEditing ? (
+                    <input
+                      id="onsite-contact-email"
+                      name="onsite_contact_email"
+                      title="Onsite Contact Email"
+                      type="email"
+                      value={editEventDateData.onsite_contact_email || ''}
+                      onChange={(e) => onFieldChange('onsite_contact_email', e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Leave blank to use event default"
+                    />
+                  ) : eventDate.onsite_contact_email ? (
+                    <div className="flex items-center">
+                      <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-900">{eventDate.onsite_contact_email}</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Inherited from event</span>
+                  )}
+                </div>
+              </div>
+            </div>
           </section>
 
           <section>

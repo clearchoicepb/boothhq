@@ -4,6 +4,15 @@ import { Modal } from '@/components/ui/modal'
 import { FormRenderer } from './FormRenderer'
 import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
 
+/** Event date info for multi-day forms */
+interface EventDateInfo {
+  id: string
+  event_date: string
+  start_time?: string | null
+  end_time?: string | null
+  location_name?: string | null
+}
+
 interface FormPreviewProps {
   /** Whether the modal is open */
   isOpen: boolean
@@ -22,6 +31,8 @@ interface FormPreviewProps {
     logoUrl?: string | null
     companyName?: string
   }
+  /** Event dates for multi-day preview */
+  eventDates?: EventDateInfo[]
 }
 
 /**
@@ -38,6 +49,7 @@ export function FormPreview({
   responses,
   status,
   branding,
+  eventDates,
 }: FormPreviewProps) {
   return (
     <Modal
@@ -56,11 +68,17 @@ export function FormPreview({
             readOnly={true}
             showSubmitButton={false}
             branding={branding}
+            eventDates={eventDates}
           />
         </div>
       </div>
       <div className="text-center text-sm text-gray-500 mt-4">
         This is how the form will appear to your clients
+        {eventDates && eventDates.length > 1 && (
+          <span className="block mt-1 text-xs text-gray-400">
+            (Showing per-date fields for {eventDates.length} event dates)
+          </span>
+        )}
       </div>
     </Modal>
   )
