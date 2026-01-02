@@ -38,13 +38,14 @@ export async function GET(
 
     const supabase = await getPublicSupabaseClient()
 
-    // Fetch staff form by public_id
+    // Fetch staff form by public_id with event_date info
     const { data: form, error: formError } = await supabase
       .from('staff_forms')
       .select(`
         id,
         tenant_id,
         event_id,
+        event_date_id,
         staff_assignment_id,
         title,
         description,
@@ -74,6 +75,73 @@ export async function GET(
       .select('id, title, start_date')
       .eq('id', form.event_id)
       .single()
+
+    // Fetch event_date info if this form is for a specific date
+    let eventDateInfo: {
+      id: string
+      event_date: string
+      start_time: string | null
+      end_time: string | null
+      location_name: string | null
+    } | null = null
+
+    if (form.event_date_id) {
+      const { data: eventDate } = await supabase
+        .from('event_dates')
+        .select(`
+          id,
+          event_date,
+          start_time,
+          end_time,
+          location:locations (
+            name
+          )
+        `)
+        .eq('id', form.event_date_id)
+        .single()
+
+      if (eventDate) {
+        const location = eventDate.location as { name: string } | null
+        eventDateInfo = {
+          id: eventDate.id,
+          event_date: eventDate.event_date,
+          start_time: eventDate.start_time,
+          end_time: eventDate.end_time,
+          location_name: location?.name || null,
+        }
+      }
+    }
+
+    // For multi-day events, fetch info about other dates for this staff member
+    // (used for "copy to all dates" feature)
+    let otherDates: { id: string; event_date: string; has_form: boolean; form_status: string | null }[] = []
+    if (form.event_date_id) {
+      // Fetch all event dates for this event
+      const { data: allDates } = await supabase
+        .from('event_dates')
+        .select('id, event_date')
+        .eq('event_id', form.event_id)
+        .order('event_date', { ascending: true })
+
+      // Fetch all forms for this staff assignment
+      const { data: allForms } = await supabase
+        .from('staff_forms')
+        .select('event_date_id, status')
+        .eq('event_id', form.event_id)
+        .eq('staff_assignment_id', form.staff_assignment_id)
+        .not('event_date_id', 'is', null)
+
+      const formsByDate = new Map((allForms || []).map(f => [f.event_date_id, f.status]))
+
+      otherDates = (allDates || [])
+        .filter(d => d.id !== form.event_date_id)
+        .map(d => ({
+          id: d.id,
+          event_date: d.event_date,
+          has_form: formsByDate.has(d.id),
+          form_status: formsByDate.get(d.id) || null,
+        }))
+    }
 
     // Fetch staff assignment with user info
     const { data: assignment } = await supabase
@@ -137,13 +205,18 @@ export async function GET(
         status: form.status,
         responses: form.responses,
         completed_at: form.completed_at,
+        event_date_id: form.event_date_id,
       },
       event: event
         ? {
+            id: event.id,
             title: event.title,
             start_date: event.start_date,
           }
         : null,
+      eventDate: eventDateInfo,
+      // For multi-day events: info about other dates for "copy to all" feature
+      otherDates: otherDates.length > 0 ? otherDates : undefined,
       staff: {
         name: staffName,
         role: staffRole,
