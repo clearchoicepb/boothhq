@@ -57,6 +57,10 @@ interface EventDateData {
   location_id: string | null
   notes: string | null
   location: LocationData | null
+  // Per-date onsite contact (overrides event-level if set)
+  onsite_contact_name: string | null
+  onsite_contact_phone: string | null
+  onsite_contact_email: string | null
 }
 
 interface UserData {
@@ -118,7 +122,6 @@ export async function GET(
         title,
         event_type,
         description,
-        status,
         start_date,
         end_date,
         location,
@@ -251,6 +254,7 @@ export async function GET(
     }
 
     // Fetch event dates with location info (including venue contact)
+    // Note: onsite contact fields may not exist if migration hasn't run
     const { data: eventDates } = await supabase
       .from('event_dates')
       .select(`
@@ -279,47 +283,69 @@ export async function GET(
       .eq('event_id', event.id)
       .order('event_date', { ascending: true })
 
-    // Process event dates and get venue info
-    let venue: {
+    // Helper to build venue info from location
+    const buildVenueInfo = (loc: LocationData | null) => {
+      if (!loc) return null
+      const addressParts = [
+        loc.address_line1,
+        loc.address_line2,
+        loc.city,
+        loc.state,
+        loc.postal_code
+      ].filter(Boolean)
+
+      const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : null
+
+      return {
+        name: loc.name || null,
+        address: fullAddress,
+        googleMapsUrl: fullAddress
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
+          : null
+      }
+    }
+
+    // Process event dates with full per-date details
+    // Default venue/contacts from first event date (for backwards compat)
+    let defaultVenue: {
       name: string | null
       address: string | null
       googleMapsUrl: string | null
     } | null = null
+    let defaultVenueContact = { name: null as string | null, phone: null as string | null, email: null as string | null }
 
-    // Venue contact info (from location record - the venue's employee/coordinator)
-    let venueContactName: string | null = null
-    let venueContactPhone: string | null = null
-    let venueContactEmail: string | null = null
-
-    const formattedDates = (eventDates || []).map((ed: any) => {
+    const formattedDates = (eventDates || []).map((ed: any, index: number) => {
       const locationData = ed.location as unknown
       const loc = Array.isArray(locationData) ? locationData[0] : locationData as LocationData | null
 
-      // Get venue and location contact from first event date with location
-      if (!venue && loc) {
-        const addressParts = [
-          loc.address_line1,
-          loc.address_line2,
-          loc.city,
-          loc.state,
-          loc.postal_code
-        ].filter(Boolean)
+      const venue = buildVenueInfo(loc)
 
-        const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : null
-
-        venue = {
-          name: loc.name || null,
-          address: fullAddress,
-          googleMapsUrl: fullAddress
-            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
-            : null
+      // Set default venue from first event date for backwards compat
+      if (index === 0) {
+        defaultVenue = venue
+        if (loc) {
+          defaultVenueContact = {
+            name: loc.contact_name || null,
+            phone: loc.contact_phone || null,
+            email: loc.contact_email || null
+          }
         }
-
-        // Capture venue contact info from location record
-        venueContactName = loc.contact_name || null
-        venueContactPhone = loc.contact_phone || null
-        venueContactEmail = loc.contact_email || null
       }
+
+      // Per-date onsite contact: use date-specific if set, otherwise inherit from event
+      // Note: these fields may not exist if migration hasn't run - safely access with optional chaining
+      const onsiteContact = {
+        name: (ed as any).onsite_contact_name || event.onsite_contact_name || null,
+        phone: (ed as any).onsite_contact_phone || event.onsite_contact_phone || null,
+        email: (ed as any).onsite_contact_email || event.onsite_contact_email || null
+      }
+
+      // Venue contact from location record (venue's employee/coordinator)
+      const venueContact = loc ? {
+        name: loc.contact_name || null,
+        phone: loc.contact_phone || null,
+        email: loc.contact_email || null
+      } : { name: null, phone: null, email: null }
 
       return {
         id: ed.id,
@@ -327,9 +353,22 @@ export async function GET(
         setup_time: ed.setup_time,
         start_time: ed.start_time,
         end_time: ed.end_time,
-        notes: ed.notes
+        notes: ed.notes,
+        // Per-date venue info
+        venue,
+        venueContact,
+        // Per-date onsite contact (inherited from event if not set)
+        onsiteContact,
+        // Flag if onsite contact is overridden at date level (fields may not exist if migration not run)
+        hasOnsiteContactOverride: !!((ed as any).onsite_contact_name || (ed as any).onsite_contact_phone || (ed as any).onsite_contact_email)
       }
     })
+
+    // For backwards compat, keep top-level venue and contacts
+    let venue = defaultVenue
+    let venueContactName = defaultVenueContact.name
+    let venueContactPhone = defaultVenueContact.phone
+    let venueContactEmail = defaultVenueContact.email
 
     // If no venue from event_dates, try event's location
     if (!venue && event.location_id) {
@@ -488,7 +527,10 @@ export async function GET(
       email: string | null
     } | null
 
-    // Build response optimized for staff brief
+    // Determine if this is a multi-day event
+    const isMultiDay = formattedDates.length > 1
+
+    // Build response optimized for staff brief (with multi-day support)
     const response = {
       event: {
         id: event.id,
@@ -501,11 +543,22 @@ export async function GET(
         companyName: account?.name || null,
         contactName: primaryContact?.name || null
       },
-      // Schedule
-      dates: formattedDates,
-      // Location
+      // Multi-day event support
+      isMultiDay,
+      // Full event dates with per-date details (venue, contacts)
+      eventDates: formattedDates,
+      // Backwards compat: flat dates array
+      dates: formattedDates.map(d => ({
+        id: d.id,
+        date: d.date,
+        setup_time: d.setup_time,
+        start_time: d.start_time,
+        end_time: d.end_time,
+        notes: d.notes
+      })),
+      // Backwards compat: top-level venue (from first date)
       venue,
-      // Contact Types:
+      // Contact Types (backwards compat - from first date / event level):
       // 1. Venue Contact - employee of the venue (from location record)
       venueContact: {
         name: venueContactName,
@@ -525,14 +578,14 @@ export async function GET(
         email: event.event_planner_email || null,
         company: null
       } : null),
-      // Logistics
+      // Logistics (shared across all dates)
       arrivalInstructions: event.load_in_notes || null,
       dressCode: event.dress_code || null,
-      // Package details
+      // Package details (shared)
       package: packageInfo,
       addOns,
       eventNotes: event.description || null,
-      // Staff
+      // Staff (shared across all dates)
       staff: eventStaff,
       // Branding
       tenant: {

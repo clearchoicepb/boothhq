@@ -31,6 +31,15 @@ import type {
 
 const log = createLogger('event-forms-section')
 
+/** Event date info for multi-day forms */
+interface EventDateInfo {
+  id: string
+  event_date: string
+  start_time?: string | null
+  end_time?: string | null
+  location_name?: string | null
+}
+
 interface EventFormsSectionProps {
   eventId: string
   tenantSubdomain: string
@@ -46,6 +55,7 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
   // Data state
   const [forms, setForms] = useState<EventForm[]>([])
   const [templates, setTemplates] = useState<EventFormTemplate[]>([])
+  const [eventDates, setEventDates] = useState<EventDateInfo[]>([])
   const [loading, setLoading] = useState(true)
 
   // Modal state
@@ -63,10 +73,11 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
   // Link copied feedback state
   const [linkCopiedFormId, setLinkCopiedFormId] = useState<string | null>(null)
 
-  // Fetch forms and templates
+  // Fetch forms, templates, and event dates
   useEffect(() => {
     fetchForms()
     fetchTemplates()
+    fetchEventDates()
   }, [eventId])
 
   const fetchForms = async () => {
@@ -93,6 +104,25 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
       }
     } catch (error) {
       log.error({ error }, 'Error fetching templates')
+    }
+  }
+
+  const fetchEventDates = async () => {
+    try {
+      const response = await fetch(`/api/events/${eventId}/dates`)
+      if (response.ok) {
+        const data = await response.json()
+        // Transform to EventDateInfo format
+        setEventDates(data.map((d: any) => ({
+          id: d.id,
+          event_date: d.event_date,
+          start_time: d.start_time,
+          end_time: d.end_time,
+          location_name: d.location?.name || null,
+        })))
+      }
+    } catch (error) {
+      log.error({ error }, 'Error fetching event dates')
     }
   }
 
@@ -510,6 +540,7 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
           fields={selectedForm.fields || []}
           responses={selectedForm.responses}
           status={selectedForm.status}
+          eventDates={eventDates.length > 1 ? eventDates : undefined}
         />
       )}
     </div>

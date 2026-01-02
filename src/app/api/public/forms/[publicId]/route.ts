@@ -75,6 +75,36 @@ export async function GET(
       .eq('id', form.event_id)
       .single()
 
+    // Fetch event dates for multi-day support
+    let eventDates: { id: string; event_date: string; start_time: string | null; end_time: string | null; location_name: string | null }[] = []
+    if (event?.id) {
+      const { data: dates } = await supabase
+        .from('event_dates')
+        .select(`
+          id,
+          event_date,
+          start_time,
+          end_time,
+          location:locations (
+            name
+          )
+        `)
+        .eq('event_id', event.id)
+        .order('event_date', { ascending: true })
+
+      if (dates && dates.length > 0) {
+        eventDates = dates.map((d) => ({
+          id: d.id,
+          event_date: d.event_date,
+          start_time: d.start_time,
+          end_time: d.end_time,
+          location_name: (d.location as { name: string } | null)?.name || null,
+        }))
+      }
+    }
+
+    const isMultiDay = eventDates.length > 1
+
     // Fetch tenant branding (logo)
     const { data: logoSetting } = await supabase
       .from('tenant_settings')
@@ -123,6 +153,9 @@ export async function GET(
             start_date: event.start_date,
           }
         : null,
+      // Multi-day event support
+      isMultiDay,
+      eventDates: isMultiDay ? eventDates : undefined,
       tenant: {
         logoUrl,
       },

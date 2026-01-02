@@ -30,7 +30,6 @@ export interface EventStaffingItem {
   title: string
   start_date: string
   end_date: string | null
-  status: string
   location: string | null
   location_coordinates: LocationCoordinates | null
   account: {
@@ -75,7 +74,7 @@ export async function GET(request: NextRequest) {
       endDateFilter = endDate.toISOString().split('T')[0]
     }
 
-    // Fetch all upcoming events that are not cancelled or completed
+    // Fetch all upcoming events
     // Join locations table for proper address display
     let eventsQuery = supabase
       .from('events')
@@ -84,7 +83,6 @@ export async function GET(request: NextRequest) {
         title,
         start_date,
         end_date,
-        status,
         location,
         location_id,
         account_id,
@@ -98,7 +96,6 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('tenant_id', dataSourceTenantId)
-      .not('status', 'in', '("cancelled","completed")')
       .gte('start_date', today)
       .order('start_date', { ascending: true })
 

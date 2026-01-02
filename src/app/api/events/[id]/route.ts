@@ -60,6 +60,9 @@ export async function GET(
           location_id,
           notes,
           status,
+          onsite_contact_name,
+          onsite_contact_phone,
+          onsite_contact_email,
           locations(id, name, address_line1, city, state, latitude, longitude)
         )
       `)

@@ -701,6 +701,10 @@ export interface Database {
           end_time: string | null
           notes: string | null
           status: string
+          // Per-date onsite contact (overrides event-level if set)
+          onsite_contact_name: string | null
+          onsite_contact_phone: string | null
+          onsite_contact_email: string | null
           created_at: string
           updated_at: string
         }
@@ -716,6 +720,10 @@ export interface Database {
           end_time?: string | null
           notes?: string | null
           status?: string
+          // Per-date onsite contact (overrides event-level if set)
+          onsite_contact_name?: string | null
+          onsite_contact_phone?: string | null
+          onsite_contact_email?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -731,6 +739,10 @@ export interface Database {
           end_time?: string | null
           notes?: string | null
           status?: string
+          // Per-date onsite contact (overrides event-level if set)
+          onsite_contact_name?: string | null
+          onsite_contact_phone?: string | null
+          onsite_contact_email?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -31,6 +31,7 @@ export interface StaffForm {
   id: string
   tenant_id: string
   event_id: string
+  event_date_id: string | null  // Links to specific event date for per-date staff recaps
   staff_assignment_id: string
   template_id: string | null
   title: string
@@ -56,6 +57,16 @@ export interface StaffFormWithRelations extends StaffForm {
     title: string
     start_date: string | null
     end_date: string | null
+  } | null
+  event_date?: {
+    id: string
+    event_date: string
+    start_time: string | null
+    end_time: string | null
+    location?: {
+      id: string
+      name: string
+    } | null
   } | null
   staff_assignment?: {
     id: string
@@ -83,6 +94,7 @@ export interface StaffFormWithRelations extends StaffForm {
 export interface StaffFormInsert {
   tenant_id?: string            // Usually set by API
   event_id: string
+  event_date_id?: string | null // Links to specific event date for per-date staff recaps
   staff_assignment_id: string
   template_id?: string | null
   title: string
@@ -118,6 +130,7 @@ export interface SendStaffFormsRequest {
   event_id: string
   template_id: string
   staff_assignment_ids: string[]  // Specific assignments to send to
+  event_date_ids?: string[]       // Optional: specific dates to create forms for (multi-day support)
 }
 
 /**
@@ -126,6 +139,15 @@ export interface SendStaffFormsRequest {
 export interface SendAllStaffFormsRequest {
   event_id: string
   template_id: string
+  event_date_ids?: string[]       // Optional: specific dates to create forms for (multi-day support)
+}
+
+/**
+ * Request to copy Day 1 responses to all other dates for a staff member
+ */
+export interface CopyStaffFormResponsesRequest {
+  event_id: string
+  staff_assignment_id: string
 }
 
 /**
@@ -139,11 +161,27 @@ export interface PublicStaffFormResponse {
     fields: FormField[]
     status: StaffFormStatus
     responses: FormResponses | null
+    event_date_id: string | null
   }
   event: {
+    id: string
     title: string
     start_date: string | null
   } | null
+  eventDate: {
+    id: string
+    event_date: string
+    start_time: string | null
+    end_time: string | null
+    location_name: string | null
+  } | null
+  // For multi-day events: info about other dates (for "copy to all" feature)
+  otherDates?: {
+    id: string
+    event_date: string
+    has_form: boolean
+    form_status: StaffFormStatus | null
+  }[]
   staff: {
     name: string
     role: string | null

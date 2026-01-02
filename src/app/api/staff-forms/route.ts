@@ -44,6 +44,16 @@ export async function GET(request: NextRequest) {
             name
           )
         ),
+        event_date:event_dates (
+          id,
+          event_date,
+          start_time,
+          end_time,
+          location:locations (
+            id,
+            name
+          )
+        ),
         template:event_form_templates!staff_forms_template_id_fkey (
           id,
           name
@@ -88,18 +98,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if form already exists for this staff assignment
-    const { data: existingForm } = await supabase
+    // Check if form already exists for this staff assignment + date combination
+    // For multi-day events, we check by (staff_assignment_id, event_date_id)
+    // For legacy single-date events, we check by (staff_assignment_id, event_id) where event_date_id is null
+    let existingFormQuery = supabase
       .from('staff_forms')
       .select('id')
       .eq('tenant_id', dataSourceTenantId)
-      .eq('event_id', body.event_id)
       .eq('staff_assignment_id', body.staff_assignment_id)
-      .single()
+
+    if (body.event_date_id) {
+      existingFormQuery = existingFormQuery.eq('event_date_id', body.event_date_id)
+    } else {
+      existingFormQuery = existingFormQuery
+        .eq('event_id', body.event_id)
+        .is('event_date_id', null)
+    }
+
+    const { data: existingForm } = await existingFormQuery.single()
 
     if (existingForm) {
       return NextResponse.json(
-        { error: 'A form already exists for this staff member on this event' },
+        { error: 'A form already exists for this staff member on this event date' },
         { status: 409 }
       )
     }
@@ -109,6 +129,7 @@ export async function POST(request: NextRequest) {
 
     const insertData = {
       event_id: body.event_id,
+      event_date_id: body.event_date_id || null,
       staff_assignment_id: body.staff_assignment_id,
       template_id: body.template_id || null,
       title: body.title,

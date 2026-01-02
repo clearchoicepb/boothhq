@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import {
   Loader2,
   AlertCircle,
@@ -18,9 +18,38 @@ import {
   Phone,
   Mail,
   MessageSquare,
-  Send
+  Send,
+  Info,
+  Clock,
+  Navigation
 } from 'lucide-react'
 
+interface VenueInfo {
+  name: string | null
+  address: string | null
+  googleMapsUrl?: string | null
+}
+
+interface ContactInfo {
+  name: string | null
+  phone: string | null
+  email: string | null
+}
+
+// Full event date with per-date details
+interface EventDateFull {
+  id: string
+  date: string
+  setup_time: string | null
+  start_time: string | null
+  end_time: string | null
+  notes: string | null
+  venue: VenueInfo | null
+  onsiteContact: ContactInfo
+  hasOnsiteContactOverride: boolean
+}
+
+// Simple event date (backwards compat)
 interface EventDate {
   id: string
   date: string
@@ -87,8 +116,8 @@ interface PublicEventData {
     id: string
     title: string
     event_type: string
-    status: string
-    guest_count: number | null
+    status?: string
+    guest_count?: number | null
   }
   client: {
     name: string | null
@@ -96,11 +125,11 @@ interface PublicEventData {
     email: string | null
     phone: string | null
   }
-  dates: EventDate[]
-  venue: {
-    name: string | null
-    address: string | null
-  } | null
+  // Multi-day event support
+  isMultiDay?: boolean
+  eventDates?: EventDateFull[]  // Full per-date details
+  dates: EventDate[]             // Backwards compat
+  venue: VenueInfo | null
   staff: StaffMember[]
   package: PackageInfo | null
   add_ons: AddOn[]
@@ -141,6 +170,19 @@ function formatDate(dateStr: string | null | undefined): string {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
+    day: 'numeric'
+  })
+}
+
+/**
+ * Format date for tab label (e.g., "Fri Jan 15")
+ */
+function formatTabDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
+  const date = new Date(dateStr + 'T00:00:00')
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
     day: 'numeric'
   })
 }
@@ -210,6 +252,171 @@ function TodoItem({
 }
 
 /**
+ * Tab Navigation Component for Multi-Day Events
+ */
+function EventDateTabs({
+  eventDates,
+  activeTab,
+  onTabChange
+}: {
+  eventDates: EventDateFull[]
+  activeTab: string
+  onTabChange: (tab: string) => void
+}) {
+  return (
+    <div className="mb-6 overflow-x-auto">
+      <div className="flex gap-1 min-w-max bg-white rounded-xl shadow-sm p-1">
+        {/* Overview Tab */}
+        <button
+          onClick={() => onTabChange('overview')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'overview'
+              ? 'bg-[#347dc4] text-white'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Info className="h-4 w-4" />
+            Overview
+          </span>
+        </button>
+
+        {/* Date Tabs */}
+        {eventDates.map((ed) => (
+          <button
+            key={ed.id}
+            onClick={() => onTabChange(ed.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              activeTab === ed.id
+                ? 'bg-[#347dc4] text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {formatTabDate(ed.date)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Date-specific content card for multi-day events
+ */
+function DateTabContent({
+  eventDate,
+  tenant
+}: {
+  eventDate: EventDateFull
+  tenant: { id: string; logoUrl: string | null }
+}) {
+  const { venue, onsiteContact } = eventDate
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      <SectionHeader icon={Calendar} title={formatDate(eventDate.date)} />
+
+      <div className="space-y-4">
+        {/* Times */}
+        {(eventDate.setup_time || eventDate.start_time || eventDate.end_time) && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="h-4 w-4 text-[#347dc4]" />
+              <p className="text-sm font-medium text-gray-700">Schedule</p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              {eventDate.setup_time && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Setup</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatTime(eventDate.setup_time)}</p>
+                </div>
+              )}
+              {eventDate.start_time && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Start</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatTime(eventDate.start_time)}</p>
+                </div>
+              )}
+              {eventDate.end_time && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">End</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatTime(eventDate.end_time)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Venue */}
+        {venue && (venue.name || venue.address) && (
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-2">Venue</label>
+            <div className="flex items-start gap-3">
+              <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                {venue.name && <p className="font-medium text-gray-900">{venue.name}</p>}
+                {venue.address && <p className="text-gray-600 text-sm mt-0.5">{venue.address}</p>}
+              </div>
+              {venue.googleMapsUrl && (
+                <a
+                  href={venue.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#347dc4] text-white rounded-lg text-sm font-medium hover:bg-[#2c6ba8] transition-colors flex-shrink-0"
+                >
+                  <Navigation className="h-4 w-4" />
+                  Navigate
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Onsite Contact */}
+        {(onsiteContact.name || onsiteContact.phone || onsiteContact.email) && (
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-2">On-Site Contact</label>
+            <div className="bg-gray-50 rounded-lg p-4">
+              {onsiteContact.name && <p className="font-medium text-gray-900">{onsiteContact.name}</p>}
+              <div className="flex flex-wrap gap-3 mt-2">
+                {onsiteContact.phone && (
+                  <a
+                    href={`tel:${formatPhoneForLink(onsiteContact.phone)}`}
+                    className="inline-flex items-center gap-1.5 text-[#347dc4] hover:underline text-sm"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    {onsiteContact.phone}
+                  </a>
+                )}
+                {onsiteContact.email && (
+                  <a
+                    href={`mailto:${onsiteContact.email}`}
+                    className="inline-flex items-center gap-1.5 text-[#347dc4] hover:underline text-sm"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    {onsiteContact.email}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Date Notes */}
+        {eventDate.notes && (
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-2">Notes for this Date</label>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 whitespace-pre-wrap">{eventDate.notes}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
  * Public Event Page
  *
  * Accessible at /event/[token] without authentication.
@@ -217,6 +424,8 @@ function TodoItem({
  */
 export default function PublicEventPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const token = params.token as string
 
   const [data, setData] = useState<PublicEventData | null>(null)
@@ -231,6 +440,19 @@ export default function PublicEventPage() {
   const [noteError, setNoteError] = useState<string | null>(null)
 
   const MAX_NOTE_LENGTH = 2000
+
+  // Active tab: 'overview' or event_date_id
+  const activeTab = searchParams.get('date') || 'overview'
+
+  const setActiveTab = useCallback((tab: string) => {
+    const url = new URL(window.location.href)
+    if (tab === 'overview') {
+      url.searchParams.delete('date')
+    } else {
+      url.searchParams.set('date', tab)
+    }
+    router.replace(url.pathname + url.search, { scroll: false })
+  }, [router])
 
   useEffect(() => {
     fetchEvent()
@@ -344,9 +566,14 @@ export default function PublicEventPage() {
     )
   }
 
-  const { event, client, dates, venue, staff, package: eventPackage, add_ons, todo, tenant } = data
+  const { event, client, dates, venue, staff, package: eventPackage, add_ons, todo, tenant, isMultiDay, eventDates } = data
   const primaryDate = dates.length > 0 ? dates[0] : null
   const designProofs = todo.design_proofs || []
+
+  // For multi-day events, find the selected date
+  const selectedEventDate = activeTab !== 'overview' && eventDates
+    ? eventDates.find(ed => ed.id === activeTab)
+    : null
 
   // Count completed items (design proofs that are approved or rejected count as completed)
   const completedCount = [
@@ -380,10 +607,27 @@ export default function PublicEventPage() {
           </p>
         </div>
 
+        {/* Multi-day Tab Navigation */}
+        {isMultiDay && eventDates && (
+          <EventDateTabs
+            eventDates={eventDates}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        )}
+
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content - Left Column (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Date Tab Content (for multi-day events when viewing a specific date) */}
+            {isMultiDay && selectedEventDate && (
+              <DateTabContent eventDate={selectedEventDate} tenant={tenant} />
+            )}
+
+            {/* Overview/Regular Content (shown for single-day events or overview tab) */}
+            {(!isMultiDay || activeTab === 'overview') && (
+              <>
             {/* Client Details Card */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <SectionHeader icon={User} title="Client Details" />
@@ -593,6 +837,8 @@ export default function PublicEventPage() {
                 </div>
               )}
             </div>
+              </>
+            )}
           </div>
 
           {/* Sidebar - Right Column (1/3 width) */}

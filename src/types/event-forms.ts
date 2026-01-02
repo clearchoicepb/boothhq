@@ -26,6 +26,13 @@ export type FormFieldType =
   | 'file_upload' // File upload (images, PDFs, design files)
 
 /**
+ * Field scope for multi-day events
+ * - 'shared': Field applies to all event dates (default)
+ * - 'per_date': Field can have different values per event date
+ */
+export type FormFieldScope = 'shared' | 'per_date'
+
+/**
  * Base form field definition
  */
 export interface FormField {
@@ -45,6 +52,8 @@ export interface FormField {
   // File upload specific (for file_upload type)
   maxFileSize?: number          // Max file size in bytes (default 25MB)
   acceptedTypes?: string[]      // Accepted MIME types (default: all supported)
+  // Multi-day event support
+  scope?: FormFieldScope        // 'shared' (default) or 'per_date' - determines if field appears once or per date
 }
 
 /**
@@ -121,10 +130,46 @@ export interface FormFieldWithValue extends FormField {
 // ===========================================
 
 /**
+ * Per-date response value for multi-day events
+ * Maps event_date_id to the response value for that date
+ */
+export type PerDateResponseValue = Record<string, string | string[] | number | null>
+
+/**
+ * Response value can be:
+ * - Simple value (string, string[], number, null) for shared fields
+ * - Per-date map for per_date scoped fields
+ */
+export type FormResponseValue =
+  | string
+  | string[]
+  | number
+  | null
+  | undefined
+  | PerDateResponseValue  // For per-date fields: { [event_date_id]: value }
+
+/**
+ * Type guard to check if a response value is a per-date response
+ */
+export function isPerDateResponse(value: FormResponseValue): value is PerDateResponseValue {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value).length > 0 &&
+    // Check if keys look like UUIDs (per-date responses) vs other object properties
+    Object.keys(value).every(key =>
+      key.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    )
+  )
+}
+
+/**
  * Structure for storing form responses
+ * Supports both shared responses (single value) and per-date responses (map of date_id to value)
  */
 export interface FormResponses {
-  [fieldId: string]: string | string[] | null | undefined  // Field ID maps to response value
+  [fieldId: string]: FormResponseValue          // Field ID maps to response value (shared or per-date)
   _submittedAt?: string                         // ISO timestamp of submission
   _submittedBy?: string                         // Email or name if captured
   _submitterIp?: string                         // IP address for audit
@@ -224,6 +269,7 @@ export interface EventForm {
   id: string
   tenant_id: string
   event_id: string
+  event_date_id: string | null  // Optional link to specific date (NULL = shared, set = per-date form)
   template_id: string | null
   name: string
   fields: FormField[]
@@ -257,6 +303,7 @@ export interface EventFormWithRelations extends EventForm {
 export interface EventFormInsert {
   tenant_id?: string            // Usually set by API
   event_id: string
+  event_date_id?: string | null // Optional link to specific date for per-date forms
   template_id?: string | null
   name: string
   fields?: FormField[]
