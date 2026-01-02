@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { createNotification } from '@/lib/services/notificationService'
 
 const log = createLogger('api:public:design-proofs:respond')
 
@@ -72,7 +73,7 @@ export async function POST(
     // Fetch proof to verify it exists and is pending
     const { data: proof, error: fetchError } = await supabase
       .from('design_proofs')
-      .select('id, status')
+      .select('id, status, uploaded_by, event_id, tenant_id')
       .eq('public_token', token)
       .single()
 
@@ -110,6 +111,36 @@ export async function POST(
         { error: 'Failed to submit response' },
         { status: 500 }
       )
+    }
+
+    // Send notification to the designer who uploaded the proof (non-blocking)
+    if (proof.uploaded_by) {
+      try {
+        // Get event title for notification message
+        const { data: event } = await supabase
+          .from('events')
+          .select('title')
+          .eq('id', proof.event_id)
+          .single()
+
+        await createNotification({
+          supabase,
+          tenantId: proof.tenant_id,
+          userId: proof.uploaded_by,
+          type: status === 'approved' ? 'proof_approved' : 'proof_rejected',
+          title: `Design proof ${status}`,
+          message: status === 'approved'
+            ? `Your design for ${event?.title || 'event'} has been approved!`
+            : `Your design for ${event?.title || 'event'} needs revision`,
+          entityType: 'event',
+          entityId: proof.event_id,
+          linkUrl: `/events/${proof.event_id}?tab=design`,
+          actorName: clientName.trim(),
+        })
+      } catch (notifyError) {
+        // Log but don't fail - notification is not critical
+        log.error({ error: notifyError }, 'Error sending design proof notification')
+      }
     }
 
     log.info({

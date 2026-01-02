@@ -2,6 +2,7 @@ import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createLogger } from '@/lib/logger'
+import { createNotification } from '@/lib/services/notificationService'
 
 const log = createLogger('api:tickets')
 
@@ -85,6 +86,14 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
+    // Fetch existing ticket to check for status change and get reported_by
+    const { data: existingTicket } = await supabase
+      .from('tickets')
+      .select('status, reported_by, title')
+      .eq('id', id)
+      .eq('tenant_id', dataSourceTenantId)
+      .single()
+
     // If status is being changed to 'resolved', capture resolution timestamp
     // Note: resolved_by is not set due to dual-database architecture
     // (session.user.id may not exist in tenant database users table)
@@ -119,6 +128,32 @@ export async function PUT(
         error: 'Failed to update ticket',
         details: updateError.message
       }, { status: 500 })
+    }
+
+    // Send notification if ticket was just resolved
+    if (
+      body.status === 'resolved' &&
+      existingTicket?.status !== 'resolved' &&
+      existingTicket?.reported_by &&
+      existingTicket.reported_by !== session.user.id
+    ) {
+      try {
+        await createNotification({
+          supabase,
+          tenantId: dataSourceTenantId,
+          userId: existingTicket.reported_by,
+          type: 'ticket_resolved',
+          title: 'Ticket resolved',
+          message: `Your ticket "${existingTicket.title}" has been resolved`,
+          entityType: 'ticket',
+          entityId: id,
+          linkUrl: `/tickets/${id}`,
+          actorName: session.user.name || 'Support team',
+        })
+      } catch (notifyError) {
+        // Log but don't fail - notification is not critical
+        log.error({ error: notifyError }, 'Error sending ticket resolution notification')
+      }
     }
 
     revalidatePath('/[tenant]/tickets', 'page')
