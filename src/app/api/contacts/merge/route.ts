@@ -252,6 +252,48 @@ export async function POST(request: NextRequest) {
       transferredData.communications = commsData?.length || 0
     }
 
+    // 3j. Reassign leads (converted_contact_id)
+    const { data: leadsData, error: leadsError } = await supabase
+      .from('leads')
+      .update({ converted_contact_id: survivorId })
+      .eq('converted_contact_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (leadsError) {
+      log.error({ error: leadsError }, 'Failed to reassign leads')
+    } else {
+      transferredData.leads = leadsData?.length || 0
+    }
+
+    // 3k. Reassign contracts
+    const { data: contractsData, error: contractsError } = await supabase
+      .from('contracts')
+      .update({ contact_id: survivorId })
+      .eq('contact_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (contractsError) {
+      log.error({ error: contractsError }, 'Failed to reassign contracts')
+    } else {
+      transferredData.contracts = contractsData?.length || 0
+    }
+
+    // 3l. Reassign quotes
+    const { data: quotesData, error: quotesError } = await supabase
+      .from('quotes')
+      .update({ contact_id: survivorId })
+      .eq('contact_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (quotesError) {
+      log.error({ error: quotesError }, 'Failed to reassign quotes')
+    } else {
+      transferredData.quotes = quotesData?.length || 0
+    }
+
     // 4. Create merge history record
     const { error: historyError } = await supabase
       .from('merge_history')
