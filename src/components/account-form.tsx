@@ -8,6 +8,9 @@ import { Modal } from '@/components/ui/modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Trash2, CheckCircle, User } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { DuplicateWarningAlert } from '@/components/merge/DuplicateWarningAlert'
+import { useDuplicateCheck } from '@/hooks/useDuplicateCheck'
+import { useParams, useRouter } from 'next/navigation'
 import type { Account, AccountInsert, AccountUpdate } from '@/lib/supabase-client' // cspell:ignore supabase
 import { createLogger } from '@/lib/logger'
 
@@ -31,6 +34,17 @@ interface AccountFormProps {
 }
 
 export function AccountForm({ isOpen, onClose, onSave, editingAccount }: AccountFormProps) {
+  const params = useParams()
+  const router = useRouter()
+  const tenantSubdomain = params.tenant as string
+
+  // Real-time duplicate checking hook
+  const { duplicates, isChecking, checkDuplicates, clearDuplicates } = useDuplicateCheck({
+    entityType: 'account',
+    excludeId: editingAccount?.id, // Exclude current account when editing
+    debounceMs: 500
+  })
+
   const [formData, setFormData] = useState<Partial<AccountInsert>>({
     name: '',
     industry: null,
@@ -173,6 +187,23 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
     }
     setErrors({})
   }, [editingAccount, isOpen])
+
+  // Check for duplicates when key fields change
+  useEffect(() => {
+    if (!isOpen) {
+      clearDuplicates()
+      return
+    }
+
+    // Only check when we have enough data
+    if (formData.name || formData.email || formData.phone) {
+      checkDuplicates({
+        name: formData.name || '',
+        email: formData.email || '',
+        phone: formData.phone || ''
+      })
+    }
+  }, [formData.name, formData.email, formData.phone, isOpen, checkDuplicates, clearDuplicates])
 
   const handleInputChange = (field: keyof AccountInsert, value: string | number | null) => {
     setFormData(prev => ({
@@ -642,6 +673,19 @@ export function AccountForm({ isOpen, onClose, onSave, editingAccount }: Account
               </Card>
             )}
           </div>
+
+          {/* Real-time duplicate warning */}
+          {!editingAccount && (
+            <DuplicateWarningAlert
+              entityType="account"
+              duplicates={duplicates}
+              isChecking={isChecking}
+              onUseExisting={(id) => {
+                onClose()
+                router.push(`/${tenantSubdomain}/accounts/${id}`)
+              }}
+            />
+          )}
 
           {/* Form Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t">
