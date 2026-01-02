@@ -53,6 +53,11 @@ interface EventDateData {
   end_time: string | null
   location_id: string | null
   location: LocationData | null
+  notes: string | null
+  // Per-date onsite contact
+  onsite_contact_name: string | null
+  onsite_contact_phone: string | null
+  onsite_contact_email: string | null
 }
 
 interface UserData {
@@ -123,7 +128,7 @@ export async function GET(
 
     log.info({ eventId: simpleCheck?.id, title: simpleCheck?.title }, 'Simple check passed')
 
-    // Now fetch full event data
+    // Now fetch full event data (including onsite contact for inheritance)
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
@@ -141,6 +146,9 @@ export async function GET(
         account_id,
         contact_id,
         primary_contact_id,
+        onsite_contact_name,
+        onsite_contact_phone,
+        onsite_contact_email,
         account:accounts (
           id,
           name,
@@ -236,7 +244,7 @@ export async function GET(
       }
     }
 
-    // Fetch event dates with location info
+    // Fetch event dates with location info and per-date onsite contacts
     const { data: eventDates } = await supabase
       .from('event_dates')
       .select(`
@@ -245,7 +253,11 @@ export async function GET(
         setup_time,
         start_time,
         end_time,
+        notes,
         location_id,
+        onsite_contact_name,
+        onsite_contact_phone,
+        onsite_contact_email,
         location:locations (
           id,
           name,
@@ -261,30 +273,54 @@ export async function GET(
       .eq('event_id', event.id)
       .order('event_date', { ascending: true })
 
-    // Process event dates and get venue info
-    let venue: {
+    // Helper to build venue info from location
+    const buildVenueInfo = (loc: LocationData | null) => {
+      if (!loc) return null
+      const addressParts = [
+        loc.address_line1,
+        loc.address_line2,
+        loc.city,
+        loc.state,
+        loc.postal_code
+      ].filter(Boolean)
+
+      const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : null
+
+      return {
+        name: loc.name || null,
+        address: fullAddress,
+        googleMapsUrl: fullAddress
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
+          : null
+      }
+    }
+
+    // Determine if this is a multi-day event
+    const isMultiDay = (eventDates || []).length > 1
+
+    // Process event dates with full per-date details
+    let defaultVenue: {
       name: string | null
       address: string | null
+      googleMapsUrl: string | null
     } | null = null
 
-    const formattedDates = (eventDates || []).map((ed: any) => {
+    const fullEventDates = (eventDates || []).map((ed: any, index: number) => {
       const locationData = ed.location as unknown
       const loc = Array.isArray(locationData) ? locationData[0] : locationData as LocationData | null
 
-      // Get venue from first event date with location
-      if (!venue && loc) {
-        const addressParts = [
-          loc.address_line1,
-          loc.address_line2,
-          loc.city,
-          loc.state,
-          loc.postal_code
-        ].filter(Boolean)
+      const venue = buildVenueInfo(loc)
 
-        venue = {
-          name: loc.name || null,
-          address: addressParts.length > 0 ? addressParts.join(', ') : null
-        }
+      // Set default venue from first event date
+      if (index === 0) {
+        defaultVenue = venue
+      }
+
+      // Per-date onsite contact: use date-specific if set, otherwise inherit from event
+      const onsiteContact = {
+        name: ed.onsite_contact_name || event.onsite_contact_name || null,
+        phone: ed.onsite_contact_phone || event.onsite_contact_phone || null,
+        email: ed.onsite_contact_email || event.onsite_contact_email || null
       }
 
       return {
@@ -292,9 +328,25 @@ export async function GET(
         date: ed.event_date,
         setup_time: ed.setup_time,
         start_time: ed.start_time,
-        end_time: ed.end_time
+        end_time: ed.end_time,
+        notes: ed.notes,
+        venue,
+        onsiteContact,
+        hasOnsiteContactOverride: !!(ed.onsite_contact_name || ed.onsite_contact_phone || ed.onsite_contact_email)
       }
     })
+
+    // Backwards compat: simple dates array
+    const formattedDates = fullEventDates.map(ed => ({
+      id: ed.id,
+      date: ed.date,
+      setup_time: ed.setup_time,
+      start_time: ed.start_time,
+      end_time: ed.end_time
+    }))
+
+    // Use default venue from first date
+    let venue = defaultVenue
 
     // If no venue from event_dates, try event's location
     if (!venue && event.location_id) {
@@ -519,7 +571,7 @@ export async function GET(
       phone: string | null
     } | null
 
-    // Build response
+    // Build response with multi-day event support
     const response = {
       event: {
         id: event.id,
@@ -532,8 +584,11 @@ export async function GET(
         email: clientContact?.email || account?.email || null,
         phone: clientContact?.phone || account?.phone || null
       },
-      dates: formattedDates,
-      venue,
+      // Multi-day event support
+      isMultiDay,
+      eventDates: fullEventDates,  // Full per-date details (venue, contacts)
+      dates: formattedDates,       // Backwards compat: simple dates array
+      venue,                        // Default venue from first date
       staff,
       package: packages.length > 0 ? packages[0] : null,
       add_ons: addOns,
