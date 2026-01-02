@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, ChevronUp, CheckCircle, Clock, Send } from 'lucide-react'
+import { ChevronDown, ChevronUp, CheckCircle, Clock, Send, FileText, Download, ExternalLink, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { StaffFormWithRelations, StaffFormStatus } from '@/types/staff-forms'
 import type { FormField } from '@/types/event-forms'
+import { isPreviewableImage, getFileNameFromPath } from '@/types/event-forms'
 
 interface StaffAssignmentDisplay {
   id: string
@@ -38,14 +39,59 @@ export function StaffRecapSummaryModal({
   staffAssignments,
 }: StaffRecapSummaryModalProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  // Signed URLs keyed by "staffId:fieldId"
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
+  const [loadingUrls, setLoadingUrls] = useState<Set<string>>(new Set())
 
-  const toggleExpanded = (id: string) => {
+  // Fetch signed URLs for a specific staff member's file uploads
+  const fetchSignedUrlsForStaff = useCallback(async (staffId: string, form: StaffFormWithRelations) => {
+    const fields = form.fields as FormField[]
+    const fileFields = fields.filter(f => f.type === 'file_upload')
+    const responses = form.responses || {}
+    const fileResponses = fileFields
+      .map(f => ({ fieldId: f.id, path: responses[f.id] as string | null }))
+      .filter(f => f.path)
+
+    if (fileResponses.length === 0) return
+
+    setLoadingUrls(prev => new Set([...prev, staffId]))
+
+    const urls: Record<string, string> = {}
+    for (const { fieldId, path } of fileResponses) {
+      if (!path) continue
+      const key = `${staffId}:${fieldId}`
+      if (signedUrls[key]) continue // Already have URL
+
+      try {
+        const response = await fetch(`/api/storage/signed-url?path=${encodeURIComponent(path)}`)
+        if (response.ok) {
+          const data = await response.json()
+          urls[key] = data.signedUrl
+        }
+      } catch (error) {
+        console.error('Error fetching signed URL:', error)
+      }
+    }
+
+    setSignedUrls(prev => ({ ...prev, ...urls }))
+    setLoadingUrls(prev => {
+      const next = new Set(prev)
+      next.delete(staffId)
+      return next
+    })
+  }, [signedUrls])
+
+  const toggleExpanded = (id: string, staff: StaffAssignmentDisplay) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
       } else {
         next.add(id)
+        // Fetch signed URLs when expanding
+        if (staff.form?.status === 'completed' && staff.form.responses) {
+          fetchSignedUrlsForStaff(id, staff.form)
+        }
       }
       return next
     })
@@ -93,7 +139,7 @@ export function StaffRecapSummaryModal({
     }
   }
 
-  const renderFieldResponse = (field: FormField, responses: Record<string, any>) => {
+  const renderFieldResponse = (field: FormField, responses: Record<string, any>, staffId: string) => {
     if (field.type === 'section' || field.type === 'paragraph') {
       return null
     }
@@ -102,7 +148,63 @@ export function StaffRecapSummaryModal({
     let displayValue: React.ReactNode = '—'
 
     if (value !== null && value !== undefined && value !== '') {
-      if (field.type === 'star_rating') {
+      if (field.type === 'file_upload') {
+        const filePath = value as string
+        const fileName = getFileNameFromPath(filePath)
+        const urlKey = `${staffId}:${field.id}`
+        const signedUrl = signedUrls[urlKey]
+        const canPreview = isPreviewableImage(filePath)
+        const isLoading = loadingUrls.has(staffId)
+
+        if (isLoading) {
+          displayValue = (
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading file...</span>
+            </div>
+          )
+        } else if (signedUrl) {
+          displayValue = (
+            <div className="space-y-1">
+              {canPreview ? (
+                <a
+                  href={signedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <img
+                    src={signedUrl}
+                    alt={fileName}
+                    className="max-w-[200px] max-h-32 rounded border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                  />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                  <FileText className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-900 truncate flex-1">{fileName}</span>
+                  <a
+                    href={signedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 text-blue-600 hover:text-blue-700"
+                    title="Download"
+                  >
+                    <Download className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
+          )
+        } else {
+          displayValue = (
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <FileText className="h-3 w-3" />
+              <span>{fileName}</span>
+            </div>
+          )
+        }
+      } else if (field.type === 'star_rating') {
         const rating = parseInt(value as string) || 0
         const maxRating = field.maxRating || 5
         displayValue = (
@@ -175,7 +277,7 @@ export function StaffRecapSummaryModal({
                 {/* Header row */}
                 <button
                   className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
-                  onClick={() => hasResponses && toggleExpanded(staff.id)}
+                  onClick={() => hasResponses && toggleExpanded(staff.id, staff)}
                   disabled={!hasResponses}
                 >
                   <div className="flex items-center gap-3">
@@ -205,7 +307,7 @@ export function StaffRecapSummaryModal({
                     <p className="text-xs text-gray-500 mb-3">{status.text}</p>
                     <div className="divide-y">
                       {(staff.form.fields as FormField[]).map((field) =>
-                        renderFieldResponse(field, staff.form!.responses || {})
+                        renderFieldResponse(field, staff.form!.responses || {}, staff.id)
                       )}
                     </div>
                   </div>

@@ -188,6 +188,9 @@ export default function PublicStaffFormPage() {
               logoUrl: tenant.logoUrl,
               companyName: tenant.name,
             }}
+            formId={form.id}
+            formType="staff-forms"
+            publicId={publicId}
           />
         </div>
 

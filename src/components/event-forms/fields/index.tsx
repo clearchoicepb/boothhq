@@ -4,6 +4,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import type { FormField, FormFieldType } from '@/types/event-forms'
+import { FileUploadFieldPreview } from './FileUploadField'
+
+// Re-export FileUploadField for use in FormRenderer
+export { FileUploadField, FileUploadFieldPreview } from './FileUploadField'
+export type { FileUploadFieldProps } from './FileUploadField'
 
 interface FieldRendererProps {
   field: FormField
@@ -314,6 +319,10 @@ export function ParagraphField({ field }: FieldRendererProps) {
 /**
  * Universal Field Renderer
  * Renders the appropriate field component based on field type
+ *
+ * Note: For file_upload fields in public forms, use FileUploadField directly
+ * with the required props (formId, formType, publicId). This renderer shows
+ * the preview version which is used in the form builder.
  */
 export function FormFieldRenderer(props: FieldRendererProps) {
   const { field } = props
@@ -339,6 +348,10 @@ export function FormFieldRenderer(props: FieldRendererProps) {
       return <SectionHeader {...props} />
     case 'paragraph':
       return <ParagraphField {...props} />
+    case 'file_upload':
+      // In the generic renderer, show preview version
+      // Full FileUploadField is used directly in FormRenderer with all required props
+      return <FileUploadFieldPreview field={field} />
     default:
       return <div className="text-red-500">Unknown field type: {field.type}</div>
   }
@@ -358,4 +371,5 @@ export const FIELD_TYPE_CONFIG: Record<FormFieldType, { label: string; icon: str
   time: { label: 'Time Picker', icon: 'Clock', hasOptions: false },
   section: { label: 'Section Header', icon: 'Heading', hasOptions: false },
   paragraph: { label: 'Instructions', icon: 'FileText', hasOptions: false },
+  file_upload: { label: 'File Upload', icon: 'Upload', hasOptions: false },
 }

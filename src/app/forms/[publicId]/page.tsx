@@ -155,6 +155,9 @@ export default function PublicFormPage() {
             branding={{
               logoUrl: tenant.logoUrl,
             }}
+            formId={form.id}
+            formType="event-forms"
+            publicId={publicId}
           />
         </div>
 
