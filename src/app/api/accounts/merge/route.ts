@@ -238,6 +238,62 @@ export async function POST(request: NextRequest) {
       transferredData.communications = commsData?.length || 0
     }
 
+    // 3i. Reassign leads (converted_account_id)
+    const { data: leadsData, error: leadsError } = await supabase
+      .from('leads')
+      .update({ converted_account_id: survivorId })
+      .eq('converted_account_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (leadsError) {
+      log.error({ error: leadsError }, 'Failed to reassign leads')
+    } else {
+      transferredData.leads = leadsData?.length || 0
+    }
+
+    // 3j. Reassign contracts
+    const { data: contractsData, error: contractsError } = await supabase
+      .from('contracts')
+      .update({ account_id: survivorId })
+      .eq('account_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (contractsError) {
+      log.error({ error: contractsError }, 'Failed to reassign contracts')
+    } else {
+      transferredData.contracts = contractsData?.length || 0
+    }
+
+    // 3k. Reassign projects (related_account_id)
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .update({ related_account_id: survivorId })
+      .eq('related_account_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (projectsError) {
+      log.error({ error: projectsError }, 'Failed to reassign projects')
+    } else {
+      transferredData.projects = projectsData?.length || 0
+    }
+
+    // 3l. Reassign quotes
+    const { data: quotesData, error: quotesError } = await supabase
+      .from('quotes')
+      .update({ account_id: survivorId })
+      .eq('account_id', victimId)
+      .eq('tenant_id', dataSourceTenantId)
+      .select('id')
+
+    if (quotesError) {
+      log.error({ error: quotesError }, 'Failed to reassign quotes')
+    } else {
+      transferredData.quotes = quotesData?.length || 0
+    }
+
     // 4. Create merge history record
     const { error: historyError } = await supabase
       .from('merge_history')
