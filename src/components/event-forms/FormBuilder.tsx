@@ -28,6 +28,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Info,
+  Upload,
 } from 'lucide-react'
 import type { FormField, FormFieldType } from '@/types/event-forms'
 import { FIELD_TYPE_CONFIG, FormFieldRenderer } from './fields'
@@ -55,6 +56,7 @@ const FIELD_ICONS: Record<FormFieldType, React.ComponentType<{ className?: strin
   time: Clock,
   section: Heading,
   paragraph: FileText,
+  file_upload: Upload,
 }
 
 /**

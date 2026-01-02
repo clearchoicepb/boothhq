@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { FormFieldRenderer } from './fields'
+import { FormFieldRenderer, FileUploadField } from './fields'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
 import { createLogger } from '@/lib/logger'
@@ -33,6 +33,14 @@ interface FormRendererProps {
     logoUrl?: string | null
     companyName?: string
   }
+  /** Form ID (needed for file uploads) */
+  formId?: string
+  /** Form type (needed for file uploads) */
+  formType?: 'event-forms' | 'staff-forms'
+  /** Public ID (needed for file uploads) */
+  publicId?: string
+  /** Signed URLs for file uploads (for viewing) */
+  signedUrls?: Record<string, string>
 }
 
 /**
@@ -52,6 +60,10 @@ export function FormRenderer({
   showSubmitButton = true,
   submitButtonText = 'Submit',
   branding,
+  formId,
+  formType = 'event-forms',
+  publicId,
+  signedUrls = {},
 }: FormRendererProps) {
   // Initialize form values from existing responses or prefilled values
   const [formValues, setFormValues] = useState<Record<string, string | string[] | null>>(() => {
@@ -182,12 +194,27 @@ export function FormRenderer({
       <form onSubmit={handleSubmit} className="space-y-6">
         {sortedFields.map((field) => (
           <div key={field.id} id={`field-${field.id}`}>
-            <FormFieldRenderer
-              field={field}
-              value={formValues[field.id]}
-              onChange={(value) => handleFieldChange(field.id, value)}
-              disabled={readOnly || isSubmitting}
-            />
+            {/* File upload fields need special handling with additional props */}
+            {field.type === 'file_upload' && formId && publicId ? (
+              <FileUploadField
+                field={field}
+                value={(formValues[field.id] as string) || null}
+                onChange={(value) => handleFieldChange(field.id, value || '')}
+                formId={formId}
+                formType={formType}
+                publicId={publicId}
+                disabled={readOnly || isSubmitting}
+                preview={readOnly}
+                signedUrl={signedUrls[field.id] || null}
+              />
+            ) : (
+              <FormFieldRenderer
+                field={field}
+                value={formValues[field.id]}
+                onChange={(value) => handleFieldChange(field.id, value)}
+                disabled={readOnly || isSubmitting}
+              />
+            )}
             {errors[field.id] && (
               <p className="mt-1 text-sm text-red-600">{errors[field.id]}</p>
             )}

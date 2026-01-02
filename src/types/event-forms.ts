@@ -11,7 +11,6 @@
 
 /**
  * Supported field types for form builder
- * Note: 'file' type deferred to later phase
  */
 export type FormFieldType =
   | 'text'        // Single line text input
@@ -24,6 +23,7 @@ export type FormFieldType =
   | 'time'        // Time picker
   | 'section'     // Section header (display only)
   | 'paragraph'   // Instructional text (display only)
+  | 'file_upload' // File upload (images, PDFs, design files)
 
 /**
  * Base form field definition
@@ -42,6 +42,71 @@ export interface FormField {
   // Data mapping for merge tags (Phase 7B)
   prePopulateFrom?: string      // Merge field key to pull data from (e.g., "events.venue_contact_name")
   saveResponseTo?: string       // Merge field key to save response to (e.g., "events.venue_contact_name")
+  // File upload specific (for file_upload type)
+  maxFileSize?: number          // Max file size in bytes (default 25MB)
+  acceptedTypes?: string[]      // Accepted MIME types (default: all supported)
+}
+
+/**
+ * Supported file types for file_upload field
+ * Maps MIME type to file extensions
+ */
+export const FILE_UPLOAD_ACCEPTED_TYPES: Record<string, string[]> = {
+  // Images
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/gif': ['.gif'],
+  'image/webp': ['.webp'],
+  'image/heic': ['.heic'],
+  'image/heif': ['.heif'],
+  'image/tiff': ['.tiff', '.tif'],
+  'image/svg+xml': ['.svg'],
+  // Design files
+  'image/vnd.adobe.photoshop': ['.psd'],
+  'application/postscript': ['.ai'],
+  'application/pdf': ['.pdf'],
+}
+
+/**
+ * Default max file size for file_upload (25MB)
+ */
+export const FILE_UPLOAD_MAX_SIZE = 25 * 1024 * 1024
+
+/**
+ * Get all accepted MIME types as array
+ */
+export function getAcceptedMimeTypes(): string[] {
+  return Object.keys(FILE_UPLOAD_ACCEPTED_TYPES)
+}
+
+/**
+ * Get file extensions string for input accept attribute
+ */
+export function getAcceptedFileExtensions(): string {
+  const extensions = Object.values(FILE_UPLOAD_ACCEPTED_TYPES).flat()
+  return extensions.join(',')
+}
+
+/**
+ * Check if a MIME type is accepted for file upload
+ */
+export function isAcceptedFileType(mimeType: string): boolean {
+  return mimeType in FILE_UPLOAD_ACCEPTED_TYPES
+}
+
+/**
+ * Check if a file path/name represents a previewable image
+ */
+export function isPreviewableImage(pathOrName: string): boolean {
+  const ext = pathOrName.split('.').pop()?.toLowerCase()
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')
+}
+
+/**
+ * Extract filename from storage path
+ */
+export function getFileNameFromPath(path: string): string {
+  return path.split('/').pop() || 'file'
 }
 
 /**
@@ -300,6 +365,13 @@ export function isInputFieldType(type: FormFieldType): boolean {
  */
 export function isOptionFieldType(type: FormFieldType): boolean {
   return ['select', 'multiselect', 'radio'].includes(type)
+}
+
+/**
+ * Check if a field type is a file upload
+ */
+export function isFileUploadFieldType(type: FormFieldType): boolean {
+  return type === 'file_upload'
 }
 
 /**
