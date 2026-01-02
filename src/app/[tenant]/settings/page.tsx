@@ -30,7 +30,8 @@ import {
   ChevronDown,
   Zap,
   Boxes,
-  DollarSign
+  DollarSign,
+  GitMerge
 } from 'lucide-react';
 
 interface SettingsItem {
@@ -252,6 +253,14 @@ const settingsStructure: SettingsCategory[] = [
         description: 'Import, export, and backups',
         icon: Database,
         href: '/data',
+      },
+      {
+        id: 'duplicates',
+        title: 'Duplicate Detection',
+        description: 'Find and merge duplicate contacts and accounts',
+        icon: GitMerge,
+        href: '/duplicates',
+        status: 'new'
       },
     ]
   },

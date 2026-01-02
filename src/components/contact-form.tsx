@@ -12,7 +12,9 @@ import { Select } from '@/components/ui/select'
 import { Plus, Trash2, CheckCircle, Building2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { DuplicateContactWarning } from '@/components/duplicate-contact-warning'
-import { useParams } from 'next/navigation'
+import { DuplicateWarningAlert } from '@/components/merge/DuplicateWarningAlert'
+import { useDuplicateCheck } from '@/hooks/useDuplicateCheck'
+import { useParams, useRouter } from 'next/navigation'
 // Remove the db import - we'll use API routes instead
 import type { Contact, Account } from '@/lib/supabase-client'
 import { createLogger } from '@/lib/logger'
@@ -46,8 +48,16 @@ interface ContactFormProps {
 
 export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAccountId }: ContactFormProps) {
   const params = useParams()
+  const router = useRouter()
   const tenantSubdomain = params.tenant as string
-  
+
+  // Real-time duplicate checking hook
+  const { duplicates, isChecking, checkDuplicates, clearDuplicates } = useDuplicateCheck({
+    entityType: 'contact',
+    excludeId: contact?.id, // Exclude current contact when editing
+    debounceMs: 500
+  })
+
   const [formData, setFormData] = useState<ContactFormData>({
     first_name: '',
     last_name: '',
@@ -192,6 +202,24 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
     }
     fetchAccounts()
   }, [])
+
+  // Check for duplicates when key fields change
+  useEffect(() => {
+    if (!isOpen) {
+      clearDuplicates()
+      return
+    }
+
+    // Only check when we have enough data
+    if (formData.first_name || formData.email || formData.phone) {
+      checkDuplicates({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone
+      })
+    }
+  }, [formData.first_name, formData.last_name, formData.email, formData.phone, isOpen, checkDuplicates, clearDuplicates])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -598,6 +626,19 @@ export function ContactForm({ contact, isOpen, onClose, onSubmit, preSelectedAcc
             </Card>
           )}
         </div>
+
+        {/* Real-time duplicate warning */}
+        {!contact && (
+          <DuplicateWarningAlert
+            entityType="contact"
+            duplicates={duplicates}
+            isChecking={isChecking}
+            onUseExisting={(id) => {
+              onClose()
+              router.push(`/${tenantSubdomain}/contacts/${id}`)
+            }}
+          />
+        )}
 
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose}>

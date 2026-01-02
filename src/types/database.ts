@@ -747,6 +747,53 @@ export interface Database {
           updated_at?: string
         }
       }
+      merge_history: {
+        Row: {
+          id: string
+          tenant_id: string
+          entity_type: 'contact' | 'account'
+          survivor_id: string
+          victim_id: string
+          survivor_snapshot: Record<string, unknown>
+          victim_snapshot: Record<string, unknown>
+          merged_snapshot: Record<string, unknown>
+          transferred_data: Record<string, number> | null
+          merged_by: string | null
+          merged_at: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          entity_type: 'contact' | 'account'
+          survivor_id: string
+          victim_id: string
+          survivor_snapshot: Record<string, unknown>
+          victim_snapshot: Record<string, unknown>
+          merged_snapshot: Record<string, unknown>
+          transferred_data?: Record<string, number> | null
+          merged_by?: string | null
+          merged_at?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          entity_type?: 'contact' | 'account'
+          survivor_id?: string
+          victim_id?: string
+          survivor_snapshot?: Record<string, unknown>
+          victim_snapshot?: Record<string, unknown>
+          merged_snapshot?: Record<string, unknown>
+          transferred_data?: Record<string, number> | null
+          merged_by?: string | null
+          merged_at?: string
+          notes?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
