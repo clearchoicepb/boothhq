@@ -48,9 +48,12 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status)
     }
 
-    // Filter for outstanding invoices (not paid or cancelled)
+    // Filter for outstanding invoices (not paid or cancelled, AND has balance > 0)
+    // Using balance_amount > 0 as the source of truth since status may not always be updated correctly
     if (showOutstanding) {
-      query = query.not('status', 'in', '("paid","cancelled")')
+      query = query
+        .not('status', 'in', '("paid","cancelled","paid_in_full")')
+        .gt('balance_amount', 0)
     }
 
     // Filter by month (due_date in specific month + overdue invoices from previous months)
@@ -63,10 +66,10 @@ export async function GET(request: NextRequest) {
 
       // Include:
       // 1. All invoices with due_date IN the selected month
-      // 2. PLUS all UNPAID invoices from PREVIOUS months (overdue)
-      // Unpaid = status is NOT 'paid' AND status is NOT 'cancelled'
+      // 2. PLUS all invoices from PREVIOUS months with outstanding balance (overdue)
+      // Using balance_amount > 0 as source of truth for unpaid invoices
       query = query.or(
-        `and(due_date.gte.${startISO},due_date.lte.${endISO}T23:59:59.999Z),and(due_date.lt.${startISO},status.neq.paid,status.neq.cancelled)`
+        `and(due_date.gte.${startISO},due_date.lte.${endISO}T23:59:59.999Z),and(due_date.lt.${startISO},balance_amount.gt.0)`
       )
     }
 
