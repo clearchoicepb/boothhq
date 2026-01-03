@@ -36,7 +36,7 @@ export interface Invoice {
 
 export interface NewInvoiceData {
   tax_rate: string
-  due_days: string
+  due_date: string
   issue_date: string
   purchase_order: string
   notes: string

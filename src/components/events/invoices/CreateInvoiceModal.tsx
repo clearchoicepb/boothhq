@@ -1,15 +1,51 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import type { NewInvoiceData } from './types'
+
+/**
+ * Calculate the default due date based on event date
+ * - If no event date: 30 days from today
+ * - If event is more than 30 days away: 30 days before event
+ * - If event is less than 30 days away: today
+ */
+function calculateDefaultDueDate(eventDate: string | null): string {
+  // Normalize dates by using local midnight to avoid timezone issues
+  const todayStr = new Date().toISOString().split('T')[0]
+  const today = new Date(`${todayStr}T00:00:00`)
+
+  if (!eventDate) {
+    // General invoice: default to 30 days from today
+    const defaultDue = new Date(today)
+    defaultDue.setDate(defaultDue.getDate() + 30)
+    return defaultDue.toISOString().split('T')[0]
+  }
+
+  // Normalize event date to local midnight
+  const normalizedEventDate = eventDate.includes('T') ? eventDate.split('T')[0] : eventDate
+  const event = new Date(`${normalizedEventDate}T00:00:00`)
+  const daysUntilEvent = Math.ceil((event.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (daysUntilEvent > 30) {
+    // Event is more than 30 days away: due 30 days before event
+    const dueDate = new Date(event)
+    dueDate.setDate(dueDate.getDate() - 30)
+    return dueDate.toISOString().split('T')[0]
+  } else {
+    // Event is 30 days or less away: due today
+    return todayStr
+  }
+}
 
 interface CreateInvoiceModalProps {
   isOpen: boolean
   isCreating: boolean
   onClose: () => void
   onCreate: (data: NewInvoiceData) => void
+  /** Event date for smart due date calculation (YYYY-MM-DD format) */
+  eventDate?: string | null
 }
 
 /**
@@ -19,16 +55,34 @@ export function CreateInvoiceModal({
   isOpen,
   isCreating,
   onClose,
-  onCreate
+  onCreate,
+  eventDate = null
 }: CreateInvoiceModalProps) {
+  // Calculate the default due date based on event date
+  const defaultDueDate = useMemo(() => calculateDefaultDueDate(eventDate), [eventDate])
+
   const [formData, setFormData] = useState<NewInvoiceData>({
     tax_rate: '0.08',
-    due_days: '30',
+    due_date: defaultDueDate,
     issue_date: new Date().toISOString().split('T')[0],
     purchase_order: '',
     notes: '',
     terms: ''
   })
+
+  // Reset form when modal opens to recalculate due date
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        tax_rate: '0.08',
+        due_date: defaultDueDate,
+        issue_date: new Date().toISOString().split('T')[0],
+        purchase_order: '',
+        notes: '',
+        terms: ''
+      })
+    }
+  }, [isOpen, defaultDueDate])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,15 +144,16 @@ export function CreateInvoiceModal({
             />
           </div>
           <div>
-            <label htmlFor="due_days" className="block text-sm font-medium text-gray-700 mb-2">
-              Due in (days)
+            <label htmlFor="due_date" className="block text-sm font-medium text-gray-700 mb-2">
+              Due Date
             </label>
             <input
-              id="due_days"
-              type="number"
-              value={formData.due_days}
-              onChange={(e) => updateField('due_days', e.target.value)}
+              id="due_date"
+              type="date"
+              value={formData.due_date}
+              onChange={(e) => updateField('due_date', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              required
             />
           </div>
         </div>

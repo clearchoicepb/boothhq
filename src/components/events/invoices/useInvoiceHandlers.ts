@@ -48,15 +48,13 @@ export function useInvoiceHandlers({
     }
     try {
       setCreatingInvoice(true)
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + parseInt(data.due_days))
 
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_id: eventId, account_id: accountId, contact_id: contactId,
-          issue_date: data.issue_date, due_date: dueDate.toISOString().split('T')[0],
+          issue_date: data.issue_date, due_date: data.due_date,
           subtotal: 0, tax_rate: parseFloat(data.tax_rate), tax_amount: 0,
           total_amount: 0, balance_amount: 0, status: 'draft',
           purchase_order: data.purchase_order || null,
