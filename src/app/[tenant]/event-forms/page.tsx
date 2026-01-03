@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ClipboardList, ExternalLink, CheckCircle, Clock, Eye, FileQuestion } from 'lucide-react'
+import { ClipboardList, CheckCircle, Clock, Eye, FileQuestion, Loader2 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormPreview } from '@/components/event-forms/FormPreview'
 import { createLogger } from '@/lib/logger'
+import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
 
 const log = createLogger('event-forms-page')
 
@@ -27,17 +29,38 @@ interface EventFormListItem {
   event_date: string | null
 }
 
+interface EventDateInfo {
+  id: string
+  event_date: string
+  start_time?: string | null
+  end_time?: string | null
+  location_name?: string | null
+}
+
+interface FullFormData {
+  id: string
+  name: string
+  fields: FormField[]
+  responses: FormResponses | null
+  status: EventFormStatus
+  event_dates: EventDateInfo[]
+}
+
 export default function EventFormsPage() {
   const { data: session, status: authStatus } = useSession()
   const { tenant, loading: tenantLoading } = useTenant()
   const params = useParams()
-  const router = useRouter()
   const tenantSubdomain = params.tenant as string
 
   const [activeTab, setActiveTab] = useState<'completed' | 'pending'>('completed')
   const [completedForms, setCompletedForms] = useState<EventFormListItem[]>([])
   const [pendingForms, setPendingForms] = useState<EventFormListItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Modal state
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [selectedForm, setSelectedForm] = useState<FullFormData | null>(null)
+  const [loadingForm, setLoadingForm] = useState(false)
 
   useEffect(() => {
     if (session && tenant) {
@@ -102,9 +125,27 @@ export default function EventFormsPage() {
     )
   }
 
-  const handleViewForm = (form: EventFormListItem) => {
-    // Navigate to the event detail page with forms tab
-    router.push(`/${tenantSubdomain}/events/${form.event_id}?tab=planning`)
+  const handleViewForm = async (form: EventFormListItem) => {
+    // Fetch full form data and open the preview modal
+    setLoadingForm(true)
+    try {
+      const response = await fetch(`/api/event-forms/${form.id}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch form data')
+      }
+      const fullFormData = await response.json()
+      setSelectedForm(fullFormData)
+      setIsPreviewOpen(true)
+    } catch (error) {
+      log.error({ error, formId: form.id }, 'Error fetching form data')
+    } finally {
+      setLoadingForm(false)
+    }
+  }
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false)
+    setSelectedForm(null)
   }
 
   const renderFormsTable = (forms: EventFormListItem[], isCompleted: boolean) => {
@@ -205,8 +246,13 @@ export default function EventFormsPage() {
                       onClick={() => handleViewForm(form)}
                       variant="outline"
                       size="sm"
+                      disabled={loadingForm}
                     >
-                      <ExternalLink className="h-4 w-4 mr-1" />
+                      {loadingForm ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Eye className="h-4 w-4 mr-1" />
+                      )}
                       View
                     </Button>
                   </td>
@@ -287,6 +333,19 @@ export default function EventFormsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Form Preview Modal */}
+      {selectedForm && (
+        <FormPreview
+          isOpen={isPreviewOpen}
+          onClose={handleClosePreview}
+          name={selectedForm.name}
+          fields={selectedForm.fields}
+          responses={selectedForm.responses}
+          status={selectedForm.status}
+          eventDates={selectedForm.event_dates.length > 1 ? selectedForm.event_dates : undefined}
+        />
+      )}
     </AppLayout>
   )
 }
