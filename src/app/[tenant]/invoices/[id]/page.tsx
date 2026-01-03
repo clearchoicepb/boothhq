@@ -15,6 +15,12 @@ import toast from 'react-hot-toast'
 
 const log = createLogger('id')
 
+// Helper to format date-only strings without timezone shifting
+const formatDateLocal = (dateString: string, options?: Intl.DateTimeFormatOptions): string => {
+  const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+  return new Date(normalized).toLocaleDateString('en-US', options || { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
 interface InvoiceLineItem {
   id: string
   name: string
@@ -660,16 +666,16 @@ export default function InvoiceDetailPage() {
                 {invoice.event_date && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Event Date</p>
-                    <p className="text-base font-semibold text-gray-900">{new Date(invoice.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-base font-semibold text-gray-900">{formatDateLocal(invoice.event_date)}</p>
                   </div>
                 )}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</p>
-                  <p className="text-base font-semibold text-gray-900">{new Date(invoice.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-base font-semibold text-gray-900">{formatDateLocal(invoice.issue_date)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</p>
-                  <p className="text-base font-semibold text-gray-900">{new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-base font-semibold text-gray-900">{formatDateLocal(invoice.due_date)}</p>
                 </div>
                 {invoice.purchase_order && (
                   <div>
