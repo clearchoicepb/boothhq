@@ -83,6 +83,19 @@ export async function GET(request: NextRequest) {
         error: tasksError
       }, 'Tasks query result')
 
+      // DEBUG: Log each task fetched from DB to identify phantom tasks
+      if (tasksData && tasksData.length > 0) {
+        log.info({
+          taskCount: tasksData.length,
+          tasks: tasksData.map(t => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            entity_id: t.entity_id
+          }))
+        }, 'DEBUG: Raw tasks from database')
+      }
+
       if (tasksData) {
         // Group tasks by event_id
         tasksData.forEach(task => {
@@ -94,11 +107,38 @@ export async function GET(request: NextRequest) {
           }
         })
 
-        // Calculate readiness using the new utility function
+        // Build a map of event IDs to their first event date
+        // Used to calculate readiness for pre-event tasks only
+        const eventDatesMap: Record<string, string | null> = {}
+        data?.forEach(event => {
+          // Get the first (earliest) event date
+          const sortedDates = (event.event_dates || [])
+            .map((d: any) => d.event_date)
+            .filter(Boolean)
+            .sort()
+          eventDatesMap[event.id] = sortedDates[0] || event.start_date || null
+        })
+
+        // Calculate readiness using the new utility function (only pre-event tasks)
         eventReadiness = calculateBulkEventReadiness(
           tasksData as TaskForReadiness[],
-          eventIds
+          eventIds,
+          eventDatesMap
         )
+
+        // DEBUG: Log calculated readiness for each event
+        const eventsWithTasks = Object.entries(eventReadiness).filter(([_, r]) => r.hasTasks)
+        if (eventsWithTasks.length > 0) {
+          log.info({
+            readinessCount: eventsWithTasks.length,
+            readiness: eventsWithTasks.map(([eventId, r]) => ({
+              eventId,
+              total: r.total,
+              completed: r.completed,
+              percentage: r.percentage
+            }))
+          }, 'DEBUG: Calculated readiness for events with tasks')
+        }
       }
     }
 

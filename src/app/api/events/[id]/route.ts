@@ -88,7 +88,16 @@ export async function GET(
       .eq('entity_id', eventId)
 
     const eventTasks = tasksData || []
-    const taskReadiness = calculateEventReadiness(eventTasks as TaskForReadiness[])
+
+    // Get the first (earliest) event date for filtering pre-event tasks
+    const sortedEventDates = (data.event_dates || [])
+      .map((d: any) => d.event_date)
+      .filter(Boolean)
+      .sort()
+    const firstEventDate = sortedEventDates[0] || data.start_date || null
+
+    // Calculate readiness (only counting pre-event tasks)
+    const taskReadiness = calculateEventReadiness(eventTasks as TaskForReadiness[], firstEventDate)
 
     // Helper to get company name from contact_accounts
     const getContactCompany = (contact: any) => {

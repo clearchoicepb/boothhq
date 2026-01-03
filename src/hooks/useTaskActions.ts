@@ -11,11 +11,25 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksService } from '@/lib/api/services/tasksService'
+import { queryKeys } from '@/lib/queryKeys'
 import type { TaskInsert, TaskUpdate, TaskWithRelations } from '@/types/tasks'
 import toast from 'react-hot-toast'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('hooks')
+
+/**
+ * Helper to invalidate events-related queries when tasks change.
+ * Events embed task_readiness, so we need to refresh events when tasks are modified.
+ */
+function invalidateEventsQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.events.list() })
+  queryClient.invalidateQueries({ queryKey: queryKeys.events.taskStatus() })
+  // Also invalidate individual event details (prefix match)
+  queryClient.invalidateQueries({ queryKey: ['event-detail'], exact: false })
+  // Invalidate event readiness queries (used by useEventReadiness hook)
+  queryClient.invalidateQueries({ queryKey: ['event-readiness'], exact: false })
+}
 
 /**
  * Hook for creating a new task
@@ -45,6 +59,9 @@ export function useCreateTask() {
           queryKey: ['tasks', 'entity', newTask.entity_type, newTask.entity_id]
         })
       }
+
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
 
       toast.success('Task created successfully')
     },
@@ -100,6 +117,9 @@ export function useCreateTaskFromTemplate() {
         })
       }
 
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
+
       toast.success('Task created from template')
     },
     onError: (error: any) => {
@@ -139,6 +159,9 @@ export function useUpdateTask() {
 
       // Invalidate all task lists to refetch
       queryClient.invalidateQueries({ queryKey: ['tasks'], exact: false })
+
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
 
       toast.success('Task updated successfully')
     },
@@ -199,6 +222,9 @@ export function useUpdateTaskStatus() {
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: ['tasks'], exact: false })
 
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
+
       const statusMessages = {
         pending: 'Task marked as pending',
         in_progress: 'Task in progress',
@@ -246,6 +272,9 @@ export function useReassignTask() {
       queryClient.setQueryData(['tasks', variables.taskId], updatedTask)
       queryClient.invalidateQueries({ queryKey: ['tasks'], exact: false })
 
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
+
       toast.success(
         variables.assignedTo
           ? 'Task reassigned successfully'
@@ -287,6 +316,9 @@ export function useUpdateTaskPriority() {
       queryClient.setQueryData(['tasks', variables.taskId], updatedTask)
       queryClient.invalidateQueries({ queryKey: ['tasks'], exact: false })
 
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
+
       toast.success(`Priority updated to ${variables.priority}`)
     },
     onError: (error: any) => {
@@ -322,6 +354,9 @@ export function useDeleteTask() {
 
       // Invalidate all task lists
       queryClient.invalidateQueries({ queryKey: ['tasks'], exact: false })
+
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
 
       toast.success('Task deleted successfully')
     },
@@ -360,6 +395,9 @@ export function useBulkUpdateTasks() {
       // Invalidate all task queries
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
 
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
+
       toast.success(`${variables.taskIds.length} tasks updated successfully`)
     },
     onError: (error: any) => {
@@ -397,6 +435,9 @@ export function useBulkDeleteTasks() {
 
       // Invalidate all task lists
       queryClient.invalidateQueries({ queryKey: ['tasks'], exact: false })
+
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
 
       toast.success(`${taskIds.length} tasks deleted successfully`)
     },
@@ -487,6 +528,9 @@ export function useCreateSubtask() {
       })
       // Invalidate general task lists (for progress updates)
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
 
       toast.success('Subtask created')
     },
@@ -611,6 +655,9 @@ export function useUpdateSubtaskStatus() {
       })
       // Invalidate task lists for progress badge updates
       queryClient.invalidateQueries({ queryKey: ['tasks', 'with-progress'] })
+
+      // Invalidate events queries since they embed task_readiness
+      invalidateEventsQueries(queryClient)
 
       const statusMessages = {
         pending: 'Subtask marked as pending',

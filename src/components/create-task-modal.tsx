@@ -192,16 +192,23 @@ export function CreateTaskModal({
 
         // Check if template uses event-based due date calculation
         if (template.use_event_date && eventDates && eventDates.length > 0) {
+          // Helper to normalize date strings to avoid UTC timezone shift
+          const normalizeDate = (dateStr: string) => {
+            const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+            return new Date(normalized)
+          }
+
           // Sort event dates
           const sortedDates = [...eventDates].sort((a, b) =>
-            new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+            normalizeDate(a.event_date).getTime() - normalizeDate(b.event_date).getTime()
           )
 
           // Pre-event: days before FIRST event date
           if (template.days_before_event !== null && template.days_before_event !== undefined) {
-            const firstEventDate = new Date(sortedDates[0].event_date)
+            const firstEventDate = normalizeDate(sortedDates[0].event_date)
             firstEventDate.setDate(firstEventDate.getDate() - template.days_before_event)
-            calculatedDueDate = firstEventDate.toISOString().split('T')[0]
+            // Format as YYYY-MM-DD using local date methods to avoid timezone shift
+            calculatedDueDate = `${firstEventDate.getFullYear()}-${String(firstEventDate.getMonth() + 1).padStart(2, '0')}-${String(firstEventDate.getDate()).padStart(2, '0')}`
             log.debug({
               eventDate: sortedDates[0].event_date,
               daysBefore: template.days_before_event,
@@ -210,9 +217,10 @@ export function CreateTaskModal({
           }
           // Post-event: days after LAST event date
           else if (template.days_after_event !== null && template.days_after_event !== undefined) {
-            const lastEventDate = new Date(sortedDates[sortedDates.length - 1].event_date)
+            const lastEventDate = normalizeDate(sortedDates[sortedDates.length - 1].event_date)
             lastEventDate.setDate(lastEventDate.getDate() + template.days_after_event)
-            calculatedDueDate = lastEventDate.toISOString().split('T')[0]
+            // Format as YYYY-MM-DD using local date methods to avoid timezone shift
+            calculatedDueDate = `${lastEventDate.getFullYear()}-${String(lastEventDate.getMonth() + 1).padStart(2, '0')}-${String(lastEventDate.getDate()).padStart(2, '0')}`
             log.debug({
               eventDate: sortedDates[sortedDates.length - 1].event_date,
               daysAfter: template.days_after_event,
@@ -224,7 +232,8 @@ export function CreateTaskModal({
         if (!calculatedDueDate && template.default_due_in_days) {
           const dueDate = new Date()
           dueDate.setDate(dueDate.getDate() + template.default_due_in_days)
-          calculatedDueDate = dueDate.toISOString().split('T')[0]
+          // Format as YYYY-MM-DD using local date methods to avoid timezone shift
+          calculatedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`
         }
 
         if (calculatedDueDate) {
@@ -419,11 +428,16 @@ export function CreateTaskModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             >
               <option value="">Overall Event (not specific to a date)</option>
-              {eventDates.map((eventDate) => (
-                <option key={eventDate.id} value={eventDate.id}>
-                  {new Date(eventDate.event_date).toLocaleDateString()}
-                </option>
-              ))}
+              {eventDates.map((eventDate) => {
+                // Normalize date to avoid UTC timezone shift
+                const dateStr = eventDate.event_date
+                const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+                return (
+                  <option key={eventDate.id} value={eventDate.id}>
+                    {new Date(normalized).toLocaleDateString()}
+                  </option>
+                )
+              })}
             </select>
           </div>
         )}

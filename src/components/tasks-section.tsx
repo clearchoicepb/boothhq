@@ -78,9 +78,11 @@ interface TasksSectionProps {
   onRefresh?: () => void
   /** Optional task ID to highlight (from notification deep link) */
   highlightTaskId?: string
+  /** Optional event date for splitting tasks into Pre-Event/Post-Event sections */
+  eventDate?: string
 }
 
-export function TasksSection({ entityType, entityId, projectId, onRefresh, highlightTaskId }: TasksSectionProps) {
+export function TasksSection({ entityType, entityId, projectId, onRefresh, highlightTaskId, eventDate }: TasksSectionProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set())
@@ -223,6 +225,62 @@ export function TasksSection({ entityType, entityId, projectId, onRefresh, highl
   // Check if this is an event with multiple event dates
   const isEventWithDates = entityType === 'event' && tasks.some(t => t.event_date_id)
 
+  // Split tasks into Pre-Event and Post-Event sections based on event date
+  const splitTasksByEventDate = (tasksToSplit: Task[]) => {
+    if (!eventDate) {
+      // If no event date, return all tasks in one section
+      return {
+        preEventTasks: tasksToSplit.sort((a, b) => {
+          if (!a.due_date && !b.due_date) return 0
+          if (!a.due_date) return 1
+          if (!b.due_date) return -1
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        }),
+        postEventTasks: [],
+        unscheduledTasks: []
+      }
+    }
+
+    // Normalize event date (add local midnight if needed)
+    const normalizedEventDate = eventDate.includes('T') ? eventDate : `${eventDate}T00:00:00`
+    const eventDateObj = new Date(normalizedEventDate)
+
+    const preEventTasks: Task[] = []
+    const postEventTasks: Task[] = []
+    const unscheduledTasks: Task[] = []
+
+    tasksToSplit.forEach(task => {
+      if (!task.due_date) {
+        // Tasks with no due date go to unscheduled
+        unscheduledTasks.push(task)
+      } else {
+        // Normalize due date
+        const normalizedDueDate = task.due_date.includes('T') ? task.due_date : `${task.due_date}T00:00:00`
+        const dueDate = new Date(normalizedDueDate)
+
+        if (dueDate <= eventDateObj) {
+          preEventTasks.push(task)
+        } else {
+          postEventTasks.push(task)
+        }
+      }
+    })
+
+    // Sort by due date
+    const sortByDueDate = (a: Task, b: Task) => {
+      if (!a.due_date && !b.due_date) return 0
+      if (!a.due_date) return 1
+      if (!b.due_date) return -1
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    }
+
+    return {
+      preEventTasks: preEventTasks.sort(sortByDueDate),
+      postEventTasks: postEventTasks.sort(sortByDueDate),
+      unscheduledTasks
+    }
+  }
+
   // Get unique event dates for filter dropdown
   const eventDatesMap = new Map<string, { id: string; date: string }>()
   tasks.filter(t => t.event_date).forEach(t => {
@@ -342,8 +400,73 @@ export function TasksSection({ entityType, entityId, projectId, onRefresh, highl
         </div>
       )}
 
-      {/* Show grouped view if event with dates and viewing all */}
-      {isEventWithDates && dateFilter === 'all' ? (
+      {/* Show Pre-Event/Post-Event sections when event date is provided */}
+      {eventDate && entityType === 'event' && !isEventWithDates ? (
+        (() => {
+          const { preEventTasks, postEventTasks, unscheduledTasks } = splitTasksByEventDate(filteredTasks)
+          const showPreEvent = preEventTasks.length > 0
+          const showPostEvent = postEventTasks.length > 0
+          const showUnscheduled = unscheduledTasks.length > 0
+
+          return (
+            <div className="space-y-6">
+              {/* Pre-Event Tasks Section */}
+              {showPreEvent && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3 px-2">
+                    <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
+                    <h3 className="text-sm font-semibold text-blue-700">
+                      Pre-Event Tasks
+                    </h3>
+                    <span className="text-xs font-normal text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                      {preEventTasks.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1 pl-3 border-l-2 border-blue-100">
+                    {preEventTasks.map(renderTask)}
+                  </div>
+                </div>
+              )}
+
+              {/* Post-Event Tasks Section */}
+              {showPostEvent && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3 px-2">
+                    <div className="w-1 h-5 bg-green-500 rounded-full"></div>
+                    <h3 className="text-sm font-semibold text-green-700">
+                      Post-Event Tasks
+                    </h3>
+                    <span className="text-xs font-normal text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
+                      {postEventTasks.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1 pl-3 border-l-2 border-green-100">
+                    {postEventTasks.map(renderTask)}
+                  </div>
+                </div>
+              )}
+
+              {/* Unscheduled Tasks Section */}
+              {showUnscheduled && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3 px-2">
+                    <div className="w-1 h-5 bg-gray-400 rounded-full"></div>
+                    <h3 className="text-sm font-semibold text-gray-600">
+                      Unscheduled
+                    </h3>
+                    <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {unscheduledTasks.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1 pl-3 border-l-2 border-gray-200">
+                    {unscheduledTasks.map(renderTask)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()
+      ) : isEventWithDates && dateFilter === 'all' ? (
         <div className="space-y-6">
           {/* Overall Event Tasks */}
           {overallTasks.length > 0 && (

@@ -221,6 +221,7 @@ export function EventPlanningTab({
                 entityId={eventId}
                 onRefresh={onTasksRefresh}
                 highlightTaskId={taskIdParam || undefined}
+                eventDate={eventDate}
               />
             </div>
           </div>
