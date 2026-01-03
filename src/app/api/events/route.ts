@@ -83,6 +83,19 @@ export async function GET(request: NextRequest) {
         error: tasksError
       }, 'Tasks query result')
 
+      // DEBUG: Log each task fetched from DB to identify phantom tasks
+      if (tasksData && tasksData.length > 0) {
+        log.info({
+          taskCount: tasksData.length,
+          tasks: tasksData.map(t => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            entity_id: t.entity_id
+          }))
+        }, 'DEBUG: Raw tasks from database')
+      }
+
       if (tasksData) {
         // Group tasks by event_id
         tasksData.forEach(task => {
@@ -112,6 +125,20 @@ export async function GET(request: NextRequest) {
           eventIds,
           eventDatesMap
         )
+
+        // DEBUG: Log calculated readiness for each event
+        const eventsWithTasks = Object.entries(eventReadiness).filter(([_, r]) => r.hasTasks)
+        if (eventsWithTasks.length > 0) {
+          log.info({
+            readinessCount: eventsWithTasks.length,
+            readiness: eventsWithTasks.map(([eventId, r]) => ({
+              eventId,
+              total: r.total,
+              completed: r.completed,
+              percentage: r.percentage
+            }))
+          }, 'DEBUG: Calculated readiness for events with tasks')
+        }
       }
     }
 

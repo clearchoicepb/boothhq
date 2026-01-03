@@ -27,6 +27,8 @@ function invalidateEventsQueries(queryClient: ReturnType<typeof useQueryClient>)
   queryClient.invalidateQueries({ queryKey: queryKeys.events.taskStatus() })
   // Also invalidate individual event details (prefix match)
   queryClient.invalidateQueries({ queryKey: ['event-detail'], exact: false })
+  // Invalidate event readiness queries (used by useEventReadiness hook)
+  queryClient.invalidateQueries({ queryKey: ['event-readiness'], exact: false })
 }
 
 /**
