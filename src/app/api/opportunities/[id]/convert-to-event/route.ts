@@ -31,8 +31,21 @@ export async function POST(
         .single()
 
       if (oppError || !opportunity) {
+        log.error({ oppError, opportunityId }, 'Opportunity not found')
         return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 })
       }
+
+      // Check if opportunity is already converted
+      if (opportunity.is_converted) {
+        log.warn({ opportunityId, converted_event_id: opportunity.converted_event_id }, 'Opportunity already converted')
+        return NextResponse.json({
+          error: 'Opportunity already converted',
+          converted_event_id: opportunity.converted_event_id,
+          message: 'This opportunity has already been converted to an event'
+        }, { status: 400 })
+      }
+
+      log.info({ opportunityId, hasEventDates: (opportunity.event_dates || []).length }, 'Starting opportunity to event conversion')
 
       // 1.5. If opportunity has a lead_id but no account_id, convert the lead
       let accountId = opportunity.account_id
@@ -224,9 +237,9 @@ export async function POST(
         if (eventTypeData) {
           eventTypeId = eventTypeData.id
           eventCategoryId = eventTypeData.event_category_id
-          log.debug(`Found event_type_id: ${eventTypeId} for slug: ${eventTypeSlug}`)
+          log.debug({ eventTypeId, eventTypeSlug }, 'Found event_type_id for slug')
         } else {
-          log.warn('[Convert to Event] Could not find event_type_id for slug: ${eventTypeSlug}')
+          log.warn({ eventTypeSlug }, 'Could not find event_type_id for slug')
         }
       }
 
@@ -246,7 +259,6 @@ export async function POST(
           end_date: eventData?.end_date || endDate,
           location: eventData?.location || null,
           location_id: eventData?.location_id || primaryLocationId,
-          status: eventData?.status || 'scheduled',
           date_type: eventData?.date_type || opportunity.date_type || 'single_day',
           mailing_address_line1: eventData?.mailing_address_line1 || opportunity.mailing_address_line1,
           mailing_address_line2: eventData?.mailing_address_line2 || opportunity.mailing_address_line2,
@@ -262,24 +274,34 @@ export async function POST(
         .single()
 
       if (eventError) {
-        log.error({ eventError }, 'Error creating event')
-        return NextResponse.json({ 
-          error: 'Failed to create event', 
-          details: eventError.message 
+        log.error({
+          eventError,
+          opportunityId,
+          eventType: eventData?.event_type || opportunity.event_type,
+          title: eventData?.title || opportunity.name
+        }, 'Error creating event')
+        return NextResponse.json({
+          error: 'Failed to create event',
+          details: eventError.message,
+          code: eventError.code
         }, { status: 500 })
       }
 
+      log.info({ eventId: event.id, title: event.title, opportunityId }, 'Event created successfully')
+
       // 3. Copy event dates from opportunity to event
-      let createdEventDates = []
+      let createdEventDates: any[] = []
+      let eventDatesWarning: string | null = null
 
       if (opportunityEventDates.length > 0) {
         const eventDatesData = opportunityEventDates.map((date: any) => ({
           tenant_id: dataSourceTenantId,
           event_id: event.id,
-          location_id: date.location_id,
+          opportunity_id: null, // Explicitly set to null to satisfy constraint
+          location_id: date.location_id || null,
           event_date: date.event_date,
-          start_time: date.start_time,
-          end_time: date.end_time,
+          start_time: date.start_time || null,
+          end_time: date.end_time || null,
           setup_time: date.setup_time || null,
           notes: date.notes || null,
           status: 'scheduled',
@@ -287,17 +309,23 @@ export async function POST(
           updated_at: new Date().toISOString()
         }))
 
+        log.debug({ eventId: event.id, dateCount: eventDatesData.length }, 'Inserting event dates')
+
         const { data: datesData, error: datesError } = await supabase
           .from('event_dates')
           .insert(eventDatesData)
           .select()
 
         if (datesError) {
-          log.error({ datesError }, 'Error creating event dates')
-          // Don't fail the entire request, just log the error
+          log.error({ datesError, eventId: event.id }, 'Error creating event dates')
+          eventDatesWarning = `Event dates could not be copied: ${datesError.message}`
+          // Don't fail the entire request, the event was created successfully
         } else {
           createdEventDates = datesData || []
+          log.info({ eventId: event.id, createdCount: createdEventDates.length }, 'Event dates created successfully')
         }
+      } else {
+        log.debug({ eventId: event.id }, 'No event dates to copy from opportunity')
       }
 
       // 3.5. Execute workflows for this event type (if event_type_id was found)
@@ -442,6 +470,25 @@ export async function POST(
         }
       }
 
+      // Build success message with any warnings
+      let message = 'Opportunity successfully converted to event'
+      if (invoice) {
+        message += ' with invoice'
+      }
+
+      const warnings: string[] = []
+      if (eventDatesWarning) {
+        warnings.push(eventDatesWarning)
+      }
+
+      log.info({
+        eventId: event.id,
+        opportunityId,
+        invoiceCreated: !!invoice,
+        eventDatesCount: createdEventDates.length,
+        warnings: warnings.length > 0 ? warnings : undefined
+      }, 'Conversion completed successfully')
+
       const response = NextResponse.json({
         success: true,
         event,
@@ -453,7 +500,8 @@ export async function POST(
           converted_at: new Date().toISOString(),
           converted_event_id: event.id
         },
-        message: 'Opportunity successfully converted to event' + (invoice ? ' with invoice' : '')
+        message,
+        warnings: warnings.length > 0 ? warnings : undefined
       })
 
       // Add caching headers
