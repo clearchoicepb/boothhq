@@ -49,6 +49,7 @@ interface Invoice {
   total_amount: number
   paid_amount?: number
   balance_amount?: number
+  care_of?: string | null
   notes?: string
   line_items: InvoiceLineItem[]
   accounts?: Account
@@ -277,6 +278,12 @@ export default function PublicInvoicePage() {
                 {invoice.accounts && (
                   <>
                     <p className="text-lg font-bold mb-1">{invoice.accounts.name}</p>
+                    {invoice.care_of && (
+                      <p className="text-sm text-gray-600">C/O: {invoice.care_of}</p>
+                    )}
+                    {invoice.contacts && (
+                      <p className="text-sm text-gray-600">Attn: {invoice.contacts.first_name} {invoice.contacts.last_name}</p>
+                    )}
                     {invoice.accounts.email && (
                       <p className="text-sm text-gray-600">{invoice.accounts.email}</p>
                     )}
@@ -290,6 +297,9 @@ export default function PublicInvoicePage() {
                     <p className="text-lg font-bold mb-1">
                       {invoice.contacts.first_name} {invoice.contacts.last_name}
                     </p>
+                    {invoice.care_of && (
+                      <p className="text-sm text-gray-600">C/O: {invoice.care_of}</p>
+                    )}
                     {invoice.contacts.email && (
                       <p className="text-sm text-gray-600">{invoice.contacts.email}</p>
                     )}
