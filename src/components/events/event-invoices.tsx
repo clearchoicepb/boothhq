@@ -26,6 +26,8 @@ interface EventInvoicesProps {
   canCreate: boolean
   canEdit: boolean
   onRefresh: () => void
+  /** Event date for smart due date calculation (YYYY-MM-DD format) */
+  eventDate?: string | null
 }
 
 export function EventInvoices({
@@ -37,7 +39,8 @@ export function EventInvoices({
   tenantSubdomain,
   canCreate,
   canEdit,
-  onRefresh
+  onRefresh,
+  eventDate = null
 }: EventInvoicesProps) {
   const searchParams = useSearchParams()
   const invoiceIdFromUrl = searchParams?.get('invoice')
@@ -155,6 +158,7 @@ export function EventInvoices({
         isCreating={creatingInvoice}
         onClose={() => setIsCreatingInvoice(false)}
         onCreate={handleCreateInvoice}
+        eventDate={eventDate}
       />
 
       {activeInvoiceForPayment && (

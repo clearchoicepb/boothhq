@@ -69,7 +69,7 @@ export function InvoiceHeader({
             )}
           </div>
           <div className="text-sm text-gray-500">
-            Due: {new Date(invoice.due_date).toLocaleDateString()}
+            Due: {new Date(invoice.due_date + 'T00:00:00').toLocaleDateString()}
           </div>
         </div>
       </div>

@@ -400,6 +400,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                   canCreate={canManageEvents}
                   canEdit={canManageEvents}
                   onRefresh={refetchInvoices}
+                  eventDate={event.start_date || nextEventDate?.event_date || null}
                 />
               </TabsContent>
 

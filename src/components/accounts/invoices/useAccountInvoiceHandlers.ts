@@ -43,8 +43,6 @@ export function useAccountInvoiceHandlers({
   const handleCreateInvoice = async (data: NewInvoiceData) => {
     try {
       setCreatingInvoice(true)
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + parseInt(data.due_days))
 
       const response = await fetch('/api/invoices', {
         method: 'POST',
@@ -55,7 +53,7 @@ export function useAccountInvoiceHandlers({
           // No event_id for general invoices
           invoice_type: 'general',
           issue_date: data.issue_date,
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: data.due_date,
           subtotal: 0,
           tax_rate: parseFloat(data.tax_rate),
           tax_amount: 0,

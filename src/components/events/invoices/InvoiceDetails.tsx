@@ -14,6 +14,7 @@ interface InvoiceDetailsProps {
 /**
  * Displays and allows editing of invoice details:
  * - Issue date (editable)
+ * - Due date (editable)
  * - Tax rate (display only)
  * - Purchase order (editable)
  */
@@ -33,13 +34,25 @@ export function InvoiceDetails({
         <InlineEditField
           label="Issue Date"
           value={invoice.issue_date}
-          displayValue={new Date(invoice.issue_date).toLocaleDateString()}
+          displayValue={new Date(invoice.issue_date + 'T00:00:00').toLocaleDateString()}
           type="date"
           isEditing={editingField === `${invoice.id}-issue_date`}
           isLoading={savingField === `${invoice.id}-issue_date`}
           canEdit={canEdit}
           onStartEdit={() => onStartEdit(`${invoice.id}-issue_date`)}
           onSave={async (value) => { await onSaveField(invoice.id, 'issue_date', value) }}
+          onCancel={onCancelEdit}
+        />
+        <InlineEditField
+          label="Due Date"
+          value={invoice.due_date}
+          displayValue={new Date(invoice.due_date + 'T00:00:00').toLocaleDateString()}
+          type="date"
+          isEditing={editingField === `${invoice.id}-due_date`}
+          isLoading={savingField === `${invoice.id}-due_date`}
+          canEdit={canEdit}
+          onStartEdit={() => onStartEdit(`${invoice.id}-due_date`)}
+          onSave={async (value) => { await onSaveField(invoice.id, 'due_date', value) }}
           onCancel={onCancelEdit}
         />
         <div className="space-y-1">
