@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FileImage, Copy, Trash2, CheckCircle, Clock, XCircle, Eye, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -13,14 +13,31 @@ const log = createLogger('components:design-proofs-list')
 interface DesignProofsListProps {
   eventId: string
   refreshTrigger?: number
+  /** Optional proof ID to highlight (from notification deep link) */
+  highlightProofId?: string
 }
 
-export function DesignProofsList({ eventId, refreshTrigger = 0 }: DesignProofsListProps) {
+export function DesignProofsList({ eventId, refreshTrigger = 0, highlightProofId }: DesignProofsListProps) {
   const [proofs, setProofs] = useState<DesignProofWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { confirm } = useConfirmDialog()
+
+  // Ref for scrolling to highlighted proof
+  const highlightedProofRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to highlighted proof when proofs are loaded
+  useEffect(() => {
+    if (highlightProofId && proofs.length > 0 && highlightedProofRef.current) {
+      setTimeout(() => {
+        highlightedProofRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+      }, 300)
+    }
+  }, [highlightProofId, proofs])
 
   const fetchProofs = async () => {
     try {
@@ -150,11 +167,19 @@ export function DesignProofsList({ eventId, refreshTrigger = 0 }: DesignProofsLi
     <div className="mt-6">
       <h4 className="text-sm font-medium text-gray-700 mb-3">Design Proofs</h4>
       <div className="space-y-2">
-        {proofs.map((proof) => (
-          <div
-            key={proof.id}
-            className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
+        {proofs.map((proof) => {
+          const isHighlighted = highlightProofId === proof.id
+
+          return (
+            <div
+              key={proof.id}
+              ref={isHighlighted ? highlightedProofRef : null}
+              className={`flex items-center justify-between p-4 bg-white border rounded-lg transition-colors ${
+                isHighlighted
+                  ? 'ring-2 ring-[#347dc4] border-[#347dc4] bg-blue-50 animate-highlight-pulse'
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
             <div className="flex items-center min-w-0 flex-1">
               <FileImage className="h-5 w-5 text-purple-600 flex-shrink-0" />
               <div className="ml-3 min-w-0 flex-1">
@@ -214,7 +239,8 @@ export function DesignProofsList({ eventId, refreshTrigger = 0 }: DesignProofsLi
               </Button>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

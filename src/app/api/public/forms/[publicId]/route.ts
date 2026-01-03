@@ -169,6 +169,22 @@ export async function GET(
 }
 
 /**
+ * Map form template category to the appropriate staff role name
+ */
+function getStaffRoleForCategory(category: string | null): string {
+  switch (category) {
+    case 'design':
+      return 'Graphic Designer'
+    case 'logistics':
+    case 'survey':
+    case 'feedback':
+    case 'other':
+    default:
+      return 'Event Manager'
+  }
+}
+
+/**
  * POST /api/public/forms/[publicId]
  * Submit form responses (no auth required)
  */
@@ -193,10 +209,18 @@ export async function POST(
 
     const supabase = await getPublicSupabaseClient()
 
-    // Fetch form to verify it exists and is submittable
+    // Fetch form with template category to verify it exists and is submittable
     const { data: form, error: formError } = await supabase
       .from('event_forms')
-      .select('id, event_id, status, fields, tenant_id, name')
+      .select(`
+        id,
+        event_id,
+        status,
+        fields,
+        tenant_id,
+        name,
+        template:event_form_templates(category)
+      `)
       .eq('public_id', publicId)
       .single()
 
@@ -234,7 +258,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 })
     }
 
-    // Send notification to relevant staff (non-blocking)
+    // Send notification to relevant staff based on form category (non-blocking)
     try {
       // Get event title for notification message
       const { data: event } = await supabase
@@ -243,35 +267,127 @@ export async function POST(
         .eq('id', form.event_id)
         .single()
 
-      // Find tasks related to this event to determine who to notify
-      // Notify users who have tasks assigned for this event
-      const { data: eventTasks } = await supabase
-        .from('tasks')
-        .select('assigned_to')
-        .eq('entity_type', 'event')
-        .eq('entity_id', form.event_id)
-        .not('assigned_to', 'is', null)
+      // Determine which staff role should receive the notification based on form category
+      const templateCategory = (form.template as { category: string | null } | null)?.category || null
+      const targetRoleName = getStaffRoleForCategory(templateCategory)
 
-      if (eventTasks && eventTasks.length > 0) {
-        // Get unique assignees
-        const uniqueAssignees = [...new Set(eventTasks.map((t) => t.assigned_to))]
+      log.debug(
+        { formId: form.id, templateCategory, targetRoleName },
+        'Determining notification recipient based on form category'
+      )
 
-        // Create notification for each assignee
-        for (const assigneeId of uniqueAssignees) {
-          if (assigneeId) {
+      // Find staff assigned to this event with the appropriate role
+      const { data: staffAssignments } = await supabase
+        .from('event_staff_assignments')
+        .select(`
+          user_id,
+          staff_roles!inner(name)
+        `)
+        .eq('event_id', form.event_id)
+        .eq('staff_roles.name', targetRoleName)
+
+      let notifiedUserIds: string[] = []
+
+      if (staffAssignments && staffAssignments.length > 0) {
+        // Notify staff with the matching role
+        const uniqueStaffIds = [...new Set(staffAssignments.map((s) => s.user_id))]
+
+        for (const staffId of uniqueStaffIds) {
+          if (staffId) {
             await createNotification({
               supabase,
               tenantId: form.tenant_id,
-              userId: assigneeId,
+              userId: staffId,
               type: 'form_completed',
               title: `${form.name} completed`,
               message: `Form submitted for ${event?.title || 'event'}`,
               entityType: 'event',
               entityId: form.event_id,
-              linkUrl: `/events/${form.event_id}`,
+              linkUrl: `/events/${form.event_id}?tab=planning&section=forms&formId=${form.id}`,
               actorName: 'Client',
             })
+            notifiedUserIds.push(staffId)
           }
+        }
+
+        log.debug(
+          { notifiedCount: notifiedUserIds.length, roleName: targetRoleName },
+          'Notified staff based on form category'
+        )
+      }
+
+      // Fallback: If no staff with matching role found, try Event Manager
+      if (notifiedUserIds.length === 0 && targetRoleName !== 'Event Manager') {
+        const { data: eventManagerAssignments } = await supabase
+          .from('event_staff_assignments')
+          .select(`
+            user_id,
+            staff_roles!inner(name)
+          `)
+          .eq('event_id', form.event_id)
+          .eq('staff_roles.name', 'Event Manager')
+
+        if (eventManagerAssignments && eventManagerAssignments.length > 0) {
+          const uniqueManagerIds = [...new Set(eventManagerAssignments.map((s) => s.user_id))]
+
+          for (const managerId of uniqueManagerIds) {
+            if (managerId) {
+              await createNotification({
+                supabase,
+                tenantId: form.tenant_id,
+                userId: managerId,
+                type: 'form_completed',
+                title: `${form.name} completed`,
+                message: `Form submitted for ${event?.title || 'event'}`,
+                entityType: 'event',
+                entityId: form.event_id,
+                linkUrl: `/events/${form.event_id}?tab=planning&section=forms&formId=${form.id}`,
+                actorName: 'Client',
+              })
+              notifiedUserIds.push(managerId)
+            }
+          }
+
+          log.debug(
+            { notifiedCount: notifiedUserIds.length },
+            'Fallback: Notified Event Manager(s)'
+          )
+        }
+      }
+
+      // Final fallback: If still no one notified, use task-based approach
+      if (notifiedUserIds.length === 0) {
+        const { data: eventTasks } = await supabase
+          .from('tasks')
+          .select('assigned_to')
+          .eq('entity_type', 'event')
+          .eq('entity_id', form.event_id)
+          .not('assigned_to', 'is', null)
+
+        if (eventTasks && eventTasks.length > 0) {
+          const uniqueAssignees = [...new Set(eventTasks.map((t) => t.assigned_to))]
+
+          for (const assigneeId of uniqueAssignees) {
+            if (assigneeId) {
+              await createNotification({
+                supabase,
+                tenantId: form.tenant_id,
+                userId: assigneeId,
+                type: 'form_completed',
+                title: `${form.name} completed`,
+                message: `Form submitted for ${event?.title || 'event'}`,
+                entityType: 'event',
+                entityId: form.event_id,
+                linkUrl: `/events/${form.event_id}?tab=planning&section=forms&formId=${form.id}`,
+                actorName: 'Client',
+              })
+            }
+          }
+
+          log.debug(
+            { notifiedCount: uniqueAssignees.length },
+            'Final fallback: Notified task assignees'
+          )
         }
       }
     } catch (notifyError) {

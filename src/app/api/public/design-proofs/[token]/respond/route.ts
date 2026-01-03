@@ -134,7 +134,7 @@ export async function POST(
             : `Your design for ${event?.title || 'event'} needs revision`,
           entityType: 'event',
           entityId: proof.event_id,
-          linkUrl: `/events/${proof.event_id}?tab=design`,
+          linkUrl: `/events/${proof.event_id}?tab=files&section=proofs&proofId=${proof.id}`,
           actorName: clientName.trim(),
         })
       } catch (notifyError) {

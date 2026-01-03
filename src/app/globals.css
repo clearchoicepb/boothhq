@@ -341,6 +341,20 @@ header {
   }
 }
 
+/* Notification deep link highlight animation */
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(52, 125, 196, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(52, 125, 196, 0);
+  }
+}
+
+.animate-highlight-pulse {
+  animation: highlightPulse 1s ease-in-out 3;
+}
+
 /* Focus ring improvements */
 .focus-ring:focus {
   outline: none;

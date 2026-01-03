@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTenant } from '@/lib/tenant-context'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { FileText, Upload } from 'lucide-react'
 import Link from 'next/link'
@@ -51,8 +51,12 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
   const { hasPermission } = usePermissions()
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const tenantSubdomain = params.tenant as string
   const eventId = params.id as string
+
+  // Read deep link params for highlighting
+  const proofIdParam = searchParams?.get('proofId')
 
   // Custom Hooks
   const references = useEventReferences(tenantSubdomain)
@@ -437,6 +441,7 @@ export function EventDetailContent({ eventData }: EventDetailContentProps) {
                   <DesignProofsList
                     eventId={event.id}
                     refreshTrigger={detailModals.designProofsRefreshTrigger}
+                    highlightProofId={proofIdParam || undefined}
                   />
                 </div>
               </TabsContent>

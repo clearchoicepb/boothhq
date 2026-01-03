@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Clock, AlertCircle, Trash2, User } from 'lucide-react'
 import { TaskDetailModal } from './task-detail-modal'
@@ -76,18 +76,36 @@ interface TasksSectionProps {
   entityId?: string
   projectId?: string   // Direct FK for project tasks
   onRefresh?: () => void
+  /** Optional task ID to highlight (from notification deep link) */
+  highlightTaskId?: string
 }
 
-export function TasksSection({ entityType, entityId, projectId, onRefresh }: TasksSectionProps) {
+export function TasksSection({ entityType, entityId, projectId, onRefresh, highlightTaskId }: TasksSectionProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set())
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [dateFilter, setDateFilter] = useState<string>('all') // 'all', 'overall', or event_date_id
 
+  // Ref for scrolling to highlighted task
+  const highlightedTaskRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     fetchTasks()
   }, [entityType, entityId, projectId])
+
+  // Auto-scroll to highlighted task when tasks are loaded
+  useEffect(() => {
+    if (highlightTaskId && tasks.length > 0 && highlightedTaskRef.current) {
+      // Small delay to ensure the section is expanded and rendered
+      setTimeout(() => {
+        highlightedTaskRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+      }, 300)
+    }
+  }, [highlightTaskId, tasks])
 
   const fetchTasks = async () => {
     try {
@@ -229,14 +247,20 @@ export function TasksSection({ entityType, entityId, projectId, onRefresh }: Tas
   }
 
   // Helper to render a single task
-  const renderTask = (task: Task) => (
-    <div
-      key={task.id}
-      onClick={() => setSelectedTask(task)}
-      className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors ${
-        task.status === 'completed' ? 'opacity-60' : ''
-      }`}
-    >
+  const renderTask = (task: Task) => {
+    const isHighlighted = highlightTaskId === task.id
+
+    return (
+      <div
+        key={task.id}
+        ref={isHighlighted ? highlightedTaskRef : null}
+        onClick={() => setSelectedTask(task)}
+        className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+          isHighlighted
+            ? 'ring-2 ring-[#347dc4] bg-blue-50 animate-highlight-pulse'
+            : 'hover:bg-gray-50'
+        } ${task.status === 'completed' ? 'opacity-60' : ''}`}
+      >
       <button
         onClick={(e) => {
           e.stopPropagation()
@@ -280,7 +304,8 @@ export function TasksSection({ entityType, entityId, projectId, onRefresh }: Tas
         </div>
       </div>
     </div>
-  )
+    )
+  }
 
   if (tasks.length === 0) {
     return (
