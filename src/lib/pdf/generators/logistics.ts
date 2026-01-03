@@ -114,7 +114,10 @@ export async function generateLogisticsPdf(logistics: LogisticsData): Promise<js
   // Event Schedule Section
   addSection('Event Schedule')
   if (logistics.event_date) {
-    const eventDate = new Date(logistics.event_date).toLocaleDateString('en-US', {
+    // Handle date-only strings (YYYY-MM-DD) by appending T00:00:00 to treat as local time
+    // This prevents timezone conversion that would shift the date back a day
+    const dateStr = logistics.event_date.includes('T') ? logistics.event_date : `${logistics.event_date}T00:00:00`
+    const eventDate = new Date(dateStr).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',

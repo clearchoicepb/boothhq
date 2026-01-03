@@ -427,10 +427,94 @@ SENDGRID_API_KEY=
 2. **Never hardcode tenant IDs** - always get from context
 3. **API routes need authentication** - use `getTenantContext()`
 4. **React Query keys must be consistent** - use `queryKeys` helper
-5. **Date handling**: Use `date-fns` library for date manipulation
+5. **Date/Time handling**: See "Date & Time Handling" section below - times are LOCAL, no timezone conversions
 6. **Form validation**: Use Zod schemas from `src/lib/validators/`
 7. **Merge fields**: Use `{{field_name}}` syntax in templates
 8. **Logging**: Use `createLogger()` instead of `console.log()`
+
+## Date & Time Handling
+
+**CRITICAL**: This application treats all times as LOCAL. No timezone conversions should ever occur.
+
+### Key Principles
+1. Times are LOCAL - no timezone conversions ever
+2. When a user enters "2:00 PM" it must display as "2:00 PM" everywhere
+3. Dates should not shift due to UTC interpretation
+
+### Database Column Types
+- `DATE` - for date-only values (event_date)
+- `TIME` or `TIME WITHOUT TIME ZONE` - for time-only values (start_time, end_time, setup_time)
+- `TIMESTAMP WITH TIME ZONE` - ONLY for system timestamps (created_at, updated_at)
+- Never extract time from TIMESTAMPTZ columns
+
+### ✅ CORRECT Patterns
+
+**Displaying times:**
+```typescript
+// Use the existing utility - handles strings directly, no Date conversion
+import { formatTime } from '@/lib/utils/date-utils'
+const display = formatTime(event.start_time) // "5:30 PM"
+```
+
+**Displaying dates:**
+```typescript
+// For date-only strings (YYYY-MM-DD), prevent UTC shift by adding local midnight
+const dateString = "2026-01-03"
+const normalizedDate = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+const display = new Date(normalizedDate).toLocaleDateString('en-US', options)
+```
+
+**Saving times:**
+```typescript
+// Send as plain string - no Date object wrapping
+const payload = {
+  start_time: "17:30:00",  // or "5:30 PM" depending on input format
+  end_time: "21:30:00"
+}
+```
+
+**Saving dates:**
+```typescript
+// Send as plain YYYY-MM-DD string
+const payload = {
+  event_date: "2026-01-03"
+}
+```
+
+### ❌ WRONG Patterns - Never Do These
+
+**Never extract time from Date objects:**
+```typescript
+// WRONG - applies timezone conversion
+new Date(event.start_date).toLocaleTimeString('en-US', {...})
+```
+
+**Never parse date-only strings with Z suffix:**
+```typescript
+// WRONG - forces UTC, shifts date in US timezones
+new Date(dateString + 'T00:00:00Z')
+new Date('2026-01-03')  // Also interpreted as UTC
+```
+
+**Never use toISOString() for display:**
+```typescript
+// WRONG - converts to UTC
+const display = new Date(value).toISOString()
+```
+
+### Existing Utilities to Use
+- `formatTime()` from `@/lib/utils/date-utils.ts` - formats TIME strings for display
+- `formatDate()` from `@/lib/pdf/utils.ts` - formats dates for PDF (already fixed for timezone)
+
+### When Creating New Features
+1. Store times as TIME type in database
+2. Pass times as plain strings through API
+3. Display times using formatTime() utility
+4. For dates, always add `T00:00:00` (no Z) before creating Date objects
+5. Never use `new Date()` on time-only values
+
+### Reference
+See `docs/TIMEZONE_HANDLING_AUDIT.md` for the full audit of timezone handling in the codebase.
 
 ## Module-Specific Notes
 
@@ -497,6 +581,7 @@ Located in `docs/` directory:
 - `QUERY_KEY_CONVENTIONS.md` - Query key patterns
 - `SUBTASK_IMPLEMENTATION_PLAN.md` - Subtask feature design
 - `TENANT_ID_AUDIT.md` - Tenant ID usage patterns
+- `TIMEZONE_HANDLING_AUDIT.md` - Date/time handling patterns and fixes
 
 Also check root-level docs:
 - `DATABASE_ARCHITECTURE.md` - Detailed database separation docs
