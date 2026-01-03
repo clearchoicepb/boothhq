@@ -71,7 +71,10 @@ export function formatDate(
     month: 'long',
     day: 'numeric'
   }
-  return new Date(dateString).toLocaleDateString('en-US', options || defaultOptions)
+  // Handle date-only strings (YYYY-MM-DD) by appending T00:00:00 to treat as local time
+  // This prevents timezone conversion that would shift the date back a day
+  const normalizedDate = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+  return new Date(normalizedDate).toLocaleDateString('en-US', options || defaultOptions)
 }
 
 /**

@@ -8,9 +8,15 @@
 
 ## Executive Summary
 
-This audit identified timezone handling issues in the BoothHQ CRM application. The root cause was a **fallback pattern** in two logistics API routes that converted `TIMESTAMP WITH TIME ZONE` columns to time strings using `new Date().toLocaleTimeString()`, causing timezone shifts on the server.
+This audit identified timezone handling issues in the BoothHQ CRM application:
 
-**FIX APPLIED:** Removed the problematic fallback logic from both files. Times now come exclusively from `event_dates` table which uses timezone-unaware `TIME` columns.
+1. **API Time Extraction Bug:** Fallback pattern in logistics API routes converted `TIMESTAMP WITH TIME ZONE` columns to time strings using `new Date().toLocaleTimeString()`, causing timezone shifts.
+
+2. **PDF Date Shifting Bug:** PDF export used `new Date(dateString)` on date-only strings (YYYY-MM-DD), which JavaScript interprets as UTC midnight, causing dates to shift back one day in US timezones.
+
+**FIXES APPLIED:**
+- Removed problematic fallback logic from logistics API routes - times now come exclusively from `event_dates` table
+- Fixed PDF date formatting to treat date-only strings as local dates by appending `T00:00:00`
 
 ---
 
@@ -144,9 +150,30 @@ Time fields are parsed directly from HH:MM:SS format without Date conversion.
 
 **File:** `src/lib/pdf/generators/logistics.ts`
 
-Uses shared `formatTime()` utility which handles TIME strings correctly.
+- TIME handling: Uses shared `formatTime()` utility which handles TIME strings correctly.
+- DATE handling: **FIXED** - Was using `new Date(dateString)` on date-only strings which caused date shift.
 
-**Status:** CORRECT
+**Fix Applied:**
+```typescript
+// Before (broken):
+const eventDate = new Date(logistics.event_date).toLocaleDateString(...)
+
+// After (fixed):
+const dateStr = logistics.event_date.includes('T') ? logistics.event_date : `${logistics.event_date}T00:00:00`
+const eventDate = new Date(dateStr).toLocaleDateString(...)
+```
+
+**Status:** FIXED
+
+---
+
+### PDF Utilities
+
+**File:** `src/lib/pdf/utils.ts`
+
+The `formatDate()` utility was also updated to handle date-only strings safely.
+
+**Status:** FIXED
 
 ---
 
@@ -225,12 +252,14 @@ For any new time-related columns, always use:
 
 ---
 
-## 7. Files Requiring Changes
+## 7. Files Changed
 
-| File | Line | Change Required |
-|------|------|-----------------|
-| `src/app/api/events/[id]/logistics/route.ts` | 374-385 | Fix or remove fallback |
-| `src/app/api/public/logistics/[publicId]/route.ts` | 352-363 | Fix or remove fallback |
+| File | Line | Change | Status |
+|------|------|--------|--------|
+| `src/app/api/events/[id]/logistics/route.ts` | 374-377 | Removed time fallback | ✅ FIXED |
+| `src/app/api/public/logistics/[publicId]/route.ts` | 352-355 | Removed time fallback | ✅ FIXED |
+| `src/lib/pdf/generators/logistics.ts` | 117-126 | Fixed date-only string parsing | ✅ FIXED |
+| `src/lib/pdf/utils.ts` | 74-77 | Fixed formatDate() for date-only strings | ✅ FIXED |
 
 ---
 
@@ -254,12 +283,12 @@ For any new time-related columns, always use:
 
 | Category | Count | Details |
 |----------|-------|---------|
-| **Critical Bugs** | 2 | Logistics API routes with timezone conversion |
+| **Bugs Fixed** | 4 | 2 API routes (time extraction), 2 PDF files (date shifting) |
 | **Safe Utilities** | 3 | `formatTime()` in date-utils, EventLogistics, merge-fields |
 | **Lower Priority** | 3 | Date display using toLocaleDateString for event dates |
 
-**Next Steps:**
-1. Review this audit
-2. Decide on fix approach (Option A, B, or C)
-3. Implement fixes
-4. Test thoroughly across timezones
+**Completed:**
+1. ✅ Audit completed
+2. ✅ Fix approach: Option A (remove fallback) + PDF date fix
+3. ✅ All 4 files fixed and committed
+4. 🔲 Test thoroughly across timezones (recommended)
