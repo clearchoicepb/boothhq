@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { FormRenderer } from '@/components/event-forms/FormRenderer'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
 
 interface EventDateInfo {
@@ -129,6 +129,32 @@ export default function PublicFormPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
+        {/* Completed Banner */}
+        {isCompleted && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+            <CheckCircle className="h-8 w-8 text-green-600 flex-shrink-0" />
+            <div>
+              <h2 className="text-lg font-semibold text-green-800">
+                Form Completed
+              </h2>
+              <p className="text-sm text-green-700">
+                {form.completed_at && (
+                  <>
+                    Submitted on{' '}
+                    {new Date(form.completed_at).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Card container */}
         <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
           {/* Event info banner */}

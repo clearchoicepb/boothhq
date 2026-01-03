@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormFieldRenderer, FileUploadField } from './fields'
 import { CheckCircle, Loader2, Calendar, Copy } from 'lucide-react'
@@ -152,7 +152,19 @@ export function FormRenderer({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(status === 'completed')
+  const [showThankYou, setShowThankYou] = useState(false)
+  const [submittedResponses, setSubmittedResponses] = useState<FormResponses | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Auto-transition from "Thank You" to completed form view after 3 seconds
+  useEffect(() => {
+    if (showThankYou) {
+      const timer = setTimeout(() => {
+        setShowThankYou(false)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [showThankYou])
 
   // Handle field value change (for shared fields)
   const handleFieldChange = useCallback((fieldId: string, value: string | string[]) => {
@@ -322,7 +334,9 @@ export function FormRenderer({
       })
 
       await onSubmit(responses)
+      setSubmittedResponses(responses)
       setIsSubmitted(true)
+      setShowThankYou(true)
     } catch (error) {
       log.error({ error }, 'Form submission error')
     } finally {
@@ -330,8 +344,15 @@ export function FormRenderer({
     }
   }
 
-  // Submitted state
-  if (isSubmitted && !readOnly) {
+  // Determine if we should show the form in read-only mode
+  // This happens when: form was already completed (readOnly prop), or just submitted
+  const isEffectivelyReadOnly = readOnly || (isSubmitted && !showThankYou)
+
+  // Get the responses to display (either existing or just submitted)
+  const displayResponses = submittedResponses || existingResponses
+
+  // Show "Thank You" message briefly after submission
+  if (showThankYou) {
     return (
       <div className="text-center py-12">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
@@ -339,6 +360,7 @@ export function FormRenderer({
         </div>
         <h2 className="text-2xl font-semibold text-gray-900 mb-2">Thank You!</h2>
         <p className="text-gray-600">Your response has been submitted successfully.</p>
+        <p className="text-sm text-gray-400 mt-4">Showing your submitted responses...</p>
       </div>
     )
   }
@@ -375,8 +397,8 @@ export function FormRenderer({
             formId={formId}
             formType={formType}
             publicId={publicId}
-            disabled={readOnly || isSubmitting}
-            preview={readOnly}
+            disabled={isEffectivelyReadOnly || isSubmitting}
+            preview={isEffectivelyReadOnly}
             signedUrl={signedUrls[field.id] || null}
           />
         ) : (
@@ -384,7 +406,7 @@ export function FormRenderer({
             field={field}
             value={value}
             onChange={handleChange}
-            disabled={readOnly || isSubmitting}
+            disabled={isEffectivelyReadOnly || isSubmitting}
           />
         )}
         {errors[fieldKey] && (
@@ -471,7 +493,7 @@ export function FormRenderer({
                     return (
                       <div key={`${field.id}_${eventDate.id}`}>
                         {/* Same as first date checkbox (for dates after Day 1) */}
-                        {!isFirstDate && !readOnly && (
+                        {!isFirstDate && !isEffectivelyReadOnly && (
                           <div className="flex items-center gap-2 mb-2">
                             <input
                               type="checkbox"
@@ -500,10 +522,10 @@ export function FormRenderer({
                         )}
 
                         {/* Field (hidden if "same as first" is checked) */}
-                        {(!isSameAsFirst || readOnly) && renderField(field, eventDate.id)}
+                        {(!isSameAsFirst || isEffectivelyReadOnly) && renderField(field, eventDate.id)}
 
                         {/* Show copied value indicator when "same as first" is checked */}
-                        {isSameAsFirst && !readOnly && (
+                        {isSameAsFirst && !isEffectivelyReadOnly && (
                           <div className="text-sm text-gray-500 italic bg-gray-100 p-2 rounded">
                             Will use same value as Day 1
                           </div>
@@ -518,7 +540,7 @@ export function FormRenderer({
         )}
 
         {/* Submit Button */}
-        {showSubmitButton && !readOnly && (
+        {showSubmitButton && !isEffectivelyReadOnly && (
           <div className="pt-4">
             <Button
               type="submit"
@@ -540,10 +562,10 @@ export function FormRenderer({
       </form>
 
       {/* Read-only indicator */}
-      {readOnly && status === 'completed' && existingResponses?._submittedAt && (
+      {isEffectivelyReadOnly && displayResponses?._submittedAt && (
         <div className="mt-6 text-center text-sm text-gray-500">
           Submitted on{' '}
-          {new Date(existingResponses._submittedAt).toLocaleDateString('en-US', {
+          {new Date(displayResponses._submittedAt as string).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
