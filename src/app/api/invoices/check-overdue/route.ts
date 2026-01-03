@@ -16,11 +16,13 @@ export async function POST(request: NextRequest) {
 
     // Find all invoices that are past due
     // (due_date < today AND status not in ('draft', 'paid_in_full', 'cancelled', 'past_due'))
+    // Also require balance_amount > 0 to exclude fully paid invoices
     const { data: overdueInvoices, error: fetchError } = await supabase
       .from('invoices')
       .select('id, invoice_number, due_date, status')
       .eq('tenant_id', dataSourceTenantId)
       .lt('due_date', today)
+      .gt('balance_amount', 0)
       .in('status', ['no_payments_received', 'partially_paid'])
 
     if (fetchError) {
@@ -96,6 +98,7 @@ export async function GET(request: NextRequest) {
       .select('id, invoice_number, due_date, status, total_amount, balance_amount')
       .eq('tenant_id', dataSourceTenantId)
       .lt('due_date', today)
+      .gt('balance_amount', 0)
       .in('status', ['no_payments_received', 'partially_paid'])
 
     if (fetchError) {

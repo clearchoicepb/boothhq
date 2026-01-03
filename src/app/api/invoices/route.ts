@@ -48,19 +48,29 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status)
     }
 
-    // Filter for outstanding invoices (not paid or cancelled)
+    // Filter for outstanding invoices (not paid or cancelled, AND has balance > 0)
+    // Using balance_amount > 0 as the source of truth since status may not always be updated correctly
     if (showOutstanding) {
-      query = query.not('status', 'in', '("paid","cancelled")')
+      query = query
+        .not('status', 'in', '("paid","cancelled","paid_in_full")')
+        .gt('balance_amount', 0)
     }
 
-    // Filter by month (due_date in specific month)
+    // Filter by month (due_date in specific month + overdue invoices from previous months)
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
       const startDate = new Date(year, monthNum - 1, 1)
       const endDate = new Date(year, monthNum, 0) // Last day of month
       const startISO = startDate.toISOString().split('T')[0]
       const endISO = endDate.toISOString().split('T')[0]
-      query = query.gte('due_date', startISO).lte('due_date', endISO + 'T23:59:59.999Z')
+
+      // Include:
+      // 1. All invoices with due_date IN the selected month
+      // 2. PLUS all invoices from PREVIOUS months with outstanding balance (overdue)
+      // Using balance_amount > 0 as source of truth for unpaid invoices
+      query = query.or(
+        `and(due_date.gte.${startISO},due_date.lte.${endISO}T23:59:59.999Z),and(due_date.lt.${startISO},balance_amount.gt.0)`
+      )
     }
 
     // Apply sorting

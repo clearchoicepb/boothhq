@@ -9,7 +9,7 @@ const log = createLogger('api:payments-forecast')
 
 // Type for invoice query result (subset of columns selected)
 type InvoiceQueryResult = Pick<Tables<'invoices'>,
-  'id' | 'invoice_number' | 'account_id' | 'due_date' | 'total_amount' | 'status' | 'created_at'
+  'id' | 'invoice_number' | 'account_id' | 'due_date' | 'total_amount' | 'balance_amount' | 'status' | 'created_at'
 >
 
 export async function GET(request: NextRequest) {
@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
 
     if (isCurrentMonth) {
       // For current month: fetch invoices due in this month OR overdue (due before this month)
+      // Only include invoices with outstanding balance
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -49,17 +50,21 @@ export async function GET(request: NextRequest) {
           account_id,
           due_date,
           total_amount,
+          balance_amount,
           status,
           created_at
         `)
         .eq('tenant_id', dataSourceTenantId)
         .lte('due_date', monthEndISO + 'T23:59:59.999Z') // Due on or before end of current month
+        .gt('balance_amount', 0) // Only invoices with outstanding balance
+        .not('status', 'in', '("paid","cancelled","paid_in_full")') // Exclude paid/cancelled
         .order('due_date', { ascending: true })
 
       invoices = data || []
       invoicesError = error
     } else {
       // For future months: only fetch invoices due in that specific month
+      // Only include invoices with outstanding balance
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -68,12 +73,15 @@ export async function GET(request: NextRequest) {
           account_id,
           due_date,
           total_amount,
+          balance_amount,
           status,
           created_at
         `)
         .eq('tenant_id', dataSourceTenantId)
         .gte('due_date', monthStartISO)
         .lte('due_date', monthEndISO + 'T23:59:59.999Z')
+        .gt('balance_amount', 0) // Only invoices with outstanding balance
+        .not('status', 'in', '("paid","cancelled","paid_in_full")') // Exclude paid/cancelled
         .order('due_date', { ascending: true })
 
       invoices = data || []
