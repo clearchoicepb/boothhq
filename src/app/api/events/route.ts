@@ -94,10 +94,23 @@ export async function GET(request: NextRequest) {
           }
         })
 
-        // Calculate readiness using the new utility function
+        // Build a map of event IDs to their first event date
+        // Used to calculate readiness for pre-event tasks only
+        const eventDatesMap: Record<string, string | null> = {}
+        data?.forEach(event => {
+          // Get the first (earliest) event date
+          const sortedDates = (event.event_dates || [])
+            .map((d: any) => d.event_date)
+            .filter(Boolean)
+            .sort()
+          eventDatesMap[event.id] = sortedDates[0] || event.start_date || null
+        })
+
+        // Calculate readiness using the new utility function (only pre-event tasks)
         eventReadiness = calculateBulkEventReadiness(
           tasksData as TaskForReadiness[],
-          eventIds
+          eventIds,
+          eventDatesMap
         )
       }
     }

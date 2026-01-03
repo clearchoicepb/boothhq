@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
 import {
   calculateEventReadiness,
+  filterPreEventTasks,
   isTaskCompleted,
   type EventReadiness,
   type TaskForReadiness
@@ -17,18 +18,38 @@ import {
 import type { Event, EventTask } from '@/types/events'
 
 /**
+ * Get the first (earliest) event date from an event
+ * Used as the cutoff for pre-event task filtering
+ */
+function getFirstEventDate(event: Event): string | null {
+  // Try to get from event_dates first
+  if (event.event_dates && event.event_dates.length > 0) {
+    const sortedDates = event.event_dates
+      .map((d: any) => d.event_date)
+      .filter(Boolean)
+      .sort()
+    if (sortedDates[0]) return sortedDates[0]
+  }
+  // Fall back to start_date
+  return event.start_date || null
+}
+
+/**
  * Get event readiness from an Event object
  * Uses pre-calculated task_readiness if available, otherwise calculates from event_tasks
+ * Only counts pre-event tasks (tasks with due_date on or before the event date)
  */
 export function getEventReadiness(event: Event): EventReadiness {
   // If we have pre-calculated readiness from the API, use it
+  // The API now calculates this with pre-event task filtering
   if (event.task_readiness) {
     return event.task_readiness
   }
 
-  // Otherwise calculate from event_tasks
+  // Otherwise calculate from event_tasks (with pre-event filtering)
   if (event.event_tasks && event.event_tasks.length > 0) {
-    return calculateEventReadiness(event.event_tasks as TaskForReadiness[])
+    const eventDate = getFirstEventDate(event)
+    return calculateEventReadiness(event.event_tasks as TaskForReadiness[], eventDate)
   }
 
   // No task data available
@@ -42,15 +63,32 @@ export function getEventReadiness(event: Event): EventReadiness {
 }
 
 /**
- * Get incomplete tasks for an event
- * Useful for displaying which tasks need completion
+ * Get incomplete pre-event tasks for an event
+ * Only returns tasks with due_date on or before the event date
+ * Tasks with no due_date are included (assumed to be pre-event)
  */
 export function getIncompleteEventTasks(event: Event): EventTask[] {
   if (!event.event_tasks) {
     return []
   }
 
-  return event.event_tasks.filter(task => !isTaskCompleted(task.status))
+  const eventDate = getFirstEventDate(event)
+
+  // Filter to pre-event tasks first, then filter to incomplete
+  const preEventTasks = filterPreEventTasks(
+    event.event_tasks.map(t => ({
+      id: t.id,
+      status: t.status,
+      due_date: t.due_date
+    })),
+    eventDate
+  )
+
+  const preEventTaskIds = new Set(preEventTasks.map(t => t.id))
+
+  return event.event_tasks.filter(
+    task => preEventTaskIds.has(task.id) && !isTaskCompleted(task.status)
+  )
 }
 
 /**

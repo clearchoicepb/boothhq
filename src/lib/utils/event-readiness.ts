@@ -17,6 +17,7 @@ export interface TaskForReadiness {
   status: TaskStatus | string
   entity_type?: string | null
   entity_id?: string | null
+  due_date?: string | null
 }
 
 /**
@@ -48,23 +49,67 @@ export function isTaskCompleted(status: TaskStatus | string): boolean {
 }
 
 /**
+ * Filter tasks to only include pre-event tasks
+ * Pre-event tasks are those with due_date on or before the event date
+ * Tasks with no due_date are included (assumed to be pre-event)
+ *
+ * @param tasks - Array of tasks to filter
+ * @param eventDate - The event date to compare against (YYYY-MM-DD or ISO string)
+ * @returns Array of pre-event tasks only
+ */
+export function filterPreEventTasks(
+  tasks: TaskForReadiness[],
+  eventDate?: string | null
+): TaskForReadiness[] {
+  // If no event date provided, include all tasks
+  if (!eventDate) {
+    return tasks
+  }
+
+  // Normalize event date (add local midnight if needed to avoid timezone issues)
+  const normalizedEventDate = eventDate.includes('T') ? eventDate : `${eventDate}T00:00:00`
+  const eventDateObj = new Date(normalizedEventDate)
+
+  return tasks.filter(task => {
+    // Tasks with no due_date are included (assumed to be pre-event)
+    if (!task.due_date) {
+      return true
+    }
+
+    // Normalize task due date
+    const normalizedDueDate = task.due_date.includes('T') ? task.due_date : `${task.due_date}T00:00:00`
+    const dueDate = new Date(normalizedDueDate)
+
+    // Include tasks with due_date on or before event date
+    return dueDate <= eventDateObj
+  })
+}
+
+/**
  * Calculate event readiness from an array of tasks
+ * Only counts pre-event tasks (tasks with due_date on or before the event date)
  *
  * @param tasks - Array of tasks associated with the event
+ * @param eventDate - Optional event date to filter pre-event tasks only
  * @returns EventReadiness object with counts and percentage
  *
  * @example
  * const tasks = await supabase.from('tasks')
- *   .select('id, status')
+ *   .select('id, status, due_date')
  *   .eq('entity_type', 'event')
  *   .eq('entity_id', eventId)
  *
- * const readiness = calculateEventReadiness(tasks.data)
+ * const readiness = calculateEventReadiness(tasks.data, '2026-01-15')
  * console.log(readiness.percentage) // 75
  * console.log(readiness.isReady) // false
  */
-export function calculateEventReadiness(tasks: TaskForReadiness[]): EventReadiness {
-  const total = tasks.length
+export function calculateEventReadiness(
+  tasks: TaskForReadiness[],
+  eventDate?: string | null
+): EventReadiness {
+  // Filter to only pre-event tasks
+  const preEventTasks = filterPreEventTasks(tasks, eventDate)
+  const total = preEventTasks.length
 
   if (total === 0) {
     return {
@@ -76,7 +121,7 @@ export function calculateEventReadiness(tasks: TaskForReadiness[]): EventReadine
     }
   }
 
-  const completed = tasks.filter(task => isTaskCompleted(task.status)).length
+  const completed = preEventTasks.filter(task => isTaskCompleted(task.status)).length
   const percentage = Math.round((completed / total) * 100)
   const isReady = completed === total
 
@@ -91,23 +136,27 @@ export function calculateEventReadiness(tasks: TaskForReadiness[]): EventReadine
 
 /**
  * Calculate readiness for multiple events at once
+ * Only counts pre-event tasks (tasks with due_date on or before the event date)
  *
- * @param tasks - Array of all tasks with entity_id
+ * @param tasks - Array of all tasks with entity_id and due_date
  * @param eventIds - Array of event IDs to calculate readiness for
+ * @param eventDates - Optional map of eventId to event date (first event date)
  * @returns Map of eventId to EventReadiness
  *
  * @example
  * const tasks = await supabase.from('tasks')
- *   .select('id, status, entity_id')
+ *   .select('id, status, entity_id, due_date')
  *   .eq('entity_type', 'event')
  *   .in('entity_id', eventIds)
  *
- * const readinessMap = calculateBulkEventReadiness(tasks.data, eventIds)
+ * const eventDates = { 'event-123': '2026-01-15', 'event-456': '2026-02-20' }
+ * const readinessMap = calculateBulkEventReadiness(tasks.data, eventIds, eventDates)
  * readinessMap['event-123'] // { total: 5, completed: 3, percentage: 60, ... }
  */
 export function calculateBulkEventReadiness(
   tasks: TaskForReadiness[],
-  eventIds: string[]
+  eventIds: string[],
+  eventDates?: Record<string, string | null>
 ): Record<string, EventReadiness> {
   // Group tasks by event_id
   const tasksByEvent: Record<string, TaskForReadiness[]> = {}
@@ -124,10 +173,11 @@ export function calculateBulkEventReadiness(
     }
   }
 
-  // Calculate readiness for each event
+  // Calculate readiness for each event (only pre-event tasks)
   const result: Record<string, EventReadiness> = {}
   for (const eventId of eventIds) {
-    result[eventId] = calculateEventReadiness(tasksByEvent[eventId] || [])
+    const eventDate = eventDates?.[eventId] || null
+    result[eventId] = calculateEventReadiness(tasksByEvent[eventId] || [], eventDate)
   }
 
   return result

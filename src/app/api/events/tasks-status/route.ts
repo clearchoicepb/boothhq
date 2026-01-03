@@ -1,13 +1,15 @@
 import { getTenantContext } from '@/lib/tenant-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logger'
+import { filterPreEventTasks } from '@/lib/utils/event-readiness'
 
 const log = createLogger('api:events')
 /**
  * GET /api/events/tasks-status
- * 
+ *
  * Returns task status for multiple events efficiently
  * Used for red dot indicators on event cards/rows
+ * Only considers pre-event tasks (tasks with due_date on or before the event date)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -38,14 +40,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Fetch events to get their first event date (for filtering pre-event tasks)
+    const { data: events, error: eventsError } = await supabase
+      .from('events')
+      .select('id, start_date, event_dates(event_date)')
+      .in('id', eventIds)
+      .eq('tenant_id', dataSourceTenantId)
+
+    if (eventsError) {
+      log.error({ error: eventsError }, 'Error fetching events for task status')
+    }
+
+    // Build a map of event IDs to their first event date
+    const eventDatesMap: Record<string, string | null> = {}
+    events?.forEach(event => {
+      const sortedDates = (event.event_dates || [])
+        .map((d: any) => d.event_date)
+        .filter(Boolean)
+        .sort()
+      eventDatesMap[event.id] = sortedDates[0] || event.start_date || null
+    })
+
     // Calculate status for each event
     const now = new Date()
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
 
-    const taskStatus: Record<string, { 
+    const taskStatus: Record<string, {
       hasTasks: boolean
       isOverdue: boolean
-      isDueSoon: boolean 
+      isDueSoon: boolean
     }> = {}
 
     // Group tasks by event
@@ -55,10 +78,17 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, typeof tasks>)
 
-    // Determine status for each event
+    // Determine status for each event (only considering pre-event tasks)
     eventIds.forEach(eventId => {
-      const eventTasks = tasksByEvent[eventId] || []
-      
+      const allEventTasks = tasksByEvent[eventId] || []
+      const eventDate = eventDatesMap[eventId]
+
+      // Filter to only pre-event tasks
+      const eventTasks = filterPreEventTasks(
+        allEventTasks.map(t => ({ id: t.id, status: t.status, due_date: t.due_date })),
+        eventDate
+      )
+
       if (eventTasks.length === 0) {
         taskStatus[eventId] = { hasTasks: false, isOverdue: false, isDueSoon: false }
         return
@@ -69,9 +99,11 @@ export async function GET(request: NextRequest) {
 
       eventTasks.forEach(task => {
         if (!task.due_date) return
-        
-        const dueDate = new Date(task.due_date)
-        
+
+        // Normalize due date
+        const normalizedDueDate = task.due_date.includes('T') ? task.due_date : `${task.due_date}T00:00:00`
+        const dueDate = new Date(normalizedDueDate)
+
         if (dueDate < now) {
           hasOverdue = true
         } else if (dueDate <= tomorrow) {
@@ -88,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.json({ taskStatus })
     response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
-    
+
     return response
   } catch (error) {
     log.error({ error }, 'Error in events tasks-status API')
