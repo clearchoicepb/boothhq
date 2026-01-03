@@ -42,10 +42,23 @@ export interface EventReadiness {
 export const COMPLETED_STATUSES: Set<string> = new Set(['completed', 'approved'])
 
 /**
+ * Task statuses that should be excluded from readiness calculations
+ * (effectively deleted tasks)
+ */
+export const EXCLUDED_STATUSES: Set<string> = new Set(['cancelled'])
+
+/**
  * Check if a task status counts as completed
  */
 export function isTaskCompleted(status: TaskStatus | string): boolean {
   return COMPLETED_STATUSES.has(status)
+}
+
+/**
+ * Check if a task should be excluded from readiness calculations
+ */
+export function isTaskExcluded(status: TaskStatus | string): boolean {
+  return EXCLUDED_STATUSES.has(status)
 }
 
 /**
@@ -88,6 +101,7 @@ export function filterPreEventTasks(
 /**
  * Calculate event readiness from an array of tasks
  * Only counts pre-event tasks (tasks with due_date on or before the event date)
+ * Excludes cancelled tasks from the calculation
  *
  * @param tasks - Array of tasks associated with the event
  * @param eventDate - Optional event date to filter pre-event tasks only
@@ -107,8 +121,11 @@ export function calculateEventReadiness(
   tasks: TaskForReadiness[],
   eventDate?: string | null
 ): EventReadiness {
+  // Filter out cancelled/excluded tasks first
+  const activeTasks = tasks.filter(task => !isTaskExcluded(task.status))
+
   // Filter to only pre-event tasks
-  const preEventTasks = filterPreEventTasks(tasks, eventDate)
+  const preEventTasks = filterPreEventTasks(activeTasks, eventDate)
   const total = preEventTasks.length
 
   if (total === 0) {
@@ -186,12 +203,13 @@ export function calculateBulkEventReadiness(
 /**
  * Get tasks that are incomplete for an event
  * Useful for filtering/displaying incomplete tasks
+ * Excludes cancelled tasks
  *
  * @param tasks - Array of tasks for the event
- * @returns Array of incomplete tasks
+ * @returns Array of incomplete tasks (excludes cancelled)
  */
 export function getIncompleteTasks(tasks: TaskForReadiness[]): TaskForReadiness[] {
-  return tasks.filter(task => !isTaskCompleted(task.status))
+  return tasks.filter(task => !isTaskCompleted(task.status) && !isTaskExcluded(task.status))
 }
 
 /**

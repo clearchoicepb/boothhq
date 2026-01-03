@@ -12,6 +12,7 @@ import {
   calculateEventReadiness,
   filterPreEventTasks,
   isTaskCompleted,
+  isTaskExcluded,
   type EventReadiness,
   type TaskForReadiness
 } from '@/lib/utils/event-readiness'
@@ -66,6 +67,7 @@ export function getEventReadiness(event: Event): EventReadiness {
  * Get incomplete pre-event tasks for an event
  * Only returns tasks with due_date on or before the event date
  * Tasks with no due_date are included (assumed to be pre-event)
+ * Excludes cancelled tasks
  */
 export function getIncompleteEventTasks(event: Event): EventTask[] {
   if (!event.event_tasks) {
@@ -74,20 +76,22 @@ export function getIncompleteEventTasks(event: Event): EventTask[] {
 
   const eventDate = getFirstEventDate(event)
 
-  // Filter to pre-event tasks first, then filter to incomplete
+  // Filter to pre-event tasks first (excluding cancelled), then filter to incomplete
   const preEventTasks = filterPreEventTasks(
-    event.event_tasks.map(t => ({
-      id: t.id,
-      status: t.status,
-      due_date: t.due_date
-    })),
+    event.event_tasks
+      .filter(t => !isTaskExcluded(t.status)) // Exclude cancelled tasks
+      .map(t => ({
+        id: t.id,
+        status: t.status,
+        due_date: t.due_date
+      })),
     eventDate
   )
 
   const preEventTaskIds = new Set(preEventTasks.map(t => t.id))
 
   return event.event_tasks.filter(
-    task => preEventTaskIds.has(task.id) && !isTaskCompleted(task.status)
+    task => preEventTaskIds.has(task.id) && !isTaskCompleted(task.status) && !isTaskExcluded(task.status)
   )
 }
 

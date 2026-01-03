@@ -93,7 +93,12 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
     assignedTo: task.assigned_to || '',
     priority: task.priority,
     status: task.status,
-    dueDate: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
+    // Normalize date to avoid UTC timezone shift - extract YYYY-MM-DD directly from string
+    dueDate: task.due_date
+      ? (task.due_date.includes('T')
+          ? task.due_date.split('T')[0]
+          : task.due_date.substring(0, 10))
+      : '',
   })
 
   // Filter users by task department (Phase 2)
@@ -268,23 +273,33 @@ export function TaskDetailModal({ task, onClose, onUpdate, onDelete }: TaskDetai
               {task.event.start_date && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
-                  {new Date(task.event.start_date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
+                  {(() => {
+                    // Normalize date to avoid UTC timezone shift
+                    const dateStr = task.event.start_date!
+                    const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+                    return new Date(normalized).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })
+                  })()}
                 </span>
               )}
               {task.event.event_dates && task.event.event_dates.length > 0 && !task.event.start_date && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
-                  {new Date(task.event.event_dates[0].event_date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
+                  {(() => {
+                    // Normalize date to avoid UTC timezone shift
+                    const dateStr = task.event.event_dates![0].event_date
+                    const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+                    return new Date(normalized).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })
+                  })()}
                 </span>
               )}
             </div>
