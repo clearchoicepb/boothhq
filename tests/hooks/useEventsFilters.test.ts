@@ -19,7 +19,6 @@ const createMockEvent = (overrides: any = {}) => ({
   location: 'Test Location',
   account_name: 'Test Account',
   start_date: '2025-11-15',
-  status: 'scheduled',
   created_at: '2025-10-01',
   task_completions: [],
   ...overrides
@@ -46,17 +45,17 @@ describe('useEventsFilters', () => {
         searchTerm: '',
         dateRangeFilter: 'upcoming',
         customDaysFilter: null,
-        statusFilter: 'all',
         taskFilter: 'all',
         taskDateRangeFilter: 14,
-        selectedTaskIds: []
+        selectedTaskIds: [],
+        assignedToFilter: 'all'
       })
     })
 
     it('should initialize with custom filters', () => {
       const initialFilters: Partial<FilterState> = {
         searchTerm: 'test',
-        statusFilter: 'completed'
+        taskFilter: 'incomplete'
       }
 
       const { result } = renderHook(() =>
@@ -68,7 +67,7 @@ describe('useEventsFilters', () => {
       )
 
       expect(result.current.filters.searchTerm).toBe('test')
-      expect(result.current.filters.statusFilter).toBe('completed')
+      expect(result.current.filters.taskFilter).toBe('incomplete')
     })
 
     it('should initialize with default sortBy', () => {
@@ -237,50 +236,6 @@ describe('useEventsFilters', () => {
       })
 
       expect(result.current.filteredEvents).toHaveLength(1)
-    })
-  })
-
-  describe('status filter', () => {
-    it('should filter by status', () => {
-      const events = [
-        createMockEvent({ id: '1', status: 'scheduled' }),
-        createMockEvent({ id: '2', status: 'completed' }),
-        createMockEvent({ id: '3', status: 'cancelled' })
-      ]
-
-      const { result } = renderHook(() =>
-        useEventsFilters({ events, coreTasks: [] })
-      )
-
-      act(() => {
-        result.current.setFilters({
-          ...result.current.filters,
-          statusFilter: 'completed'
-        })
-      })
-
-      expect(result.current.filteredEvents).toHaveLength(1)
-      expect(result.current.filteredEvents[0].id).toBe('2')
-    })
-
-    it('should show all events when status is "all"', () => {
-      const events = [
-        createMockEvent({ id: '1', status: 'scheduled' }),
-        createMockEvent({ id: '2', status: 'completed' })
-      ]
-
-      const { result } = renderHook(() =>
-        useEventsFilters({ events, coreTasks: [] })
-      )
-
-      act(() => {
-        result.current.setFilters({
-          ...result.current.filters,
-          statusFilter: 'all'
-        })
-      })
-
-      expect(result.current.filteredEvents).toHaveLength(2)
     })
   })
 
@@ -468,22 +423,16 @@ describe('useEventsFilters', () => {
 
     it('should calculate filtered count', () => {
       const events = [
-        createMockEvent({ id: '1', status: 'scheduled' }),
-        createMockEvent({ id: '2', status: 'completed' }),
-        createMockEvent({ id: '3', status: 'scheduled' })
+        createMockEvent({ id: '1', start_date: '2025-11-15' }), // Future
+        createMockEvent({ id: '2', start_date: '2025-10-15' }), // Past
+        createMockEvent({ id: '3', start_date: '2025-11-20' })  // Future
       ]
 
       const { result } = renderHook(() =>
         useEventsFilters({ events, coreTasks: [] })
       )
 
-      act(() => {
-        result.current.setFilters({
-          ...result.current.filters,
-          statusFilter: 'scheduled'
-        })
-      })
-
+      // Default filter is 'upcoming', so only future events should be filtered
       expect(result.current.eventCounts.filtered).toBe(2)
     })
 
@@ -519,9 +468,9 @@ describe('useEventsFilters', () => {
   describe('combined filters', () => {
     it('should apply multiple filters together', () => {
       const events = [
-        createMockEvent({ id: '1', title: 'Birthday', status: 'scheduled', start_date: '2025-11-15' }),
-        createMockEvent({ id: '2', title: 'Birthday', status: 'completed', start_date: '2025-11-20' }),
-        createMockEvent({ id: '3', title: 'Wedding', status: 'scheduled', start_date: '2025-11-25' })
+        createMockEvent({ id: '1', title: 'Birthday Party', start_date: '2025-11-15' }),
+        createMockEvent({ id: '2', title: 'Birthday Celebration', start_date: '2025-11-20' }),
+        createMockEvent({ id: '3', title: 'Wedding', start_date: '2025-11-25' })
       ]
 
       const { result } = renderHook(() =>
@@ -532,13 +481,11 @@ describe('useEventsFilters', () => {
         result.current.setFilters({
           ...result.current.filters,
           searchTerm: 'birthday',
-          statusFilter: 'scheduled',
           dateRangeFilter: 'upcoming'
         })
       })
 
-      expect(result.current.filteredEvents).toHaveLength(1)
-      expect(result.current.filteredEvents[0].id).toBe('1')
+      expect(result.current.filteredEvents).toHaveLength(2)
     })
   })
 })

@@ -144,7 +144,6 @@ export function RelationshipManager({ recordId, recordType, tenantSubdomain }: R
             type: 'event',
             name: 'Product Demo',
             subtitle: '2024-01-15',
-            status: 'scheduled',
             url: `/${tenantSubdomain}/events/9`,
             relationship: 'demo_for'
           }

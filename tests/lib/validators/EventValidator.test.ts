@@ -262,7 +262,6 @@ describe('EventValidator', () => {
       event_type: 'conference',
       start_date: new Date('2025-12-01').toISOString(),
       end_date: new Date('2025-12-02').toISOString(),
-      status: 'upcoming',
       tenant_id: 'tenant-1',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -410,56 +409,6 @@ describe('EventValidator', () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors.some(e => e.includes('Description cannot exceed'))).toBe(true);
-    });
-  });
-
-  describe('validateStatusTransition', () => {
-    it('should allow valid status transitions', () => {
-      const validTransitions = [
-        { from: 'draft', to: 'upcoming' },
-        { from: 'draft', to: 'cancelled' },
-        { from: 'upcoming', to: 'in_progress' },
-        { from: 'upcoming', to: 'completed' },
-        { from: 'upcoming', to: 'cancelled' },
-        { from: 'in_progress', to: 'completed' },
-        { from: 'in_progress', to: 'cancelled' },
-      ];
-
-      validTransitions.forEach(({ from, to }) => {
-        const result = eventValidator.validateStatusTransition(from, to);
-        expect(result.isValid).toBe(true);
-      });
-    });
-
-    it('should allow same status (no change)', () => {
-      const result = eventValidator.validateStatusTransition('upcoming', 'upcoming');
-      expect(result.isValid).toBe(true);
-    });
-
-    it('should reject invalid status transitions', () => {
-      const invalidTransitions = [
-        { from: 'completed', to: 'upcoming' },
-        { from: 'completed', to: 'in_progress' },
-        { from: 'cancelled', to: 'upcoming' },
-        { from: 'cancelled', to: 'completed' },
-        { from: 'draft', to: 'in_progress' },
-        { from: 'draft', to: 'completed' },
-      ];
-
-      invalidTransitions.forEach(({ from, to }) => {
-        const result = eventValidator.validateStatusTransition(from, to);
-        expect(result.isValid).toBe(false);
-        expect(result.errors.length).toBeGreaterThan(0);
-      });
-    });
-
-    it('should provide helpful error messages', () => {
-      const result = eventValidator.validateStatusTransition('completed', 'upcoming');
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors[0]).toContain('Cannot transition');
-      expect(result.errors[0]).toContain('completed');
-      expect(result.errors[0]).toContain('upcoming');
     });
   });
 

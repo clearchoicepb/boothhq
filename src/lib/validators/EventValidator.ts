@@ -66,7 +66,6 @@ export class EventValidator {
     location?: string;
     account_id?: string;
     contact_id?: string;
-    status?: string;
   }): ValidationResult {
     const errors: string[] = [];
 
@@ -295,48 +294,6 @@ export class EventValidator {
     }
 
     return errors;
-  }
-
-  /**
-   * Validate status transition
-   *
-   * @param currentStatus - Current event status
-   * @param newStatus - New status to transition to
-   * @returns ValidationResult
-   */
-  validateStatusTransition(
-    currentStatus: string,
-    newStatus: string
-  ): ValidationResult {
-    const errors: string[] = [];
-
-    // Define valid status transitions
-    const validTransitions: Record<string, string[]> = {
-      'draft': ['upcoming', 'cancelled'],
-      'upcoming': ['in_progress', 'completed', 'cancelled'],
-      'in_progress': ['completed', 'cancelled'],
-      'completed': [], // Completed events cannot change status
-      'cancelled': [], // Cancelled events cannot change status
-    };
-
-    const allowedStatuses = validTransitions[currentStatus] || [];
-
-    if (currentStatus === newStatus) {
-      // No change - always valid
-      return { isValid: true, errors: [] };
-    }
-
-    if (!allowedStatuses.includes(newStatus)) {
-      errors.push(
-        `Cannot transition from '${currentStatus}' to '${newStatus}'. ` +
-        `Allowed transitions: ${allowedStatuses.join(', ') || 'none'}`
-      );
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
   }
 
   /**
