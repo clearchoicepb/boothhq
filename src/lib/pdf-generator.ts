@@ -177,7 +177,7 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
   doc.setFont('helvetica', 'normal')
 
   if (invoice.contact_name && invoice.account_name) {
-    doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
+    doc.text(`C/O: ${invoice.contact_name}`, margin, yPos)
     yPos += 5
   } else if (invoice.contact_name) {
     doc.setFontSize(11)
@@ -984,7 +984,7 @@ export const addInvoiceToDocument = (
   if (invoice.contact_name) {
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
+    doc.text(`C/O: ${invoice.contact_name}`, margin, yPos)
     yPos += 5
   }
 

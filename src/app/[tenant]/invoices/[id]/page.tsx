@@ -650,7 +650,7 @@ export default function InvoiceDetailPage() {
               <div className="text-gray-900">
                 <p className="text-lg font-bold mb-1">{invoice.account_name || invoice.contact_name || 'N/A'}</p>
                 {invoice.contact_name && invoice.account_name && (
-                  <p className="text-sm text-gray-600">Attn: {invoice.contact_name}</p>
+                  <p className="text-sm text-gray-600">C/O: {invoice.contact_name}</p>
                 )}
                 {invoice.opportunity_name && (
                   <p className="text-sm text-gray-600 mt-2">
