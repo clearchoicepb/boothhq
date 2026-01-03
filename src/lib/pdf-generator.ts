@@ -22,6 +22,7 @@ export interface InvoicePDFData {
     paid_amount: number | null
     balance_amount: number
     purchase_order: string | null
+    care_of: string | null
     payment_terms: string | null
     notes: string | null
     terms: string | null
@@ -53,19 +54,29 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
     }).format(amount)
   }
 
+  // Helper to format date-only strings without timezone shifting
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+    return new Date(normalized).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
   }
 
-  // Helper function to strip HTML tags and convert to plain text
+  // Helper function to convert HTML to plain text with proper formatting for PDFs
   const stripHtml = (html: string | null): string => {
     if (!html) return ''
-    // Remove HTML tags
-    let text = html.replace(/<[^>]*>/g, '')
+    let text = html
+    // Convert list items to bullet points with newlines
+    text = text.replace(/<li[^>]*>/gi, '\n• ')
+    text = text.replace(/<\/li>/gi, '')
+    // Convert block elements to newlines
+    text = text.replace(/<\/p>/gi, '\n')
+    text = text.replace(/<br\s*\/?>/gi, '\n')
+    text = text.replace(/<\/div>/gi, '\n')
+    // Remove remaining HTML tags
+    text = text.replace(/<[^>]*>/g, '')
     // Decode HTML entities
     text = text.replace(/&nbsp;/g, ' ')
     text = text.replace(/&amp;/g, '&')
@@ -73,8 +84,11 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
     text = text.replace(/&gt;/g, '>')
     text = text.replace(/&quot;/g, '"')
     text = text.replace(/&#39;/g, "'")
-    // Replace multiple spaces with single space
-    text = text.replace(/\s+/g, ' ')
+    // Clean up excess whitespace (but preserve intentional newlines)
+    text = text.replace(/[ \t]+/g, ' ')  // Collapse horizontal whitespace
+    text = text.replace(/\n +/g, '\n')   // Remove leading spaces after newlines
+    text = text.replace(/ +\n/g, '\n')   // Remove trailing spaces before newlines
+    text = text.replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
     return text.trim()
   }
 
@@ -162,6 +176,11 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
+
+  if (invoice.care_of) {
+    doc.text(`C/O: ${invoice.care_of}`, margin, yPos)
+    yPos += 5
+  }
 
   if (invoice.contact_name && invoice.account_name) {
     doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
@@ -509,25 +528,41 @@ export const generateQuotePDF = async (data: QuotePDFData): Promise<Buffer> => {
     }).format(amount)
   }
 
+  // Helper to format date-only strings without timezone shifting
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+    return new Date(normalized).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
   }
 
-  // Helper function to strip HTML tags and convert to plain text
+  // Helper function to convert HTML to plain text with proper formatting for PDFs
   const stripHtml = (html: string | null): string => {
     if (!html) return ''
-    let text = html.replace(/<[^>]*>/g, '')
+    let text = html
+    // Convert list items to bullet points with newlines
+    text = text.replace(/<li[^>]*>/gi, '\n• ')
+    text = text.replace(/<\/li>/gi, '')
+    // Convert block elements to newlines
+    text = text.replace(/<\/p>/gi, '\n')
+    text = text.replace(/<br\s*\/?>/gi, '\n')
+    text = text.replace(/<\/div>/gi, '\n')
+    // Remove remaining HTML tags
+    text = text.replace(/<[^>]*>/g, '')
+    // Decode HTML entities
     text = text.replace(/&nbsp;/g, ' ')
     text = text.replace(/&amp;/g, '&')
     text = text.replace(/&lt;/g, '<')
     text = text.replace(/&gt;/g, '>')
     text = text.replace(/&quot;/g, '"')
     text = text.replace(/&#39;/g, "'")
-    text = text.replace(/\s+/g, ' ')
+    // Clean up excess whitespace (but preserve intentional newlines)
+    text = text.replace(/[ \t]+/g, ' ')  // Collapse horizontal whitespace
+    text = text.replace(/\n +/g, '\n')   // Remove leading spaces after newlines
+    text = text.replace(/ +\n/g, '\n')   // Remove trailing spaces before newlines
+    text = text.replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
     return text.trim()
   }
 
@@ -898,8 +933,10 @@ export const addInvoiceToDocument = (
     }).format(amount)
   }
 
+  // Helper to format date-only strings without timezone shifting
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+    return new Date(normalized).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -947,6 +984,13 @@ export const addInvoiceToDocument = (
 
   if (invoice.account_name) {
     doc.text(invoice.account_name, margin, yPos)
+    yPos += 5
+  }
+
+  if (invoice.care_of) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`C/O: ${invoice.care_of}`, margin, yPos)
     yPos += 5
   }
 

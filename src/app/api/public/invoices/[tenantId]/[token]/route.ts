@@ -38,6 +38,7 @@ export async function GET(
         notes,
         paid_amount,
         balance_amount,
+        care_of,
         account_id,
         contact_id,
         event_id,

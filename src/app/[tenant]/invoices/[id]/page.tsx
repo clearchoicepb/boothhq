@@ -15,6 +15,12 @@ import toast from 'react-hot-toast'
 
 const log = createLogger('id')
 
+// Helper to format date-only strings without timezone shifting
+const formatDateLocal = (dateString: string, options?: Intl.DateTimeFormatOptions): string => {
+  const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+  return new Date(normalized).toLocaleDateString('en-US', options || { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
 interface InvoiceLineItem {
   id: string
   name: string
@@ -60,6 +66,7 @@ interface Invoice {
   paid_amount: number
   balance_amount: number
   purchase_order: string | null
+  care_of: string | null
   notes: string | null
   terms: string | null
   opportunity_name: string | null
@@ -643,6 +650,9 @@ export default function InvoiceDetailPage() {
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bill To</h3>
               <div className="text-gray-900">
                 <p className="text-lg font-bold mb-1">{invoice.account_name || invoice.contact_name || 'N/A'}</p>
+                {invoice.care_of && (
+                  <p className="text-sm text-gray-600">C/O: {invoice.care_of}</p>
+                )}
                 {invoice.contact_name && invoice.account_name && (
                   <p className="text-sm text-gray-600">Attn: {invoice.contact_name}</p>
                 )}
@@ -660,16 +670,16 @@ export default function InvoiceDetailPage() {
                 {invoice.event_date && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Event Date</p>
-                    <p className="text-base font-semibold text-gray-900">{new Date(invoice.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-base font-semibold text-gray-900">{formatDateLocal(invoice.event_date)}</p>
                   </div>
                 )}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</p>
-                  <p className="text-base font-semibold text-gray-900">{new Date(invoice.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-base font-semibold text-gray-900">{formatDateLocal(invoice.issue_date)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</p>
-                  <p className="text-base font-semibold text-gray-900">{new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-base font-semibold text-gray-900">{formatDateLocal(invoice.due_date)}</p>
                 </div>
                 {invoice.purchase_order && (
                   <div>

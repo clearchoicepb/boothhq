@@ -10,9 +10,16 @@ import { ArrowLeft, Download, Send, Edit, Trash2, CheckCircle, X } from 'lucide-
 import { useQueryClient } from '@tanstack/react-query'
 import { useQuote } from '@/hooks/useQuote'
 import { createLogger } from '@/lib/logger'
+import { sanitizeHtml } from '@/lib/sanitize'
 import toast from 'react-hot-toast'
 
 const log = createLogger('id')
+
+// Helper to format date-only strings without timezone shifting
+const formatDateLocal = (dateString: string): string => {
+  const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+  return new Date(normalized).toLocaleDateString()
+}
 
 interface QuoteLineItem {
   id: string
@@ -268,11 +275,11 @@ export default function QuoteDetailPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Issue Date</p>
-              <p className="font-semibold text-gray-900">{new Date(quote.issue_date).toLocaleDateString()}</p>
+              <p className="font-semibold text-gray-900">{formatDateLocal(quote.issue_date)}</p>
               {quote.valid_until && (
                 <>
                   <p className="text-sm text-gray-600 mt-2">Valid Until</p>
-                  <p className="font-semibold text-gray-900">{new Date(quote.valid_until).toLocaleDateString()}</p>
+                  <p className="font-semibold text-gray-900">{formatDateLocal(quote.valid_until)}</p>
                 </>
               )}
             </div>
@@ -306,7 +313,10 @@ export default function QuoteDetailPage() {
                     <td className="py-3">
                       <p className="text-gray-900 font-medium">{item.name}</p>
                       {item.description && (
-                        <p className="text-sm text-gray-500">{item.description}</p>
+                        <div
+                          className="text-sm text-gray-500 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
+                        />
                       )}
                     </td>
                     <td className="py-3 text-right text-gray-900">{item.quantity}</td>

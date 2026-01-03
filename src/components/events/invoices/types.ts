@@ -16,6 +16,7 @@ export interface Invoice {
   due_date: string
   issue_date: string
   purchase_order: string | null
+  care_of: string | null
   notes: string | null
   terms: string | null
   paid_amount: number
