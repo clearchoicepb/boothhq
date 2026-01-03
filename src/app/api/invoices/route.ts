@@ -14,6 +14,10 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id')
     const accountId = searchParams.get('account_id')
     const invoiceType = searchParams.get('invoice_type') // 'event' | 'general' | null (all)
+    const sortBy = searchParams.get('sort_by') || 'created_at'
+    const sortOrder = searchParams.get('sort_order') || 'desc'
+    const showOutstanding = searchParams.get('outstanding') === 'true'
+    const month = searchParams.get('month') // Format: YYYY-MM
 
     let query = supabase
       .from('invoices')
@@ -24,7 +28,6 @@ export async function GET(request: NextRequest) {
         events!invoices_event_id_fkey(id, title, event_type)
       `)
       .eq('tenant_id', dataSourceTenantId)
-      .order('created_at', { ascending: false })
 
     // Filter by event_id if provided
     if (eventId) {
@@ -44,6 +47,26 @@ export async function GET(request: NextRequest) {
     if (status !== 'all') {
       query = query.eq('status', status)
     }
+
+    // Filter for outstanding invoices (not paid or cancelled)
+    if (showOutstanding) {
+      query = query.not('status', 'in', '("paid","cancelled")')
+    }
+
+    // Filter by month (due_date in specific month)
+    if (month) {
+      const [year, monthNum] = month.split('-').map(Number)
+      const startDate = new Date(year, monthNum - 1, 1)
+      const endDate = new Date(year, monthNum, 0) // Last day of month
+      const startISO = startDate.toISOString().split('T')[0]
+      const endISO = endDate.toISOString().split('T')[0]
+      query = query.gte('due_date', startISO).lte('due_date', endISO + 'T23:59:59.999Z')
+    }
+
+    // Apply sorting
+    const validSortFields = ['created_at', 'due_date', 'issue_date', 'total_amount', 'invoice_number']
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at'
+    query = query.order(sortField, { ascending: sortOrder === 'asc' })
 
     const { data, error } = await query
 
