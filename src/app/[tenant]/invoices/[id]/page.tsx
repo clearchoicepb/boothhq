@@ -66,6 +66,7 @@ interface Invoice {
   paid_amount: number
   balance_amount: number
   purchase_order: string | null
+  care_of: string | null
   notes: string | null
   terms: string | null
   opportunity_name: string | null
@@ -649,8 +650,11 @@ export default function InvoiceDetailPage() {
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bill To</h3>
               <div className="text-gray-900">
                 <p className="text-lg font-bold mb-1">{invoice.account_name || invoice.contact_name || 'N/A'}</p>
+                {invoice.care_of && (
+                  <p className="text-sm text-gray-600">C/O: {invoice.care_of}</p>
+                )}
                 {invoice.contact_name && invoice.account_name && (
-                  <p className="text-sm text-gray-600">C/O: {invoice.contact_name}</p>
+                  <p className="text-sm text-gray-600">Attn: {invoice.contact_name}</p>
                 )}
                 {invoice.opportunity_name && (
                   <p className="text-sm text-gray-600 mt-2">

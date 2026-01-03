@@ -57,6 +57,18 @@ export function InvoiceDetails({
           onSave={async (value) => { await onSaveField(invoice.id, 'purchase_order', value) }}
           onCancel={onCancelEdit}
         />
+        <InlineEditField
+          label="C/O (Care Of)"
+          value={invoice.care_of || ''}
+          type="text"
+          placeholder="e.g., Accounts Payable Dept"
+          isEditing={editingField === `${invoice.id}-care_of`}
+          isLoading={savingField === `${invoice.id}-care_of`}
+          canEdit={canEdit}
+          onStartEdit={() => onStartEdit(`${invoice.id}-care_of`)}
+          onSave={async (value) => { await onSaveField(invoice.id, 'care_of', value) }}
+          onCancel={onCancelEdit}
+        />
       </div>
     </div>
   )

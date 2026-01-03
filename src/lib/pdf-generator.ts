@@ -22,6 +22,7 @@ export interface InvoicePDFData {
     paid_amount: number | null
     balance_amount: number
     purchase_order: string | null
+    care_of: string | null
     payment_terms: string | null
     notes: string | null
     terms: string | null
@@ -176,8 +177,13 @@ export const generateInvoicePDF = async (data: InvoicePDFData): Promise<Buffer> 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
 
+  if (invoice.care_of) {
+    doc.text(`C/O: ${invoice.care_of}`, margin, yPos)
+    yPos += 5
+  }
+
   if (invoice.contact_name && invoice.account_name) {
-    doc.text(`C/O: ${invoice.contact_name}`, margin, yPos)
+    doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
     yPos += 5
   } else if (invoice.contact_name) {
     doc.setFontSize(11)
@@ -981,10 +987,17 @@ export const addInvoiceToDocument = (
     yPos += 5
   }
 
+  if (invoice.care_of) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`C/O: ${invoice.care_of}`, margin, yPos)
+    yPos += 5
+  }
+
   if (invoice.contact_name) {
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.text(`C/O: ${invoice.contact_name}`, margin, yPos)
+    doc.text(`Attn: ${invoice.contact_name}`, margin, yPos)
     yPos += 5
   }
 
