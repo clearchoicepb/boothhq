@@ -59,18 +59,6 @@ export const eventFormConfig: FormConfig<Event> = {
       gridCols: 2
     },
     {
-      name: 'status',
-      type: 'select',
-      label: 'Status',
-      options: [
-        { value: 'scheduled', label: 'Scheduled' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Completed' },
-        { value: 'cancelled', label: 'Cancelled' }
-      ],
-      gridCols: 1
-    },
-    {
       name: 'account_id',
       type: 'select',
       label: 'Account',
@@ -130,7 +118,6 @@ export const eventFormConfig: FormConfig<Event> = {
     }
   ],
   defaultValues: {
-    status: 'scheduled',
     event_type: 'other',
     tenant_id: ''
   }

@@ -116,7 +116,6 @@ interface PublicEventData {
     id: string
     title: string
     event_type: string
-    status?: string
     guest_count?: number | null
   }
   client: {

@@ -69,7 +69,6 @@ export interface EventOccurringRecord {
   eventType: string | null
   eventCategory: string | null
   eventCategoryColor: string | null
-  status: string
 }
 
 export interface EventBookedRecord {

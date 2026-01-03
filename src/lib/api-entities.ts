@@ -200,21 +200,11 @@ export const entityConfigs: Record<string, EntityConfig> = {
     transformRequest: (data) => {
       // Transform request data to match database constraints
       const transformed = { ...data }
-      
-      // Convert invalid status values to valid ones
-      if (transformed.status === 'upcoming') {
-        transformed.status = 'scheduled'
-      }
-      
-      // Ensure required fields have defaults
-      if (!transformed.status) {
-        transformed.status = 'scheduled'
-      }
-      
+
       // Convert empty date strings to null
       if (transformed.start_date === '') transformed.start_date = null
       if (transformed.end_date === '') transformed.end_date = null
-      
+
       return transformed
     },
     transformResponse: (data) => {

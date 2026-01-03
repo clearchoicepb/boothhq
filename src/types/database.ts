@@ -319,7 +319,6 @@ export interface Database {
           end_date: string | null
           location: string | null
           location_id: string | null
-          status: string
           payment_status: string | null
           event_value: string | null
           guest_count: number | null
@@ -366,7 +365,6 @@ export interface Database {
           end_date?: string | null
           location?: string | null
           location_id?: string | null
-          status?: string
           payment_status?: string | null
           event_value?: string | null
           guest_count?: number | null
@@ -413,7 +411,6 @@ export interface Database {
           end_date?: string | null
           location?: string | null
           location_id?: string | null
-          status?: string
           payment_status?: string | null
           event_value?: string | null
           guest_count?: number | null

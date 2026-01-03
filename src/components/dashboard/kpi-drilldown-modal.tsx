@@ -103,9 +103,6 @@ function EventsOccurringTable({
           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Type
           </th>
-          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Status
-          </th>
         </tr>
       </thead>
       <tbody className="bg-white divide-y divide-gray-200">
@@ -153,17 +150,6 @@ function EventsOccurringTable({
               ) : (
                 <span className="text-gray-400 text-xs">No type</span>
               )}
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap">
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                record.status === 'completed' ? 'bg-green-100 text-green-800' :
-                record.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                record.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                record.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {record.status}
-              </span>
             </td>
           </tr>
         ))}

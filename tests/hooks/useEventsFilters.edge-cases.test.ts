@@ -14,7 +14,6 @@ const createMockEvent = (overrides: any = {}) => ({
   location: 'Test Location',
   account_name: 'Test Account',
   start_date: '2025-11-15',
-  status: 'scheduled',
   created_at: '2025-10-01',
   task_completions: [],
   ...overrides
@@ -387,68 +386,12 @@ describe('useEventsFilters - Edge Cases', () => {
       })
     })
 
-    describe('status filter edge cases', () => {
-      it('should handle null status', () => {
-        const events = [
-          createMockEvent({ id: '1', status: null }),
-          createMockEvent({ id: '2', status: 'scheduled' })
-        ]
-
-        const { result } = renderHook(() =>
-          useEventsFilters({
-            events,
-            coreTasks: [],
-            initialFilters: { statusFilter: 'all' }
-          })
-        )
-
-        expect(result.current.sortedEvents).toHaveLength(2)
-      })
-
-      it('should handle undefined status', () => {
-        const events = [
-          createMockEvent({ id: '1', status: undefined }),
-          createMockEvent({ id: '2', status: 'completed' })
-        ]
-
-        const { result } = renderHook(() =>
-          useEventsFilters({
-            events,
-            coreTasks: [],
-            initialFilters: { statusFilter: 'all' }
-          })
-        )
-
-        expect(result.current.sortedEvents).toHaveLength(2)
-      })
-
-      it('should handle case-insensitive status matching', () => {
-        const events = [
-          createMockEvent({ id: '1', status: 'SCHEDULED' }),
-          createMockEvent({ id: '2', status: 'scheduled' }),
-          createMockEvent({ id: '3', status: 'Scheduled' })
-        ]
-
-        const { result } = renderHook(() =>
-          useEventsFilters({
-            events,
-            coreTasks: [],
-            initialFilters: { statusFilter: 'scheduled' }
-          })
-        )
-
-        // All should match regardless of case
-        expect(result.current.sortedEvents.length).toBeGreaterThanOrEqual(1)
-      })
-    })
-
     describe('combined filters stress test', () => {
       it('should handle all filters active simultaneously', () => {
         const events = [
           createMockEvent({
             id: '1',
             title: 'Alpha Event',
-            status: 'scheduled',
             start_date: '2025-11-15',
             account_name: 'Acme Corp',
             task_completions: []
@@ -456,7 +399,6 @@ describe('useEventsFilters - Edge Cases', () => {
           createMockEvent({
             id: '2',
             title: 'Bravo Event',
-            status: 'completed',
             start_date: '2025-11-20',
             account_name: 'Beta Inc',
             task_completions: []
@@ -469,7 +411,6 @@ describe('useEventsFilters - Edge Cases', () => {
             coreTasks: [],
             initialFilters: {
               searchTerm: 'event',
-              statusFilter: 'scheduled',
               dateRangeFilter: 'upcoming'
             },
             initialSortBy: 'title_asc'
@@ -482,8 +423,8 @@ describe('useEventsFilters - Edge Cases', () => {
 
       it('should update results when multiple filters change', () => {
         const events = [
-          createMockEvent({ id: '1', title: 'Alpha', status: 'scheduled' }),
-          createMockEvent({ id: '2', title: 'Bravo', status: 'completed' })
+          createMockEvent({ id: '1', title: 'Alpha', start_date: '2025-11-15' }),
+          createMockEvent({ id: '2', title: 'Bravo', start_date: '2025-11-20' })
         ]
 
         const { result } = renderHook(() =>
@@ -493,8 +434,7 @@ describe('useEventsFilters - Edge Cases', () => {
         act(() => {
           result.current.setFilters({
             ...result.current.filters,
-            searchTerm: 'alpha',
-            statusFilter: 'scheduled'
+            searchTerm: 'alpha'
           })
         })
 

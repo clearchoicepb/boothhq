@@ -48,8 +48,7 @@ export const eventSchema = z.object({
   event_date: z.string().optional(),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
-  location: z.string().optional(),
-  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional()
+  location: z.string().optional()
 })
 
 // Lead validation schema

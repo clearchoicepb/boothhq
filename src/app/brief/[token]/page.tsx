@@ -69,7 +69,6 @@ interface StaffBriefData {
     id: string
     title: string
     event_type: string
-    status?: string
   }
   customer: {
     name: string | null

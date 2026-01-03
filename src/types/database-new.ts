@@ -454,7 +454,6 @@ export interface Database {
           start_time: string | null
           end_time: string | null
           duration_hours: number | null
-          status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
           venue_name: string | null
           venue_address: Json | null
           guest_count: number | null
@@ -483,7 +482,6 @@ export interface Database {
           start_time?: string | null
           end_time?: string | null
           duration_hours?: number | null
-          status?: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
           venue_name?: string | null
           venue_address?: Json | null
           guest_count?: number | null
@@ -512,7 +510,6 @@ export interface Database {
           start_time?: string | null
           end_time?: string | null
           duration_hours?: number | null
-          status?: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
           venue_name?: string | null
           venue_address?: Json | null
           guest_count?: number | null
