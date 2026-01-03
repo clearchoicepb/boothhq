@@ -349,18 +349,10 @@ export async function GET(
       // Section 2: Schedule
       event_date: eventDate.event_date,
       setup_time: eventDate.setup_time || null,
-      start_time: eventDate.start_time ||
-        (event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }) : null),
-      end_time: eventDate.end_time ||
-        (event.end_date ? new Date(event.end_date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }) : null),
+      // Times are stored as plain TIME (no timezone) in event_dates
+      // Do NOT extract time from TIMESTAMPTZ columns as that causes timezone conversion
+      start_time: eventDate.start_time || null,
+      end_time: eventDate.end_time || null,
 
       // Section 3: Location
       location: locationData,

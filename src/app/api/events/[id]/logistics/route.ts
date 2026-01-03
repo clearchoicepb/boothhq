@@ -371,18 +371,10 @@ export async function GET(
       event_date: targetEventDate?.event_date || null,
       event_date_id: targetEventDate?.id || null,
       setup_time: targetEventDate?.setup_time || null,
-      start_time: targetEventDate?.start_time ||
-        (event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }) : null),
-      end_time: targetEventDate?.end_time ||
-        (event.end_date ? new Date(event.end_date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }) : null),
+      // Times are stored as plain TIME (no timezone) in event_dates
+      // Do NOT extract time from TIMESTAMPTZ columns as that causes timezone conversion
+      start_time: targetEventDate?.start_time || null,
+      end_time: targetEventDate?.end_time || null,
 
       // Section 3: Location
       location: locationData,
