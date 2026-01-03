@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout/app-layout'
 import { createLogger } from '@/lib/logger'
+import { getStageName } from '@/lib/utils/stage-utils'
 
 const log = createLogger('reports')
 import {
@@ -67,6 +68,7 @@ export default function ReportsPage() {
   const [stageData, setStageData] = useState<StageData[]>([])
   const [ownerPerformance, setOwnerPerformance] = useState<OwnerPerformance[]>([])
   const [recentWins, setRecentWins] = useState<RecentWin[]>([])
+  const [opportunityStages, setOpportunityStages] = useState<any[]>([])
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -120,6 +122,11 @@ export default function ReportsPage() {
       const startDate = getDateRangeFilter()
       const dateFilter = startDate ? `&created_at=gte.${startDate.toISOString()}` : ''
 
+      // Fetch opportunity stages from settings
+      const stagesResponse = await fetch('/api/settings/opportunity-stages')
+      const stages = stagesResponse.ok ? await stagesResponse.json() : []
+      setOpportunityStages(stages)
+
       // Fetch all opportunities
       const response = await fetch(`/api/opportunities?limit=1000${dateFilter}`)
       if (!response.ok) throw new Error('Failed to fetch opportunities')
@@ -164,9 +171,12 @@ export default function ReportsPage() {
         })
       })
 
+      // Build settings object for getStageName lookup
+      const stageSettings = { opportunities: { stages } }
+
       const stageBreakdown = Array.from(stageMap.entries())
         .map(([stage, data]) => ({
-          stage: stage.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          stage: getStageName(stage, stageSettings),
           count: data.count,
           value: data.value
         }))
