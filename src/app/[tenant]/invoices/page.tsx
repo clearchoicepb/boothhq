@@ -57,7 +57,10 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState<'all' | 'event' | 'general'>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('outstanding')
-  const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
   const [showMonthDropdown, setShowMonthDropdown] = useState(false)
   const [showViewDropdown, setShowViewDropdown] = useState(false)
 
@@ -484,31 +487,31 @@ export default function InvoicesPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                         Invoice #
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px] max-w-[160px]">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px] max-w-[140px]">
                         Client
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                         Due Date
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[90px]">
                         Total
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[90px]">
                         Paid
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[90px]">
                         Balance
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[80px]">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[70px]">
                         Actions
                       </th>
                     </tr>
@@ -527,8 +530,8 @@ export default function InvoicesPage() {
                           key={invoice.id}
                           className={`hover:bg-gray-50 transition-colors ${isOverdue ? 'bg-red-50' : ''}`}
                         >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
+                          <td className="px-4 py-4 whitespace-nowrap w-[100px]">
+                            <div className="flex items-center gap-1">
                               <Link
                                 href={`/${tenantSubdomain}/invoices/${invoice.id}`}
                                 className="text-sm font-medium text-[#347dc4] hover:text-[#2c6aa3]"
@@ -536,61 +539,62 @@ export default function InvoicesPage() {
                                 {invoice.invoice_number}
                               </Link>
                               {isOverdue && (
-                                <span className="text-xs text-red-600 font-medium">(Overdue)</span>
+                                <span className="text-xs text-red-600 font-medium">!</span>
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 w-[160px] max-w-[160px]">
                             {isGeneral ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                <FileText className="h-3 w-3" />
+                                <FileText className="h-3 w-3 flex-shrink-0" />
                                 General
                               </span>
                             ) : invoice.event ? (
                               <Link
                                 href={`/${tenantSubdomain}/events/${invoice.event.id}`}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 max-w-full"
+                                title={invoice.event.title || invoice.event_name || 'Event'}
                               >
-                                <Calendar className="h-3 w-3" />
-                                {invoice.event.title || invoice.event_name || 'Event'}
+                                <Calendar className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{invoice.event.title || invoice.event_name || 'Event'}</span>
                               </Link>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Calendar className="h-3 w-3" />
+                                <Calendar className="h-3 w-3 flex-shrink-0" />
                                 Event
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
+                          <td className="px-4 py-4 w-[140px] max-w-[140px]">
+                            <div className="text-sm text-gray-900 truncate" title={invoice.account_name || invoice.contact_name || '-'}>
                               {invoice.account_name || invoice.contact_name || '-'}
                             </div>
                             {invoice.opportunity_name && (
-                              <div className="text-xs text-gray-500">{invoice.opportunity_name}</div>
+                              <div className="text-xs text-gray-500 truncate" title={invoice.opportunity_name}>{invoice.opportunity_name}</div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap w-[100px]">
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${dueDateStatus.className}`}>
                               {dueDateStatus.label}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 w-[90px]">
                             {formatCurrency(invoice.total_amount)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600">
+                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm text-green-600 w-[90px]">
                             {formatCurrency(paidAmount)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <td className="px-4 py-4 whitespace-nowrap text-right w-[90px]">
                             <span className={`text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
                               {formatCurrency(balance)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-4 whitespace-nowrap w-[80px]">
                             <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
                               {getStatusLabel(invoice.status)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium w-[70px]">
                             <Link
                               href={`/${tenantSubdomain}/invoices/${invoice.id}`}
                               className="text-[#347dc4] hover:text-[#2c6aa3]"
@@ -604,16 +608,16 @@ export default function InvoicesPage() {
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
-                      <td colSpan={4} className="px-6 py-3 text-sm font-medium text-gray-900">
+                      <td colSpan={4} className="px-4 py-3 text-sm font-medium text-gray-900">
                         Showing {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm font-medium text-gray-900">
+                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
                         {formatCurrency(filteredInvoices.reduce((sum, inv) => sum + inv.total_amount, 0))}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm font-medium text-green-600">
+                      <td className="px-4 py-3 text-right text-sm font-medium text-green-600">
                         {formatCurrency(filteredInvoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0))}
                       </td>
-                      <td className="px-6 py-3 text-right text-sm font-bold text-gray-900">
+                      <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
                         {formatCurrency(filteredInvoices.reduce((sum, inv) => {
                           const balance = inv.balance_amount ?? (inv.total_amount - (inv.paid_amount || 0))
                           return sum + balance
