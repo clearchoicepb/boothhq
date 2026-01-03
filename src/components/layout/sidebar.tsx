@@ -7,6 +7,7 @@ import {
   TrendingUp,
   FileText,
   FileSignature,
+  ClipboardList,
   CheckSquare,
   MessageSquare,
   LifeBuoy,
@@ -145,6 +146,14 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
               href={`/${tenantSubdomain}/agreements`}
               icon={<FileSignature className="h-5 w-5" />}
               label="Agreements"
+              onClick={onNavigate}
+            />
+          )}
+          {permissions.events?.view !== false && (
+            <SidebarNavItem
+              href={`/${tenantSubdomain}/event-forms`}
+              icon={<ClipboardList className="h-5 w-5" />}
+              label="Event Forms"
               onClick={onNavigate}
             />
           )}

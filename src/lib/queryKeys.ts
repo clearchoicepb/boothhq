@@ -67,6 +67,26 @@ export const queryKeys = {
   },
 
   /**
+   * Event Forms (cross-event listing)
+   */
+  eventForms: {
+    /**
+     * All event forms list (with optional status filter)
+     * @param status - Optional status filter ('completed', 'pending', 'all')
+     * @returns ['event-forms'] or ['event-forms', status]
+     */
+    list: (status?: string) =>
+      status ? (['event-forms', status] as const) : (['event-forms'] as const),
+
+    /**
+     * Forms for a specific event
+     * @param eventId - Event UUID
+     * @returns ['event-forms', 'event', eventId]
+     */
+    byEvent: (eventId: string) => ['event-forms', 'event', eventId] as const,
+  },
+
+  /**
    * Events and related resources
    */
   events: {
@@ -193,6 +213,8 @@ export type EventActivitiesQueryKey = ReturnType<typeof queryKeys.events.activit
 export type EventAttachmentsQueryKey = ReturnType<typeof queryKeys.events.attachments>;
 export type EventCommunicationsQueryKey = ReturnType<typeof queryKeys.events.communications>;
 export type EventTaskStatusQueryKey = ReturnType<typeof queryKeys.events.taskStatus>;
+export type EventFormsListQueryKey = ReturnType<typeof queryKeys.eventForms.list>;
+export type EventFormsByEventQueryKey = ReturnType<typeof queryKeys.eventForms.byEvent>;
 
 /**
  * Query Key Invalidation Helpers
