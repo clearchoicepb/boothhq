@@ -34,44 +34,66 @@ export async function GET(request: Request) {
       )
     }
 
-    // Reconstruct the stages array from key-value pairs
-    // Example keys:
-    // - opportunities.stages.0.id
-    // - opportunities.stages.0.name
-    // - opportunities.stages.0.probability
-    // - opportunities.stages.1.id
-    // ...
-    const stagesMap = new Map<number, any>()
+    let stages: any[] = []
 
     if (settingsRows && settingsRows.length > 0) {
-      settingsRows.forEach((row) => {
-        const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
-        if (match) {
-          const index = parseInt(match[1], 10)
-          const field = match[2]
+      // Check if stages are stored as a single JSON array (newer format)
+      const singleArrayRow = settingsRows.find(
+        (row) => row.setting_key === 'opportunities.stages'
+      )
 
-          if (!stagesMap.has(index)) {
-            stagesMap.set(index, {})
-          }
+      if (singleArrayRow) {
+        // Stages stored as single JSON array value
+        try {
+          const parsedValue = typeof singleArrayRow.setting_value === 'string'
+            ? JSON.parse(singleArrayRow.setting_value)
+            : singleArrayRow.setting_value
 
-          const stage = stagesMap.get(index)!
-          
-          // Parse value based on field type
-          if (field === 'probability') {
-            stage[field] = parseInt(row.setting_value, 10)
-          } else if (field === 'enabled') {
-            stage[field] = row.setting_value === 'true'
-          } else {
-            stage[field] = row.setting_value
+          if (Array.isArray(parsedValue)) {
+            stages = parsedValue
           }
+        } catch (parseError) {
+          log.error({ parseError }, '[opportunity-stages] Error parsing stages JSON')
         }
-      })
-    }
+      } else {
+        // Legacy format: Reconstruct the stages array from key-value pairs
+        // Example keys:
+        // - opportunities.stages.0.id
+        // - opportunities.stages.0.name
+        // - opportunities.stages.0.probability
+        // - opportunities.stages.1.id
+        // ...
+        const stagesMap = new Map<number, any>()
 
-    // Convert map to array and sort by index
-    let stages = Array.from(stagesMap.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map((entry) => entry[1])
+        settingsRows.forEach((row) => {
+          const match = row.setting_key.match(/opportunities\.stages\.(\d+)\.(.+)/)
+          if (match) {
+            const index = parseInt(match[1], 10)
+            const field = match[2]
+
+            if (!stagesMap.has(index)) {
+              stagesMap.set(index, {})
+            }
+
+            const stage = stagesMap.get(index)!
+
+            // Parse value based on field type
+            if (field === 'probability') {
+              stage[field] = parseInt(row.setting_value, 10)
+            } else if (field === 'enabled') {
+              stage[field] = row.setting_value === 'true'
+            } else {
+              stage[field] = row.setting_value
+            }
+          }
+        })
+
+        // Convert map to array and sort by index
+        stages = Array.from(stagesMap.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map((entry) => entry[1])
+      }
+    }
 
     // Filter to only enabled stages
     stages = stages.filter((stage) => stage.enabled !== false)
