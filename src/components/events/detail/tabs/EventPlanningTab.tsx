@@ -4,11 +4,16 @@
  *
  * This tab groups all planning-related activities in one place.
  * Tasks are managed through the unified Tasks system.
+ *
+ * Supports deep linking via URL params:
+ * - section=forms&formId=xxx - Auto-expand forms section and highlight specific form
+ * - section=tasks&taskId=xxx - Auto-expand tasks section and highlight specific task
  */
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Truck, Package, ListTodo, ChevronDown, ChevronUp, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EventLogistics } from '../../event-logistics'
@@ -35,9 +40,36 @@ export function EventPlanningTab({
   tasksKey = 0,
   onTasksRefresh
 }: EventPlanningTabProps) {
-  const [expandedSections, setExpandedSections] = useState<Set<Section>>(
-    new Set(['forms', 'tasks']) // Expand forms and tasks by default
-  )
+  // Read URL params for deep linking
+  const searchParams = useSearchParams()
+  const sectionParam = searchParams?.get('section')
+  const formIdParam = searchParams?.get('formId')
+  const taskIdParam = searchParams?.get('taskId')
+
+  // Determine initial expanded sections based on URL params or defaults
+  const getInitialExpandedSections = (): Set<Section> => {
+    const sections = new Set<Section>(['forms', 'tasks']) // Default: expand forms and tasks
+
+    // If a specific section is requested, ensure it's expanded
+    if (sectionParam === 'forms') {
+      sections.add('forms')
+    } else if (sectionParam === 'tasks') {
+      sections.add('tasks')
+    }
+
+    return sections
+  }
+
+  const [expandedSections, setExpandedSections] = useState<Set<Section>>(getInitialExpandedSections)
+
+  // Auto-expand section when URL params change
+  useEffect(() => {
+    if (sectionParam === 'forms') {
+      setExpandedSections(prev => new Set([...prev, 'forms']))
+    } else if (sectionParam === 'tasks') {
+      setExpandedSections(prev => new Set([...prev, 'tasks']))
+    }
+  }, [sectionParam])
 
   const toggleSection = (section: Section) => {
     setExpandedSections(prev => {
@@ -79,7 +111,11 @@ export function EventPlanningTab({
         {isSectionExpanded('forms') && (
           <div className="px-6 pb-6 border-t border-gray-100">
             <div className="pt-4">
-              <EventFormsSection eventId={eventId} tenantSubdomain={tenantSubdomain} />
+              <EventFormsSection
+                eventId={eventId}
+                tenantSubdomain={tenantSubdomain}
+                highlightFormId={formIdParam || undefined}
+              />
             </div>
           </div>
         )}
@@ -184,6 +220,7 @@ export function EventPlanningTab({
                 entityType="event"
                 entityId={eventId}
                 onRefresh={onTasksRefresh}
+                highlightTaskId={taskIdParam || undefined}
               />
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
@@ -43,6 +43,8 @@ interface EventDateInfo {
 interface EventFormsSectionProps {
   eventId: string
   tenantSubdomain: string
+  /** Optional form ID to highlight (from notification deep link) */
+  highlightFormId?: string
 }
 
 /**
@@ -50,8 +52,11 @@ interface EventFormsSectionProps {
  *
  * Displays and manages forms attached to an event.
  * Used within the Planning tab.
+ *
+ * Supports highlighting a specific form via highlightFormId prop
+ * (used for notification deep links).
  */
-export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectionProps) {
+export function EventFormsSection({ eventId, tenantSubdomain, highlightFormId }: EventFormsSectionProps) {
   // Data state
   const [forms, setForms] = useState<EventForm[]>([])
   const [templates, setTemplates] = useState<EventFormTemplate[]>([])
@@ -72,6 +77,22 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
 
   // Link copied feedback state
   const [linkCopiedFormId, setLinkCopiedFormId] = useState<string | null>(null)
+
+  // Ref for scrolling to highlighted form
+  const highlightedFormRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to highlighted form when forms are loaded
+  useEffect(() => {
+    if (highlightFormId && forms.length > 0 && highlightedFormRef.current) {
+      // Small delay to ensure the section is expanded and rendered
+      setTimeout(() => {
+        highlightedFormRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+      }, 300)
+    }
+  }, [highlightFormId, forms])
 
   // Fetch forms, templates, and event dates
   useEffect(() => {
@@ -339,11 +360,17 @@ export function EventFormsSection({ eventId, tenantSubdomain }: EventFormsSectio
         <div className="space-y-3">
           {forms.map((form) => {
             const linkCopied = linkCopiedFormId === form.id
+            const isHighlighted = highlightFormId === form.id
 
             return (
               <div
                 key={form.id}
-                className="bg-gray-50 rounded-lg border border-gray-200"
+                ref={isHighlighted ? highlightedFormRef : null}
+                className={`bg-gray-50 rounded-lg border ${
+                  isHighlighted
+                    ? 'ring-2 ring-[#347dc4] border-[#347dc4] bg-blue-50 animate-highlight-pulse'
+                    : 'border-gray-200'
+                }`}
               >
                 {/* Form Header Row */}
                 <div className="flex items-center justify-between p-3">

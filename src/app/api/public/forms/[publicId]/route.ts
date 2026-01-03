@@ -303,7 +303,7 @@ export async function POST(
               message: `Form submitted for ${event?.title || 'event'}`,
               entityType: 'event',
               entityId: form.event_id,
-              linkUrl: `/events/${form.event_id}?tab=planning`,
+              linkUrl: `/events/${form.event_id}?tab=planning&section=forms&formId=${form.id}`,
               actorName: 'Client',
             })
             notifiedUserIds.push(staffId)
@@ -341,7 +341,7 @@ export async function POST(
                 message: `Form submitted for ${event?.title || 'event'}`,
                 entityType: 'event',
                 entityId: form.event_id,
-                linkUrl: `/events/${form.event_id}?tab=planning`,
+                linkUrl: `/events/${form.event_id}?tab=planning&section=forms&formId=${form.id}`,
                 actorName: 'Client',
               })
               notifiedUserIds.push(managerId)
@@ -378,7 +378,7 @@ export async function POST(
                 message: `Form submitted for ${event?.title || 'event'}`,
                 entityType: 'event',
                 entityId: form.event_id,
-                linkUrl: `/events/${form.event_id}?tab=planning`,
+                linkUrl: `/events/${form.event_id}?tab=planning&section=forms&formId=${form.id}`,
                 actorName: 'Client',
               })
             }

@@ -316,7 +316,7 @@ export async function PATCH(
               entityType: 'task',
               entityId: task.parent_task_id,
               linkUrl: task.entity_type === 'event'
-                ? `/events/${task.entity_id}?tab=planning`
+                ? `/events/${task.entity_id}?tab=planning&section=tasks&taskId=${task.id}`
                 : `/tasks/${task.parent_task_id}`,
               actorName: session.user.name || 'Team member',
             })
