@@ -259,7 +259,6 @@ export async function POST(
           end_date: eventData?.end_date || endDate,
           location: eventData?.location || null,
           location_id: eventData?.location_id || primaryLocationId,
-          status: eventData?.status || 'scheduled',
           date_type: eventData?.date_type || opportunity.date_type || 'single_day',
           mailing_address_line1: eventData?.mailing_address_line1 || opportunity.mailing_address_line1,
           mailing_address_line2: eventData?.mailing_address_line2 || opportunity.mailing_address_line2,
