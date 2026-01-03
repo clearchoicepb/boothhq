@@ -38,6 +38,7 @@ interface Contract {
   recipient_email: string | null
   signed_at: string | null
   signed_by: string | null
+  signature_data: string | null
   expires_at: string | null
   created_at: string
   logoUrl?: string
@@ -319,9 +320,9 @@ export function ContractManagerModal({
               <div className="border border-gray-300 rounded-lg p-6 max-h-96 overflow-y-auto bg-white">
                 {contract.logoUrl && (
                   <div className="flex justify-center mb-6 pb-4 border-b border-gray-200">
-                    <img 
-                      src={contract.logoUrl} 
-                      alt="Company Logo" 
+                    <img
+                      src={contract.logoUrl}
+                      alt="Company Logo"
                       className="h-16 w-auto object-contain"
                     />
                   </div>
@@ -330,6 +331,31 @@ export function ContractManagerModal({
                   className="prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(contract.content) }}
                 />
+
+                {/* Signature Section for Signed Contracts */}
+                {contract.status === 'signed' && (contract.signature_data || contract.signed_by) && (
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Signature</h4>
+                    <div className="text-center">
+                      <p className="text-2xl italic font-serif text-gray-800 mb-2">
+                        {contract.signature_data || contract.signed_by}
+                      </p>
+                      <div className="border-t border-gray-400 w-48 mx-auto"></div>
+                      {contract.signed_at && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          Signed on{' '}
+                          {new Date(contract.signed_at).toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

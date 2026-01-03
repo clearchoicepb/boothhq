@@ -21,6 +21,8 @@ interface Contract {
   recipient_email: string | null
   status: string
   signed_at: string | null
+  signed_by: string | null
+  signature_data: string | null
   logoUrl?: string | null
 }
 
@@ -125,28 +127,97 @@ export default function PublicContractSignPage() {
     )
   }
 
-  // Already signed
+  // Already signed - show full agreement with signature
   if (contract.status === 'signed' && contract.signed_at) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto text-center">
-          <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Agreement Already Signed
-          </h2>
-          <p className="text-gray-600 mb-4">
-            This agreement was signed on{' '}
-            {new Date(contract.signed_at).toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </p>
-          <p className="text-sm text-gray-500">
-            Thank you for your submission.
-          </p>
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Signed Banner */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+            <CheckCircle className="h-8 w-8 text-green-600 flex-shrink-0" />
+            <div>
+              <h2 className="text-lg font-semibold text-green-800">
+                Agreement Signed
+              </h2>
+              <p className="text-sm text-green-700">
+                Signed on{' '}
+                {new Date(contract.signed_at).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+                {contract.signed_by && ` by ${contract.signed_by}`}
+              </p>
+            </div>
+          </div>
+
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {contract.title || contract.template_name}
+            </h1>
+          </div>
+
+          {/* Contract Content */}
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+            {/* Company Logo */}
+            {contract.logoUrl && (
+              <div className="flex justify-center mb-8 pb-6 border-b border-gray-200">
+                <img
+                  src={contract.logoUrl}
+                  alt="Company Logo"
+                  className="h-20 w-auto object-contain"
+                />
+              </div>
+            )}
+
+            {/* Contract Content with styling */}
+            <div
+              className="prose prose-sm max-w-none prose-p:mb-4 prose-headings:mt-6 prose-headings:mb-3 prose-ul:my-4 prose-li:my-1"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(contract.content) }}
+            />
+          </div>
+
+          {/* Signature Display */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Signature
+            </h3>
+            <div className="border-t border-gray-200 pt-4">
+              {contract.signature_data ? (
+                <div className="text-center">
+                  <p className="text-2xl italic font-serif text-gray-800 mb-2">
+                    {contract.signature_data}
+                  </p>
+                  <div className="border-t border-gray-400 w-64 mx-auto"></div>
+                </div>
+              ) : contract.signed_by ? (
+                <div className="text-center">
+                  <p className="text-2xl italic font-serif text-gray-800 mb-2">
+                    {contract.signed_by}
+                  </p>
+                  <div className="border-t border-gray-400 w-64 mx-auto"></div>
+                </div>
+              ) : null}
+              <p className="text-sm text-gray-500 text-center mt-4">
+                Signed on{' '}
+                {new Date(contract.signed_at).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-6 text-center text-xs text-gray-400">
+            Powered by BoothHQ
+          </div>
         </div>
       </div>
     )

@@ -2,6 +2,7 @@
 
 import { Modal } from '@/components/ui/modal'
 import { FormRenderer } from './FormRenderer'
+import { CheckCircle } from 'lucide-react'
 import type { FormField, FormResponses, EventFormStatus } from '@/types/event-forms'
 
 /** Event date info for multi-day forms */
@@ -51,14 +52,41 @@ export function FormPreview({
   branding,
   eventDates,
 }: FormPreviewProps) {
+  const isCompleted = status === 'completed'
+  const submittedAt = responses?._submittedAt as string | undefined
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Form Preview"
+      title={isCompleted ? 'Completed Form' : 'Form Preview'}
       size="lg"
     >
       <div className="max-h-[70vh] overflow-y-auto py-4">
+        {/* Completed Status Banner */}
+        {isCompleted && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-center gap-3">
+            <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-green-800">
+                Form Completed
+              </h3>
+              {submittedAt && (
+                <p className="text-xs text-green-700">
+                  Submitted on{' '}
+                  {new Date(submittedAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
           <FormRenderer
             name={name}
@@ -73,7 +101,9 @@ export function FormPreview({
         </div>
       </div>
       <div className="text-center text-sm text-gray-500 mt-4">
-        This is how the form will appear to your clients
+        {isCompleted
+          ? 'This form has been submitted by the client'
+          : 'This is how the form will appear to your clients'}
         {eventDates && eventDates.length > 1 && (
           <span className="block mt-1 text-xs text-gray-400">
             (Showing per-date fields for {eventDates.length} event dates)

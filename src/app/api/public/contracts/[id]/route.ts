@@ -46,6 +46,7 @@ export async function GET(
         recipient_email,
         signed_at,
         signed_by,
+        signature_data,
         expires_at,
         created_at,
         deleted_at
