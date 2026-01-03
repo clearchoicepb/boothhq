@@ -490,8 +490,10 @@ export default function OpportunityDetailPage() {
       confirmText: 'Convert',
       variant: 'info'
     })
-    
+
     if (!confirmed) return
+
+    const toastId = toast.loading('Converting to event...')
 
     try {
       const response = await fetch(`/api/opportunities/${opportunityId}/convert-to-event`, {
@@ -502,21 +504,47 @@ export default function OpportunityDetailPage() {
         body: JSON.stringify({})
       })
 
+      const result = await response.json()
+
       if (response.ok) {
-        const result = await response.json()
+        // Show success message with any warnings
+        if (result.warnings && result.warnings.length > 0) {
+          toast.success(result.message || 'Opportunity converted to event', { id: toastId, duration: 5000 })
+          // Show warnings as separate toasts
+          result.warnings.forEach((warning: string) => {
+            toast(warning, { icon: '⚠️', duration: 6000 })
+          })
+        } else {
+          toast.success(result.message || 'Opportunity converted to event successfully!', { id: toastId })
+        }
 
-        // Show success message
-        toast.success('Opportunity converted to event successfully!')
-
-        // Navigate to the events list (since we don't have event detail page yet)
-        router.push(`/${tenantSubdomain}/events`)
+        // Navigate to the new event if we have the ID
+        if (result.event?.id) {
+          router.push(`/${tenantSubdomain}/events/${result.event.id}`)
+        } else {
+          router.push(`/${tenantSubdomain}/events`)
+        }
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to convert opportunity to event')
+        // Handle specific error cases
+        if (result.error === 'Opportunity already converted' && result.converted_event_id) {
+          toast.error('This opportunity has already been converted', { id: toastId })
+          const viewEvent = await confirm({
+            title: 'Already Converted',
+            message: 'This opportunity has already been converted to an event. Would you like to view the event?',
+            confirmText: 'View Event',
+            cancelText: 'Stay Here',
+            variant: 'info'
+          })
+          if (viewEvent) {
+            router.push(`/${tenantSubdomain}/events/${result.converted_event_id}`)
+          }
+        } else {
+          toast.error(result.error || 'Failed to convert opportunity to event', { id: toastId })
+        }
       }
     } catch (error) {
       log.error({ error }, 'Error converting opportunity to event')
-      toast.error(`Failed to convert opportunity to event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Failed to convert opportunity to event: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: toastId })
     }
   }
 
@@ -673,10 +701,11 @@ export default function OpportunityDetailPage() {
                             confirmText: 'Convert',
                             variant: 'success'
                           })
-                          
+
                           if (!confirmed) return
 
                           setIsActionsOpen(false)
+                          const toastId = toast.loading('Converting to event...')
 
                           try {
                             // First, update opportunity to closed_won if not already
@@ -691,7 +720,7 @@ export default function OpportunityDetailPage() {
                               })
 
                               if (!updateResponse.ok) {
-                                toast.error('Failed to update opportunity stage')
+                                toast.error('Failed to update opportunity stage', { id: toastId })
                                 return
                               }
                             }
@@ -709,17 +738,37 @@ export default function OpportunityDetailPage() {
                               })
                             })
 
+                            const result = await response.json()
+
                             if (response.ok) {
-                              const result = await response.json()
-                              toast(result.message || 'Opportunity converted to event successfully!')
-                              router.push(`/${tenantSubdomain}/events/${result.event.id}`)
+                              // Show warnings if any
+                              if (result.warnings && result.warnings.length > 0) {
+                                toast.success(result.message || 'Converted to event', { id: toastId, duration: 5000 })
+                                result.warnings.forEach((warning: string) => {
+                                  toast(warning, { icon: '⚠️', duration: 6000 })
+                                })
+                              } else {
+                                toast.success(result.message || 'Opportunity converted to event!', { id: toastId })
+                              }
+
+                              // Navigate to the event
+                              if (result.event?.id) {
+                                router.push(`/${tenantSubdomain}/events/${result.event.id}`)
+                              } else {
+                                router.push(`/${tenantSubdomain}/events`)
+                              }
                             } else {
-                              const error = await response.json()
-                              toast.error(`Failed to convert: ${error.error || 'Unknown error'}`)
+                              // Handle already converted case
+                              if (result.error === 'Opportunity already converted' && result.converted_event_id) {
+                                toast.error('Already converted', { id: toastId })
+                                router.push(`/${tenantSubdomain}/events/${result.converted_event_id}`)
+                              } else {
+                                toast.error(result.error || 'Failed to convert', { id: toastId })
+                              }
                             }
                           } catch (error) {
                             log.error({ error }, 'Error converting to event')
-                            toast.error('Failed to convert opportunity to event')
+                            toast.error('Failed to convert opportunity to event', { id: toastId })
                           }
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"

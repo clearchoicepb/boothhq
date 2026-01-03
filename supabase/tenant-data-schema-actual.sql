@@ -280,20 +280,28 @@ CREATE TABLE events (
 
 -- =====================================================
 -- EVENT_DATES
+-- Note: Either opportunity_id OR event_id must be set (not both, not neither)
+-- This allows event_dates to be linked to opportunities before conversion to events
 -- =====================================================
 CREATE TABLE event_dates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL,
-  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  opportunity_id UUID REFERENCES opportunities(id) ON DELETE SET NULL,
+  opportunity_id UUID REFERENCES opportunities(id) ON DELETE CASCADE,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE,
   location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
   event_date DATE NOT NULL,
   start_time TIME,
   end_time TIME,
-  status TEXT,
+  setup_time TIME,
+  status TEXT DEFAULT 'scheduled',
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- Ensure either opportunity_id or event_id is set, but not both
+  CONSTRAINT check_opportunity_or_event CHECK (
+    (opportunity_id IS NOT NULL AND event_id IS NULL) OR
+    (opportunity_id IS NULL AND event_id IS NOT NULL)
+  )
 );
 
 -- =====================================================
